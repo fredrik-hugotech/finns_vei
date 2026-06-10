@@ -25,7 +25,7 @@ export default function MeldForm() {
   const isAdult = reporterType === REPORTER_TYPES.ADULT;
   const [point, setPoint] = useState({ lng: DEFAULT_CENTER[0], lat: DEFAULT_CENTER[1] });
   const [form, setForm] = useState(INITIAL_FORM);
-  const [status, setStatus] = useState({ type: 'idle', message: 'Trykk i kartet eller bruk posisjonen din.' });
+  const [status, setStatus] = useState({ type: 'idle', message: 'Velg sted på kartet.' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [images, setImages] = useState([]);
 
@@ -118,7 +118,7 @@ export default function MeldForm() {
       setForm(INITIAL_FORM);
       images.forEach((image) => URL.revokeObjectURL(image.previewUrl));
       setImages([]);
-      setStatus({ type: payload.warning ? 'warning' : 'success', message: payload.warning || 'Takk! Meldingen er sendt med status Ny.' });
+      setStatus({ type: payload.warning ? 'warning' : 'success', message: payload.warning || 'Takk for at du sier fra!' });
     } catch (error) {
       setStatus({ type: 'error', message: error.message || 'Noe gikk galt.' });
     } finally {
@@ -152,7 +152,7 @@ export default function MeldForm() {
             </label>
 
             <fieldset>
-              <legend>Hva gjelder det?</legend>
+              <legend>Hva føles utrygt?</legend>
               <div className="chip-grid">
                 {REPORT_CATEGORIES.map((category) => (
                   <label className="chip" key={category}>
@@ -164,22 +164,22 @@ export default function MeldForm() {
             </fieldset>
 
             <label>
-              Kort beskrivelse
-              <textarea name="description" value={form.description} onChange={updateField} required minLength={3} maxLength={1200} placeholder="Hva er farlig her?" />
+              Fortell kort
+              <textarea name="description" value={form.description} onChange={updateField} required minLength={3} maxLength={1200} placeholder="Hva gjør stedet utrygt?" />
             </label>
 
             <section className="image-upload-card" aria-labelledby="image-upload-title">
               <div>
-                <h2 id="image-upload-title">Legg ved bilde (valgfritt)</h2>
-                <p>Ta bilde av stedet eller velg fra bilder. Maks {REPORT_IMAGE_MAX_COUNT} bilder, 8 MB per bilde.</p>
+                <h2 id="image-upload-title">Legg til bilde</h2>
+                <p>Valgfritt. Bruk kamera eller velg fra mobilen.</p>
               </div>
               <div className="image-upload-actions">
                 <label className="image-upload-button">
-                  Ta bilde
+                  Kamera
                   <input type="file" accept="image/*" capture="environment" onChange={addImages} disabled={isSubmitting || images.length >= REPORT_IMAGE_MAX_COUNT} />
                 </label>
                 <label className="image-upload-button image-upload-button--secondary">
-                  Velg fra bilder
+                  Bilder
                   <input type="file" accept="image/*,.heic,.heif" multiple onChange={addImages} disabled={isSubmitting || images.length >= REPORT_IMAGE_MAX_COUNT} />
                 </label>
               </div>
@@ -194,7 +194,7 @@ export default function MeldForm() {
                   ))}
                 </div>
               )}
-              <p className="image-upload-note">Hvis bildeopplasting feiler, kan meldingen fortsatt sendes uten bilde.</p>
+              <p className="image-upload-note">Du kan sende meldingen uten bilde.</p>
             </section>
 
             {isAdult && (

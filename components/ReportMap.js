@@ -21,6 +21,12 @@ function formatDate(value) {
   return new Intl.DateTimeFormat('no-NO', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 }
 
+function compactText(value = '', maxLength = 170) {
+  const text = String(value || '').trim();
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength - 1).trim()}…`;
+}
+
 function browserHasSupported(reportId) {
   if (typeof window === 'undefined' || !reportId) return false;
   return window.localStorage.getItem(`finns-vei-supported-${reportId}`) === '1';
@@ -71,9 +77,8 @@ function popupHtml(featureOrProperties = {}) {
   return `
     <article class="popup-card">
       <strong>${escapeHtml(properties.category || 'Melding')}</strong>
-      <p>${escapeHtml(properties.description || '')}</p>
+      ${properties.description ? `<p>${escapeHtml(compactText(properties.description))}</p>` : ''}
       <p>Status: <strong>${escapeHtml(properties.status || REPORT_STATUS.NEW)}</strong></p>
-      ${properties.road_reference ? `<p>Vegreferanse: ${escapeHtml(properties.road_reference)}</p>` : ''}
       ${properties.created_at ? `<small>${escapeHtml(formatDate(properties.created_at))}</small>` : ''}
       ${reportImagesHtml(properties)}
       ${reportId ? `<button class="support-button" data-report-id="${reportId}" type="button" ${alreadySupported ? 'disabled' : ''}>${supportButtonLabel(rawReportId)}</button>` : missingReportIdDebug}
@@ -82,7 +87,7 @@ function popupHtml(featureOrProperties = {}) {
   `;
 }
 
-function accidentPopupHtml(properties = {}, coordinates = []) {
+function accidentPopupHtml(properties = {}) {
   const rows = [
     properties.date ? ['Dato', properties.date] : null,
     properties.year ? ['År', properties.year] : null,
@@ -90,7 +95,6 @@ function accidentPopupHtml(properties = {}, coordinates = []) {
     properties.accident_type ? ['Type', properties.accident_type] : null,
     properties.description ? ['Beskrivelse', properties.description] : null,
     properties.road_reference ? ['Vegreferanse', properties.road_reference] : null,
-    coordinates.length >= 2 ? ['Koordinater', `${Number(coordinates[1]).toFixed(5)}, ${Number(coordinates[0]).toFixed(5)}`] : null,
   ].filter(Boolean);
 
   return `
@@ -311,7 +315,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           if (!feature) return;
           new mapboxgl.Popup({ maxWidth: '260px' })
             .setLngLat(event.lngLat)
-            .setHTML(accidentPopupHtml(feature.properties, feature.geometry?.coordinates || []))
+            .setHTML(accidentPopupHtml(feature.properties))
             .addTo(map);
         };
         ['accident-points', 'accident-point-symbol'].forEach((layerId) => {
@@ -404,11 +408,11 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       source: 'reports',
       filter: ['has', 'point_count'],
       paint: {
-        'circle-color': '#2563eb',
-        'circle-radius': ['step', ['get', 'point_count'], 18, 5, 24, 15, 32],
+        'circle-color': ['step', ['get', 'point_count'], '#F4C542', 2, '#F59E0B', 5, '#C84A3A'],
+        'circle-radius': ['step', ['get', 'point_count'], 14, 2, 19, 5, 26],
         'circle-opacity': 0.9,
         'circle-stroke-color': '#ffffff',
-        'circle-stroke-width': 3,
+        'circle-stroke-width': 2,
       },
     });
     map.addLayer({
@@ -418,9 +422,9 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       filter: ['has', 'point_count'],
       layout: {
         'text-field': ['get', 'point_count_abbreviated'],
-        'text-size': 13,
+        'text-size': 12,
       },
-      paint: { 'text-color': '#ffffff' },
+      paint: { 'text-color': '#111111', 'text-halo-color': '#ffffff', 'text-halo-width': 1 },
     });
     map.addLayer({
       id: 'reports-circle',
@@ -428,7 +432,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       source: 'reports',
       filter: ['!', ['has', 'point_count']],
       paint: {
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 7, 15, 13],
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 5.5, 15, 10],
         'circle-color': [
           'match',
           ['get', 'status'],
@@ -439,7 +443,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           '#6b7280',
         ],
         'circle-stroke-color': '#ffffff',
-        'circle-stroke-width': 3,
+        'circle-stroke-width': 2,
         'circle-opacity': 0.95,
       },
     });
