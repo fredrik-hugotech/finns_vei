@@ -21,19 +21,21 @@ function formatDate(value) {
 }
 
 function popupHtml(properties = {}) {
+  const reportId = escapeHtml(properties.id || '');
+  const supportCount = Number(properties.support_count || 0);
   return `
     <article class="popup-card">
       <strong>${escapeHtml(properties.status || REPORT_STATUS.NEW)} · ${escapeHtml(properties.category || 'Melding')}</strong>
       <p>${escapeHtml(properties.description || '')}</p>
+      <p><strong>${supportCount}</strong> støtter denne saken</p>
       ${properties.created_at ? `<small>${escapeHtml(formatDate(properties.created_at))}</small>` : ''}
+      ${reportId ? `<button class="support-button" data-report-id="${reportId}" type="button">Støtt denne saken</button>` : ''}
     </article>
   `;
 }
 
+const MIN_ACCIDENT_ZOOM = 13;
 const NVDB_LAYERS = [
-  { type: 'speed_limit', label: 'Fartsgrense', color: '#7c3aed' },
-  { type: 'gangfelt', label: 'Gangfelt', color: '#0ea5e9' },
-  { type: 'aadt', label: 'ÅDT', color: '#f97316' },
   { type: 'accidents', label: 'Ulykker', color: '#dc2626' },
 ];
 
@@ -93,6 +95,13 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     const activeLayers = activeNvdbLayersRef.current;
     if (!map || !enableNvdbLayers || activeLayers.length === 0) return;
 
+    if (activeLayers.includes('accidents') && map.getZoom() < MIN_ACCIDENT_ZOOM) {
+      setMessage('Zoom inn for å se ulykker');
+      const source = map.getSource('nvdb-accidents');
+      if (source) source.setData({ type: 'FeatureCollection', features: [], meta: { reason: 'zoom_too_low' } });
+      return;
+    }
+
     const bounds = map.getBounds();
     const bbox = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()]
       .map((value) => value.toFixed(6))
@@ -102,14 +111,14 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       const layerConfig = NVDB_LAYERS.find((layer) => layer.type === layerType);
       if (!layerConfig) return;
 
-      const response = await fetch(`/api/nvdb/layer?type=${encodeURIComponent(layerType)}&bbox=${encodeURIComponent(bbox)}`);
+      const response = await fetch(`/api/nvdb/layer?type=${encodeURIComponent(layerType)}&bbox=${encodeURIComponent(bbox)}&zoom=${map.getZoom().toFixed(2)}`);
       if (!response.ok) throw new Error(`Kunne ikke hente ${layerConfig.label}`);
       const geojson = await response.json();
       const featureCount = geojson.meta?.featureCount ?? geojson.features?.length ?? 0;
       if (geojson.meta?.degraded) {
-        setMessage('NVDB-lag utilgjengelig');
+        setMessage('Ulykkeslag utilgjengelig');
       } else if (layerType === 'accidents') {
-        setMessage(featureCount > 0 ? `NVDB-lag lastet: ${geojson.meta?.rawObjectCount ?? featureCount} ulykker` : 'Ingen ulykker funnet i kartutsnittet');
+        setMessage(featureCount > 0 ? `Ulykker lastet: ${geojson.meta?.rawObjectCount ?? featureCount}` : 'Ingen ulykker i kartutsnittet');
       } else {
         setMessage(`NVDB-lag lastet: ${featureCount} objekter`);
       }
@@ -194,13 +203,51 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       return;
     }
 
-    map.addSource('reports', { type: 'geojson', data: geojson });
+    map.addSource('reports', {
+      type: 'geojson',
+      data: geojson,
+      cluster: true,
+      clusterMaxZoom: 14,
+      clusterRadius: 48,
+      clusterProperties: {
+        support_sum: ['+', ['coalesce', ['to-number', ['get', 'support_count']], 0]],
+      },
+    });
+    map.addLayer({
+      id: 'reports-clusters',
+      type: 'circle',
+      source: 'reports',
+      filter: ['has', 'point_count'],
+      paint: {
+        'circle-color': '#2563eb',
+        'circle-radius': ['step', ['get', 'point_count'], 18, 5, 24, 15, 32],
+        'circle-opacity': 0.9,
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': 3,
+      },
+    });
+    map.addLayer({
+      id: 'reports-cluster-count',
+      type: 'symbol',
+      source: 'reports',
+      filter: ['has', 'point_count'],
+      layout: {
+        'text-field': ['concat', ['get', 'point_count_abbreviated'], '\n', ['to-string', ['coalesce', ['get', 'support_sum'], 0]], ' støtter'],
+        'text-size': 12,
+      },
+      paint: { 'text-color': '#ffffff' },
+    });
     map.addLayer({
       id: 'reports-circle',
       type: 'circle',
       source: 'reports',
+      filter: ['!', ['has', 'point_count']],
       paint: {
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 8, 15, 18],
+        'circle-radius': [
+          '+',
+          ['interpolate', ['linear'], ['zoom'], 8, 8, 15, 16],
+          ['min', 10, ['*', 1.5, ['coalesce', ['to-number', ['get', 'support_count']], 0]]],
+        ],
         'circle-color': [
           'match',
           ['get', 'status'],
@@ -216,11 +263,19 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       },
     });
 
-    map.on('mouseenter', 'reports-circle', () => {
-      map.getCanvas().style.cursor = 'pointer';
-    });
-    map.on('mouseleave', 'reports-circle', () => {
-      map.getCanvas().style.cursor = '';
+    map.on('mouseenter', 'reports-circle', () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', 'reports-circle', () => { map.getCanvas().style.cursor = ''; });
+    map.on('mouseenter', 'reports-clusters', () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', 'reports-clusters', () => { map.getCanvas().style.cursor = ''; });
+    map.on('click', 'reports-clusters', (event) => {
+      const feature = event.features?.[0];
+      const clusterId = feature?.properties?.cluster_id;
+      const source = map.getSource('reports');
+      if (!source || clusterId === undefined) return;
+      source.getClusterExpansionZoom(clusterId, (error, zoom) => {
+        if (error) return;
+        map.easeTo({ center: feature.geometry.coordinates, zoom });
+      });
     });
     map.on('click', 'reports-circle', (event) => {
       const feature = event.features?.[0];
@@ -232,6 +287,48 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         .addTo(map);
     });
   }, [showReports]);
+
+
+  useEffect(() => {
+    if (!showReports) return undefined;
+
+    const handleSupportClick = async (event) => {
+      const button = event.target?.closest?.('.support-button');
+      if (!button) return;
+      const reportId = button.getAttribute('data-report-id');
+      if (!reportId) return;
+
+      const storageKey = `finns-vei-supported-${reportId}`;
+      if (window.localStorage.getItem(storageKey)) {
+        setMessage('Du har allerede støttet denne saken fra denne nettleseren.');
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = 'Støtter...';
+      try {
+        const response = await fetch('/api/report-support', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reportId }),
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || 'Kunne ikke støtte saken');
+        window.localStorage.setItem(storageKey, '1');
+        button.textContent = `Støttet (${payload.support_count})`;
+        setMessage('Takk for støtten!');
+        await loadReports();
+      } catch (error) {
+        console.error(error);
+        button.disabled = false;
+        button.textContent = 'Støtt denne saken';
+        setMessage('Kunne ikke støtte saken akkurat nå.');
+      }
+    };
+
+    window.addEventListener('click', handleSupportClick);
+    return () => window.removeEventListener('click', handleSupportClick);
+  }, [loadReports, showReports]);
 
   useEffect(() => {
     if (!containerRef.current || !hasMapboxToken) return undefined;

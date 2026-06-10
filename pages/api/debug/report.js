@@ -1,6 +1,14 @@
 import { serverEnvStatus, isDebugAuthorized } from '../../../lib/envStatus';
 import { getReportById, hasSupabaseConfig, sanitizeReportForDebug } from '../../../lib/supabaseRest';
 
+function crossingValidationStatus(value) {
+  const number = Number(value);
+  if (value === null || value === undefined) return 'missing';
+  if (!Number.isFinite(number)) return 'invalid_not_numeric';
+  if (number < 0 || number > 1000) return 'invalid_out_of_range';
+  return 'valid';
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', ['GET']);
@@ -36,8 +44,17 @@ export default async function handler(req, res) {
         accident_search_radius_m: report.accident_search_radius_m ?? null,
         nearest_accident_distance_m: report.nearest_accident_distance_m ?? null,
         accident_summary: report.accident_summary || null,
+        support_count: report.support_count ?? 0,
+        nearest_crossing_distance_m: report.nearest_crossing_distance_m ?? null,
+        nearest_crossing_distance_validation: crossingValidationStatus(report.nearest_crossing_distance_m),
       } : null,
       report: sanitizeReportForDebug(report),
+      active_map_layer_configuration: {
+        nvdbLayers: ['accidents'],
+        accidentsMinZoom: 13,
+        disabledNvdbLayers: ['speed_limit', 'gangfelt', 'aadt'],
+        reportsClustered: true,
+      },
       env: serverEnvStatus(),
     });
   } catch (error) {

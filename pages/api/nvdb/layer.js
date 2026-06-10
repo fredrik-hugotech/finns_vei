@@ -4,13 +4,19 @@ function logLayer(event, details = {}) {
   console.log(JSON.stringify({ scope: 'api/nvdb/layer', event, ...details }));
 }
 
+function bboxSpan(bbox) {
+  const [minLng, minLat, maxLng, maxLat] = String(bbox).split(',').map(Number);
+  if (![minLng, minLat, maxLng, maxLat].every(Number.isFinite)) return null;
+  return { lng: Math.abs(maxLng - minLng), lat: Math.abs(maxLat - minLat) };
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', ['GET']);
     return res.status(405).end('Method Not Allowed');
   }
 
-  const { type, bbox } = req.query;
+  const { type, bbox, zoom } = req.query;
 
   if (!NVDB_LAYER_TYPES[type]) {
     return res.status(400).json({ error: 'Ukjent NVDB-lag' });
@@ -20,7 +26,19 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'bbox må være minLng,minLat,maxLng,maxLat' });
   }
 
-  logLayer('requested', { type, bbox: String(bbox) });
+  const numericZoom = Number(zoom);
+  const span = bboxSpan(bbox);
+
+  if (type === 'accidents') {
+    if (Number.isFinite(numericZoom) && numericZoom < 13) {
+      return res.status(200).json(emptyNvdbFeatureCollection({ reason: 'zoom_too_low', message: 'Zoom inn for å se ulykker', rawObjectCount: 0, featureCount: 0 }));
+    }
+    if (span && (span.lng > 0.12 || span.lat > 0.08)) {
+      return res.status(200).json(emptyNvdbFeatureCollection({ reason: 'bbox_too_broad', message: 'Zoom inn for å se ulykker', rawObjectCount: 0, featureCount: 0 }));
+    }
+  }
+
+  logLayer('requested', { type, bbox: String(bbox), zoom: Number.isFinite(numericZoom) ? numericZoom : null });
 
   try {
     const geojson = await getNvdbLayerGeoJson({ type, bbox: String(bbox) });

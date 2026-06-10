@@ -12,7 +12,7 @@ Mobile-first webapp MVP for traffic-safety reports. People can report unsafe pla
   - **Meld som voksen**: optional name, email and phone fields. All can be blank.
 - `/meld/form` lets the user select a location by tapping the Mapbox map, dragging the marker, or pressing **Bruk min posisjon**.
 - `/map` shows public report markers colored by status. Clicking a marker shows status, category, description and created time.
-- `/map` also includes optional NVDB layer toggles for **Fartsgrense**, **Gangfelt**, **ÅDT** and **Ulykker** via server-side proxy endpoints, with a small status message showing loaded object counts or degraded state.
+- `/map` clusters public reports visually, sizes individual markers by `support_count`, and includes one optional NVDB layer toggle for **Ulykker**. Accident data only loads when the map is zoomed in enough.
 
 The MVP deliberately has no login, registration, badges, points, tracking, notifications or extra concepts.
 
@@ -37,10 +37,8 @@ The frontend never reads Supabase or NVDB directly. Reads and writes go through 
 - Temporary debug endpoints for server-side production diagnosis:
   - `GET /api/debug/report?id=<report-id>&secret=<DEBUG_SECRET>` returns env booleans, latest NVDB status/note and Trello-ID presence without contact info or secret values.
   - `POST /api/debug/enrich?id=<report-id>&secret=<DEBUG_SECRET>` runs the same best-effort Trello/NVDB workflow for an existing report. If `DEBUG_SECRET` is set it is required; if not set, debug endpoints return `403` in production.
-- `GET /api/nvdb/layer?type=speed_limit&bbox=minLng,minLat,maxLng,maxLat` returns Mapbox-friendly GeoJSON for fartsgrense.
-- `GET /api/nvdb/layer?type=gangfelt&bbox=minLng,minLat,maxLng,maxLat` returns Mapbox-friendly GeoJSON for gangfelt.
-- `GET /api/nvdb/layer?type=aadt&bbox=minLng,minLat,maxLng,maxLat` returns Mapbox-friendly GeoJSON for ÅDT.
-- `GET /api/nvdb/layer?type=accidents&bbox=minLng,minLat,maxLng,maxLat` returns Mapbox-friendly GeoJSON for traffic accidents.
+- `POST /api/report-support` increments `support_count` for a report. The frontend uses local browser storage as a lightweight repeat-support guard; no login is required.
+- `GET /api/nvdb/layer?type=accidents&bbox=minLng,minLat,maxLng,maxLat&zoom=13` returns Mapbox-friendly GeoJSON for traffic accidents. Other NVDB layers are kept server-capable but hidden from the public UI for now.
 
 ## Existing Supabase resources
 
@@ -57,7 +55,8 @@ ALTER TABLE public.reports
 ADD COLUMN IF NOT EXISTS accident_count integer,
 ADD COLUMN IF NOT EXISTS accident_search_radius_m integer,
 ADD COLUMN IF NOT EXISTS nearest_accident_distance_m numeric,
-ADD COLUMN IF NOT EXISTS accident_summary jsonb DEFAULT '{}'::jsonb;
+ADD COLUMN IF NOT EXISTS accident_summary jsonb DEFAULT '{}'::jsonb,
+ADD COLUMN IF NOT EXISTS support_count integer DEFAULT 0;
 ```
 
 ## Environment variables
@@ -80,11 +79,18 @@ Set these in Vercel Project Settings and locally in `.env.local` when developing
 | `NVDB_POSITION_MAX_DISTANCE_M` | Server | Optional | Max snap distance for NVDB position lookup. Defaults to `500` and retries at 100/300/500m. |
 | `NVDB_LAYER_SEARCH_RADIUS_M` | Server | Optional | Radius used when looking up speed limit/ÅDT around a point after road-reference lookup. Defaults to `350`. |
 | `NVDB_CROSSING_SEARCH_RADIUS_M` | Server | Optional | Radius used when finding nearest gangfelt. Defaults to `500`. |
-| `NVDB_ACCIDENT_SEARCH_RADIUS_M` | Server | Optional | Radius used when summarizing nearby traffic accidents. Defaults to `500`. |
+| `NVDB_ACCIDENT_REPORT_RADIUS_M` | Server | Optional | Small radius used for per-report accident context. Defaults to `20`. |
+| `NVDB_ACCIDENT_SEARCH_RADIUS_M` | Server | Optional | Broader radius used by accident map-layer lookups when needed. Defaults to `500`. |
 | `NVDB_ACCIDENT_OBJECT_TYPE_ID` | Server | Optional | NVDB object type for traffic accidents. Defaults to `570` (`Trafikkulykke`) and can be overridden if the catalog changes. |
 | `TRELLO_BOARD_ID` | Server | Optional | Trello board short ID used to auto-resolve the “Ny melding” list when no list ID is set. Defaults to `NNRJWwld`. |
 | `TRELLO_LIST_NAME_NY_MELDING` | Server | Optional | Trello list name to resolve on the board. Defaults to `Ny melding`. |
 | `DEBUG_SECRET` | Server secret | Recommended while debugging | Required query/header secret for temporary `/api/debug/*` endpoints. In production, debug endpoints are disabled with `403` if this is not set. |
+
+## Product direction notes
+
+- Trello is the backoffice workflow. Cards always include Report ID, Trello IDs are stored on `public.reports`, and future status sync should map `Ny melding -> Ny`, `Registrert -> Registrert`, `Startet -> Startet`, `Fullført -> Fullført`.
+- Public map insight should focus on report density/support and accident context. Mapbox clustering is visual-only for now; future case grouping can use `road_reference`, category and a 25–50m distance threshold before introducing fields such as `case_group_id` or `cluster_key`.
+- Accident counts in Trello use the small report radius (`NVDB_ACCIDENT_REPORT_RADIUS_M`) and should be read as “on/near the point”, not broad-area accident analysis.
 
 ## Local development
 

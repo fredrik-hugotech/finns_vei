@@ -464,3 +464,20 @@ textarea:focus {
     font-size: 0.85rem;
   }
 }
+
+.support-button {
+  border: 0;
+  border-radius: 999px;
+  background: var(--primary);
+  color: white;
+  cursor: pointer;
+  font-weight: 800;
+  margin-top: 0.35rem;
+  padding: 0.55rem 0.8rem;
+  width: 100%;
+}
+
+.support-button:disabled {
+  cursor: default;
+  opacity: 0.75;
+}
