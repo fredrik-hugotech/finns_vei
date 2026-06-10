@@ -12,7 +12,7 @@ Mobile-first webapp MVP for traffic-safety reports. People can report unsafe pla
   - **Meld som voksen**: optional name, email and phone fields. All can be blank.
 - `/meld/form` lets the user select a location by tapping the Mapbox map, dragging the marker, or pressing **Bruk min posisjon**.
 - `/map` shows public report markers colored by status. Clicking a marker shows status, category, description and created time.
-- `/map` also includes optional NVDB layer toggles for **Fartsgrense**, **Gangfelt** and **ÅDT** via server-side proxy endpoints, with a small status message showing loaded object counts or degraded state.
+- `/map` also includes optional NVDB layer toggles for **Fartsgrense**, **Gangfelt**, **ÅDT** and **Ulykker** via server-side proxy endpoints, with a small status message showing loaded object counts or degraded state.
 
 The MVP deliberately has no login, registration, badges, points, tracking, notifications or extra concepts.
 
@@ -30,6 +30,7 @@ The frontend never reads Supabase or NVDB directly. Reads and writes go through 
 - NVDB enrichment is best effort and is awaited inside `POST /api/report` after the Supabase insert because Vercel serverless functions cannot rely on fire-and-forget work after the response. Submission still succeeds if NVDB/Trello fails, but `nvdb_status` is resolved to `enriched`, `not_found` or `failed` with `nvdb_enriched_at` instead of staying `pending`. It updates these fields when available:
   - `road_owner`, `road_authority`, `road_category`, `road_number`, `road_reference`
   - `speed_limit`, `aadt`, `nearest_crossing_distance_m`
+  - accident context summary only: `accident_count`, `accident_search_radius_m`, `nearest_accident_distance_m`, `accident_summary`
   - `nvdb_status`: `enriched`, `not_found` or `failed`
   - `nvdb_enriched_at`
 - If Trello env vars and a “Ny melding” list ID exist, `POST /api/report` creates a Trello card, stores `trello_card_id` and `trello_list_id`, and updates the card description with NVDB vegdata when enrichment completes. Trello failures are logged and do not fail report creation.
@@ -39,6 +40,7 @@ The frontend never reads Supabase or NVDB directly. Reads and writes go through 
 - `GET /api/nvdb/layer?type=speed_limit&bbox=minLng,minLat,maxLng,maxLat` returns Mapbox-friendly GeoJSON for fartsgrense.
 - `GET /api/nvdb/layer?type=gangfelt&bbox=minLng,minLat,maxLng,maxLat` returns Mapbox-friendly GeoJSON for gangfelt.
 - `GET /api/nvdb/layer?type=aadt&bbox=minLng,minLat,maxLng,maxLat` returns Mapbox-friendly GeoJSON for ÅDT.
+- `GET /api/nvdb/layer?type=accidents&bbox=minLng,minLat,maxLng,maxLat` returns Mapbox-friendly GeoJSON for traffic accidents.
 
 ## Existing Supabase resources
 
@@ -47,6 +49,16 @@ Expected server-side resources:
 - `public.reports`
 - `public.report_public_geojson`
 - `public` bucket `report-images` for a later image-upload backlog item
+
+If accident summary columns are missing, add them with:
+
+```sql
+ALTER TABLE public.reports
+ADD COLUMN IF NOT EXISTS accident_count integer,
+ADD COLUMN IF NOT EXISTS accident_search_radius_m integer,
+ADD COLUMN IF NOT EXISTS nearest_accident_distance_m numeric,
+ADD COLUMN IF NOT EXISTS accident_summary jsonb DEFAULT '{}'::jsonb;
+```
 
 ## Environment variables
 
@@ -68,6 +80,10 @@ Set these in Vercel Project Settings and locally in `.env.local` when developing
 | `NVDB_POSITION_MAX_DISTANCE_M` | Server | Optional | Max snap distance for NVDB position lookup. Defaults to `500` and retries at 100/300/500m. |
 | `NVDB_LAYER_SEARCH_RADIUS_M` | Server | Optional | Radius used when looking up speed limit/ÅDT around a point after road-reference lookup. Defaults to `350`. |
 | `NVDB_CROSSING_SEARCH_RADIUS_M` | Server | Optional | Radius used when finding nearest gangfelt. Defaults to `500`. |
+| `NVDB_ACCIDENT_SEARCH_RADIUS_M` | Server | Optional | Radius used when summarizing nearby traffic accidents. Defaults to `500`. |
+| `NVDB_ACCIDENT_OBJECT_TYPE_ID` | Server | Optional | NVDB object type for traffic accidents. Defaults to `570` (`Trafikkulykke`) and can be overridden if the catalog changes. |
+| `TRELLO_BOARD_ID` | Server | Optional | Trello board short ID used to auto-resolve the “Ny melding” list when no list ID is set. Defaults to `NNRJWwld`. |
+| `TRELLO_LIST_NAME_NY_MELDING` | Server | Optional | Trello list name to resolve on the board. Defaults to `Ny melding`. |
 | `DEBUG_SECRET` | Server secret | Recommended while debugging | Required query/header secret for temporary `/api/debug/*` endpoints. In production, debug endpoints are disabled with `403` if this is not set. |
 
 ## Local development

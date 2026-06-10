@@ -34,6 +34,7 @@ const NVDB_LAYERS = [
   { type: 'speed_limit', label: 'Fartsgrense', color: '#7c3aed' },
   { type: 'gangfelt', label: 'Gangfelt', color: '#0ea5e9' },
   { type: 'aadt', label: 'ÅDT', color: '#f97316' },
+  { type: 'accidents', label: 'Ulykker', color: '#dc2626' },
 ];
 
 export default function ReportMap({ selectable = false, point, onPointChange, className = 'map-canvas', showReports = true, enableNvdbLayers = false }) {
@@ -107,6 +108,8 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       const featureCount = geojson.meta?.featureCount ?? geojson.features?.length ?? 0;
       if (geojson.meta?.degraded) {
         setMessage('NVDB-lag utilgjengelig');
+      } else if (layerType === 'accidents') {
+        setMessage(featureCount > 0 ? `NVDB-lag lastet: ${geojson.meta?.rawObjectCount ?? featureCount} ulykker` : 'Ingen ulykker funnet i kartutsnittet');
       } else {
         setMessage(`NVDB-lag lastet: ${featureCount} objekter`);
       }
