@@ -19,6 +19,8 @@ function compactDebugFeatures(features = []) {
   }));
 }
 
+const MIN_ACCIDENT_FETCH_ZOOM = 12;
+
 function bboxSpan(bbox) {
   const [minLng, minLat, maxLng, maxLat] = String(bbox).split(',').map(Number);
   if (![minLng, minLat, maxLng, maxLat].every(Number.isFinite)) return null;
@@ -45,10 +47,13 @@ export default async function handler(req, res) {
   const span = bboxSpan(bbox);
 
   if (type === 'accidents') {
-    if (Number.isFinite(numericZoom) && numericZoom < 13) {
+    if (Number.isFinite(numericZoom) && numericZoom < MIN_ACCIDENT_FETCH_ZOOM) {
       return res.status(200).json(emptyNvdbFeatureCollection({ reason: 'zoom_too_low', message: 'Zoom inn for å se ulykker', rawObjectCount: 0, featureCount: 0, pointFeatureCount: 0, invalidGeometryCount: 0, firstGeometry: null, coordinateRange: null, derivedBbox: null, bbox: String(bbox), zoom: Number.isFinite(numericZoom) ? numericZoom : null }));
     }
-    if (span && (span.lng > 0.12 || span.lat > 0.08)) {
+    const maxSpan = Number.isFinite(numericZoom) && numericZoom < 13
+      ? { lng: 0.3, lat: 0.2 }
+      : { lng: 0.12, lat: 0.08 };
+    if (span && (span.lng > maxSpan.lng || span.lat > maxSpan.lat)) {
       return res.status(200).json(emptyNvdbFeatureCollection({ reason: 'bbox_too_broad', message: 'Zoom inn for å se ulykker', rawObjectCount: 0, featureCount: 0, pointFeatureCount: 0, invalidGeometryCount: 0, firstGeometry: null, coordinateRange: null, derivedBbox: null, bbox: String(bbox), zoom: Number.isFinite(numericZoom) ? numericZoom : null }));
     }
   }

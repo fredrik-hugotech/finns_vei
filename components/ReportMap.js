@@ -85,16 +85,24 @@ function accidentPopupHtml(properties = {}, coordinates = []) {
   `;
 }
 
-const MIN_ACCIDENT_ZOOM = 13;
+const MIN_ACCIDENT_FETCH_ZOOM = 12;
+const ACCIDENT_HEATMAP_MAX_ZOOM = 15;
+const ACCIDENT_POINT_MIN_ZOOM = 15;
 const NVDB_LAYERS = [
   { type: 'accidents', label: 'Ulykker', color: '#dc2626' },
 ];
-const ACCIDENT_LAYER_IDS = ['accident-clusters', 'accident-cluster-count', 'accident-points'];
+const ACCIDENT_LAYER_IDS = ['accident-heatmap', 'accident-clusters', 'accident-cluster-count', 'accident-points', 'accident-point-symbol'];
+const REPORT_LAYER_IDS = ['reports-clusters', 'reports-cluster-count', 'reports-circle', 'reports-support-badge'];
 
 function moveLayersToTop(map, layerIds) {
   layerIds.forEach((layerId) => {
     if (map.getLayer(layerId)) map.moveLayer(layerId);
   });
+}
+
+function restoreMapLayerOrder(map) {
+  moveLayersToTop(map, ACCIDENT_LAYER_IDS);
+  moveLayersToTop(map, REPORT_LAYER_IDS);
 }
 
 export default function ReportMap({ selectable = false, point, onPointChange, className = 'map-canvas', showReports = true, enableNvdbLayers = false }) {
@@ -155,7 +163,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     const activeLayers = activeNvdbLayersRef.current;
     if (!map || !enableNvdbLayers || activeLayers.length === 0) return;
 
-    if (activeLayers.includes('accidents') && map.getZoom() < MIN_ACCIDENT_ZOOM) {
+    if (activeLayers.includes('accidents') && map.getZoom() < MIN_ACCIDENT_FETCH_ZOOM) {
       setMessage('Zoom inn for å se ulykker');
       const source = map.getSource('accident-source');
       if (source) source.setData({ type: 'FeatureCollection', features: [], meta: { reason: 'zoom_too_low' } });
@@ -187,7 +195,11 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         setMessage(`Ulykker funnet: ${rawObjectCount}, men 0 kunne vises${geometryDebug}`);
       } else if (layerType === 'accidents') {
         const geometryDebug = shouldShowMissingReportIdDebug() && invalidGeometryCount > 0 ? ` (${invalidGeometryCount} geometri kunne ikke tolkes)` : '';
-        setMessage(pointFeatureCount > 0 ? `Ulykker vist: ${pointFeatureCount}${geometryDebug}` : 'Ingen ulykker i kartutsnittet');
+        if (pointFeatureCount > 0 && map.getZoom() < ACCIDENT_POINT_MIN_ZOOM) {
+          setMessage(`Ulykker vist som varmekart: ${pointFeatureCount}${geometryDebug}`);
+        } else {
+          setMessage(pointFeatureCount > 0 ? `Ulykker vist: ${pointFeatureCount}${geometryDebug}` : 'Ingen ulykker i kartutsnittet');
+        }
       } else {
         setMessage(`NVDB-lag lastet: ${featureCount} objekter`);
       }
@@ -202,7 +214,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         layerIds.forEach((layerId) => {
           if (map.getLayer(layerId)) map.setLayoutProperty(layerId, 'visibility', 'visible');
         });
-        if (layerType === 'accidents') moveLayersToTop(map, ACCIDENT_LAYER_IDS);
+        if (layerType === 'accidents') restoreMapLayerOrder(map);
         return;
       }
 
@@ -210,18 +222,48 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         type: 'geojson',
         data: geojson,
         cluster: layerType === 'accidents',
-        clusterMaxZoom: layerType === 'accidents' ? 13 : 15,
+        clusterMaxZoom: layerType === 'accidents' ? 16 : 15,
         clusterRadius: 42,
       });
 
       if (layerType === 'accidents') {
         map.addLayer({
+          id: 'accident-heatmap',
+          type: 'heatmap',
+          source: sourceId,
+          minzoom: MIN_ACCIDENT_FETCH_ZOOM,
+          maxzoom: ACCIDENT_HEATMAP_MAX_ZOOM,
+          paint: {
+            'heatmap-weight': [
+              'match',
+              ['downcase', ['to-string', ['coalesce', ['get', 'severity'], 'unknown']]],
+              ['fatal', 'død', 'drept', 'dødsulykke'], 1.8,
+              ['serious', 'alvorlig', 'meget alvorlig'], 1.4,
+              1,
+            ],
+            'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 12, 0.7, 15, 1.35],
+            'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 12, 18, 15, 34],
+            'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 12, 0.7, 14.5, 0.55, 15, 0],
+            'heatmap-color': [
+              'interpolate',
+              ['linear'],
+              ['heatmap-density'],
+              0, 'rgba(88,28,135,0)',
+              0.2, '#ddd6fe',
+              0.45, '#8b5cf6',
+              0.7, '#6d28d9',
+              1, '#2e0f3f',
+            ],
+          },
+        });
+        map.addLayer({
           id: 'accident-clusters',
           type: 'circle',
           source: sourceId,
+          minzoom: ACCIDENT_POINT_MIN_ZOOM,
           filter: ['has', 'point_count'],
           paint: {
-            'circle-color': '#7f1d1d',
+            'circle-color': '#581c87',
             'circle-radius': ['step', ['get', 'point_count'], 18, 10, 24, 50, 30],
             'circle-opacity': 0.9,
             'circle-stroke-color': '#ffffff',
@@ -232,6 +274,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           id: 'accident-cluster-count',
           type: 'symbol',
           source: sourceId,
+          minzoom: ACCIDENT_POINT_MIN_ZOOM,
           filter: ['has', 'point_count'],
           layout: {
             'text-field': ['get', 'point_count_abbreviated'],
@@ -244,17 +287,35 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           id: 'accident-points',
           type: 'circle',
           source: sourceId,
+          minzoom: ACCIDENT_POINT_MIN_ZOOM,
           filter: ['!', ['has', 'point_count']],
           paint: {
-            'circle-radius': 10,
-            'circle-color': '#dc2626',
+            'circle-radius': 7,
+            'circle-color': '#581c87',
             'circle-opacity': 0.95,
             'circle-stroke-color': '#ffffff',
             'circle-stroke-width': 2,
           },
         });
+        map.addLayer({
+          id: 'accident-point-symbol',
+          type: 'symbol',
+          source: sourceId,
+          minzoom: ACCIDENT_POINT_MIN_ZOOM,
+          filter: ['!', ['has', 'point_count']],
+          layout: {
+            'text-field': '!',
+            'text-size': 11,
+            'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+            'text-allow-overlap': true,
+            'text-ignore-placement': true,
+          },
+          paint: {
+            'text-color': '#ffffff',
+          },
+        });
 
-        moveLayersToTop(map, ACCIDENT_LAYER_IDS);
+        restoreMapLayerOrder(map);
 
         map.on('mouseenter', 'accident-clusters', () => { map.getCanvas().style.cursor = 'pointer'; });
         map.on('mouseleave', 'accident-clusters', () => { map.getCanvas().style.cursor = ''; });
@@ -271,15 +332,18 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
             if (!error) map.easeTo({ center: feature.geometry.coordinates, zoom });
           });
         });
-        map.on('mouseenter', 'accident-points', () => { map.getCanvas().style.cursor = 'pointer'; });
-        map.on('mouseleave', 'accident-points', () => { map.getCanvas().style.cursor = ''; });
-        map.on('click', 'accident-points', (event) => {
+        const showAccidentPopup = (event) => {
           const feature = event.features?.[0];
           if (!feature) return;
           new mapboxgl.Popup({ maxWidth: '300px' })
             .setLngLat(event.lngLat)
             .setHTML(accidentPopupHtml(feature.properties, feature.geometry?.coordinates || []))
             .addTo(map);
+        };
+        ['accident-points', 'accident-point-symbol'].forEach((layerId) => {
+          map.on('mouseenter', layerId, () => { map.getCanvas().style.cursor = 'pointer'; });
+          map.on('mouseleave', layerId, () => { map.getCanvas().style.cursor = ''; });
+          map.on('click', layerId, showAccidentPopup);
         });
         return;
       }
@@ -349,6 +413,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     const source = map.getSource('reports');
     if (source) {
       source.setData(geojson);
+      moveLayersToTop(map, REPORT_LAYER_IDS);
       return;
     }
 
@@ -423,6 +488,8 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         'text-halo-width': 2,
       },
     });
+
+    moveLayersToTop(map, REPORT_LAYER_IDS);
 
     map.on('mouseenter', 'reports-circle', () => { map.getCanvas().style.cursor = 'pointer'; });
     map.on('mouseleave', 'reports-circle', () => { map.getCanvas().style.cursor = ''; });
