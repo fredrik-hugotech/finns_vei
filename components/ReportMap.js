@@ -14,14 +14,7 @@ function escapeHtml(value = '') {
     .replace(/'/g, '&#039;');
 }
 
-function formatDate(value) {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  return new Intl.DateTimeFormat('no-NO', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
-}
-
-function compactText(value = '', maxLength = 170) {
+function compactText(value = '', maxLength = 140) {
   const text = String(value || '').trim();
   if (text.length <= maxLength) return text;
   return `${text.slice(0, maxLength - 1).trim()}…`;
@@ -79,7 +72,6 @@ function popupHtml(featureOrProperties = {}) {
       <strong>${escapeHtml(properties.category || 'Melding')}</strong>
       ${properties.description ? `<p>${escapeHtml(compactText(properties.description))}</p>` : ''}
       <p>Status: <strong>${escapeHtml(properties.status || REPORT_STATUS.NEW)}</strong></p>
-      ${properties.created_at ? `<small>${escapeHtml(formatDate(properties.created_at))}</small>` : ''}
       ${reportImagesHtml(properties)}
       ${reportId ? `<button class="support-button" data-report-id="${reportId}" type="button" ${alreadySupported ? 'disabled' : ''}>${supportButtonLabel(rawReportId)}</button>` : missingReportIdDebug}
       <small class="support-count" data-support-count-for="${reportId}">${supportCount} støtter denne saken</small>
@@ -93,8 +85,6 @@ function accidentPopupHtml(properties = {}) {
     properties.year ? ['År', properties.year] : null,
     properties.severity ? ['Alvorlighet', properties.severity] : null,
     properties.accident_type ? ['Type', properties.accident_type] : null,
-    properties.description ? ['Beskrivelse', properties.description] : null,
-    properties.road_reference ? ['Vegreferanse', properties.road_reference] : null,
   ].filter(Boolean);
 
   return `
@@ -185,7 +175,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     if (!map || !enableNvdbLayers || activeLayers.length === 0) return;
 
     if (activeLayers.includes('accidents') && map.getZoom() < MIN_ACCIDENT_FETCH_ZOOM) {
-      setMessage('Zoom inn for ulykker');
+      setMessage('Zoom inn');
       const source = map.getSource('accident-source');
       if (source) source.setData({ type: 'FeatureCollection', features: [], meta: { reason: 'zoom_too_low' } });
       return;
@@ -210,16 +200,16 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       if (geojson.meta?.degraded) {
         setMessage('Ulykker utilgjengelig');
       } else if (geojson.meta?.reason === 'zoom_too_low' || geojson.meta?.reason === 'bbox_too_broad') {
-        setMessage('Zoom inn for ulykker');
+        setMessage('Zoom inn');
       } else if (layerType === 'accidents' && rawObjectCount > 0 && pointFeatureCount === 0) {
         const geometryDebug = shouldShowMissingReportIdDebug() && invalidGeometryCount > 0 ? ' (geometri kunne ikke tolkes)' : '';
-        setMessage(`Ulykker: 0 vist${geometryDebug}`);
+        setMessage(`Ulykker: 0${geometryDebug}`);
       } else if (layerType === 'accidents') {
         const geometryDebug = shouldShowMissingReportIdDebug() && invalidGeometryCount > 0 ? ` (${invalidGeometryCount} geometri kunne ikke tolkes)` : '';
         if (pointFeatureCount > 0 && map.getZoom() < ACCIDENT_POINT_MIN_ZOOM) {
-          setMessage(`Ulykker: varmekart (${pointFeatureCount})${geometryDebug}`);
+          setMessage(`Varmekart${geometryDebug}`);
         } else {
-          setMessage(pointFeatureCount > 0 ? `Ulykker: ${pointFeatureCount}${geometryDebug}` : 'Ingen ulykker her');
+          setMessage(pointFeatureCount > 0 ? `Ulykker: ${pointFeatureCount}${geometryDebug}` : 'Ingen ulykker');
         }
       } else {
         setMessage(`NVDB-lag lastet: ${featureCount} objekter`);
