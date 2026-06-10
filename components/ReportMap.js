@@ -30,17 +30,39 @@ function popupHtml(properties = {}) {
   `;
 }
 
-export default function ReportMap({ selectable = false, point, onPointChange, className = 'map-canvas', showReports = true }) {
+const NVDB_LAYERS = [
+  { type: 'speed_limit', label: 'Fartsgrense', color: '#7c3aed' },
+  { type: 'gangfelt', label: 'Gangfelt', color: '#0ea5e9' },
+];
+
+export default function ReportMap({ selectable = false, point, onPointChange, className = 'map-canvas', showReports = true, enableNvdbLayers = false }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const markerRef = useRef(null);
   const pointRef = useRef(point);
+  const activeNvdbLayersRef = useRef([]);
   const [message, setMessage] = useState('');
+  const [activeNvdbLayers, setActiveNvdbLayers] = useState([]);
   const hasMapboxToken = Boolean(process.env.NEXT_PUBLIC_MAPBOX_TOKEN);
 
   useEffect(() => {
     pointRef.current = point;
   }, [point]);
+
+  useEffect(() => {
+    activeNvdbLayersRef.current = activeNvdbLayers;
+    const map = mapRef.current;
+    if (map) {
+      NVDB_LAYERS.forEach((layer) => {
+        ['line', 'point'].forEach((shape) => {
+          const layerId = `nvdb-${layer.type}-${shape}`;
+          if (map.getLayer(layerId)) {
+            map.setLayoutProperty(layerId, 'visibility', activeNvdbLayers.includes(layer.type) ? 'visible' : 'none');
+          }
+        });
+      });
+    }
+  }, [activeNvdbLayers]);
 
   const placeMarker = useCallback((nextPoint) => {
     const map = mapRef.current;
@@ -62,6 +84,74 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       markerRef.current.setLngLat(lngLat);
     }
   }, [onPointChange, selectable]);
+
+
+  const refreshNvdbLayers = useCallback(async () => {
+    const map = mapRef.current;
+    const activeLayers = activeNvdbLayersRef.current;
+    if (!map || !enableNvdbLayers || activeLayers.length === 0) return;
+
+    const bounds = map.getBounds();
+    const bbox = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()]
+      .map((value) => value.toFixed(6))
+      .join(',');
+
+    await Promise.all(activeLayers.map(async (layerType) => {
+      const layerConfig = NVDB_LAYERS.find((layer) => layer.type === layerType);
+      if (!layerConfig) return;
+
+      const response = await fetch(`/api/nvdb/layer?type=${encodeURIComponent(layerType)}&bbox=${encodeURIComponent(bbox)}`);
+      if (!response.ok) throw new Error(`Kunne ikke hente ${layerConfig.label}`);
+      const geojson = await response.json();
+      const sourceId = `nvdb-${layerType}`;
+
+      const source = map.getSource(sourceId);
+      if (source) {
+        source.setData(geojson);
+        return;
+      }
+
+      map.addSource(sourceId, { type: 'geojson', data: geojson });
+      map.addLayer({
+        id: `${sourceId}-line`,
+        type: 'line',
+        source: sourceId,
+        paint: {
+          'line-color': layerConfig.color,
+          'line-width': 4,
+          'line-opacity': 0.75,
+        },
+      });
+      map.addLayer({
+        id: `${sourceId}-point`,
+        type: 'circle',
+        source: sourceId,
+        paint: {
+          'circle-radius': 6,
+          'circle-color': layerConfig.color,
+          'circle-stroke-color': '#ffffff',
+          'circle-stroke-width': 2,
+        },
+      });
+
+      map.on('click', `${sourceId}-point`, (event) => {
+        const feature = event.features?.[0];
+        if (!feature) return;
+        new mapboxgl.Popup({ maxWidth: '280px' })
+          .setLngLat(event.lngLat)
+          .setHTML(`<strong>${escapeHtml(feature.properties?.label || layerConfig.label)}</strong>`)
+          .addTo(map);
+      });
+    }));
+  }, [enableNvdbLayers]);
+
+  const toggleNvdbLayer = (layerType) => {
+    setActiveNvdbLayers((current) => (
+      current.includes(layerType)
+        ? current.filter((type) => type !== layerType)
+        : [...current, layerType]
+    ));
+  };
 
   const loadReports = useCallback(async () => {
     const map = mapRef.current;
@@ -135,10 +225,18 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       if (pointRef.current) placeMarker(pointRef.current);
       try {
         await loadReports();
+        await refreshNvdbLayers();
       } catch (error) {
         console.error(error);
         setMessage('Kartet åpnet, men meldinger kunne ikke hentes akkurat nå.');
       }
+    });
+
+    map.on('moveend', () => {
+      refreshNvdbLayers().catch((error) => {
+        console.error(error);
+        setMessage('NVDB-lag kunne ikke hentes akkurat nå.');
+      });
     });
 
     if (selectable) {
@@ -155,11 +253,18 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       map.remove();
       mapRef.current = null;
     };
-  }, [hasMapboxToken, loadReports, onPointChange, placeMarker, selectable]);
+  }, [hasMapboxToken, loadReports, onPointChange, placeMarker, refreshNvdbLayers, selectable]);
 
   useEffect(() => {
     if (point) placeMarker(point);
   }, [placeMarker, point]);
+
+  useEffect(() => {
+    refreshNvdbLayers().catch((error) => {
+      console.error(error);
+      setMessage('NVDB-lag kunne ikke hentes akkurat nå.');
+    });
+  }, [refreshNvdbLayers]);
 
   if (!hasMapboxToken) {
     return <div className="map-missing">Mapbox-token mangler.</div>;
@@ -168,6 +273,21 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   return (
     <div className="map-wrap">
       <div ref={containerRef} className={className} />
+      {enableNvdbLayers && (
+        <div className="nvdb-toggle-card" aria-label="NVDB-lag">
+          <strong>NVDB-lag</strong>
+          {NVDB_LAYERS.map((layer) => (
+            <button
+              key={layer.type}
+              type="button"
+              className={activeNvdbLayers.includes(layer.type) ? 'nvdb-toggle nvdb-toggle--active' : 'nvdb-toggle'}
+              onClick={() => toggleNvdbLayer(layer.type)}
+            >
+              {layer.label}
+            </button>
+          ))}
+        </div>
+      )}
       {message && <div className="map-message">{message}</div>}
     </div>
   );

@@ -414,3 +414,53 @@ textarea:focus {
     top: auto;
   }
 }
+
+.nvdb-toggle-card {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.85rem;
+  position: absolute;
+  right: max(1rem, env(safe-area-inset-right));
+  width: min(220px, calc(100vw - 2rem));
+  z-index: 2;
+}
+
+.nvdb-toggle-card strong {
+  font-size: 0.95rem;
+}
+
+.nvdb-toggle {
+  background: #f8fbff;
+  border: 2px solid var(--border);
+  border-radius: 16px;
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 850;
+  min-height: 44px;
+  padding: 0.55rem 0.7rem;
+  text-align: left;
+}
+
+.nvdb-toggle--active {
+  background: #ede9fe;
+  border-color: #7c3aed;
+  color: #4c1d95;
+}
+
+@media (max-width: 520px) {
+  .nvdb-toggle-card {
+    bottom: auto;
+    right: max(1rem, env(safe-area-inset-right));
+    top: max(1rem, env(safe-area-inset-top));
+    width: 150px;
+  }
+
+  .nvdb-toggle {
+    font-size: 0.85rem;
+  }
+}

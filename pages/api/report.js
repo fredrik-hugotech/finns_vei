@@ -1,4 +1,5 @@
 import { REPORT_CATEGORIES, REPORT_STATUS, REPORTER_TYPES } from '../../lib/config';
+import { buildBaseTrelloDescription, enrichReportBestEffort } from '../../lib/reportWorkflow';
 import { createReport, hasSupabaseConfig, updateReport } from '../../lib/supabaseRest';
 import { createTrelloCard, getNewReportListId, hasTrelloConfig } from '../../lib/trello';
 
@@ -33,6 +34,7 @@ function validatePayload(body = {}) {
 
   return {
     status: REPORT_STATUS.NEW,
+    nvdb_status: 'pending',
     reporter_type: reporterType,
     category,
     description,
@@ -42,28 +44,6 @@ function validatePayload(body = {}) {
     contact_email: reporterType === REPORTER_TYPES.ADULT ? cleanString(body.contact_email, 220) : null,
     contact_phone: reporterType === REPORTER_TYPES.ADULT ? cleanString(body.contact_phone, 80) : null,
   };
-}
-
-function buildTrelloDescription(report) {
-  const contactLines = report.reporter_type === REPORTER_TYPES.ADULT
-    ? [
-        report.contact_name ? `Navn: ${report.contact_name}` : null,
-        report.contact_email ? `E-post: ${report.contact_email}` : null,
-        report.contact_phone ? `Telefon: ${report.contact_phone}` : null,
-      ].filter(Boolean)
-    : ['Meldt anonymt som barn'];
-
-  return [
-    `Status: ${report.status}`,
-    `Meldt som: ${report.reporter_type}`,
-    `Kategori: ${report.category}`,
-    `Koordinater: ${report.lat}, ${report.lng}`,
-    ...contactLines,
-    '',
-    report.description,
-    '',
-    `Kart: https://www.google.com/maps?q=${report.lat},${report.lng}`,
-  ].join('\n');
 }
 
 export default async function handler(req, res) {
@@ -85,7 +65,7 @@ export default async function handler(req, res) {
       try {
         const trelloCard = await createTrelloCard({
           name: `Ny melding: ${reportInput.category}`,
-          desc: buildTrelloDescription(reportInput),
+          desc: buildBaseTrelloDescription(reportInput),
         });
 
         if (trelloCard?.id) {
@@ -100,7 +80,14 @@ export default async function handler(req, res) {
       }
     }
 
-    return res.status(201).json({ id: report?.id, status: report?.status || REPORT_STATUS.NEW, warning: trelloWarning });
+    void enrichReportBestEffort({ ...reportInput, ...report });
+
+    return res.status(201).json({
+      id: report?.id,
+      status: report?.status || REPORT_STATUS.NEW,
+      nvdb_status: report?.nvdb_status || 'pending',
+      warning: trelloWarning,
+    });
   } catch (error) {
     console.error(error);
     return res.status(400).json({ error: error.message || 'Kunne ikke lagre meldingen' });
