@@ -89,6 +89,13 @@ const MIN_ACCIDENT_ZOOM = 13;
 const NVDB_LAYERS = [
   { type: 'accidents', label: 'Ulykker', color: '#dc2626' },
 ];
+const ACCIDENT_LAYER_IDS = ['accident-clusters', 'accident-cluster-count', 'accident-points'];
+
+function moveLayersToTop(map, layerIds) {
+  layerIds.forEach((layerId) => {
+    if (map.getLayer(layerId)) map.moveLayer(layerId);
+  });
+}
 
 export default function ReportMap({ selectable = false, point, onPointChange, className = 'map-canvas', showReports = true, enableNvdbLayers = false }) {
   const containerRef = useRef(null);
@@ -110,7 +117,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     if (map) {
       NVDB_LAYERS.forEach((layer) => {
         const layerIds = layer.type === 'accidents'
-          ? ['accident-clusters', 'accident-cluster-count', 'accident-points', 'accident-point-symbol']
+          ? ACCIDENT_LAYER_IDS
           : [`nvdb-${layer.type}-line`, `nvdb-${layer.type}-point`, `nvdb-${layer.type}-fill`];
         layerIds.forEach((layerId) => {
           if (map.getLayer(layerId)) {
@@ -170,14 +177,17 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       const featureCount = geojson.meta?.featureCount ?? geojson.features?.length ?? 0;
       const rawObjectCount = Number(geojson.meta?.rawObjectCount ?? 0);
       const pointFeatureCount = Number(geojson.meta?.pointFeatureCount ?? featureCount);
+      const invalidGeometryCount = Number(geojson.meta?.invalidGeometryCount ?? 0);
       if (geojson.meta?.degraded) {
         setMessage('Ulykkeslag utilgjengelig');
       } else if (geojson.meta?.reason === 'zoom_too_low' || geojson.meta?.reason === 'bbox_too_broad') {
         setMessage('Zoom inn for å se ulykker');
       } else if (layerType === 'accidents' && rawObjectCount > 0 && pointFeatureCount === 0) {
-        setMessage(`Ulykker funnet: ${rawObjectCount}, men 0 kunne vises`);
+        const geometryDebug = shouldShowMissingReportIdDebug() && invalidGeometryCount > 0 ? ' (geometri kunne ikke tolkes)' : '';
+        setMessage(`Ulykker funnet: ${rawObjectCount}, men 0 kunne vises${geometryDebug}`);
       } else if (layerType === 'accidents') {
-        setMessage(pointFeatureCount > 0 ? `Ulykker vist: ${pointFeatureCount}` : 'Ingen ulykker i kartutsnittet');
+        const geometryDebug = shouldShowMissingReportIdDebug() && invalidGeometryCount > 0 ? ` (${invalidGeometryCount} geometri kunne ikke tolkes)` : '';
+        setMessage(pointFeatureCount > 0 ? `Ulykker vist: ${pointFeatureCount}${geometryDebug}` : 'Ingen ulykker i kartutsnittet');
       } else {
         setMessage(`NVDB-lag lastet: ${featureCount} objekter`);
       }
@@ -187,11 +197,12 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       if (source) {
         source.setData(geojson);
         const layerIds = layerType === 'accidents'
-          ? ['accident-clusters', 'accident-cluster-count', 'accident-points', 'accident-point-symbol']
+          ? ACCIDENT_LAYER_IDS
           : ['line', 'point', 'fill'].map((shape) => `${sourceId}-${shape}`);
         layerIds.forEach((layerId) => {
           if (map.getLayer(layerId)) map.setLayoutProperty(layerId, 'visibility', 'visible');
         });
+        if (layerType === 'accidents') moveLayersToTop(map, ACCIDENT_LAYER_IDS);
         return;
       }
 
@@ -199,7 +210,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         type: 'geojson',
         data: geojson,
         cluster: layerType === 'accidents',
-        clusterMaxZoom: 15,
+        clusterMaxZoom: layerType === 'accidents' ? 13 : 15,
         clusterRadius: 42,
       });
 
@@ -211,7 +222,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           filter: ['has', 'point_count'],
           paint: {
             'circle-color': '#7f1d1d',
-            'circle-radius': ['step', ['get', 'point_count'], 15, 10, 20, 50, 26],
+            'circle-radius': ['step', ['get', 'point_count'], 18, 10, 24, 50, 30],
             'circle-opacity': 0.9,
             'circle-stroke-color': '#ffffff',
             'circle-stroke-width': 2,
@@ -235,13 +246,15 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           source: sourceId,
           filter: ['!', ['has', 'point_count']],
           paint: {
-            'circle-radius': 8,
-            'circle-color': '#7f1d1d',
-            'circle-opacity': 0.9,
+            'circle-radius': 10,
+            'circle-color': '#dc2626',
+            'circle-opacity': 0.95,
             'circle-stroke-color': '#ffffff',
             'circle-stroke-width': 2,
           },
         });
+
+        moveLayersToTop(map, ACCIDENT_LAYER_IDS);
 
         map.on('mouseenter', 'accident-clusters', () => { map.getCanvas().style.cursor = 'pointer'; });
         map.on('mouseleave', 'accident-clusters', () => { map.getCanvas().style.cursor = ''; });
@@ -471,7 +484,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           body: JSON.stringify({ reportId, supportToken: getSupportToken() }),
         });
         const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error || 'Kunne ikke støtte saken');
+        if (!response.ok) throw new Error(payload.code || payload.error || 'Kunne ikke støtte saken');
         window.localStorage.setItem(storageKey, '1');
         button.textContent = 'Du har støttet denne saken';
         button.disabled = true;
@@ -484,7 +497,8 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         console.error(error);
         button.disabled = false;
         button.textContent = 'Støtt denne saken';
-        setMessage('Kunne ikke støtte saken akkurat nå.');
+        const debugSuffix = shouldShowMissingReportIdDebug() && error?.message ? ` (${error.message})` : '';
+        setMessage(`Kunne ikke støtte saken akkurat nå.${debugSuffix}`);
       }
     };
 
