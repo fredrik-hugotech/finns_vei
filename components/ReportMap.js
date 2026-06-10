@@ -29,11 +29,29 @@ function supportButtonLabel(reportId) {
   return browserHasSupported(reportId) ? 'Du har støttet denne saken' : 'Støtt denne saken';
 }
 
-function popupHtml(properties = {}) {
-  const rawReportId = properties.id || '';
+function reportIdFromFeature(featureOrProperties = {}) {
+  const properties = featureOrProperties.properties || featureOrProperties || {};
+  return properties.id
+    || properties.report_id
+    || properties.reportId
+    || properties.uuid
+    || featureOrProperties.id
+    || '';
+}
+
+function shouldShowMissingReportIdDebug() {
+  return process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_VERCEL_ENV === 'preview';
+}
+
+function popupHtml(featureOrProperties = {}) {
+  const properties = featureOrProperties.properties || featureOrProperties || {};
+  const rawReportId = reportIdFromFeature(featureOrProperties);
   const reportId = escapeHtml(rawReportId);
   const supportCount = Number(properties.support_count || 0);
   const alreadySupported = browserHasSupported(rawReportId);
+  const missingReportIdDebug = !reportId && shouldShowMissingReportIdDebug()
+    ? '<small class="support-debug">Mangler reportId for støtteknapp.</small>'
+    : '';
   return `
     <article class="popup-card">
       <strong>${escapeHtml(properties.category || 'Melding')}</strong>
@@ -41,7 +59,7 @@ function popupHtml(properties = {}) {
       <p>Status: <strong>${escapeHtml(properties.status || REPORT_STATUS.NEW)}</strong></p>
       ${properties.road_reference ? `<p>Vegreferanse: ${escapeHtml(properties.road_reference)}</p>` : ''}
       ${properties.created_at ? `<small>${escapeHtml(formatDate(properties.created_at))}</small>` : ''}
-      ${reportId ? `<button class="support-button" data-report-id="${reportId}" type="button" ${alreadySupported ? 'disabled' : ''}>${supportButtonLabel(rawReportId)}</button>` : ''}
+      ${reportId ? `<button class="support-button" data-report-id="${reportId}" type="button" ${alreadySupported ? 'disabled' : ''}>${supportButtonLabel(rawReportId)}</button>` : missingReportIdDebug}
       <small class="support-count" data-support-count-for="${reportId}">${supportCount} støtter denne saken</small>
     </article>
   `;
@@ -92,7 +110,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     if (map) {
       NVDB_LAYERS.forEach((layer) => {
         const layerIds = layer.type === 'accidents'
-          ? ['accident-clusters', 'accident-cluster-count', 'accident-points']
+          ? ['accident-clusters', 'accident-cluster-count', 'accident-points', 'accident-point-symbol']
           : [`nvdb-${layer.type}-line`, `nvdb-${layer.type}-point`, `nvdb-${layer.type}-fill`];
         layerIds.forEach((layerId) => {
           if (map.getLayer(layerId)) {
@@ -150,10 +168,16 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       if (!response.ok) throw new Error(`Kunne ikke hente ${layerConfig.label}`);
       const geojson = await response.json();
       const featureCount = geojson.meta?.featureCount ?? geojson.features?.length ?? 0;
+      const rawObjectCount = Number(geojson.meta?.rawObjectCount ?? 0);
+      const pointFeatureCount = Number(geojson.meta?.pointFeatureCount ?? featureCount);
       if (geojson.meta?.degraded) {
         setMessage('Ulykkeslag utilgjengelig');
+      } else if (geojson.meta?.reason === 'zoom_too_low' || geojson.meta?.reason === 'bbox_too_broad') {
+        setMessage('Zoom inn for å se ulykker');
+      } else if (layerType === 'accidents' && rawObjectCount > 0 && pointFeatureCount === 0) {
+        setMessage(`Ulykker funnet: ${rawObjectCount}, men 0 kunne vises`);
       } else if (layerType === 'accidents') {
-        setMessage(featureCount > 0 ? `Ulykker lastet: ${featureCount}` : 'Ingen ulykker i kartutsnittet');
+        setMessage(pointFeatureCount > 0 ? `Ulykker vist: ${pointFeatureCount}` : 'Ingen ulykker i kartutsnittet');
       } else {
         setMessage(`NVDB-lag lastet: ${featureCount} objekter`);
       }
@@ -163,7 +187,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       if (source) {
         source.setData(geojson);
         const layerIds = layerType === 'accidents'
-          ? ['accident-clusters', 'accident-cluster-count', 'accident-points']
+          ? ['accident-clusters', 'accident-cluster-count', 'accident-points', 'accident-point-symbol']
           : ['line', 'point', 'fill'].map((shape) => `${sourceId}-${shape}`);
         layerIds.forEach((layerId) => {
           if (map.getLayer(layerId)) map.setLayoutProperty(layerId, 'visibility', 'visible');
@@ -189,7 +213,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
             'circle-color': '#7f1d1d',
             'circle-radius': ['step', ['get', 'point_count'], 15, 10, 20, 50, 26],
             'circle-opacity': 0.9,
-            'circle-stroke-color': '#fee2e2',
+            'circle-stroke-color': '#ffffff',
             'circle-stroke-width': 2,
           },
         });
@@ -211,10 +235,10 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           source: sourceId,
           filter: ['!', ['has', 'point_count']],
           paint: {
-            'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 5, 16, 8],
-            'circle-color': '#991b1b',
+            'circle-radius': 8,
+            'circle-color': '#7f1d1d',
             'circle-opacity': 0.9,
-            'circle-stroke-color': '#fee2e2',
+            'circle-stroke-color': '#ffffff',
             'circle-stroke-width': 2,
           },
         });
@@ -407,7 +431,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       event.originalEvent.cancelBubble = true;
       new mapboxgl.Popup({ maxWidth: '320px' })
         .setLngLat(feature.geometry.coordinates)
-        .setHTML(popupHtml(feature.properties))
+        .setHTML(popupHtml(feature))
         .addTo(map);
     });
   }, [showReports]);

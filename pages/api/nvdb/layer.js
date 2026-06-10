@@ -31,17 +31,17 @@ export default async function handler(req, res) {
 
   if (type === 'accidents') {
     if (Number.isFinite(numericZoom) && numericZoom < 13) {
-      return res.status(200).json(emptyNvdbFeatureCollection({ reason: 'zoom_too_low', message: 'Zoom inn for å se ulykker', rawObjectCount: 0, featureCount: 0 }));
+      return res.status(200).json(emptyNvdbFeatureCollection({ reason: 'zoom_too_low', message: 'Zoom inn for å se ulykker', rawObjectCount: 0, featureCount: 0, pointFeatureCount: 0, invalidGeometryCount: 0, firstGeometry: null, coordinateRange: null, bbox: String(bbox), zoom: Number.isFinite(numericZoom) ? numericZoom : null }));
     }
     if (span && (span.lng > 0.12 || span.lat > 0.08)) {
-      return res.status(200).json(emptyNvdbFeatureCollection({ reason: 'bbox_too_broad', message: 'Zoom inn for å se ulykker', rawObjectCount: 0, featureCount: 0 }));
+      return res.status(200).json(emptyNvdbFeatureCollection({ reason: 'bbox_too_broad', message: 'Zoom inn for å se ulykker', rawObjectCount: 0, featureCount: 0, pointFeatureCount: 0, invalidGeometryCount: 0, firstGeometry: null, coordinateRange: null, bbox: String(bbox), zoom: Number.isFinite(numericZoom) ? numericZoom : null }));
     }
   }
 
   logLayer('requested', { type, bbox: String(bbox), zoom: Number.isFinite(numericZoom) ? numericZoom : null });
 
   try {
-    const geojson = await getNvdbLayerGeoJson({ type, bbox: String(bbox) });
+    const geojson = await getNvdbLayerGeoJson({ type, bbox: String(bbox), zoom: Number.isFinite(numericZoom) ? numericZoom : null });
     logLayer('completed', {
       type,
       bbox: String(bbox),
@@ -65,6 +65,12 @@ export default async function handler(req, res) {
         message: 'NVDB er midlertidig utilgjengelig fra denne runtime. Prøv i Vercel eller sett NVDB_BASE_URL/NVDB_FALLBACK_BASE_URLS.',
         rawObjectCount: 0,
         featureCount: 0,
+        pointFeatureCount: 0,
+        invalidGeometryCount: 0,
+        firstGeometry: null,
+        coordinateRange: null,
+        bbox: String(bbox),
+        zoom: Number.isFinite(numericZoom) ? numericZoom : null,
       }));
     }
 
