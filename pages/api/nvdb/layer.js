@@ -47,6 +47,9 @@ export default async function handler(req, res) {
       bbox: String(bbox),
       rawObjectCount: geojson.meta?.rawObjectCount ?? null,
       featureCount: geojson.features?.length ?? 0,
+      pointFeatureCount: geojson.meta?.pointFeatureCount ?? null,
+      invalidGeometryCount: geojson.meta?.invalidGeometryCount ?? null,
+      firstGeometry: geojson.meta?.firstGeometry || null,
       fallbackPath: geojson.meta?.fallbackPath || null,
     });
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=900');

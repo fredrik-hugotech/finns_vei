@@ -20,18 +20,29 @@ function formatDate(value) {
   return new Intl.DateTimeFormat('no-NO', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 }
 
+function browserHasSupported(reportId) {
+  if (typeof window === 'undefined' || !reportId) return false;
+  return window.localStorage.getItem(`finns-vei-supported-${reportId}`) === '1';
+}
+
+function supportButtonLabel(reportId) {
+  return browserHasSupported(reportId) ? 'Du har støttet denne saken' : 'Støtt denne saken';
+}
+
 function popupHtml(properties = {}) {
-  const reportId = escapeHtml(properties.id || '');
+  const rawReportId = properties.id || '';
+  const reportId = escapeHtml(rawReportId);
   const supportCount = Number(properties.support_count || 0);
+  const alreadySupported = browserHasSupported(rawReportId);
   return `
     <article class="popup-card">
       <strong>${escapeHtml(properties.category || 'Melding')}</strong>
       <p>${escapeHtml(properties.description || '')}</p>
       <p>Status: <strong>${escapeHtml(properties.status || REPORT_STATUS.NEW)}</strong></p>
       ${properties.road_reference ? `<p>Vegreferanse: ${escapeHtml(properties.road_reference)}</p>` : ''}
-      <p><strong>${supportCount}</strong> støtter denne saken</p>
       ${properties.created_at ? `<small>${escapeHtml(formatDate(properties.created_at))}</small>` : ''}
-      ${reportId ? `<button class="support-button" data-report-id="${reportId}" type="button">Støtt denne saken</button>` : ''}
+      ${reportId ? `<button class="support-button" data-report-id="${reportId}" type="button" ${alreadySupported ? 'disabled' : ''}>${supportButtonLabel(rawReportId)}</button>` : ''}
+      <small class="support-count" data-support-count-for="${reportId}">${supportCount} støtter denne saken</small>
     </article>
   `;
 }
@@ -80,8 +91,10 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     const map = mapRef.current;
     if (map) {
       NVDB_LAYERS.forEach((layer) => {
-        ['line', 'point', 'fill', 'clusters', 'cluster-count'].forEach((shape) => {
-          const layerId = `nvdb-${layer.type}-${shape}`;
+        const layerIds = layer.type === 'accidents'
+          ? ['accident-clusters', 'accident-cluster-count', 'accident-points']
+          : [`nvdb-${layer.type}-line`, `nvdb-${layer.type}-point`, `nvdb-${layer.type}-fill`];
+        layerIds.forEach((layerId) => {
           if (map.getLayer(layerId)) {
             map.setLayoutProperty(layerId, 'visibility', activeNvdbLayers.includes(layer.type) ? 'visible' : 'none');
           }
@@ -119,7 +132,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
 
     if (activeLayers.includes('accidents') && map.getZoom() < MIN_ACCIDENT_ZOOM) {
       setMessage('Zoom inn for å se ulykker');
-      const source = map.getSource('nvdb-accidents');
+      const source = map.getSource('accident-source');
       if (source) source.setData({ type: 'FeatureCollection', features: [], meta: { reason: 'zoom_too_low' } });
       return;
     }
@@ -140,17 +153,19 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       if (geojson.meta?.degraded) {
         setMessage('Ulykkeslag utilgjengelig');
       } else if (layerType === 'accidents') {
-        setMessage(featureCount > 0 ? `Ulykker lastet: ${geojson.meta?.rawObjectCount ?? featureCount}` : 'Ingen ulykker i kartutsnittet');
+        setMessage(featureCount > 0 ? `Ulykker lastet: ${featureCount}` : 'Ingen ulykker i kartutsnittet');
       } else {
         setMessage(`NVDB-lag lastet: ${featureCount} objekter`);
       }
-      const sourceId = `nvdb-${layerType}`;
+      const sourceId = layerType === 'accidents' ? 'accident-source' : `nvdb-${layerType}`;
 
       const source = map.getSource(sourceId);
       if (source) {
         source.setData(geojson);
-        ['line', 'point', 'fill', 'clusters', 'cluster-count'].forEach((shape) => {
-          const layerId = `${sourceId}-${shape}`;
+        const layerIds = layerType === 'accidents'
+          ? ['accident-clusters', 'accident-cluster-count', 'accident-points']
+          : ['line', 'point', 'fill'].map((shape) => `${sourceId}-${shape}`);
+        layerIds.forEach((layerId) => {
           if (map.getLayer(layerId)) map.setLayoutProperty(layerId, 'visibility', 'visible');
         });
         return;
@@ -166,7 +181,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
 
       if (layerType === 'accidents') {
         map.addLayer({
-          id: `${sourceId}-clusters`,
+          id: 'accident-clusters',
           type: 'circle',
           source: sourceId,
           filter: ['has', 'point_count'],
@@ -179,7 +194,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           },
         });
         map.addLayer({
-          id: `${sourceId}-cluster-count`,
+          id: 'accident-cluster-count',
           type: 'symbol',
           source: sourceId,
           filter: ['has', 'point_count'],
@@ -191,7 +206,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           paint: { 'text-color': '#ffffff' },
         });
         map.addLayer({
-          id: `${sourceId}-point`,
+          id: 'accident-points',
           type: 'circle',
           source: sourceId,
           filter: ['!', ['has', 'point_count']],
@@ -204,9 +219,9 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           },
         });
 
-        map.on('mouseenter', `${sourceId}-clusters`, () => { map.getCanvas().style.cursor = 'pointer'; });
-        map.on('mouseleave', `${sourceId}-clusters`, () => { map.getCanvas().style.cursor = ''; });
-        map.on('click', `${sourceId}-clusters`, (event) => {
+        map.on('mouseenter', 'accident-clusters', () => { map.getCanvas().style.cursor = 'pointer'; });
+        map.on('mouseleave', 'accident-clusters', () => { map.getCanvas().style.cursor = ''; });
+        map.on('click', 'accident-clusters', (event) => {
           const feature = event.features?.[0];
           const clusterId = feature?.properties?.cluster_id;
           const sourceForCluster = map.getSource(sourceId);
@@ -219,9 +234,9 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
             if (!error) map.easeTo({ center: feature.geometry.coordinates, zoom });
           });
         });
-        map.on('mouseenter', `${sourceId}-point`, () => { map.getCanvas().style.cursor = 'pointer'; });
-        map.on('mouseleave', `${sourceId}-point`, () => { map.getCanvas().style.cursor = ''; });
-        map.on('click', `${sourceId}-point`, (event) => {
+        map.on('mouseenter', 'accident-points', () => { map.getCanvas().style.cursor = 'pointer'; });
+        map.on('mouseleave', 'accident-points', () => { map.getCanvas().style.cursor = ''; });
+        map.on('click', 'accident-points', (event) => {
           const feature = event.features?.[0];
           if (!feature) return;
           new mapboxgl.Popup({ maxWidth: '300px' })
@@ -398,6 +413,16 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   }, [showReports]);
 
 
+  const getSupportToken = useCallback(() => {
+    const storageKey = 'finns-vei-support-token';
+    let token = window.localStorage.getItem(storageKey);
+    if (!token) {
+      token = (window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`);
+      window.localStorage.setItem(storageKey, token);
+    }
+    return token;
+  }, []);
+
   useEffect(() => {
     if (!showReports) return undefined;
 
@@ -419,13 +444,17 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         const response = await fetch('/api/report-support', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ reportId }),
+          body: JSON.stringify({ reportId, supportToken: getSupportToken() }),
         });
         const payload = await response.json();
         if (!response.ok) throw new Error(payload.error || 'Kunne ikke støtte saken');
         window.localStorage.setItem(storageKey, '1');
-        button.textContent = `Støttet (${payload.support_count})`;
-        setMessage('Takk for støtten!');
+        button.textContent = 'Du har støttet denne saken';
+        button.disabled = true;
+        document.querySelectorAll(`[data-support-count-for=\"${reportId}\"]`).forEach((node) => {
+          node.textContent = `${payload.support_count} støtter denne saken`;
+        });
+        setMessage(payload.alreadySupported ? 'Du har allerede støttet denne saken.' : 'Takk for støtten!');
         await loadReports();
       } catch (error) {
         console.error(error);
@@ -437,7 +466,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
 
     window.addEventListener('click', handleSupportClick);
     return () => window.removeEventListener('click', handleSupportClick);
-  }, [loadReports, showReports]);
+  }, [getSupportToken, loadReports, showReports]);
 
   useEffect(() => {
     if (!containerRef.current || !hasMapboxToken) return undefined;

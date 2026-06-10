@@ -48,7 +48,7 @@ Expected server-side resources:
 - `public.report_public_geojson`
 - `public` bucket `report-images` for a later image-upload backlog item
 
-If accident summary columns are missing, add them with:
+If accident/support columns or the support table are missing, add them with:
 
 ```sql
 ALTER TABLE public.reports
@@ -56,8 +56,26 @@ ADD COLUMN IF NOT EXISTS accident_count integer,
 ADD COLUMN IF NOT EXISTS accident_search_radius_m integer,
 ADD COLUMN IF NOT EXISTS nearest_accident_distance_m numeric,
 ADD COLUMN IF NOT EXISTS accident_summary jsonb DEFAULT '{}'::jsonb,
-ADD COLUMN IF NOT EXISTS support_count integer DEFAULT 0;
+ADD COLUMN IF NOT EXISTS support_count integer NOT NULL DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS public.report_supports (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  report_id uuid NOT NULL REFERENCES public.reports(id) ON DELETE CASCADE,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  support_token text,
+  ip_hash text,
+  user_agent_hash text
+);
+
+CREATE INDEX IF NOT EXISTS report_supports_report_id_idx
+ON public.report_supports(report_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS report_supports_report_token_unique_idx
+ON public.report_supports(report_id, support_token)
+WHERE support_token IS NOT NULL;
 ```
+
+Support stores a browser-generated token plus optional hashed IP/user-agent values only; raw IP addresses are never stored.
 
 ## Environment variables
 
@@ -85,6 +103,7 @@ Set these in Vercel Project Settings and locally in `.env.local` when developing
 | `TRELLO_BOARD_ID` | Server | Optional | Trello board short ID used to auto-resolve the “Ny melding” list when no list ID is set. Defaults to `NNRJWwld`. |
 | `TRELLO_LIST_NAME_NY_MELDING` | Server | Optional | Trello list name to resolve on the board. Defaults to `Ny melding`. |
 | `DEBUG_SECRET` | Server secret | Recommended while debugging | Required query/header secret for temporary `/api/debug/*` endpoints. In production, debug endpoints are disabled with `403` if this is not set. |
+| `SUPPORT_HASH_SALT` | Server secret | Optional | Salt for hashing IP/user-agent soft anti-spam values. Falls back to the Supabase service key if unset. |
 
 ## Product direction notes
 
