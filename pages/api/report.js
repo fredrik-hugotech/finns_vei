@@ -1,7 +1,10 @@
 import { REPORT_CATEGORIES, REPORT_STATUS, REPORTER_TYPES } from '../../lib/config';
-import { buildBaseTrelloDescription, enrichReportBestEffort } from '../../lib/reportWorkflow';
-import { createReport, hasSupabaseConfig, updateReport } from '../../lib/supabaseRest';
-import { createTrelloCard, getNewReportListId, hasTrelloConfig } from '../../lib/trello';
+import { runReportWorkflowBestEffort } from '../../lib/reportWorkflow';
+import { createReport, hasSupabaseConfig } from '../../lib/supabaseRest';
+
+function logApi(event, details = {}) {
+  console.log(JSON.stringify({ scope: 'api/report', event, ...details }));
+}
 
 function cleanString(value, maxLength = 1000) {
   if (typeof value !== 'string') return null;
@@ -58,38 +61,33 @@ export default async function handler(req, res) {
 
   try {
     const reportInput = validatePayload(req.body);
-    let report = await createReport(reportInput);
-    let trelloWarning = null;
+    const insertedReport = await createReport(reportInput);
 
-    if (hasTrelloConfig()) {
-      try {
-        const trelloCard = await createTrelloCard({
-          name: `Ny melding: ${reportInput.category}`,
-          desc: buildBaseTrelloDescription(reportInput),
-        });
-
-        if (trelloCard?.id) {
-          report = await updateReport(report.id, {
-            trello_card_id: trelloCard.id,
-            trello_list_id: trelloCard.idList || getNewReportListId(),
-          });
-        }
-      } catch (error) {
-        console.error(error);
-        trelloWarning = 'Meldingen er lagret, men Trello-kort ble ikke laget.';
-      }
+    if (!insertedReport?.id) {
+      logApi('insert_missing_id', { category: reportInput.category, lat: reportInput.lat, lng: reportInput.lng });
+      throw new Error('Rapporten ble lagret uten ID');
     }
 
-    void enrichReportBestEffort({ ...reportInput, ...report });
+    logApi('report_inserted', {
+      reportId: insertedReport.id,
+      category: insertedReport.category || reportInput.category,
+      lat: insertedReport.lat || reportInput.lat,
+      lng: insertedReport.lng || reportInput.lng,
+    });
+
+    // Vercel serverless functions can stop after the response is returned, so the
+    // Trello + NVDB workflow is awaited best-effort instead of fire-and-forget.
+    const workflow = await runReportWorkflowBestEffort({ ...reportInput, ...insertedReport });
+    const report = workflow.report || insertedReport;
 
     return res.status(201).json({
-      id: report?.id,
-      status: report?.status || REPORT_STATUS.NEW,
-      nvdb_status: report?.nvdb_status || 'pending',
-      warning: trelloWarning,
+      id: report.id,
+      status: report.status || REPORT_STATUS.NEW,
+      nvdb_status: workflow.nvdbStatus || report.nvdb_status || 'failed',
+      warning: workflow.trelloWarning,
     });
   } catch (error) {
-    console.error(error);
+    console.error(JSON.stringify({ scope: 'api/report', event: 'request_failed', error: error?.message }));
     return res.status(400).json({ error: error.message || 'Kunne ikke lagre meldingen' });
   }
 }
