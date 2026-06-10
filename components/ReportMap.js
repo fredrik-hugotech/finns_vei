@@ -22,7 +22,11 @@ function formatDate(value) {
 
 function browserHasSupported(reportId) {
   if (typeof window === 'undefined' || !reportId) return false;
-  return window.localStorage.getItem(`finns-vei-supported-${reportId}`) === '1';
+  try {
+    return window.localStorage.getItem(`finns-vei-supported-${reportId}`) === '1';
+  } catch (_error) {
+    return false;
+  }
 }
 
 function supportButtonLabel(reportId) {
@@ -41,8 +45,10 @@ function popupHtml(properties = {}) {
       <p>Status: <strong>${escapeHtml(properties.status || REPORT_STATUS.NEW)}</strong></p>
       ${properties.road_reference ? `<p>Vegreferanse: ${escapeHtml(properties.road_reference)}</p>` : ''}
       ${properties.created_at ? `<small>${escapeHtml(formatDate(properties.created_at))}</small>` : ''}
-      ${reportId ? `<button class="support-button" data-report-id="${reportId}" type="button" ${alreadySupported ? 'disabled' : ''}>${supportButtonLabel(rawReportId)}</button>` : ''}
-      <small class="support-count" data-support-count-for="${reportId}">${supportCount} støtter denne saken</small>
+      <div class="support-section">
+        ${reportId ? `<button class="support-button" data-report-id="${reportId}" type="button" ${alreadySupported ? 'disabled' : ''}>${supportButtonLabel(rawReportId)}</button>` : ''}
+        <small class="support-count" data-support-count-for="${reportId}">${supportCount} støtter denne saken</small>
+      </div>
     </article>
   `;
 }
@@ -415,12 +421,17 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
 
   const getSupportToken = useCallback(() => {
     const storageKey = 'finns-vei-support-token';
-    let token = window.localStorage.getItem(storageKey);
-    if (!token) {
-      token = (window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`);
-      window.localStorage.setItem(storageKey, token);
+    const fallbackToken = () => (window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`);
+    try {
+      let token = window.localStorage.getItem(storageKey);
+      if (!token) {
+        token = fallbackToken();
+        window.localStorage.setItem(storageKey, token);
+      }
+      return token;
+    } catch (_error) {
+      return fallbackToken();
     }
-    return token;
   }, []);
 
   useEffect(() => {
@@ -433,7 +444,9 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       if (!reportId) return;
 
       const storageKey = `finns-vei-supported-${reportId}`;
-      if (window.localStorage.getItem(storageKey)) {
+      if (browserHasSupported(reportId)) {
+        button.textContent = 'Du har støttet denne saken';
+        button.disabled = true;
         setMessage('Du har allerede støttet denne saken fra denne nettleseren.');
         return;
       }
@@ -448,11 +461,17 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         });
         const payload = await response.json();
         if (!response.ok) throw new Error(payload.error || 'Kunne ikke støtte saken');
-        window.localStorage.setItem(storageKey, '1');
+        try {
+          window.localStorage.setItem(storageKey, '1');
+        } catch (_error) {
+          // Support still succeeded server-side; local storage is only a browser convenience guard.
+        }
         button.textContent = 'Du har støttet denne saken';
         button.disabled = true;
-        document.querySelectorAll(`[data-support-count-for=\"${reportId}\"]`).forEach((node) => {
-          node.textContent = `${payload.support_count} støtter denne saken`;
+        document.querySelectorAll('.support-count').forEach((node) => {
+          if (node.getAttribute('data-support-count-for') === reportId) {
+            node.textContent = `${payload.support_count} støtter denne saken`;
+          }
         });
         setMessage(payload.alreadySupported ? 'Du har allerede støttet denne saken.' : 'Takk for støtten!');
         await loadReports();

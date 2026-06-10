@@ -37,7 +37,7 @@ The frontend never reads Supabase or NVDB directly. Reads and writes go through 
 - Temporary debug endpoints for server-side production diagnosis:
   - `GET /api/debug/report?id=<report-id>&secret=<DEBUG_SECRET>` returns env booleans, latest NVDB status/note and Trello-ID presence without contact info or secret values.
   - `POST /api/debug/enrich?id=<report-id>&secret=<DEBUG_SECRET>` runs the same best-effort Trello/NVDB workflow for an existing report. If `DEBUG_SECRET` is set it is required; if not set, debug endpoints return `403` in production.
-- `POST /api/report-support` increments `support_count` for a report. The frontend uses local browser storage as a lightweight repeat-support guard; no login is required.
+- `POST /api/report-support` records a row in `report_supports`, syncs `reports.support_count`, and returns duplicate supports as `alreadySupported`. The frontend uses local browser storage plus a browser token as the main repeat-support guard; the server also stores hashed IP/user-agent fingerprints as a lightweight soft anti-spam guard. No login is required.
 - `GET /api/nvdb/layer?type=accidents&bbox=minLng,minLat,maxLng,maxLat&zoom=13` returns Mapbox-friendly GeoJSON for traffic accidents. Other NVDB layers are kept server-capable but hidden from the public UI for now.
 
 ## Existing Supabase resources
