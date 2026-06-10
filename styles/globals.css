@@ -465,21 +465,41 @@ textarea:focus {
   }
 }
 
+.support-section {
+  background: #f0fdfa;
+  border: 1px solid #99f6e4;
+  border-radius: 18px;
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+  padding: 0.55rem;
+}
+
 .support-button {
+  background: var(--primary);
   border: 0;
   border-radius: 999px;
-  background: var(--primary);
   color: white;
   cursor: pointer;
-  font-weight: 800;
-  margin-top: 0.35rem;
-  padding: 0.55rem 0.8rem;
+  font-weight: 900;
+  min-height: 44px;
+  padding: 0.65rem 0.85rem;
   width: 100%;
 }
 
+.support-button:hover:not(:disabled) { background: var(--primary-dark); }
+
 .support-button:disabled {
+  background: #ccfbf1;
+  color: #115e59;
   cursor: default;
-  opacity: 0.75;
+  opacity: 1;
+}
+
+.support-count {
+  display: block;
+  font-weight: 850;
+  text-align: center;
 }
 
 .popup-card--accident span {

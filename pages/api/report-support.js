@@ -10,6 +10,10 @@ function cleanSupportToken(value) {
   return value.trim().slice(0, 160);
 }
 
+function isValidUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 function hashValue(value) {
   if (!value) return null;
   const salt = process.env.SUPPORT_HASH_SALT || process.env.SUPABASE_SERVICE_ROLE_KEY || 'finns-vei-support';
@@ -35,6 +39,7 @@ export default async function handler(req, res) {
   const reportId = cleanReportId(req.body?.reportId);
   const supportToken = cleanSupportToken(req.body?.supportToken);
   if (!reportId) return res.status(400).json({ error: 'Mangler reportId' });
+  if (!isValidUuid(reportId)) return res.status(400).json({ error: 'Ugyldig reportId' });
   if (!supportToken) return res.status(400).json({ error: 'Mangler supportToken' });
 
   try {

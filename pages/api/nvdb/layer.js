@@ -50,6 +50,7 @@ export default async function handler(req, res) {
       pointFeatureCount: geojson.meta?.pointFeatureCount ?? null,
       invalidGeometryCount: geojson.meta?.invalidGeometryCount ?? null,
       firstGeometry: geojson.meta?.firstGeometry || null,
+      coordinateRange: geojson.meta?.coordinateRange || null,
       fallbackPath: geojson.meta?.fallbackPath || null,
     });
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=900');

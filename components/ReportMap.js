@@ -22,15 +22,30 @@ function formatDate(value) {
 
 function browserHasSupported(reportId) {
   if (typeof window === 'undefined' || !reportId) return false;
-  return window.localStorage.getItem(`finns-vei-supported-${reportId}`) === '1';
+  try {
+    return window.localStorage.getItem(`finns-vei-supported-${reportId}`) === '1';
+  } catch (_error) {
+    return false;
+  }
 }
 
 function supportButtonLabel(reportId) {
   return browserHasSupported(reportId) ? 'Du har støttet denne saken' : 'Støtt denne saken';
 }
 
-function popupHtml(properties = {}) {
-  const rawReportId = properties.id || '';
+function reportIdFromProperties(properties = {}, featureId = '') {
+  return String(
+    properties.id
+    || properties.report_id
+    || properties.reportId
+    || properties.uuid
+    || featureId
+    || '',
+  ).trim();
+}
+
+function popupHtml(properties = {}, featureId = '') {
+  const rawReportId = reportIdFromProperties(properties, featureId);
   const reportId = escapeHtml(rawReportId);
   const supportCount = Number(properties.support_count || 0);
   const alreadySupported = browserHasSupported(rawReportId);
@@ -41,8 +56,10 @@ function popupHtml(properties = {}) {
       <p>Status: <strong>${escapeHtml(properties.status || REPORT_STATUS.NEW)}</strong></p>
       ${properties.road_reference ? `<p>Vegreferanse: ${escapeHtml(properties.road_reference)}</p>` : ''}
       ${properties.created_at ? `<small>${escapeHtml(formatDate(properties.created_at))}</small>` : ''}
-      ${reportId ? `<button class="support-button" data-report-id="${reportId}" type="button" ${alreadySupported ? 'disabled' : ''}>${supportButtonLabel(rawReportId)}</button>` : ''}
-      <small class="support-count" data-support-count-for="${reportId}">${supportCount} støtter denne saken</small>
+      <div class="support-section">
+        ${reportId ? `<button class="support-button" data-report-id="${reportId}" type="button" ${alreadySupported ? 'disabled' : ''}>${supportButtonLabel(rawReportId)}</button>` : ''}
+        <small class="support-count" data-support-count-for="${reportId}">${supportCount} støtter denne saken</small>
+      </div>
     </article>
   `;
 }
@@ -78,6 +95,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   const markerRef = useRef(null);
   const pointRef = useRef(point);
   const activeNvdbLayersRef = useRef([]);
+  const accidentPopupRef = useRef(null);
   const [message, setMessage] = useState('');
   const [activeNvdbLayers, setActiveNvdbLayers] = useState([]);
   const hasMapboxToken = Boolean(process.env.NEXT_PUBLIC_MAPBOX_TOKEN);
@@ -92,7 +110,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     if (map) {
       NVDB_LAYERS.forEach((layer) => {
         const layerIds = layer.type === 'accidents'
-          ? ['accident-clusters', 'accident-cluster-count', 'accident-points']
+          ? ['accident-clusters', 'accident-cluster-count', 'accident-points', 'accident-point-icons']
           : [`nvdb-${layer.type}-line`, `nvdb-${layer.type}-point`, `nvdb-${layer.type}-fill`];
         layerIds.forEach((layerId) => {
           if (map.getLayer(layerId)) {
@@ -102,6 +120,14 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       });
     }
   }, [activeNvdbLayers]);
+
+  const bringAccidentLayersToFront = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    ['accident-clusters', 'accident-cluster-count', 'accident-points', 'accident-point-icons'].forEach((layerId) => {
+      if (map.getLayer(layerId)) map.moveLayer(layerId);
+    });
+  }, []);
 
   const placeMarker = useCallback((nextPoint) => {
     const map = mapRef.current;
@@ -163,11 +189,12 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       if (source) {
         source.setData(geojson);
         const layerIds = layerType === 'accidents'
-          ? ['accident-clusters', 'accident-cluster-count', 'accident-points']
+          ? ['accident-clusters', 'accident-cluster-count', 'accident-points', 'accident-point-icons']
           : ['line', 'point', 'fill'].map((shape) => `${sourceId}-${shape}`);
         layerIds.forEach((layerId) => {
           if (map.getLayer(layerId)) map.setLayoutProperty(layerId, 'visibility', 'visible');
         });
+        if (layerType === 'accidents') bringAccidentLayersToFront();
         return;
       }
 
@@ -211,13 +238,32 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           source: sourceId,
           filter: ['!', ['has', 'point_count']],
           paint: {
-            'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 5, 16, 8],
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 8, 16, 12],
             'circle-color': '#991b1b',
-            'circle-opacity': 0.9,
-            'circle-stroke-color': '#fee2e2',
-            'circle-stroke-width': 2,
+            'circle-opacity': 0.96,
+            'circle-stroke-color': '#ffffff',
+            'circle-stroke-width': 3,
           },
         });
+        map.addLayer({
+          id: 'accident-point-icons',
+          type: 'symbol',
+          source: sourceId,
+          filter: ['!', ['has', 'point_count']],
+          layout: {
+            'text-field': '!',
+            'text-size': 13,
+            'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+            'text-allow-overlap': true,
+            'text-ignore-placement': true,
+          },
+          paint: {
+            'text-color': '#ffffff',
+            'text-halo-color': '#7f1d1d',
+            'text-halo-width': 1,
+          },
+        });
+        bringAccidentLayersToFront();
 
         map.on('mouseenter', 'accident-clusters', () => { map.getCanvas().style.cursor = 'pointer'; });
         map.on('mouseleave', 'accident-clusters', () => { map.getCanvas().style.cursor = ''; });
@@ -226,7 +272,8 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           const clusterId = feature?.properties?.cluster_id;
           const sourceForCluster = map.getSource(sourceId);
           if (!sourceForCluster || clusterId === undefined) return;
-          new mapboxgl.Popup({ maxWidth: '240px' })
+          accidentPopupRef.current?.remove();
+          accidentPopupRef.current = new mapboxgl.Popup({ maxWidth: '240px' })
             .setLngLat(feature.geometry.coordinates)
             .setHTML(`<strong>${feature.properties.point_count} ulykker i området</strong>`)
             .addTo(map);
@@ -234,15 +281,18 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
             if (!error) map.easeTo({ center: feature.geometry.coordinates, zoom });
           });
         });
-        map.on('mouseenter', 'accident-points', () => { map.getCanvas().style.cursor = 'pointer'; });
-        map.on('mouseleave', 'accident-points', () => { map.getCanvas().style.cursor = ''; });
-        map.on('click', 'accident-points', (event) => {
-          const feature = event.features?.[0];
-          if (!feature) return;
-          new mapboxgl.Popup({ maxWidth: '300px' })
-            .setLngLat(event.lngLat)
-            .setHTML(accidentPopupHtml(feature.properties, feature.geometry?.coordinates || []))
-            .addTo(map);
+        ['accident-points', 'accident-point-icons'].forEach((clickLayerId) => {
+          map.on('mouseenter', clickLayerId, () => { map.getCanvas().style.cursor = 'pointer'; });
+          map.on('mouseleave', clickLayerId, () => { map.getCanvas().style.cursor = ''; });
+          map.on('click', clickLayerId, (event) => {
+            const feature = event.features?.[0];
+            if (!feature) return;
+            accidentPopupRef.current?.remove();
+            accidentPopupRef.current = new mapboxgl.Popup({ maxWidth: '300px' })
+              .setLngLat(feature.geometry?.coordinates || event.lngLat)
+              .setHTML(accidentPopupHtml(feature.properties, feature.geometry?.coordinates || []))
+              .addTo(map);
+          });
         });
         return;
       }
@@ -291,7 +341,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           .addTo(map);
       });
     }));
-  }, [enableNvdbLayers]);
+  }, [bringAccidentLayersToFront, enableNvdbLayers]);
 
   const toggleNvdbLayer = (layerType) => {
     setActiveNvdbLayers((current) => (
@@ -312,6 +362,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     const source = map.getSource('reports');
     if (source) {
       source.setData(geojson);
+      bringAccidentLayersToFront();
       return;
     }
 
@@ -407,20 +458,26 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       event.originalEvent.cancelBubble = true;
       new mapboxgl.Popup({ maxWidth: '320px' })
         .setLngLat(feature.geometry.coordinates)
-        .setHTML(popupHtml(feature.properties))
+        .setHTML(popupHtml(feature.properties, feature.id))
         .addTo(map);
     });
-  }, [showReports]);
+    bringAccidentLayersToFront();
+  }, [bringAccidentLayersToFront, showReports]);
 
 
   const getSupportToken = useCallback(() => {
     const storageKey = 'finns-vei-support-token';
-    let token = window.localStorage.getItem(storageKey);
-    if (!token) {
-      token = (window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`);
-      window.localStorage.setItem(storageKey, token);
+    const fallbackToken = () => (window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`);
+    try {
+      let token = window.localStorage.getItem(storageKey);
+      if (!token) {
+        token = fallbackToken();
+        window.localStorage.setItem(storageKey, token);
+      }
+      return token;
+    } catch (_error) {
+      return fallbackToken();
     }
-    return token;
   }, []);
 
   useEffect(() => {
@@ -433,7 +490,9 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       if (!reportId) return;
 
       const storageKey = `finns-vei-supported-${reportId}`;
-      if (window.localStorage.getItem(storageKey)) {
+      if (browserHasSupported(reportId)) {
+        button.textContent = 'Du har støttet denne saken';
+        button.disabled = true;
         setMessage('Du har allerede støttet denne saken fra denne nettleseren.');
         return;
       }
@@ -448,11 +507,17 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         });
         const payload = await response.json();
         if (!response.ok) throw new Error(payload.error || 'Kunne ikke støtte saken');
-        window.localStorage.setItem(storageKey, '1');
+        try {
+          window.localStorage.setItem(storageKey, '1');
+        } catch (_error) {
+          // Support still succeeded server-side; local storage is only a browser convenience guard.
+        }
         button.textContent = 'Du har støttet denne saken';
         button.disabled = true;
-        document.querySelectorAll(`[data-support-count-for=\"${reportId}\"]`).forEach((node) => {
-          node.textContent = `${payload.support_count} støtter denne saken`;
+        document.querySelectorAll('.support-count').forEach((node) => {
+          if (node.getAttribute('data-support-count-for') === reportId) {
+            node.textContent = `${payload.support_count} støtter denne saken`;
+          }
         });
         setMessage(payload.alreadySupported ? 'Du har allerede støttet denne saken.' : 'Takk for støtten!');
         await loadReports();
