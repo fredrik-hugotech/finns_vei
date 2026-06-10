@@ -181,7 +181,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     if (!map || !enableNvdbLayers || activeLayers.length === 0) return;
 
     if (activeLayers.includes('accidents') && map.getZoom() < MIN_ACCIDENT_FETCH_ZOOM) {
-      setMessage('Zoom inn for å se ulykker');
+      setMessage('Zoom inn for ulykker');
       const source = map.getSource('accident-source');
       if (source) source.setData({ type: 'FeatureCollection', features: [], meta: { reason: 'zoom_too_low' } });
       return;
@@ -204,18 +204,18 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       const pointFeatureCount = Number(geojson.meta?.pointFeatureCount ?? featureCount);
       const invalidGeometryCount = Number(geojson.meta?.invalidGeometryCount ?? 0);
       if (geojson.meta?.degraded) {
-        setMessage('Ulykkeslag utilgjengelig');
+        setMessage('Ulykker utilgjengelig');
       } else if (geojson.meta?.reason === 'zoom_too_low' || geojson.meta?.reason === 'bbox_too_broad') {
-        setMessage('Zoom inn for å se ulykker');
+        setMessage('Zoom inn for ulykker');
       } else if (layerType === 'accidents' && rawObjectCount > 0 && pointFeatureCount === 0) {
         const geometryDebug = shouldShowMissingReportIdDebug() && invalidGeometryCount > 0 ? ' (geometri kunne ikke tolkes)' : '';
-        setMessage(`Ulykker funnet: ${rawObjectCount}, men 0 kunne vises${geometryDebug}`);
+        setMessage(`Ulykker: 0 vist${geometryDebug}`);
       } else if (layerType === 'accidents') {
         const geometryDebug = shouldShowMissingReportIdDebug() && invalidGeometryCount > 0 ? ` (${invalidGeometryCount} geometri kunne ikke tolkes)` : '';
         if (pointFeatureCount > 0 && map.getZoom() < ACCIDENT_POINT_MIN_ZOOM) {
-          setMessage(`Ulykker vist som varmekart: ${pointFeatureCount}${geometryDebug}`);
+          setMessage(`Ulykker: varmekart (${pointFeatureCount})${geometryDebug}`);
         } else {
-          setMessage(pointFeatureCount > 0 ? `Ulykker vist: ${pointFeatureCount}${geometryDebug}` : 'Ingen ulykker i kartutsnittet');
+          setMessage(pointFeatureCount > 0 ? `Ulykker: ${pointFeatureCount}${geometryDebug}` : 'Ingen ulykker her');
         }
       } else {
         setMessage(`NVDB-lag lastet: ${featureCount} objekter`);
@@ -309,7 +309,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         const showAccidentPopup = (event) => {
           const feature = event.features?.[0];
           if (!feature) return;
-          new mapboxgl.Popup({ maxWidth: '300px' })
+          new mapboxgl.Popup({ maxWidth: '260px' })
             .setLngLat(event.lngLat)
             .setHTML(accidentPopupHtml(feature.properties, feature.geometry?.coordinates || []))
             .addTo(map);
@@ -483,7 +483,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       const feature = event.features?.[0];
       if (!feature) return;
       event.originalEvent.cancelBubble = true;
-      new mapboxgl.Popup({ maxWidth: '320px' })
+      new mapboxgl.Popup({ maxWidth: '280px' })
         .setLngLat(feature.geometry.coordinates)
         .setHTML(popupHtml(feature))
         .addTo(map);
@@ -569,14 +569,14 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         await refreshNvdbLayers();
       } catch (error) {
         console.error(error);
-        setMessage('Kartet åpnet, men meldinger kunne ikke hentes akkurat nå.');
+        setMessage('Kartdata kunne ikke hentes.');
       }
     });
 
     map.on('moveend', () => {
       refreshNvdbLayers().catch((error) => {
         console.error(error);
-        setMessage('NVDB-lag kunne ikke hentes akkurat nå.');
+        setMessage('Lag kunne ikke hentes.');
       });
     });
 
@@ -603,7 +603,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   useEffect(() => {
     refreshNvdbLayers().catch((error) => {
       console.error(error);
-      setMessage('NVDB-lag kunne ikke hentes akkurat nå.');
+      setMessage('Lag kunne ikke hentes.');
     });
   }, [refreshNvdbLayers]);
 
@@ -616,7 +616,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       <div ref={containerRef} className={className} />
       {enableNvdbLayers && (
         <div className="nvdb-toggle-card" aria-label="NVDB-lag">
-          <strong>NVDB-lag</strong>
+          <strong>Lag</strong>
           {NVDB_LAYERS.map((layer) => (
             <button
               key={layer.type}

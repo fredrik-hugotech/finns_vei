@@ -15,16 +15,9 @@ export default function MapPage() {
       </Head>
       <main className="map-page">
         <ReportMap className="map-canvas" enableNvdbLayers />
-        <section className="map-overlay">
+        <section className="map-overlay" aria-label="Kartnavigasjon">
           <Link href="/" className="back-link">Tilbake</Link>
-          <h1>Se kart</h1>
-          <p>Trykk på et punkt for å se status, kategori og beskrivelse.</p>
-          <div className="legend">
-            <span><i className="dot dot--new" />Ny</span>
-            <span><i className="dot dot--registered" />Registrert</span>
-            <span><i className="dot dot--started" />Startet</span>
-            <span><i className="dot dot--done" />Fullført</span>
-          </div>
+          <h1>Kart</h1>
         </section>
       </main>
     </>
