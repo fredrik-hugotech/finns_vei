@@ -1,0 +1,176 @@
+.page {
+  display: grid;
+  min-height: 100dvh;
+  padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+  place-items: center;
+}
+
+.page--home {
+  background: var(--color-bg);
+}
+
+.hero-card {
+  max-width: 520px;
+  padding: clamp(1rem, 4vw, 1.75rem);
+  width: 100%;
+}
+
+.brand-mark {
+  align-items: center;
+  display: flex;
+  gap: 0.55rem;
+  margin-bottom: 0.75rem;
+}
+
+.brand-mark img {
+  height: 40px;
+  max-width: 230px;
+  object-fit: contain;
+}
+
+.brand-mark__text {
+  color: var(--color-primary-dark);
+  font-weight: 850;
+  letter-spacing: -0.02em;
+}
+
+.eyebrow {
+  color: var(--color-primary-dark);
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  margin: 0 0 0.45rem;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+h3 {
+  color: var(--ff-ink);
+  font-family: var(--font-heading);
+  letter-spacing: -0.025em;
+}
+
+h1 {
+  font-size: clamp(2rem, 7vw, 3.2rem);
+  line-height: 1;
+  margin: 0;
+}
+
+h2 {
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.lede {
+  color: var(--color-muted);
+  font-size: clamp(1rem, 2.5vw, 1.1rem);
+  line-height: 1.45;
+  margin: 0.75rem 0 1rem;
+}
+
+.form-page {
+  min-height: 100dvh;
+  padding: max(0.75rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
+}
+
+.top-bar {
+  align-items: center;
+  display: flex;
+  font-weight: 750;
+  justify-content: space-between;
+  margin: 0 auto 0.45rem;
+  max-width: 1160px;
+}
+
+.top-bar span {
+  color: var(--color-muted);
+  font-size: 0.76rem;
+}
+
+.form-layout {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(340px, 420px) minmax(0, 1fr);
+  margin: 0 auto;
+  max-width: 1160px;
+}
+
+.form-map-card,
+.map-wrap,
+.map-page {
+  position: relative;
+}
+
+.form-map-card {
+  min-height: 460px;
+  order: 2;
+}
+
+.report-form {
+  align-self: start;
+  order: 1;
+}
+
+.map-page {
+  min-height: 100dvh;
+  overflow: hidden;
+}
+
+@media (max-width: 860px) {
+  .form-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .form-map-card {
+    order: 1;
+  }
+
+  .report-form {
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    margin-left: -0.75rem;
+    margin-right: -0.75rem;
+    margin-top: -0.8rem;
+    order: 2;
+    position: relative;
+    z-index: 3;
+  }
+
+  .form-map-card,
+  .form-map {
+    height: 58dvh;
+    min-height: 360px;
+  }
+}
+
+@media (max-width: 640px) {
+  .page {
+    align-items: start;
+    padding: max(0.75rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right)) max(0.75rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
+  }
+
+  .hero-card {
+    padding: 1rem;
+  }
+
+  .brand-mark img {
+    height: 36px;
+  }
+
+  h1 {
+    font-size: 1.7rem;
+    line-height: 1.06;
+  }
+
+  h2 {
+    font-size: 1.2rem;
+    line-height: 1.15;
+  }
+
+  p,
+  label,
+  input,
+  textarea,
+  button {
+    font-size: 0.95rem;
+  }
+}

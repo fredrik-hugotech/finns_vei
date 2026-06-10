@@ -15,7 +15,7 @@ export default function MapPage() {
       </Head>
       <main className="map-page">
         <ReportMap className="map-canvas" enableNvdbLayers />
-        <section className="map-overlay" aria-label="Kartnavigasjon">
+        <section className="map-header map-overlay" aria-label="Kartnavigasjon">
           <Link href="/" className="back-link">Tilbake</Link>
           <h1>Kart</h1>
         </section>

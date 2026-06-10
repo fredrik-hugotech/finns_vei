@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
-import { DEFAULT_CENTER, REPORT_STATUS, STATUS_COLORS } from '../lib/config';
+import { DEFAULT_CENTER, REPORT_STATUS } from '../lib/config';
+import { MAP_COLORS, MAP_STYLE } from '../lib/mapStyleConfig';
 import { normalizeImageEntries } from '../lib/reportImages';
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
@@ -48,7 +49,7 @@ function reportImagesHtml(properties = {}) {
   const images = normalizeImageEntries(properties.image_urls || properties.image_urls_json);
   if (!images.length) return '';
   return `
-    <div class="popup-images">
+    <div class="report-popup-images popup-images">
       ${images.slice(0, 3).map((image, index) => `
         <a href="${escapeHtml(image.url)}" target="_blank" rel="noreferrer">
           <img src="${escapeHtml(image.url)}" alt="Bilde ${index + 1} fra innmelding" loading="lazy" />
@@ -68,7 +69,7 @@ function popupHtml(featureOrProperties = {}) {
     ? '<small class="support-debug">Mangler reportId for støtteknapp.</small>'
     : '';
   return `
-    <article class="popup-card">
+    <article class="report-popup popup-card">
       <strong>${escapeHtml(properties.category || 'Melding')}</strong>
       ${properties.description ? `<p>${escapeHtml(compactText(properties.description))}</p>` : ''}
       <p>Status: <strong>${escapeHtml(properties.status || REPORT_STATUS.NEW)}</strong></p>
@@ -88,7 +89,7 @@ function accidentPopupHtml(properties = {}) {
   ].filter(Boolean);
 
   return `
-    <article class="popup-card popup-card--accident">
+    <article class="accident-popup popup-card popup-card--accident">
       <strong>Ulykke</strong>
       ${rows.map(([label, value]) => `<p><span>${escapeHtml(label)}:</span> ${escapeHtml(value)}</p>`).join('')}
       <small>Kilde: ${escapeHtml(properties.source || 'NVDB')}</small>
@@ -100,7 +101,7 @@ const MIN_ACCIDENT_FETCH_ZOOM = 12;
 const ACCIDENT_HEATMAP_MAX_ZOOM = 15;
 const ACCIDENT_POINT_MIN_ZOOM = 15;
 const NVDB_LAYERS = [
-  { type: 'accidents', label: 'Ulykker', color: '#dc2626' },
+  { type: 'accidents', label: 'Ulykker', color: MAP_COLORS.accidentLayer },
 ];
 const ACCIDENT_LAYER_IDS = ['accident-heatmap', 'accident-points', 'accident-point-symbol'];
 const REPORT_LAYER_IDS = ['reports-clusters', 'reports-cluster-count', 'reports-circle', 'reports-support-badge'];
@@ -153,7 +154,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
 
     const lngLat = [nextPoint.lng, nextPoint.lat];
     if (!markerRef.current) {
-      markerRef.current = new mapboxgl.Marker({ color: '#111827', draggable: selectable })
+      markerRef.current = new mapboxgl.Marker({ color: MAP_STYLE.selectableMarker.color, draggable: selectable })
         .setLngLat(lngLat)
         .addTo(map);
 
@@ -242,29 +243,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           source: sourceId,
           minzoom: MIN_ACCIDENT_FETCH_ZOOM,
           maxzoom: ACCIDENT_HEATMAP_MAX_ZOOM,
-          paint: {
-            'heatmap-weight': [
-              'match',
-              ['downcase', ['to-string', ['coalesce', ['get', 'severity'], 'unknown']]],
-              ['fatal', 'død', 'drept', 'dødsulykke'], 2,
-              ['serious', 'alvorlig', 'meget alvorlig'], 1.5,
-              1,
-            ],
-            'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 12, 0.35, 13.5, 0.95, 14.8, 1.65],
-            'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 12, 14, 14, 24, 15, 30],
-            'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 12, 0.45, 14, 0.68, 14.8, 0.38, 15, 0],
-            'heatmap-color': [
-              'interpolate',
-              ['linear'],
-              ['heatmap-density'],
-              0, 'rgba(88,28,135,0)',
-              0.18, 'rgba(221,214,254,0.18)',
-              0.4, '#8b5cf6',
-              0.65, '#f97316',
-              0.82, '#991b1b',
-              1, '#1f0508',
-            ],
-          },
+          paint: MAP_STYLE.accidentHeatmapPaint,
         });
         map.addLayer({
           id: 'accident-points',
@@ -272,13 +251,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           source: sourceId,
           minzoom: ACCIDENT_POINT_MIN_ZOOM,
           filter: ['match', ['geometry-type'], ['Point'], true, false],
-          paint: {
-            'circle-radius': 6,
-            'circle-color': '#581c87',
-            'circle-opacity': 0.95,
-            'circle-stroke-color': '#ffffff',
-            'circle-stroke-width': 1.5,
-          },
+          paint: MAP_STYLE.accidentPointPaint,
         });
         map.addLayer({
           id: 'accident-point-symbol',
@@ -286,16 +259,8 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           source: sourceId,
           minzoom: ACCIDENT_POINT_MIN_ZOOM,
           filter: ['match', ['geometry-type'], ['Point'], true, false],
-          layout: {
-            'text-field': '!',
-            'text-size': 10,
-            'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-            'text-allow-overlap': true,
-            'text-ignore-placement': true,
-          },
-          paint: {
-            'text-color': '#ffffff',
-          },
+          layout: MAP_STYLE.accidentSymbolLayout,
+          paint: MAP_STYLE.accidentSymbolPaint,
         });
 
         restoreMapLayerOrder(map);
@@ -321,34 +286,21 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         type: 'fill',
         source: sourceId,
         filter: ['match', ['geometry-type'], ['Polygon', 'MultiPolygon'], true, false],
-        paint: {
-          'fill-color': layerConfig.color,
-          'fill-opacity': 0.22,
-        },
+        paint: MAP_STYLE.nvdbFillPaint(layerConfig.color),
       });
       map.addLayer({
         id: `${sourceId}-line`,
         type: 'line',
         source: sourceId,
         filter: ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false],
-        paint: {
-          'line-color': layerConfig.color,
-          'line-width': ['interpolate', ['linear'], ['zoom'], 9, 4, 15, 8],
-          'line-opacity': 0.9,
-        },
+        paint: MAP_STYLE.nvdbLinePaint(layerConfig.color),
       });
       map.addLayer({
         id: `${sourceId}-point`,
         type: 'circle',
         source: sourceId,
         filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
-        paint: {
-          'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 7, 15, 12],
-          'circle-color': layerConfig.color,
-          'circle-opacity': 0.95,
-          'circle-stroke-color': '#111827',
-          'circle-stroke-width': 2,
-        },
+        paint: MAP_STYLE.nvdbPointPaint(layerConfig.color),
       });
 
       map.on('click', `${sourceId}-point`, (event) => {
@@ -389,53 +341,30 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       type: 'geojson',
       data: geojson,
       cluster: true,
-      clusterMaxZoom: 14,
-      clusterRadius: 48,
+      clusterMaxZoom: MAP_STYLE.reportClusterSource.clusterMaxZoom,
+      clusterRadius: MAP_STYLE.reportClusterSource.clusterRadius,
     });
     map.addLayer({
       id: 'reports-clusters',
       type: 'circle',
       source: 'reports',
       filter: ['has', 'point_count'],
-      paint: {
-        'circle-color': ['step', ['get', 'point_count'], '#F4C542', 2, '#F59E0B', 5, '#C84A3A'],
-        'circle-radius': ['step', ['get', 'point_count'], 14, 2, 19, 5, 26],
-        'circle-opacity': 0.9,
-        'circle-stroke-color': '#ffffff',
-        'circle-stroke-width': 2,
-      },
+      paint: MAP_STYLE.reportClusterPaint,
     });
     map.addLayer({
       id: 'reports-cluster-count',
       type: 'symbol',
       source: 'reports',
       filter: ['has', 'point_count'],
-      layout: {
-        'text-field': ['get', 'point_count_abbreviated'],
-        'text-size': 12,
-      },
-      paint: { 'text-color': '#111111', 'text-halo-color': '#ffffff', 'text-halo-width': 1 },
+      layout: MAP_STYLE.reportClusterCountLayout,
+      paint: MAP_STYLE.reportClusterCountPaint,
     });
     map.addLayer({
       id: 'reports-circle',
       type: 'circle',
       source: 'reports',
       filter: ['!', ['has', 'point_count']],
-      paint: {
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 5.5, 15, 10],
-        'circle-color': [
-          'match',
-          ['get', 'status'],
-          REPORT_STATUS.NEW, STATUS_COLORS[REPORT_STATUS.NEW],
-          REPORT_STATUS.REGISTERED, STATUS_COLORS[REPORT_STATUS.REGISTERED],
-          REPORT_STATUS.STARTED, STATUS_COLORS[REPORT_STATUS.STARTED],
-          REPORT_STATUS.DONE, STATUS_COLORS[REPORT_STATUS.DONE],
-          '#6b7280',
-        ],
-        'circle-stroke-color': '#ffffff',
-        'circle-stroke-width': 2,
-        'circle-opacity': 0.95,
-      },
+      paint: MAP_STYLE.reportPointPaint,
     });
 
     map.addLayer({
@@ -443,18 +372,8 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       type: 'symbol',
       source: 'reports',
       filter: ['all', ['!', ['has', 'point_count']], ['>', ['coalesce', ['to-number', ['get', 'support_count']], 0], 0]],
-      layout: {
-        'text-field': ['concat', '❤️ ', ['to-string', ['get', 'support_count']]],
-        'text-size': 10,
-        'text-offset': [1.05, -1.05],
-        'text-anchor': 'center',
-        'text-allow-overlap': true,
-      },
-      paint: {
-        'text-color': '#7f1d1d',
-        'text-halo-color': '#ffffff',
-        'text-halo-width': 2,
-      },
+      layout: MAP_STYLE.reportSupportBadgeLayout,
+      paint: MAP_STYLE.reportSupportBadgePaint,
     });
 
     moveLayersToTop(map, REPORT_LAYER_IDS);
@@ -609,7 +528,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     <div className="map-wrap">
       <div ref={containerRef} className={className} />
       {enableNvdbLayers && (
-        <div className="nvdb-toggle-card" aria-label="NVDB-lag">
+        <div className="layer-control nvdb-toggle-card" aria-label="NVDB-lag">
           <strong>Lag</strong>
           {NVDB_LAYERS.map((layer) => (
             <button
@@ -623,7 +542,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           ))}
         </div>
       )}
-      {message && <div className="map-message">{message}</div>}
+      {message && <div className="accident-status map-message">{message}</div>}
     </div>
   );
 }

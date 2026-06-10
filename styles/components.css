@@ -1,0 +1,130 @@
+.ui-card,
+.hero-card,
+.report-form,
+.map-overlay,
+.nvdb-toggle-card,
+.mapboxgl-popup-content {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+}
+
+.ui-button,
+.big-button,
+.geo-button,
+.support-button,
+.image-upload-button,
+.back-link,
+.top-bar a {
+  align-items: center;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.9rem;
+  font-weight: 750;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0.62rem 0.9rem;
+  text-align: center;
+  text-decoration: none;
+}
+
+.ui-button-primary,
+.big-button--primary,
+.support-button,
+.image-upload-button {
+  background: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  color: var(--ff-black);
+}
+
+.ui-button-secondary,
+.big-button--secondary,
+.image-upload-button--secondary,
+.back-link,
+.top-bar a {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.ui-control,
+.map-overlay,
+.nvdb-toggle-card,
+.map-message {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  font-size: 0.78rem;
+  padding: 0.5rem 0.62rem;
+}
+
+.ui-chip,
+.chip span {
+  align-items: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  color: var(--color-text);
+  display: flex;
+  font-size: 0.9rem;
+  font-weight: 650;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0.5rem 0.7rem;
+  text-align: center;
+}
+
+.ui-field,
+input,
+output,
+textarea {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  min-height: 44px;
+  outline: none;
+  padding: 0.62rem 0.72rem;
+  width: 100%;
+}
+
+.ui-small-text,
+.eyebrow,
+.image-upload-note,
+.popup-card small,
+.support-count {
+  color: var(--color-muted);
+  font-size: 0.78rem;
+}
+
+.choice-stack {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.big-button {
+  width: 100%;
+}
+
+.big-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.notice,
+.map-message,
+.privacy-note {
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  font-weight: 750;
+  line-height: 1.35;
+  padding: 0.55rem 0.65rem;
+}
+
+.notice--idle { background: #eff6ff; color: #1d4ed8; }
+.notice--success { background: #ecfdf5; color: var(--color-success); }
+.notice--warning { background: #fffbeb; color: var(--color-warning); }
+.notice--error { background: #fef2f2; color: var(--color-danger); }
