@@ -12,7 +12,7 @@ Mobile-first webapp MVP for traffic-safety reports. People can report unsafe pla
   - **Meld som voksen**: optional name, email and phone fields. All can be blank.
 - `/meld/form` lets the user select a location by tapping the Mapbox map, dragging the marker, or pressing **Bruk min posisjon**.
 - `/map` shows public report markers colored by status. Clicking a marker shows status, category, description and created time.
-- `/map` also includes optional NVDB layer toggles for **Fartsgrense** and **Gangfelt** via server-side proxy endpoints.
+- `/map` also includes optional NVDB layer toggles for **Fartsgrense**, **Gangfelt** and **ÅDT** via server-side proxy endpoints, with a small status message showing loaded object counts or degraded state.
 
 The MVP deliberately has no login, registration, badges, points, tracking, notifications or extra concepts.
 
@@ -38,6 +38,7 @@ The frontend never reads Supabase or NVDB directly. Reads and writes go through 
   - `POST /api/debug/enrich?id=<report-id>&secret=<DEBUG_SECRET>` runs the same best-effort Trello/NVDB workflow for an existing report. If `DEBUG_SECRET` is set it is required; if not set, debug endpoints return `403` in production.
 - `GET /api/nvdb/layer?type=speed_limit&bbox=minLng,minLat,maxLng,maxLat` returns Mapbox-friendly GeoJSON for fartsgrense.
 - `GET /api/nvdb/layer?type=gangfelt&bbox=minLng,minLat,maxLng,maxLat` returns Mapbox-friendly GeoJSON for gangfelt.
+- `GET /api/nvdb/layer?type=aadt&bbox=minLng,minLat,maxLng,maxLat` returns Mapbox-friendly GeoJSON for ÅDT.
 
 ## Existing Supabase resources
 
@@ -64,6 +65,9 @@ Set these in Vercel Project Settings and locally in `.env.local` when developing
 | `NVDB_FALLBACK_BASE_URLS` | Server | Optional | Comma-separated fallback base URLs if the primary URL has transient DNS/network issues. |
 | `NVDB_RETRY_COUNT` | Server | Optional | Retry count per base URL for transient failures. Defaults to `2`. |
 | `NVDB_TIMEOUT_MS` | Server | Optional | Timeout per NVDB request. Defaults to `6500`. |
+| `NVDB_POSITION_MAX_DISTANCE_M` | Server | Optional | Max snap distance for NVDB position lookup. Defaults to `500` and retries at 100/300/500m. |
+| `NVDB_LAYER_SEARCH_RADIUS_M` | Server | Optional | Radius used when looking up speed limit/ÅDT around a point after road-reference lookup. Defaults to `350`. |
+| `NVDB_CROSSING_SEARCH_RADIUS_M` | Server | Optional | Radius used when finding nearest gangfelt. Defaults to `500`. |
 | `DEBUG_SECRET` | Server secret | Recommended while debugging | Required query/header secret for temporary `/api/debug/*` endpoints. In production, debug endpoints are disabled with `403` if this is not set. |
 
 ## Local development

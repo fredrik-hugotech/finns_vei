@@ -33,6 +33,7 @@ function popupHtml(properties = {}) {
 const NVDB_LAYERS = [
   { type: 'speed_limit', label: 'Fartsgrense', color: '#7c3aed' },
   { type: 'gangfelt', label: 'Gangfelt', color: '#0ea5e9' },
+  { type: 'aadt', label: 'ÅDT', color: '#f97316' },
 ];
 
 export default function ReportMap({ selectable = false, point, onPointChange, className = 'map-canvas', showReports = true, enableNvdbLayers = false }) {
@@ -54,7 +55,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     const map = mapRef.current;
     if (map) {
       NVDB_LAYERS.forEach((layer) => {
-        ['line', 'point'].forEach((shape) => {
+        ['line', 'point', 'fill'].forEach((shape) => {
           const layerId = `nvdb-${layer.type}-${shape}`;
           if (map.getLayer(layerId)) {
             map.setLayoutProperty(layerId, 'visibility', activeNvdbLayers.includes(layer.type) ? 'visible' : 'none');
@@ -103,36 +104,56 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       const response = await fetch(`/api/nvdb/layer?type=${encodeURIComponent(layerType)}&bbox=${encodeURIComponent(bbox)}`);
       if (!response.ok) throw new Error(`Kunne ikke hente ${layerConfig.label}`);
       const geojson = await response.json();
+      const featureCount = geojson.meta?.featureCount ?? geojson.features?.length ?? 0;
       if (geojson.meta?.degraded) {
-        setMessage('NVDB-lag er midlertidig utilgjengelig. Prøv igjen litt senere.');
+        setMessage('NVDB-lag utilgjengelig');
+      } else {
+        setMessage(`NVDB-lag lastet: ${featureCount} objekter`);
       }
       const sourceId = `nvdb-${layerType}`;
 
       const source = map.getSource(sourceId);
       if (source) {
         source.setData(geojson);
+        ['line', 'point', 'fill'].forEach((shape) => {
+          const layerId = `${sourceId}-${shape}`;
+          if (map.getLayer(layerId)) map.setLayoutProperty(layerId, 'visibility', 'visible');
+        });
         return;
       }
 
       map.addSource(sourceId, { type: 'geojson', data: geojson });
       map.addLayer({
+        id: `${sourceId}-fill`,
+        type: 'fill',
+        source: sourceId,
+        filter: ['match', ['geometry-type'], ['Polygon', 'MultiPolygon'], true, false],
+        paint: {
+          'fill-color': layerConfig.color,
+          'fill-opacity': 0.22,
+        },
+      });
+      map.addLayer({
         id: `${sourceId}-line`,
         type: 'line',
         source: sourceId,
+        filter: ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false],
         paint: {
           'line-color': layerConfig.color,
-          'line-width': 4,
-          'line-opacity': 0.75,
+          'line-width': ['interpolate', ['linear'], ['zoom'], 9, 4, 15, 8],
+          'line-opacity': 0.9,
         },
       });
       map.addLayer({
         id: `${sourceId}-point`,
         type: 'circle',
         source: sourceId,
+        filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
         paint: {
-          'circle-radius': 6,
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 7, 15, 12],
           'circle-color': layerConfig.color,
-          'circle-stroke-color': '#ffffff',
+          'circle-opacity': 0.95,
+          'circle-stroke-color': '#111827',
           'circle-stroke-width': 2,
         },
       });
