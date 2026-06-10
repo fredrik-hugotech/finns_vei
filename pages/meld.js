@@ -9,6 +9,7 @@ export default function Meld() {
       </Head>
       <main className="page">
         <section className="hero-card">
+          <div className="brand-mark"><img src="/brand/finns-fairway-logo.svg" alt="Finns.Fairway" /><span className="brand-mark__text">For en trygg og aktiv oppvekst</span></div>
           <p className="eyebrow">Steg 1 av 2</p>
           <h1>Hvordan vil du melde?</h1>
           <p className="lede">Barn melder helt anonymt. Voksne kan legge igjen kontaktinfo, men det er frivillig.</p>

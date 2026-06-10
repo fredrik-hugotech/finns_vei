@@ -10,6 +10,7 @@ export default function Home() {
       </Head>
       <main className="page page--home">
         <section className="hero-card">
+          <div className="brand-mark"><img src="/brand/finns-fairway-logo.svg" alt="Finns.Fairway" /><span className="brand-mark__text">For en trygg og aktiv oppvekst</span></div>
           <p className="eyebrow">Trafikksikkerhet</p>
           <h1>Finns vei</h1>
           <p className="lede">Si fra om steder som føles farlige. Ingen innlogging.</p>

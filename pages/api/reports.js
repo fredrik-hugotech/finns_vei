@@ -12,6 +12,7 @@ const DEMO_GEOJSON = {
         id: 'demo-1',
         report_id: 'demo-1',
         support_count: 0,
+        image_urls: [],
         status: REPORT_STATUS.NEW,
         category: 'Farlig kryss',
         description: 'Demo-punkt. Koble til Supabase for ekte innmeldinger.',

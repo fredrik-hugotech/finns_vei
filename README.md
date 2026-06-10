@@ -134,3 +134,22 @@ This repo is intended to deploy through the linked Vercel GitHub integration. In
 
 - Optional image upload to Supabase Storage bucket `report-images`.
 - Admin-only workflow views for follow-up status changes.
+
+## Report image uploads
+
+The report form accepts up to three optional images and uploads them server-side to Supabase Storage.
+
+Required Supabase setup for the MVP:
+
+- Create a public Storage bucket named `report-images` (or set `SUPABASE_STORAGE_BUCKET_REPORT_IMAGES`).
+- Ensure `public.reports.image_urls` exists as a `jsonb` array column.
+- Recommended env defaults:
+  - `SUPABASE_STORAGE_BUCKET_REPORT_IMAGES=report-images`
+  - `REPORT_IMAGE_MAX_COUNT=3`
+  - `REPORT_IMAGE_MAX_BYTES=8388608`
+
+Images are stored under `reports/<report-id>/...` and `reports.image_urls` stores objects with `url`, `path`, `content_type`, and `size`. Trello card descriptions include image links, and the app best-effort attaches each public image URL to the Trello card. Report creation still succeeds if image upload or Trello attachment fails.
+
+## Brand assets
+
+A placeholder Finns.Fairway logo lives at `public/brand/finns-fairway-logo.svg`. Replace it with the official local logo file when available, keeping the same path if possible.

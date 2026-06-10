@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import { DEFAULT_CENTER, REPORT_STATUS, STATUS_COLORS } from '../lib/config';
+import { normalizeImageEntries } from '../lib/reportImages';
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 
@@ -43,6 +44,21 @@ function shouldShowMissingReportIdDebug() {
   return process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_VERCEL_ENV === 'preview';
 }
 
+
+function reportImagesHtml(properties = {}) {
+  const images = normalizeImageEntries(properties.image_urls || properties.image_urls_json);
+  if (!images.length) return '';
+  return `
+    <div class="popup-images">
+      ${images.slice(0, 3).map((image, index) => `
+        <a href="${escapeHtml(image.url)}" target="_blank" rel="noreferrer">
+          <img src="${escapeHtml(image.url)}" alt="Bilde ${index + 1} fra innmelding" loading="lazy" />
+        </a>
+      `).join('')}
+    </div>
+  `;
+}
+
 function popupHtml(featureOrProperties = {}) {
   const properties = featureOrProperties.properties || featureOrProperties || {};
   const rawReportId = reportIdFromFeature(featureOrProperties);
@@ -59,6 +75,7 @@ function popupHtml(featureOrProperties = {}) {
       <p>Status: <strong>${escapeHtml(properties.status || REPORT_STATUS.NEW)}</strong></p>
       ${properties.road_reference ? `<p>Vegreferanse: ${escapeHtml(properties.road_reference)}</p>` : ''}
       ${properties.created_at ? `<small>${escapeHtml(formatDate(properties.created_at))}</small>` : ''}
+      ${reportImagesHtml(properties)}
       ${reportId ? `<button class="support-button" data-report-id="${reportId}" type="button" ${alreadySupported ? 'disabled' : ''}>${supportButtonLabel(rawReportId)}</button>` : missingReportIdDebug}
       <small class="support-count" data-support-count-for="${reportId}">${supportCount} støtter denne saken</small>
     </article>
