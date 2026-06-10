@@ -103,6 +103,9 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       const response = await fetch(`/api/nvdb/layer?type=${encodeURIComponent(layerType)}&bbox=${encodeURIComponent(bbox)}`);
       if (!response.ok) throw new Error(`Kunne ikke hente ${layerConfig.label}`);
       const geojson = await response.json();
+      if (geojson.meta?.degraded) {
+        setMessage('NVDB-lag er midlertidig utilgjengelig. Prøv igjen litt senere.');
+      }
       const sourceId = `nvdb-${layerType}`;
 
       const source = map.getSource(sourceId);

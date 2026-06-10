@@ -56,8 +56,11 @@ Set these in Vercel Project Settings and locally in `.env.local` when developing
 | `TRELLO_API_KEY` | Server secret | Optional | Trello API key. |
 | `TRELLO_API_TOKEN` | Server secret | Optional | Trello API token. |
 | `TRELLO_LIST_ID_NY_MELDING` | Server | Optional | Trello list ID for new reports. Falls back to `TRELLO_LIST_ID` if present. |
-| `NVDB_X_CLIENT` | Server secret | Yes for production | Header value for NVDB API Les V4 identification. |
-| `NVDB_BASE_URL` | Server | Optional | Defaults to `https://nvdbapiles.atlas.vegvesen.no`. |
+| `NVDB_X_CLIENT` | Server secret | Yes for production | Header value for NVDB API Les V4 identification. The server always sends an `X-Client` header and falls back to `finns-vei-vercel` locally. |
+| `NVDB_BASE_URL` | Server | Optional | Primary NVDB API Les V4 base URL. Defaults to `https://nvdbapiles.atlas.vegvesen.no`. |
+| `NVDB_FALLBACK_BASE_URLS` | Server | Optional | Comma-separated fallback base URLs if the primary URL has transient DNS/network issues. |
+| `NVDB_RETRY_COUNT` | Server | Optional | Retry count per base URL for transient failures. Defaults to `2`. |
+| `NVDB_TIMEOUT_MS` | Server | Optional | Timeout per NVDB request. Defaults to `6500`. |
 
 ## Local development
 
@@ -73,6 +76,10 @@ Open <http://localhost:3000>.
 ```bash
 npm run build
 ```
+
+## Deploy previews
+
+This repo is intended to deploy through the linked Vercel GitHub integration. In local/Codex runtimes without the `@vercel` plugin or `VERCEL_TOKEN`, use the Vercel dashboard preview generated for the pushed branch/PR instead of claiming a local CLI deploy URL.
 
 ## Backlog
 

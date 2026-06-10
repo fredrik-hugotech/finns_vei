@@ -1,4 +1,4 @@
-import { getNvdbLayerGeoJson, NVDB_LAYER_TYPES } from '../../../lib/nvdb';
+import { emptyNvdbFeatureCollection, getNvdbLayerGeoJson, NVDB_LAYER_TYPES } from '../../../lib/nvdb';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -22,6 +22,16 @@ export default async function handler(req, res) {
     return res.status(200).json(geojson);
   } catch (error) {
     console.error(error);
+
+    if (error?.isNvdbUpstreamUnavailable) {
+      res.setHeader('Cache-Control', 's-maxage=30, stale-while-revalidate=120');
+      return res.status(200).json(emptyNvdbFeatureCollection({
+        degraded: true,
+        reason: 'nvdb_upstream_unavailable',
+        message: 'NVDB er midlertidig utilgjengelig fra denne runtime. Prøv i Vercel eller sett NVDB_BASE_URL/NVDB_FALLBACK_BASE_URLS.',
+      }));
+    }
+
     return res.status(502).json({ error: 'Kunne ikke hente NVDB-lag' });
   }
 }
