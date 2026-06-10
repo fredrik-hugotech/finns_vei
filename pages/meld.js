@@ -5,17 +5,15 @@ export default function Meld() {
   return (
     <>
       <Head>
-        <title>Meld fra – Finns vei</title>
+        <title>Meld fra – Finns.Vei</title>
       </Head>
       <main className="page">
         <section className="hero-card">
-          <div className="brand-mark"><img src="/brand/finns-fairway-logo.svg" alt="Finns.Fairway" /><span className="brand-mark__text">For en trygg og aktiv oppvekst</span></div>
-          <p className="eyebrow">Steg 1 av 2</p>
-          <h1>Hvem melder fra?</h1>
-          <p className="lede">Du trenger ikke skrive perfekt. Fortell bare hva som føles utrygt.</p>
+          <h1>Meld fra</h1>
+          <p className="lede">Velg hvem som melder.</p>
           <div className="choice-stack">
-            <Link className="big-button big-button--primary" href="/meld/form?type=barn">Meld som barn</Link>
-            <Link className="big-button big-button--secondary" href="/meld/form?type=voksen">Meld som voksen</Link>
+            <Link className="big-button big-button--primary" href="/meld/form?type=barn">Barn</Link>
+            <Link className="big-button big-button--secondary" href="/meld/form?type=voksen">Voksen</Link>
           </div>
         </section>
       </main>

@@ -1,12 +1,12 @@
 .report-form {
   display: grid;
-  gap: 0.7rem;
-  padding: 0.95rem;
+  gap: 0.6rem;
+  padding: 0.75rem;
 }
 
 .report-form h1 {
-  font-size: 1.65rem;
-  line-height: 1.08;
+  font-size: 1.3rem;
+  line-height: 1.15;
 }
 
 label,
@@ -15,31 +15,31 @@ fieldset {
   color: var(--color-text);
   display: grid;
   font-size: 0.9rem;
-  font-weight: 760;
-  gap: 0.34rem;
+  font-weight: 500;
+  gap: 0.3rem;
   margin: 0;
   padding: 0;
 }
 
 legend {
-  font-weight: 850;
-  margin-bottom: 0.35rem;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
 }
 
 textarea {
-  min-height: 88px;
+  min-height: 84px;
   resize: vertical;
 }
 
 input:focus,
 textarea:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(247, 201, 72, 0.24);
+  border-color: #9ca3af;
+  box-shadow: 0 0 0 2px rgba(156, 163, 175, 0.18);
 }
 
 .chip-grid {
   display: grid;
-  gap: 0.42rem;
+  gap: 0.35rem;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
@@ -50,21 +50,17 @@ textarea:focus {
   width: 1px;
 }
 
-.chip span {
-  box-shadow: inset 0 0 0 1px transparent;
-}
-
 .chip input:checked + span {
-  background: var(--color-primary);
-  border-color: color-mix(in srgb, var(--color-primary) 86%, #000 14%);
-  color: var(--ff-black);
+  background: #fef3c7;
+  border-color: #d6a900;
+  color: var(--color-text);
 }
 
 .optional-contact {
   border-top: 1px solid var(--color-border);
   display: grid;
-  gap: 0.65rem;
-  padding-top: 0.8rem;
+  gap: 0.55rem;
+  padding-top: 0.7rem;
 }
 
 .optional-contact h2,
@@ -74,18 +70,18 @@ textarea:focus {
 }
 
 .privacy-note {
-  background: #eef8ef;
-  color: var(--color-success);
+  background: #f3f4f6;
+  color: var(--color-muted);
   margin: 0;
 }
 
 .image-upload-card {
-  background: var(--color-surface-muted);
-  border: 1px dashed color-mix(in srgb, var(--color-border) 72%, var(--color-primary) 28%);
-  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   display: grid;
-  gap: 0.65rem;
-  padding: 0.72rem;
+  gap: 0.55rem;
+  padding: 0.65rem;
 }
 
 .image-upload-card p,
@@ -93,18 +89,18 @@ textarea:focus {
   color: var(--color-muted);
   font-size: 0.78rem;
   line-height: 1.35;
-  margin: 0.25rem 0 0;
+  margin: 0.2rem 0 0;
 }
 
 .image-upload-actions {
   display: grid;
-  gap: 0.42rem;
+  gap: 0.35rem;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .image-upload-button {
-  min-height: 40px;
-  padding: 0.55rem 0.7rem;
+  min-height: 38px;
+  padding: 0.45rem 0.6rem;
 }
 
 .image-upload-button input {
@@ -116,7 +112,7 @@ textarea:focus {
 
 .image-preview-grid {
   display: grid;
-  gap: 0.42rem;
+  gap: 0.35rem;
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
@@ -128,38 +124,32 @@ textarea:focus {
 .image-preview img {
   aspect-ratio: 1;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   object-fit: cover;
   width: 100%;
 }
 
 .image-preview figcaption {
   color: var(--color-muted);
-  font-size: 0.76rem;
-  font-weight: 750;
-  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  margin-top: 0.15rem;
 }
 
 .image-preview button {
-  background: rgba(32, 32, 24, 0.88);
+  background: #111827;
   border: 0;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-sm);
   color: #fff;
   font-size: 0.75rem;
-  font-weight: 850;
-  padding: 0.3rem 0.5rem;
+  padding: 0.25rem 0.4rem;
   position: absolute;
-  right: 0.35rem;
-  top: 0.35rem;
+  right: 0.3rem;
+  top: 0.3rem;
 }
 
 @media (max-width: 860px) {
   .report-form {
-    padding: 0.82rem;
-  }
-
-  .report-form h1 {
-    font-size: 1.38rem;
+    padding: 0.7rem;
   }
 }
 
@@ -170,7 +160,7 @@ textarea:focus {
 
   .chip span {
     font-size: 0.82rem;
-    min-height: 38px;
-    padding: 0.46rem 0.52rem;
+    min-height: 36px;
+    padding: 0.4rem 0.5rem;
   }
 }
