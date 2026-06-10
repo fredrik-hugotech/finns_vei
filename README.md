@@ -1,67 +1,69 @@
 # Finns vei
 
-Mobil web-kart for trafikksikkerhet: innbyggere kan trykke i Mapbox-kartet, melde inn et farlig punkt, lagre innmeldingen i Supabase og automatisk opprette Trello-kort for oppfølging.
+Mobile-first webapp MVP for traffic-safety reports. People can report unsafe places without login, view reports on a Mapbox map, and let the server persist data in Supabase and optionally create Trello cards.
 
-## Funksjoner
+## MVP flow
 
-- Mapbox GL-kart optimalisert for mobil.
-- Klikk/trykk i kartet eller dra markøren for å velge posisjon.
-- Innmeldingsskjema med kategori, alvorlighet, beskrivelse, sted/adresse og valgfri kontaktinfo.
-- `GET /api/reports` leverer innmeldinger som GeoJSON til kartet.
-- `POST /api/reports` validerer innmelding, lagrer i Supabase og oppretter Trello-kort når Trello-miljøvariabler er satt.
-- Demo-markør vises lokalt hvis Supabase ikke er konfigurert.
+- `/` shows two clear choices:
+  - **Meld fra** → `/meld`
+  - **Se kart** → `/map`
+- `/meld` asks whether the report is from a child or adult:
+  - **Meld som barn**: anonymous, no contact fields.
+  - **Meld som voksen**: optional name, email and phone fields. All can be blank.
+- `/meld/form` lets the user select a location by tapping the Mapbox map, dragging the marker, or pressing **Bruk min posisjon**.
+- `/map` shows public report markers colored by status. Clicking a marker shows status, category, description and created time.
 
-## Miljøvariabler
+The MVP deliberately has no login, registration, badges, points, tracking, notifications or extra concepts.
 
-Legg disse inn i Vercel Project Settings eller lokalt i `.env.local`. Ikke commit secrets.
+## Backend/API
 
-| Variabel | Bruk |
-| --- | --- |
-| `NEXT_PUBLIC_MAPBOX_TOKEN` | Offentlig Mapbox-token for klientkartet. |
-| `SUPABASE_URL` | Supabase project URL. |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server-side nøkkel for API-rutene. Alternativt kan `SUPABASE_ANON_KEY` brukes med riktig RLS-policy. |
-| `SUPABASE_REPORTS_TABLE` | Valgfritt tabellnavn. Standard: `traffic_reports`. |
-| `TRELLO_API_KEY` | Trello API key. |
-| `TRELLO_API_TOKEN` | Trello API token. |
-| `TRELLO_LIST_ID` | Trello-liste der nye kort skal opprettes. |
+The frontend never reads Supabase directly. All reads and writes go through server-side Next.js API routes.
 
-## Supabase-tabell
+- `GET /api/reports` returns a GeoJSON `FeatureCollection` built from `public.report_public_geojson`.
+- `POST /api/report` inserts into `public.reports` with:
+  - `status`: `Ny`
+  - `reporter_type`: `barn` or `voksen`
+  - `category`, `description`, `lat`, `lng`
+  - `contact_name`, `contact_email`, `contact_phone` only when `reporter_type` is `voksen`; otherwise they are stored as `null`.
+- If Trello env vars and a “Ny melding” list ID exist, `POST /api/report` creates a Trello card and stores `trello_card_id` and `trello_list_id` back on the report row.
 
-Eksempel på tabell for `traffic_reports`:
+## Existing Supabase resources
 
-```sql
-create extension if not exists pgcrypto;
+Expected server-side resources:
 
-create table if not exists public.traffic_reports (
-  id uuid primary key default gen_random_uuid(),
-  created_at timestamptz not null default now(),
-  lat double precision not null,
-  lng double precision not null,
-  category text not null,
-  severity text not null,
-  description text not null,
-  address text,
-  contact text,
-  status text not null default 'Ny melding',
-  source text not null default 'mobile-web-map',
-  trello_card_id text,
-  trello_card_url text
-);
+- `public.reports`
+- `public.report_public_geojson`
+- `public` bucket `report-images` for a later image-upload backlog item
 
-create index if not exists traffic_reports_created_at_idx on public.traffic_reports (created_at desc);
-```
+## Environment variables
 
-Hvis du bruker `SUPABASE_ANON_KEY`, slå på Row Level Security og legg til policies som passer for prosjektet. For Vercel serverless API er `SUPABASE_SERVICE_ROLE_KEY` enklest fordi nøkkelen bare brukes server-side.
+Set these in Vercel Project Settings and locally in `.env.local` when developing. Do not commit secrets.
 
-## Lokal utvikling
+| Variable | Scope | Required | Purpose |
+| --- | --- | --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | Server | Yes | Supabase project URL used by API routes. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server secret | Yes | Service role key for inserting reports and reading the public GeoJSON view server-side. |
+| `NEXT_PUBLIC_MAPBOX_TOKEN` | Browser | Yes | Mapbox GL JS token for map display and location selection. |
+| `TRELLO_API_KEY` | Server secret | Optional | Trello API key. |
+| `TRELLO_API_TOKEN` | Server secret | Optional | Trello API token. |
+| `TRELLO_LIST_ID_NY_MELDING` | Server | Optional | Trello list ID for new reports. Falls back to `TRELLO_LIST_ID` if present. |
+
+## Local development
 
 ```bash
 npm install
 npm run dev
 ```
 
-Åpne <http://localhost:3000>.
+Open <http://localhost:3000>.
 
-## Deploy
+## Build
 
-Prosjektet er konfigurert for Next.js på Vercel. Koble repoet til Vercel-prosjektet `finns-vei`, legg inn miljøvariablene over og deploy branch/preview fra Vercel.
+```bash
+npm run build
+```
+
+## Backlog
+
+- Optional image upload to Supabase Storage bucket `report-images`.
+- Admin-only workflow views for follow-up status changes.
