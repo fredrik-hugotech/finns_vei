@@ -481,3 +481,30 @@ textarea:focus {
   cursor: default;
   opacity: 0.75;
 }
+
+.popup-card--accident span {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+@media (min-width: 861px) {
+  .map-overlay {
+    max-width: 320px;
+    padding: 0.85rem;
+  }
+
+  .map-overlay h1 {
+    font-size: 1.55rem;
+    margin: 0.45rem 0 0;
+  }
+
+  .map-overlay p,
+  .legend span {
+    font-size: 0.8rem;
+  }
+
+  .nvdb-toggle-card {
+    width: 150px;
+    padding: 0.65rem;
+  }
+}

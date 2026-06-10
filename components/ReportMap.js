@@ -25,11 +25,33 @@ function popupHtml(properties = {}) {
   const supportCount = Number(properties.support_count || 0);
   return `
     <article class="popup-card">
-      <strong>${escapeHtml(properties.status || REPORT_STATUS.NEW)} · ${escapeHtml(properties.category || 'Melding')}</strong>
+      <strong>${escapeHtml(properties.category || 'Melding')}</strong>
       <p>${escapeHtml(properties.description || '')}</p>
+      <p>Status: <strong>${escapeHtml(properties.status || REPORT_STATUS.NEW)}</strong></p>
+      ${properties.road_reference ? `<p>Vegreferanse: ${escapeHtml(properties.road_reference)}</p>` : ''}
       <p><strong>${supportCount}</strong> støtter denne saken</p>
       ${properties.created_at ? `<small>${escapeHtml(formatDate(properties.created_at))}</small>` : ''}
       ${reportId ? `<button class="support-button" data-report-id="${reportId}" type="button">Støtt denne saken</button>` : ''}
+    </article>
+  `;
+}
+
+function accidentPopupHtml(properties = {}, coordinates = []) {
+  const rows = [
+    properties.date ? ['Dato', properties.date] : null,
+    properties.year ? ['År', properties.year] : null,
+    properties.severity ? ['Alvorlighet', properties.severity] : null,
+    properties.accident_type ? ['Type', properties.accident_type] : null,
+    properties.description ? ['Beskrivelse', properties.description] : null,
+    properties.road_reference ? ['Vegreferanse', properties.road_reference] : null,
+    coordinates.length >= 2 ? ['Koordinater', `${Number(coordinates[1]).toFixed(5)}, ${Number(coordinates[0]).toFixed(5)}`] : null,
+  ].filter(Boolean);
+
+  return `
+    <article class="popup-card popup-card--accident">
+      <strong>Ulykke</strong>
+      ${rows.map(([label, value]) => `<p><span>${escapeHtml(label)}:</span> ${escapeHtml(value)}</p>`).join('')}
+      <small>Kilde: ${escapeHtml(properties.source || 'NVDB')}</small>
     </article>
   `;
 }
@@ -58,7 +80,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     const map = mapRef.current;
     if (map) {
       NVDB_LAYERS.forEach((layer) => {
-        ['line', 'point', 'fill'].forEach((shape) => {
+        ['line', 'point', 'fill', 'clusters', 'cluster-count'].forEach((shape) => {
           const layerId = `nvdb-${layer.type}-${shape}`;
           if (map.getLayer(layerId)) {
             map.setLayoutProperty(layerId, 'visibility', activeNvdbLayers.includes(layer.type) ? 'visible' : 'none');
@@ -127,14 +149,89 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       const source = map.getSource(sourceId);
       if (source) {
         source.setData(geojson);
-        ['line', 'point', 'fill'].forEach((shape) => {
+        ['line', 'point', 'fill', 'clusters', 'cluster-count'].forEach((shape) => {
           const layerId = `${sourceId}-${shape}`;
           if (map.getLayer(layerId)) map.setLayoutProperty(layerId, 'visibility', 'visible');
         });
         return;
       }
 
-      map.addSource(sourceId, { type: 'geojson', data: geojson });
+      map.addSource(sourceId, {
+        type: 'geojson',
+        data: geojson,
+        cluster: layerType === 'accidents',
+        clusterMaxZoom: 15,
+        clusterRadius: 42,
+      });
+
+      if (layerType === 'accidents') {
+        map.addLayer({
+          id: `${sourceId}-clusters`,
+          type: 'circle',
+          source: sourceId,
+          filter: ['has', 'point_count'],
+          paint: {
+            'circle-color': '#7f1d1d',
+            'circle-radius': ['step', ['get', 'point_count'], 15, 10, 20, 50, 26],
+            'circle-opacity': 0.9,
+            'circle-stroke-color': '#fee2e2',
+            'circle-stroke-width': 2,
+          },
+        });
+        map.addLayer({
+          id: `${sourceId}-cluster-count`,
+          type: 'symbol',
+          source: sourceId,
+          filter: ['has', 'point_count'],
+          layout: {
+            'text-field': ['get', 'point_count_abbreviated'],
+            'text-size': 12,
+            'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+          },
+          paint: { 'text-color': '#ffffff' },
+        });
+        map.addLayer({
+          id: `${sourceId}-point`,
+          type: 'circle',
+          source: sourceId,
+          filter: ['!', ['has', 'point_count']],
+          paint: {
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 5, 16, 8],
+            'circle-color': '#991b1b',
+            'circle-opacity': 0.9,
+            'circle-stroke-color': '#fee2e2',
+            'circle-stroke-width': 2,
+          },
+        });
+
+        map.on('mouseenter', `${sourceId}-clusters`, () => { map.getCanvas().style.cursor = 'pointer'; });
+        map.on('mouseleave', `${sourceId}-clusters`, () => { map.getCanvas().style.cursor = ''; });
+        map.on('click', `${sourceId}-clusters`, (event) => {
+          const feature = event.features?.[0];
+          const clusterId = feature?.properties?.cluster_id;
+          const sourceForCluster = map.getSource(sourceId);
+          if (!sourceForCluster || clusterId === undefined) return;
+          new mapboxgl.Popup({ maxWidth: '240px' })
+            .setLngLat(feature.geometry.coordinates)
+            .setHTML(`<strong>${feature.properties.point_count} ulykker i området</strong>`)
+            .addTo(map);
+          sourceForCluster.getClusterExpansionZoom(clusterId, (error, zoom) => {
+            if (!error) map.easeTo({ center: feature.geometry.coordinates, zoom });
+          });
+        });
+        map.on('mouseenter', `${sourceId}-point`, () => { map.getCanvas().style.cursor = 'pointer'; });
+        map.on('mouseleave', `${sourceId}-point`, () => { map.getCanvas().style.cursor = ''; });
+        map.on('click', `${sourceId}-point`, (event) => {
+          const feature = event.features?.[0];
+          if (!feature) return;
+          new mapboxgl.Popup({ maxWidth: '300px' })
+            .setLngLat(event.lngLat)
+            .setHTML(accidentPopupHtml(feature.properties, feature.geometry?.coordinates || []))
+            .addTo(map);
+        });
+        return;
+      }
+
       map.addLayer({
         id: `${sourceId}-fill`,
         type: 'fill',
@@ -209,9 +306,6 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       cluster: true,
       clusterMaxZoom: 14,
       clusterRadius: 48,
-      clusterProperties: {
-        support_sum: ['+', ['coalesce', ['to-number', ['get', 'support_count']], 0]],
-      },
     });
     map.addLayer({
       id: 'reports-clusters',
@@ -232,8 +326,8 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       source: 'reports',
       filter: ['has', 'point_count'],
       layout: {
-        'text-field': ['concat', ['get', 'point_count_abbreviated'], '\n', ['to-string', ['coalesce', ['get', 'support_sum'], 0]], ' støtter'],
-        'text-size': 12,
+        'text-field': ['get', 'point_count_abbreviated'],
+        'text-size': 13,
       },
       paint: { 'text-color': '#ffffff' },
     });
@@ -243,11 +337,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       source: 'reports',
       filter: ['!', ['has', 'point_count']],
       paint: {
-        'circle-radius': [
-          '+',
-          ['interpolate', ['linear'], ['zoom'], 8, 8, 15, 16],
-          ['min', 10, ['*', 1.5, ['coalesce', ['to-number', ['get', 'support_count']], 0]]],
-        ],
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 7, 15, 13],
         'circle-color': [
           'match',
           ['get', 'status'],
@@ -260,6 +350,25 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         'circle-stroke-color': '#ffffff',
         'circle-stroke-width': 3,
         'circle-opacity': 0.95,
+      },
+    });
+
+    map.addLayer({
+      id: 'reports-support-badge',
+      type: 'symbol',
+      source: 'reports',
+      filter: ['all', ['!', ['has', 'point_count']], ['>', ['coalesce', ['to-number', ['get', 'support_count']], 0], 0]],
+      layout: {
+        'text-field': ['concat', '❤️ ', ['to-string', ['get', 'support_count']]],
+        'text-size': 10,
+        'text-offset': [1.05, -1.05],
+        'text-anchor': 'center',
+        'text-allow-overlap': true,
+      },
+      paint: {
+        'text-color': '#7f1d1d',
+        'text-halo-color': '#ffffff',
+        'text-halo-width': 2,
       },
     });
 
