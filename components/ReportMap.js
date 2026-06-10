@@ -91,7 +91,7 @@ const ACCIDENT_POINT_MIN_ZOOM = 15;
 const NVDB_LAYERS = [
   { type: 'accidents', label: 'Ulykker', color: '#dc2626' },
 ];
-const ACCIDENT_LAYER_IDS = ['accident-heatmap', 'accident-clusters', 'accident-cluster-count', 'accident-points', 'accident-point-symbol'];
+const ACCIDENT_LAYER_IDS = ['accident-heatmap', 'accident-points', 'accident-point-symbol'];
 const REPORT_LAYER_IDS = ['reports-clusters', 'reports-cluster-count', 'reports-circle', 'reports-support-badge'];
 
 function moveLayersToTop(map, layerIds) {
@@ -221,9 +221,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       map.addSource(sourceId, {
         type: 'geojson',
         data: geojson,
-        cluster: layerType === 'accidents',
-        clusterMaxZoom: layerType === 'accidents' ? 16 : 15,
-        clusterRadius: 42,
+        cluster: false,
       });
 
       if (layerType === 'accidents') {
@@ -237,64 +235,38 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
             'heatmap-weight': [
               'match',
               ['downcase', ['to-string', ['coalesce', ['get', 'severity'], 'unknown']]],
-              ['fatal', 'død', 'drept', 'dødsulykke'], 1.8,
-              ['serious', 'alvorlig', 'meget alvorlig'], 1.4,
+              ['fatal', 'død', 'drept', 'dødsulykke'], 2,
+              ['serious', 'alvorlig', 'meget alvorlig'], 1.5,
               1,
             ],
-            'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 12, 0.7, 15, 1.35],
-            'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 12, 18, 15, 34],
-            'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 12, 0.7, 14.5, 0.55, 15, 0],
+            'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 12, 0.35, 13.5, 0.95, 14.8, 1.65],
+            'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 12, 14, 14, 24, 15, 30],
+            'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 12, 0.45, 14, 0.68, 14.8, 0.38, 15, 0],
             'heatmap-color': [
               'interpolate',
               ['linear'],
               ['heatmap-density'],
               0, 'rgba(88,28,135,0)',
-              0.2, '#ddd6fe',
-              0.45, '#8b5cf6',
-              0.7, '#6d28d9',
-              1, '#2e0f3f',
+              0.18, 'rgba(221,214,254,0.18)',
+              0.4, '#8b5cf6',
+              0.65, '#f97316',
+              0.82, '#991b1b',
+              1, '#1f0508',
             ],
           },
-        });
-        map.addLayer({
-          id: 'accident-clusters',
-          type: 'circle',
-          source: sourceId,
-          minzoom: ACCIDENT_POINT_MIN_ZOOM,
-          filter: ['has', 'point_count'],
-          paint: {
-            'circle-color': '#581c87',
-            'circle-radius': ['step', ['get', 'point_count'], 18, 10, 24, 50, 30],
-            'circle-opacity': 0.9,
-            'circle-stroke-color': '#ffffff',
-            'circle-stroke-width': 2,
-          },
-        });
-        map.addLayer({
-          id: 'accident-cluster-count',
-          type: 'symbol',
-          source: sourceId,
-          minzoom: ACCIDENT_POINT_MIN_ZOOM,
-          filter: ['has', 'point_count'],
-          layout: {
-            'text-field': ['get', 'point_count_abbreviated'],
-            'text-size': 12,
-            'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-          },
-          paint: { 'text-color': '#ffffff' },
         });
         map.addLayer({
           id: 'accident-points',
           type: 'circle',
           source: sourceId,
           minzoom: ACCIDENT_POINT_MIN_ZOOM,
-          filter: ['!', ['has', 'point_count']],
+          filter: ['match', ['geometry-type'], ['Point'], true, false],
           paint: {
-            'circle-radius': 7,
+            'circle-radius': 6,
             'circle-color': '#581c87',
             'circle-opacity': 0.95,
             'circle-stroke-color': '#ffffff',
-            'circle-stroke-width': 2,
+            'circle-stroke-width': 1.5,
           },
         });
         map.addLayer({
@@ -302,10 +274,10 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           type: 'symbol',
           source: sourceId,
           minzoom: ACCIDENT_POINT_MIN_ZOOM,
-          filter: ['!', ['has', 'point_count']],
+          filter: ['match', ['geometry-type'], ['Point'], true, false],
           layout: {
             'text-field': '!',
-            'text-size': 11,
+            'text-size': 10,
             'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
             'text-allow-overlap': true,
             'text-ignore-placement': true,
@@ -317,21 +289,6 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
 
         restoreMapLayerOrder(map);
 
-        map.on('mouseenter', 'accident-clusters', () => { map.getCanvas().style.cursor = 'pointer'; });
-        map.on('mouseleave', 'accident-clusters', () => { map.getCanvas().style.cursor = ''; });
-        map.on('click', 'accident-clusters', (event) => {
-          const feature = event.features?.[0];
-          const clusterId = feature?.properties?.cluster_id;
-          const sourceForCluster = map.getSource(sourceId);
-          if (!sourceForCluster || clusterId === undefined) return;
-          new mapboxgl.Popup({ maxWidth: '240px' })
-            .setLngLat(feature.geometry.coordinates)
-            .setHTML(`<strong>${feature.properties.point_count} ulykker i området</strong>`)
-            .addTo(map);
-          sourceForCluster.getClusterExpansionZoom(clusterId, (error, zoom) => {
-            if (!error) map.easeTo({ center: feature.geometry.coordinates, zoom });
-          });
-        });
         const showAccidentPopup = (event) => {
           const feature = event.features?.[0];
           if (!feature) return;
