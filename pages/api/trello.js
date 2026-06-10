@@ -1,23 +1,30 @@
 const BASE = 'https://api.trello.com/1';
-const key = process.env.TRELLO_API_KEY;
-const token = process.env.TRELLO_API_TOKEN;
 
-async function trelloFetch(path, params = {}) {
+function getCredentials() {
+  return {
+    key: process.env.TRELLO_API_KEY,
+    token: process.env.TRELLO_API_TOKEN,
+  };
+}
+
+async function trelloFetch(path, params = {}, init = {}) {
+  const { key, token } = getCredentials();
   const search = new URLSearchParams({ key, token, ...params }).toString();
-  const url = `${BASE}${path}?${search}`;
+  const response = await fetch(`${BASE}${path}?${search}`, init);
 
-  const r = await fetch(url);
-  if (!r.ok) {
-    const text = await r.text();
-    throw new Error(`Trello error ${r.status}: ${text}`);
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Trello error ${response.status}: ${text}`);
   }
-  return r.json();
+
+  return response.json();
 }
 
 export default async function handler(req, res) {
+  const { key, token } = getCredentials();
+
   if (!key || !token) {
-    res.status(500).json({ error: 'Missing Trello API credentials' });
-    return;
+    return res.status(500).json({ error: 'Missing Trello API credentials in environment variables' });
   }
 
   const { action = 'board', boardId, listId } = req.query;
@@ -27,6 +34,7 @@ export default async function handler(req, res) {
       if (action === 'board') {
         if (!boardId) return res.status(400).json({ error: 'boardId required' });
         const board = await trelloFetch(`/boards/${boardId}`, {
+          fields: 'name,url',
           lists: 'open',
           list_fields: 'name,id',
         });
@@ -35,7 +43,7 @@ export default async function handler(req, res) {
 
       if (action === 'cards') {
         if (!listId) return res.status(400).json({ error: 'listId required' });
-        const cards = await trelloFetch(`/lists/${listId}/cards`, { fields: 'name,desc,idList' });
+        const cards = await trelloFetch(`/lists/${listId}/cards`, { fields: 'name,url,desc,idList,dateLastActivity' });
         return res.status(200).json(cards);
       }
 
@@ -44,18 +52,12 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST') {
       const { name, desc = '', listId: bodyListId } = req.body || {};
-      const targetList = bodyListId || listId;
+      const targetList = bodyListId || listId || process.env.TRELLO_LIST_ID;
+
       if (!targetList) return res.status(400).json({ error: 'listId required' });
       if (!name) return res.status(400).json({ error: 'name required' });
 
-      const search = new URLSearchParams({ key, token, name, desc, idList: targetList }).toString();
-      const url = `${BASE}/cards?${search}`;
-      const r = await fetch(url, { method: 'POST' });
-      if (!r.ok) {
-        const text = await r.text();
-        throw new Error(`Trello error ${r.status}: ${text}`);
-      }
-      const card = await r.json();
+      const card = await trelloFetch('/cards', { idList: targetList, name, desc }, { method: 'POST' });
       return res.status(201).json(card);
     }
 
