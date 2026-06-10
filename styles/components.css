@@ -1,8 +1,6 @@
 .ui-card,
 .hero-card,
 .report-form,
-.map-overlay,
-.nvdb-toggle-card,
 .mapboxgl-popup-content {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -22,12 +20,13 @@
   cursor: pointer;
   display: inline-flex;
   font-size: 0.9rem;
-  font-weight: 750;
+  font-weight: 800;
   justify-content: center;
   min-height: 42px;
-  padding: 0.62rem 0.9rem;
+  padding: 0.62rem 0.95rem;
   text-align: center;
   text-decoration: none;
+  transition: background-color 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
 }
 
 .ui-button-primary,
@@ -35,8 +34,16 @@
 .support-button,
 .image-upload-button {
   background: var(--color-primary);
-  border: 1px solid var(--color-primary);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 88%, #000 12%);
   color: var(--ff-black);
+}
+
+.ui-button-primary:hover,
+.big-button--primary:hover:not(:disabled),
+.support-button:hover:not(:disabled),
+.image-upload-button:hover {
+  background: #f3bd28;
+  box-shadow: 0 6px 16px rgba(247, 201, 72, 0.24);
 }
 
 .ui-button-secondary,
@@ -53,12 +60,21 @@
 .map-overlay,
 .nvdb-toggle-card,
 .map-message {
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid var(--color-border);
+  background: var(--color-map-control);
+  border: 1px solid rgba(34, 34, 34, 0.10);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow-control);
   font-size: 0.78rem;
   padding: 0.5rem 0.62rem;
+}
+
+@supports (backdrop-filter: blur(12px)) {
+  .ui-control,
+  .map-overlay,
+  .nvdb-toggle-card,
+  .map-message {
+    backdrop-filter: blur(12px);
+  }
 }
 
 .ui-chip,
@@ -70,7 +86,7 @@
   color: var(--color-text);
   display: flex;
   font-size: 0.9rem;
-  font-weight: 650;
+  font-weight: 700;
   justify-content: center;
   min-height: 40px;
   padding: 0.5rem 0.7rem;
@@ -124,7 +140,7 @@ textarea {
   padding: 0.55rem 0.65rem;
 }
 
-.notice--idle { background: #eff6ff; color: #1d4ed8; }
+.notice--idle { background: #eef6ff; color: #1d4ed8; }
 .notice--success { background: #ecfdf5; color: var(--color-success); }
 .notice--warning { background: #fffbeb; color: var(--color-warning); }
 .notice--error { background: #fef2f2; color: var(--color-danger); }
