@@ -44,9 +44,12 @@ async function handleComment(action) {
 }
 
 export default async function handler(req, res) {
+  res.setHeader('Cache-Control', 'no-store');
+
   if (req.method === 'HEAD') return res.status(200).end();
+  if (req.method === 'GET') return res.status(200).json({ ok: true, route: 'trello-webhook' });
   if (req.method !== 'POST') {
-    res.setHeader('Allow', ['HEAD', 'POST']);
+    res.setHeader('Allow', ['HEAD', 'GET', 'POST']);
     return res.status(405).end('Method Not Allowed');
   }
 
