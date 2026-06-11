@@ -116,6 +116,7 @@ export default function MeldForm() {
       images.forEach((image) => URL.revokeObjectURL(image.previewUrl));
       setImages([]);
       setStatus({ type: payload.warning ? 'warning' : 'success', message: payload.warning || 'Takk for at du sier fra!' });
+      router.push(payload.id ? `/?report=${encodeURIComponent(payload.id)}` : '/');
     } catch (error) {
       setStatus({ type: 'error', message: error.message || 'Noe gikk galt.' });
     } finally {
@@ -130,7 +131,7 @@ export default function MeldForm() {
       </Head>
       <main className="form-page">
         <header className="top-bar">
-          <Link href="/meld">Tilbake</Link>
+          <Link href="/">Tilbake</Link>
         </header>
 
         <section className="form-layout">
