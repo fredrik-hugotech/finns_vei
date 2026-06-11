@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import { DEFAULT_CENTER, REPORT_STATUS } from '../lib/config';
 import { MAP_COLORS, MAP_STYLE } from '../lib/mapStyleConfig';
+import { REPORT_CATEGORY_ICON_IDS } from '../lib/reportCategoryIcons';
 import { normalizeImageEntries } from '../lib/reportImages';
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
@@ -104,7 +105,7 @@ const NVDB_LAYERS = [
   { type: 'accidents', label: 'Ulykker', color: MAP_COLORS.accidentLayer },
 ];
 const ACCIDENT_LAYER_IDS = ['accident-heatmap', 'accident-points', 'accident-point-symbol'];
-const REPORT_LAYER_IDS = ['reports-clusters', 'reports-cluster-count', 'reports-circle', 'reports-support-badge'];
+const REPORT_LAYER_IDS = ['reports-clusters', 'reports-cluster-count', 'reports-circle', 'reports-category-symbol', 'reports-support-badge'];
 
 function moveLayersToTop(map, layerIds) {
   layerIds.forEach((layerId) => {
@@ -115,6 +116,56 @@ function moveLayersToTop(map, layerIds) {
 function restoreMapLayerOrder(map) {
   moveLayersToTop(map, ACCIDENT_LAYER_IDS);
   moveLayersToTop(map, REPORT_LAYER_IDS);
+}
+
+function loadImageElement(src) {
+  return new Promise((resolve, reject) => {
+    const image = new Image(32, 32);
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error(`Kunne ikke laste kartikon: ${src}`));
+    image.src = src;
+  });
+}
+
+async function loadReportCategoryIcons(map) {
+  const results = await Promise.allSettled(REPORT_CATEGORY_ICON_IDS.map(async (iconId) => {
+    if (map.hasImage(iconId)) return iconId;
+    const image = await loadImageElement(`/map-icons/${iconId}.svg`);
+    if (!map.hasImage(iconId)) map.addImage(iconId, image, { pixelRatio: 2 });
+    return iconId;
+  }));
+
+  const loaded = results
+    .filter((result) => result.status === 'fulfilled')
+    .map((result) => result.value);
+
+  results
+    .filter((result) => result.status === 'rejected')
+    .forEach((result) => console.warn(result.reason));
+
+  return loaded;
+}
+
+async function ensureReportCategorySymbolLayer(map) {
+  if (!map.getSource('reports') || map.getLayer('reports-category-symbol')) return;
+
+  try {
+    const loadedIcons = await loadReportCategoryIcons(map);
+    if (!loadedIcons.length || map.getLayer('reports-category-symbol')) return;
+
+    map.addLayer({
+      id: 'reports-category-symbol',
+      type: 'symbol',
+      source: 'reports',
+      filter: ['!', ['has', 'point_count']],
+      layout: MAP_STYLE.reportCategorySymbolLayout,
+      paint: MAP_STYLE.reportCategorySymbolPaint,
+    }, map.getLayer('reports-support-badge') ? 'reports-support-badge' : undefined);
+
+    restoreMapLayerOrder(map);
+  } catch (error) {
+    console.warn('Kategoriikoner kunne ikke lastes. Sirkelmarkører brukes som fallback.', error);
+  }
 }
 
 export default function ReportMap({ selectable = false, point, onPointChange, className = 'map-canvas', showReports = true, enableNvdbLayers = false }) {
@@ -333,6 +384,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     const source = map.getSource('reports');
     if (source) {
       source.setData(geojson);
+      ensureReportCategorySymbolLayer(map);
       moveLayersToTop(map, REPORT_LAYER_IDS);
       return;
     }
@@ -401,6 +453,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         .setHTML(popupHtml(feature))
         .addTo(map);
     });
+    ensureReportCategorySymbolLayer(map);
   }, [showReports]);
 
 
