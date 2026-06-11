@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import { DEFAULT_CENTER, REPORT_STATUS } from '../lib/config';
 import { MAP_COLORS, MAP_STYLE } from '../lib/mapStyleConfig';
@@ -93,7 +93,7 @@ function selectedReportGeoJson(feature = null) {
   if (!coordinates) return { type: 'FeatureCollection', features: [] };
 
   const center = [coordinates.lng, coordinates.lat];
-  const radiusMeters = 40;
+  const radiusMeters = SELECTED_REPORT_RADIUS_METERS;
   const earthRadiusMeters = 6371008.8;
   const latRadians = coordinates.lat * Math.PI / 180;
   const ring = Array.from({ length: 65 }, (_, index) => {
@@ -114,7 +114,67 @@ function selectedReportGeoJson(feature = null) {
   };
 }
 
-// TODO: Later, find nearby reports within 25–50m and show “Flere saker i nærheten”.
+
+function distanceMeters(a, b) {
+  const earthRadiusMeters = 6371008.8;
+  const dLat = (b.lat - a.lat) * Math.PI / 180;
+  const dLng = (b.lng - a.lng) * Math.PI / 180;
+  const lat1 = a.lat * Math.PI / 180;
+  const lat2 = b.lat * Math.PI / 180;
+  const h = Math.sin(dLat / 2) ** 2
+    + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * earthRadiusMeters * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+function accidentYear(properties = {}) {
+  const candidates = [
+    properties.year,
+    properties.ulykkesaar,
+    properties.ulykkesår,
+    properties.accident_year,
+    properties.date,
+    properties.dato,
+    properties.timestamp,
+    properties.created_at,
+  ];
+  for (const value of candidates) {
+    if (value === null || value === undefined || value === '') continue;
+    const match = String(value).match(/(?:19|20)\d{2}/);
+    if (match) return match[0];
+  }
+  return 'ukjent år';
+}
+
+function accidentSummaryNearReport(report, accidentGeoJson) {
+  const reportPoint = reportCoordinates(report);
+  if (!reportPoint || !Array.isArray(accidentGeoJson?.features)) return null;
+
+  const nearbyYears = accidentGeoJson.features
+    .filter((feature) => Array.isArray(feature?.geometry?.coordinates) && feature.geometry.type === 'Point')
+    .filter((feature) => {
+      const [lng, lat] = feature.geometry.coordinates;
+      if (!Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng))) return false;
+      return distanceMeters(reportPoint, { lat: Number(lat), lng: Number(lng) }) <= SELECTED_REPORT_RADIUS_METERS;
+    })
+    .map((feature) => accidentYear(feature.properties || {}));
+
+  if (!nearbyYears.length) return null;
+  const yearCounts = nearbyYears.reduce((counts, year) => {
+    counts.set(year, (counts.get(year) || 0) + 1);
+    return counts;
+  }, new Map());
+  const years = [...yearCounts.entries()]
+    .map(([year, count]) => (count > 1 ? `${year} ×${count}` : year))
+    .join(', ');
+  return `${nearbyYears.length} registrerte ulykker i nærheten: ${years}`;
+}
+
+function accidentSummaryHtml(summary = '') {
+  if (!summary) return '';
+  return `<p class="accident-summary">${escapeHtml(summary)}</p>`;
+}
+
+// TODO: Later, show “Flere saker i nærheten”.
 
 function reportImagesHtml(properties = {}) {
   const images = normalizeImageEntries(properties.image_urls || properties.image_urls_json);
@@ -143,17 +203,18 @@ function popupHtml(featureOrProperties = {}, options = {}) {
   const showPublicStatus = options.showPublicStatus !== false;
   const showNewReportButton = Boolean(options.showNewReportButton);
   const streetViewUrl = googleStreetViewUrl(featureOrProperties);
+  const accidentSummary = options.accidentSummary || '';
   return `
     <article class="report-popup popup-card">
       <strong>${escapeHtml(properties.category || 'Melding')}</strong>
       ${properties.description ? `<p>${escapeHtml(compactText(properties.description))}</p>` : ''}
       <p>Status: <strong>${escapeHtml(properties.status || REPORT_STATUS.NEW)}</strong></p>
       ${showPublicStatus ? publicStatusUpdateHtml(properties) : ''}
+      ${accidentSummaryHtml(accidentSummary)}
       <small class="support-count" data-support-count-for="${reportId}">${supportCount} støtter denne saken</small>
       ${reportId ? `<button class="support-button" data-report-id="${reportId}" type="button" ${alreadySupported ? 'disabled' : ''}>${supportButtonLabel(rawReportId)}</button>` : missingReportIdDebug}
       ${reportId ? `<button class="share-button" data-report-id="${reportId}" type="button">Del sak</button>` : ''}
       ${streetViewUrl ? `<a class="street-view-button" href="${escapeHtml(streetViewUrl)}" target="_blank" rel="noopener noreferrer">Se Street View</a>` : ''}
-      ${options.showThreeDButton !== false ? `<button class="three-d-button${options.isThreeDActive ? ' three-d-button--active' : ''}" data-toggle-3d="true" type="button" aria-pressed="${options.isThreeDActive ? 'true' : 'false'}">3D</button>` : ''}
       ${showNewReportButton ? '<button class="continue-report-button" data-close-selected="true" type="button">Meld ny sak likevel</button>' : ''}
       ${showImages ? reportImagesHtml(properties) : ''}
     </article>
@@ -177,15 +238,15 @@ function accidentPopupHtml(properties = {}) {
   `;
 }
 
-const MIN_ACCIDENT_FETCH_ZOOM = 12;
-const ACCIDENT_HEATMAP_MAX_ZOOM = 15;
-const ACCIDENT_POINT_MIN_ZOOM = 15;
+const MIN_ACCIDENT_FETCH_ZOOM = 13;
+const ACCIDENT_POINT_MIN_ZOOM = 14;
 const NVDB_LAYERS = [
   { type: 'accidents', label: 'Ulykker', color: MAP_COLORS.accidentLayer },
 ];
-const ACCIDENT_LAYER_IDS = ['accident-heatmap', 'accident-points', 'accident-point-symbol'];
+const ACCIDENT_LAYER_IDS = ['accident-points', 'accident-point-symbol'];
 const THREE_D_BUILDINGS_LAYER_ID = '3d-buildings';
 const SELECTED_REPORT_SOURCE_ID = 'selected-report';
+const SELECTED_REPORT_RADIUS_METERS = 40;
 const SELECTED_REPORT_LAYER_IDS = ['selected-report-radius-fill', 'selected-report-radius-line', 'selected-report-ring'];
 const REPORT_LAYER_IDS = ['selected-report-radius-fill', 'selected-report-radius-line', 'reports-clusters', 'reports-cluster-count', 'reports-circle', 'reports-category-symbol', 'selected-report-ring', 'reports-support-badge'];
 
@@ -262,7 +323,7 @@ function ensureThreeDBuildingsLayer(map) {
       minzoom: 14,
       filter: ['==', ['get', 'extrude'], 'true'],
       paint: MAP_STYLE.threeDBuildingsPaint,
-    }, firstExistingLayer(map, ['accident-heatmap', 'accident-points', 'selected-report-radius-fill', 'reports-clusters', 'reports-circle']));
+    }, firstExistingLayer(map, ['accident-points', 'selected-report-radius-fill', 'reports-clusters', 'reports-circle']));
     return true;
   } catch (error) {
     console.warn('3D-bygg kunne ikke aktiveres.', error);
@@ -286,7 +347,9 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   const [message, setMessage] = useState('');
   const [activeNvdbLayers, setActiveNvdbLayers] = useState([]);
   const [selectedReport, setSelectedReport] = useState(null);
-  const [isThreeDEnabled, setIsThreeDEnabled] = useState(false);
+  const [isThreeDActive, setIsThreeDActive] = useState(false);
+  const [mapZoom, setMapZoom] = useState(null);
+  const [accidentGeoJson, setAccidentGeoJson] = useState(null);
   const hasMapboxToken = Boolean(process.env.NEXT_PUBLIC_MAPBOX_TOKEN);
 
   useEffect(() => {
@@ -339,8 +402,10 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
 
     if (activeLayers.includes('accidents') && map.getZoom() < MIN_ACCIDENT_FETCH_ZOOM) {
       setMessage('Zoom inn');
+      const emptyAccidents = { type: 'FeatureCollection', features: [], meta: { reason: 'zoom_too_low' } };
+      setAccidentGeoJson(emptyAccidents);
       const source = map.getSource('accident-source');
-      if (source) source.setData({ type: 'FeatureCollection', features: [], meta: { reason: 'zoom_too_low' } });
+      if (source) source.setData(emptyAccidents);
       return;
     }
 
@@ -360,6 +425,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       const rawObjectCount = Number(geojson.meta?.rawObjectCount ?? 0);
       const pointFeatureCount = Number(geojson.meta?.pointFeatureCount ?? featureCount);
       const invalidGeometryCount = Number(geojson.meta?.invalidGeometryCount ?? 0);
+      if (layerType === 'accidents') setAccidentGeoJson(geojson);
       if (geojson.meta?.degraded) {
         setMessage('Ulykker utilgjengelig');
       } else if (geojson.meta?.reason === 'zoom_too_low' || geojson.meta?.reason === 'bbox_too_broad') {
@@ -370,7 +436,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       } else if (layerType === 'accidents') {
         const geometryDebug = shouldShowMissingReportIdDebug() && invalidGeometryCount > 0 ? ` (${invalidGeometryCount} geometri kunne ikke tolkes)` : '';
         if (pointFeatureCount > 0 && map.getZoom() < ACCIDENT_POINT_MIN_ZOOM) {
-          setMessage(`Varmekart${geometryDebug}`);
+          setMessage('Zoom inn for ulykker');
         } else {
           setMessage(pointFeatureCount > 0 ? `Ulykker: ${pointFeatureCount}${geometryDebug}` : 'Ingen ulykker');
         }
@@ -399,14 +465,6 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       });
 
       if (layerType === 'accidents') {
-        map.addLayer({
-          id: 'accident-heatmap',
-          type: 'heatmap',
-          source: sourceId,
-          minzoom: MIN_ACCIDENT_FETCH_ZOOM,
-          maxzoom: ACCIDENT_HEATMAP_MAX_ZOOM,
-          paint: MAP_STYLE.accidentHeatmapPaint,
-        });
         map.addLayer({
           id: 'accident-points',
           type: 'circle',
@@ -484,18 +542,36 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     ));
   };
 
+  const selectedAccidentSummary = useMemo(
+    () => accidentSummaryNearReport(selectedReport, accidentGeoJson),
+    [accidentGeoJson, selectedReport],
+  );
+
   const popupOptions = useCallback(() => ({
     showImages: reportPopupMode !== 'reporting',
     showPublicStatus: reportPopupMode !== 'reporting',
     showNewReportButton: reportPopupMode === 'reporting',
-    isThreeDActive: isThreeDEnabled,
-  }), [isThreeDEnabled, reportPopupMode]);
+    accidentSummary: selectedAccidentSummary,
+  }), [reportPopupMode, selectedAccidentSummary]);
 
   const clearSelectedReport = useCallback(() => {
     setSelectedReport(null);
-    setIsThreeDEnabled(false);
+    setIsThreeDActive(false);
     const map = mapRef.current;
-    if (map) map.easeTo({ pitch: 0, duration: 450 });
+    if (map) {
+      hideThreeDBuildingsLayer(map);
+      map.easeTo({ pitch: 0, duration: 450 });
+    }
+  }, []);
+
+  const handleSelectedReportClose = useCallback((event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    clearSelectedReport();
+  }, [clearSelectedReport]);
+
+  const stopSheetClickPropagation = useCallback((event) => {
+    event.stopPropagation();
   }, []);
 
   const selectReport = useCallback((feature, { fly = true } = {}) => {
@@ -508,15 +584,15 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       const isMobile = typeof window !== 'undefined' && window.matchMedia?.('(max-width: 640px)').matches;
       map.flyTo({
         center: [coordinates.lng, coordinates.lat],
-        zoom: Math.max(map.getZoom(), isThreeDEnabled ? 16 : 15.5),
-        pitch: isThreeDEnabled ? (isMobile ? 55 : 60) : map.getPitch(),
-        bearing: isThreeDEnabled ? (map.getBearing() || 28) : map.getBearing(),
+        zoom: Math.max(map.getZoom(), isThreeDActive ? 16 : 15.5),
+        pitch: isThreeDActive ? (isMobile ? 55 : 60) : map.getPitch(),
+        bearing: isThreeDActive ? (map.getBearing() || 28) : map.getBearing(),
         offset: isMobile ? [0, -120] : [0, 0],
         duration: 700,
         essential: true,
       });
     }
-  }, [isThreeDEnabled]);
+  }, [isThreeDActive]);
 
   const focusSharedReport = useCallback((geojson) => {
     const map = mapRef.current;
@@ -636,12 +712,16 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     const handlePopupCloseClick = (event) => {
       const button = event.target?.closest?.('[data-close-selected]');
       if (!button) return;
+      event.preventDefault();
+      event.stopPropagation();
       clearSelectedReport();
     };
 
     const handleShareClick = async (event) => {
       const button = event.target?.closest?.('.share-button');
       if (!button) return;
+      event.preventDefault();
+      event.stopPropagation();
       const reportId = button.getAttribute('data-report-id');
       const url = reportShareUrl(reportId);
       if (!url) return;
@@ -679,15 +759,11 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       }
     };
 
-    const handleThreeDClick = (event) => {
-      const button = event.target?.closest?.('[data-toggle-3d]');
-      if (!button || !selectedReport) return;
-      setIsThreeDEnabled((current) => !current);
-    };
-
     const handleSupportClick = async (event) => {
       const button = event.target?.closest?.('.support-button');
       if (!button) return;
+      event.preventDefault();
+      event.stopPropagation();
       const reportId = button.getAttribute('data-report-id');
       if (!reportId) return;
 
@@ -724,6 +800,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           };
         });
         setMessage(payload.alreadySupported ? 'Du har allerede støttet denne saken.' : 'Takk for støtten!');
+        setMapZoom(map.getZoom());
         await loadReports();
       } catch (error) {
         console.error(error);
@@ -736,46 +813,50 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
 
     window.addEventListener('click', handlePopupCloseClick);
     window.addEventListener('click', handleShareClick);
-    window.addEventListener('click', handleThreeDClick);
     window.addEventListener('click', handleSupportClick);
     return () => {
       window.removeEventListener('click', handlePopupCloseClick);
       window.removeEventListener('click', handleShareClick);
-      window.removeEventListener('click', handleThreeDClick);
       window.removeEventListener('click', handleSupportClick);
     };
-  }, [clearSelectedReport, getSupportToken, loadReports, selectedReport, showReports]);
+  }, [clearSelectedReport, getSupportToken, loadReports, showReports]);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !map.isStyleLoaded()) return;
 
-    if (!selectedReport || !isThreeDEnabled) {
+    const zoom = mapZoom ?? map.getZoom();
+    const shouldUseThreeD = Boolean(selectedReport) && (isThreeDActive ? zoom >= 15.5 : zoom >= 16);
+    if (!shouldUseThreeD) {
       hideThreeDBuildingsLayer(map);
+      if (isThreeDActive) setIsThreeDActive(false);
       if (!selectedReport || map.getPitch() > 0) map.easeTo({ pitch: 0, duration: 450 });
       return;
     }
 
     if (!ensureThreeDBuildingsLayer(map)) {
-      setIsThreeDEnabled(false);
+      if (isThreeDActive) setIsThreeDActive(false);
       setMessage('3D er ikke tilgjengelig i dette kartet.');
       return;
     }
 
     const coordinates = reportCoordinates(selectedReport);
     if (!coordinates) return;
+    if (!isThreeDActive) setIsThreeDActive(true);
     const isMobile = typeof window !== 'undefined' && window.matchMedia?.('(max-width: 640px)').matches;
-    map.easeTo({
-      center: [coordinates.lng, coordinates.lat],
-      zoom: Math.max(map.getZoom(), 16),
-      pitch: isMobile ? 55 : 60,
-      bearing: map.getBearing() || 28,
-      offset: isMobile ? [0, -120] : [0, 0],
-      duration: 650,
-      essential: true,
-    });
+    if (map.getPitch() < 45 || !isThreeDActive) {
+      map.easeTo({
+        center: [coordinates.lng, coordinates.lat],
+        zoom: Math.max(map.getZoom(), 16),
+        pitch: isMobile ? 55 : 60,
+        bearing: map.getBearing() || 28,
+        offset: isMobile ? [0, -120] : [0, 0],
+        duration: 650,
+        essential: true,
+      });
+    }
     restoreMapLayerOrder(map);
-  }, [isThreeDEnabled, selectedReport]);
+  }, [isThreeDActive, mapZoom, selectedReport]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -828,12 +909,14 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     });
 
     mapRef.current = map;
+    setMapZoom(map.getZoom());
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right');
 
     map.on('load', async () => {
       if (pointRef.current) placeMarker(pointRef.current);
       try {
+        setMapZoom(map.getZoom());
         await loadReports();
         await refreshNvdbLayers();
       } catch (error) {
@@ -843,6 +926,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     });
 
     map.on('moveend', () => {
+      setMapZoom(map.getZoom());
       refreshNvdbLayers().catch((error) => {
         console.error(error);
         setMessage('Lag kunne ikke hentes.');
@@ -901,8 +985,8 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         </div>
       )}
       {selectedReport && (
-        <section className="selected-report-sheet" aria-label="Valgt sak">
-          <button className="selected-report-close" type="button" aria-label="Lukk sak" onClick={clearSelectedReport}>×</button>
+        <section className="selected-report-sheet" aria-label="Valgt sak" onMouseDown={stopSheetClickPropagation} onTouchStart={stopSheetClickPropagation}>
+          <button className="selected-report-close" type="button" aria-label="Lukk sak" onClick={handleSelectedReportClose}>×</button>
           <div dangerouslySetInnerHTML={{ __html: popupHtml(selectedReport, popupOptions()) }} />
         </section>
       )}
