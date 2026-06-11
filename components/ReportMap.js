@@ -85,7 +85,7 @@ function reportCoordinates(featureOrProperties = {}) {
 function googleStreetViewUrl(featureOrProperties = {}) {
   const coordinates = reportCoordinates(featureOrProperties);
   if (!coordinates) return '';
-  return `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${encodeURIComponent(`${coordinates.lat},${coordinates.lng}`)}`;
+  return `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${coordinates.lat},${coordinates.lng}`;
 }
 
 function selectedReportGeoJson(feature = null) {
@@ -185,7 +185,7 @@ const NVDB_LAYERS = [
 const ACCIDENT_LAYER_IDS = ['accident-heatmap', 'accident-points', 'accident-point-symbol'];
 const SELECTED_REPORT_SOURCE_ID = 'selected-report';
 const SELECTED_REPORT_LAYER_IDS = ['selected-report-radius-fill', 'selected-report-radius-line', 'selected-report-ring'];
-const REPORT_LAYER_IDS = ['reports-clusters', 'reports-cluster-count', 'selected-report-radius-fill', 'selected-report-radius-line', 'reports-circle', 'reports-category-symbol', 'selected-report-ring', 'reports-support-badge'];
+const REPORT_LAYER_IDS = ['selected-report-radius-fill', 'selected-report-radius-line', 'reports-clusters', 'reports-cluster-count', 'reports-circle', 'reports-category-symbol', 'selected-report-ring', 'reports-support-badge'];
 
 function moveLayersToTop(map, layerIds) {
   layerIds.forEach((layerId) => {
