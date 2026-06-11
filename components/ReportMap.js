@@ -21,6 +21,15 @@ function compactText(value = '', maxLength = 140) {
   return `${text.slice(0, maxLength - 1).trim()}…`;
 }
 
+function safeObject(value) {
+  return value && typeof value === 'object' ? value : {};
+}
+
+function safeProperties(featureOrProperties) {
+  const value = safeObject(featureOrProperties);
+  return safeObject(value.properties || value);
+}
+
 function formatPopupDate(value) {
   if (!value) return '';
   const date = new Date(value);
@@ -33,13 +42,14 @@ function formatPopupDate(value) {
 }
 
 function publicStatusUpdateHtml(properties = {}) {
-  if (!properties.public_status_note) return '';
-  const updatedAt = formatPopupDate(properties.public_status_updated_at || properties.status_updated_at);
+  const safe = safeProperties(properties);
+  if (!safe.public_status_note) return '';
+  const updatedAt = formatPopupDate(safe.public_status_updated_at || safe.status_updated_at);
   return `
     <section class="public-status-update" aria-label="Finns.Fairway">
       <div class="public-status-update__header">Finns.Fairway</div>
       ${updatedAt ? `<div class="public-status-update__date">${escapeHtml(updatedAt)}</div>` : ''}
-      <p class="public-status-update__note">${escapeHtml(compactText(properties.public_status_note, 220))}</p>
+      <p class="public-status-update__note">${escapeHtml(compactText(safe.public_status_note, 220))}</p>
     </section>
   `;
 }
@@ -54,12 +64,13 @@ function supportButtonLabel(reportId) {
 }
 
 function reportIdFromFeature(featureOrProperties = {}) {
-  const properties = featureOrProperties.properties || featureOrProperties || {};
+  const feature = safeObject(featureOrProperties);
+  const properties = safeProperties(featureOrProperties);
   return properties.id
     || properties.report_id
     || properties.reportId
     || properties.uuid
-    || featureOrProperties.id
+    || feature.id
     || '';
 }
 
@@ -74,8 +85,9 @@ function reportShareUrl(reportId) {
 
 
 function reportCoordinates(featureOrProperties = {}) {
-  const properties = featureOrProperties.properties || featureOrProperties || {};
-  const coordinates = featureOrProperties.geometry?.coordinates;
+  const feature = safeObject(featureOrProperties);
+  const properties = safeProperties(featureOrProperties);
+  const coordinates = feature.geometry?.coordinates;
   const lng = Number(Array.isArray(coordinates) ? coordinates[0] : properties.lng ?? properties.longitude);
   const lat = Number(Array.isArray(coordinates) ? coordinates[1] : properties.lat ?? properties.latitude);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
@@ -146,17 +158,18 @@ function accidentYear(properties = {}) {
 }
 
 function accidentSummaryNearReport(report, accidentGeoJson) {
+  if (!report || typeof report !== 'object') return null;
   const reportPoint = reportCoordinates(report);
   if (!reportPoint || !Array.isArray(accidentGeoJson?.features)) return null;
 
   const nearbyYears = accidentGeoJson.features
-    .filter((feature) => Array.isArray(feature?.geometry?.coordinates) && feature.geometry.type === 'Point')
+    .filter((feature) => feature?.geometry?.type === 'Point' && Array.isArray(feature.geometry.coordinates))
     .filter((feature) => {
       const [lng, lat] = feature.geometry.coordinates;
       if (!Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng))) return false;
       return distanceMeters(reportPoint, { lat: Number(lat), lng: Number(lng) }) <= SELECTED_REPORT_RADIUS_METERS;
     })
-    .map((feature) => accidentYear(feature.properties || {}));
+    .map((feature) => accidentYear(safeProperties(feature)));
 
   if (!nearbyYears.length) return null;
   const yearCounts = nearbyYears.reduce((counts, year) => {
@@ -177,7 +190,8 @@ function accidentSummaryHtml(summary = '') {
 // TODO: Later, show “Flere saker i nærheten”.
 
 function reportImagesHtml(properties = {}) {
-  const images = normalizeImageEntries(properties.image_urls || properties.image_urls_json);
+  const safe = safeProperties(properties);
+  const images = normalizeImageEntries(safe.image_urls || safe.image_urls_json);
   if (!images.length) return '';
   return `
     <div class="report-popup-images popup-images">
@@ -191,7 +205,7 @@ function reportImagesHtml(properties = {}) {
 }
 
 function popupHtml(featureOrProperties = {}, options = {}) {
-  const properties = featureOrProperties.properties || featureOrProperties || {};
+  const properties = safeProperties(featureOrProperties);
   const rawReportId = reportIdFromFeature(featureOrProperties);
   const reportId = escapeHtml(rawReportId);
   const supportCount = Number(properties.support_count || 0);
@@ -542,10 +556,10 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     ));
   };
 
-  const selectedAccidentSummary = useMemo(
-    () => accidentSummaryNearReport(selectedReport, accidentGeoJson),
-    [accidentGeoJson, selectedReport],
-  );
+  const selectedAccidentSummary = useMemo(() => {
+    if (!selectedReport || typeof selectedReport !== 'object') return null;
+    return accidentSummaryNearReport(selectedReport, accidentGeoJson);
+  }, [accidentGeoJson, selectedReport]);
 
   const popupOptions = useCallback(() => ({
     showImages: reportPopupMode !== 'reporting',
@@ -599,7 +613,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     if (!map || selectable || focusedReportRef.current || typeof window === 'undefined') return;
     const reportId = new URLSearchParams(window.location.search).get('report');
     if (!reportId) return;
-    const feature = (geojson.features || []).find((item) => String(reportIdFromFeature(item)) === String(reportId));
+    const feature = (geojson?.features || []).find((item) => String(reportIdFromFeature(item)) === String(reportId));
     if (!feature?.geometry?.coordinates) {
       focusedReportRef.current = true;
       setMessage('Fant ikke saken i kartet.');
@@ -677,7 +691,9 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       if (!source || clusterId === undefined) return;
       source.getClusterExpansionZoom(clusterId, (error, zoom) => {
         if (error) return;
-        map.easeTo({ center: feature.geometry.coordinates, zoom });
+        if (Array.isArray(feature?.geometry?.coordinates)) {
+          map.easeTo({ center: feature.geometry.coordinates, zoom });
+        }
       });
     });
     const showReportPopup = (event) => {
