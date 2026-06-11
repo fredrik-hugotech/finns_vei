@@ -22,6 +22,29 @@ function compactText(value = '', maxLength = 140) {
   return `${text.slice(0, maxLength - 1).trim()}…`;
 }
 
+function formatPopupDate(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('no-NO', {
+    day: 'numeric',
+    month: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function publicStatusUpdateHtml(properties = {}) {
+  if (!properties.public_status_note) return '';
+  const updatedAt = formatPopupDate(properties.public_status_updated_at || properties.status_updated_at);
+  return `
+    <section class="public-status-update" aria-label="Oppdatering fra Finns.Fairway">
+      <div class="public-status-update__header">Oppdatering fra Finns.Fairway</div>
+      ${updatedAt ? `<div class="public-status-update__date">Oppdatert: ${escapeHtml(updatedAt)}</div>` : ''}
+      <p class="public-status-update__note">${escapeHtml(compactText(properties.public_status_note, 220))}</p>
+    </section>
+  `;
+}
+
 function browserHasSupported(reportId) {
   if (typeof window === 'undefined' || !reportId) return false;
   return window.localStorage.getItem(`finns-vei-supported-${reportId}`) === '1';
@@ -74,11 +97,10 @@ function popupHtml(featureOrProperties = {}) {
       <strong>${escapeHtml(properties.category || 'Melding')}</strong>
       ${properties.description ? `<p>${escapeHtml(compactText(properties.description))}</p>` : ''}
       <p>Status: <strong>${escapeHtml(properties.status || REPORT_STATUS.NEW)}</strong></p>
-      ${properties.public_status_note ? `<p>${escapeHtml(compactText(properties.public_status_note, 180))}</p>` : ''}
-      ${properties.public_status_updated_at ? `<small>Oppdatert: ${escapeHtml(new Date(properties.public_status_updated_at).toLocaleDateString('no-NO'))}</small>` : ''}
-      ${reportImagesHtml(properties)}
-      ${reportId ? `<button class="support-button" data-report-id="${reportId}" type="button" ${alreadySupported ? 'disabled' : ''}>${supportButtonLabel(rawReportId)}</button>` : missingReportIdDebug}
+      ${publicStatusUpdateHtml(properties)}
       <small class="support-count" data-support-count-for="${reportId}">${supportCount} støtter denne saken</small>
+      ${reportId ? `<button class="support-button" data-report-id="${reportId}" type="button" ${alreadySupported ? 'disabled' : ''}>${supportButtonLabel(rawReportId)}</button>` : missingReportIdDebug}
+      ${reportImagesHtml(properties)}
     </article>
   `;
 }
