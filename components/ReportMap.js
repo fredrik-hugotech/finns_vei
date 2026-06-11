@@ -37,9 +37,9 @@ function publicStatusUpdateHtml(properties = {}) {
   if (!properties.public_status_note) return '';
   const updatedAt = formatPopupDate(properties.public_status_updated_at || properties.status_updated_at);
   return `
-    <section class="public-status-update" aria-label="Oppdatering fra Finns.Fairway">
-      <div class="public-status-update__header">Oppdatering fra Finns.Fairway</div>
-      ${updatedAt ? `<div class="public-status-update__date">Oppdatert: ${escapeHtml(updatedAt)}</div>` : ''}
+    <section class="public-status-update" aria-label="Finns.Fairway">
+      <div class="public-status-update__header">Finns.Fairway</div>
+      ${updatedAt ? `<div class="public-status-update__date">${escapeHtml(updatedAt)}</div>` : ''}
       <p class="public-status-update__note">${escapeHtml(compactText(properties.public_status_note, 220))}</p>
     </section>
   `;
