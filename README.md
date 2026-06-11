@@ -119,6 +119,59 @@ Set these in Vercel Project Settings and locally in `.env.local` when developing
 - Future cluster improvements can use Mapbox `clusterProperties` to aggregate `support_count` into a `support_sum`, but current clusters intentionally remain report-count only.
 - A future “Bekymringsgrad” heatmap can be based on reports, `support_count`, and category weighting. This phase does not add report heatmap layers.
 
+
+## Backoffice status and AI suggestions
+
+Trello is the internal backoffice workspace. Trello comments and AI output are private by default; public map text is only updated by explicit `#public` comments or by approving an AI suggestion through a protected endpoint.
+
+Required report columns:
+
+```sql
+ALTER TABLE public.reports
+ADD COLUMN IF NOT EXISTS status_updated_at timestamptz,
+ADD COLUMN IF NOT EXISTS public_status_note text,
+ADD COLUMN IF NOT EXISTS public_status_updated_at timestamptz,
+ADD COLUMN IF NOT EXISTS public_status_source text,
+ADD COLUMN IF NOT EXISTS ai_internal_summary text,
+ADD COLUMN IF NOT EXISTS ai_public_status_suggestion text,
+ADD COLUMN IF NOT EXISTS ai_priority_suggestion text,
+ADD COLUMN IF NOT EXISTS ai_next_action_suggestion text,
+ADD COLUMN IF NOT EXISTS ai_suggestion_updated_at timestamptz,
+ADD COLUMN IF NOT EXISTS ai_suggestion_status text DEFAULT 'none',
+ADD COLUMN IF NOT EXISTS ai_suggestion_note text;
+```
+
+Allowed `ai_suggestion_status` values are `none`, `draft`, `approved`, and `rejected`.
+
+New optional environment variables:
+
+| Variable | Scope | Default | Purpose |
+| --- | --- | --- | --- |
+| `BACKOFFICE_SECRET` | Server secret | falls back to `DEBUG_SECRET` | Protects internal backoffice AI endpoints. |
+| `OPENAI_API_KEY` | Server secret | unset | Enables AI suggestion generation when backoffice AI is enabled. |
+| `BACKOFFICE_AI_ENABLED` | Server | `false` | Must be `true` before `/api/backoffice/ai/suggest` will call OpenAI. |
+| `BACKOFFICE_AI_MODEL` | Server | `gpt-5.2-mini` | OpenAI model used for suggestions. |
+| `BACKOFFICE_AI_MAX_COMMENTS` | Server | `8` | Limits Trello actions/comments included in AI input, max 10. |
+| `BACKOFFICE_AI_DAILY_LIMIT` | Server | unset | Reserved for future persisted usage limiting. |
+| `BACKOFFICE_AI_REQUIRE_APPROVAL` | Server | `true` | Documents that AI suggestions require approval before publishing. |
+| `BACKOFFICE_AI_TRELLO_COMMENT` | Server | `false` | If `true`, writes AI suggestions back to Trello as an internal “ikke publisert” comment. |
+
+Trello webhook setup:
+
+- Create a Trello webhook for board `NNRJWwld` using callback URL `https://<your-domain>/api/trello/webhook`.
+- Trello verifies the callback with `HEAD /api/trello/webhook`, which returns `200`.
+- `POST /api/trello/webhook` handles card moves between `Ny melding`, `Registrert`, `Startet`, and `Fullført` by updating `reports.status` and `status_updated_at` by `trello_card_id`.
+- Normal Trello comments remain internal. Only comments starting with `#public` update `public_status_note`.
+
+Backoffice AI endpoints:
+
+- `GET /api/backoffice/ai/report?id=<report-id>&secret=<BACKOFFICE_SECRET>` returns safe internal suggestion fields only.
+- `POST /api/backoffice/ai/suggest?id=<report-id>&secret=<BACKOFFICE_SECRET>` creates an AI draft and stores it in `ai_*` fields. It does not change `public_status_note`.
+- `POST /api/backoffice/ai/approve-public-status?id=<report-id>&secret=<BACKOFFICE_SECRET>` copies the existing AI public suggestion to `public_status_note` and marks it approved.
+- `POST /api/backoffice/ai/reject?id=<report-id>&secret=<BACKOFFICE_SECRET>` marks the suggestion rejected and does not change public map text.
+
+Future batch mode can run nightly AI suggestions for cases with new Trello activity, many supports, or status changes. For now AI only runs when explicitly triggered by a protected backoffice endpoint.
+
 ## Local development
 
 ```bash

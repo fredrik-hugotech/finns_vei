@@ -74,6 +74,8 @@ function popupHtml(featureOrProperties = {}) {
       <strong>${escapeHtml(properties.category || 'Melding')}</strong>
       ${properties.description ? `<p>${escapeHtml(compactText(properties.description))}</p>` : ''}
       <p>Status: <strong>${escapeHtml(properties.status || REPORT_STATUS.NEW)}</strong></p>
+      ${properties.public_status_note ? `<p>${escapeHtml(compactText(properties.public_status_note, 180))}</p>` : ''}
+      ${properties.public_status_updated_at ? `<small>Oppdatert: ${escapeHtml(new Date(properties.public_status_updated_at).toLocaleDateString('no-NO'))}</small>` : ''}
       ${reportImagesHtml(properties)}
       ${reportId ? `<button class="support-button" data-report-id="${reportId}" type="button" ${alreadySupported ? 'disabled' : ''}>${supportButtonLabel(rawReportId)}</button>` : missingReportIdDebug}
       <small class="support-count" data-support-count-for="${reportId}">${supportCount} støtter denne saken</small>
