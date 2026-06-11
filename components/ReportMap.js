@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import { DEFAULT_CENTER, REPORT_STATUS } from '../lib/config';
 import { MAP_COLORS, MAP_STYLE } from '../lib/mapStyleConfig';
-import { REPORT_CATEGORY_ICON_IDS } from '../lib/reportCategoryIcons';
 import { normalizeImageEntries } from '../lib/reportImages';
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
@@ -151,31 +150,20 @@ function loadImageElement(src) {
   });
 }
 
-async function loadReportCategoryIcons(map) {
-  const results = await Promise.allSettled(REPORT_CATEGORY_ICON_IDS.map(async (iconId) => {
-    if (map.hasImage(iconId)) return iconId;
-    const image = await loadImageElement(`/map-icons/${iconId}.svg`);
-    if (!map.hasImage(iconId)) map.addImage(iconId, image, { pixelRatio: 2 });
-    return iconId;
-  }));
-
-  const loaded = results
-    .filter((result) => result.status === 'fulfilled')
-    .map((result) => result.value);
-
-  results
-    .filter((result) => result.status === 'rejected')
-    .forEach((result) => console.warn(result.reason));
-
-  return loaded;
+async function loadReportIcon(map) {
+  const iconId = 'report-alert';
+  if (map.hasImage(iconId)) return true;
+  const image = await loadImageElement(`/map-icons/${iconId}.svg`);
+  if (!map.hasImage(iconId)) map.addImage(iconId, image, { pixelRatio: 2 });
+  return true;
 }
 
 async function ensureReportCategorySymbolLayer(map) {
   if (!map.getSource('reports') || map.getLayer('reports-category-symbol')) return;
 
   try {
-    const loadedIcons = await loadReportCategoryIcons(map);
-    if (!loadedIcons.length || map.getLayer('reports-category-symbol')) return;
+    await loadReportIcon(map);
+    if (map.getLayer('reports-category-symbol')) return;
 
     map.addLayer({
       id: 'reports-category-symbol',
@@ -188,7 +176,7 @@ async function ensureReportCategorySymbolLayer(map) {
 
     restoreMapLayerOrder(map);
   } catch (error) {
-    console.warn('Kategoriikoner kunne ikke lastes. Sirkelmarkører brukes som fallback.', error);
+    console.warn('Rapportikon kunne ikke lastes. Sirkelmarkører brukes som fallback.', error);
   }
 }
 

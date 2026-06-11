@@ -114,8 +114,8 @@ Set these in Vercel Project Settings and locally in `.env.local` when developing
 
 ## Map marker identity notes
 
-- Report category icons live in `public/map-icons/` and are loaded as small static SVG assets for the Mapbox `reports-category-symbol` layer. They are intentionally simple monochrome placeholders in a Phosphor-inspired direction and can be replaced later with finalized licensed SVG assets using the same filenames.
-- Category icon mapping is isolated in `lib/reportCategoryIcons.js`; unknown categories fall back to `other` and existing Supabase category values are not renamed.
+- Report markers use one fixed `report-alert` SVG from `public/map-icons/report-alert.svg`; marker circle color continues to show report status.
+- The Mapbox layer id `reports-category-symbol` is kept for compatibility, but it is now a legacy name for the fixed report icon rather than category-specific marker icons. Existing Supabase category values are still preserved and shown in report popups/forms.
 - Future cluster improvements can use Mapbox `clusterProperties` to aggregate `support_count` into a `support_sum`, but current clusters intentionally remain report-count only.
 - A future “Bekymringsgrad” heatmap can be based on reports, `support_count`, and category weighting. This phase does not add report heatmap layers.
 
