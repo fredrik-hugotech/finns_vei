@@ -182,9 +182,30 @@ function accidentSummaryNearReport(report, accidentGeoJson) {
   return `${nearbyYears.length} registrerte ulykker i nærheten: ${years}`;
 }
 
-function accidentSummaryHtml(summary = '') {
+function nearbyReportSummary(report, reportsGeoJson) {
+  if (!report || typeof report !== 'object') return null;
+  const reportPoint = reportCoordinates(report);
+  if (!reportPoint || !Array.isArray(reportsGeoJson?.features)) return null;
+
+  const selectedReportId = String(reportIdFromFeature(report) || '');
+  const nearbyCount = reportsGeoJson.features.filter((feature) => {
+    if (!feature || feature === report || safeProperties(feature).point_count) return false;
+    const featureId = String(reportIdFromFeature(feature) || '');
+    if (selectedReportId && featureId && featureId === selectedReportId) return false;
+    const point = reportCoordinates(feature);
+    if (!point) return false;
+    const distance = distanceMeters(reportPoint, point);
+    if (!selectedReportId && distance < 0.5) return false;
+    return distance <= SELECTED_REPORT_RADIUS_METERS;
+  }).length;
+
+  if (!nearbyCount) return null;
+  return nearbyCount === 1 ? '1 annen sak i nærheten' : `${nearbyCount} andre saker i nærheten`;
+}
+
+function contextSummaryHtml(summary = '') {
   if (!summary) return '';
-  return `<p class="accident-summary">${escapeHtml(summary)}</p>`;
+  return `<p class="nearby-context-summary">${escapeHtml(summary)}</p>`;
 }
 
 // TODO: Later, show “Flere saker i nærheten”.
@@ -217,6 +238,7 @@ function popupHtml(featureOrProperties = {}, options = {}) {
   const showPublicStatus = options.showPublicStatus !== false;
   const showNewReportButton = Boolean(options.showNewReportButton);
   const streetViewUrl = googleStreetViewUrl(featureOrProperties);
+  const nearbyReportsSummary = options.nearbyReportsSummary || '';
   const accidentSummary = options.accidentSummary || '';
   return `
     <article class="report-popup popup-card">
@@ -224,7 +246,8 @@ function popupHtml(featureOrProperties = {}, options = {}) {
       ${properties.description ? `<p>${escapeHtml(compactText(properties.description))}</p>` : ''}
       <p>Status: <strong>${escapeHtml(properties.status || REPORT_STATUS.NEW)}</strong></p>
       ${showPublicStatus ? publicStatusUpdateHtml(properties) : ''}
-      ${accidentSummaryHtml(accidentSummary)}
+      ${contextSummaryHtml(nearbyReportsSummary)}
+      ${contextSummaryHtml(accidentSummary)}
       <small class="support-count" data-support-count-for="${reportId}">${supportCount} støtter denne saken</small>
       ${reportId ? `<button class="support-button" data-report-id="${reportId}" type="button" ${alreadySupported ? 'disabled' : ''}>${supportButtonLabel(rawReportId)}</button>` : missingReportIdDebug}
       ${reportId ? `<button class="share-button" data-report-id="${reportId}" type="button">Del sak</button>` : ''}
@@ -319,17 +342,23 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   const mapRef = useRef(null);
   const markerRef = useRef(null);
   const pointRef = useRef(point);
-  const activeNvdbLayersRef = useRef([]);
+  const activeNvdbLayersRef = useRef(enableNvdbLayers ? ['accidents'] : []);
   const focusedReportRef = useRef(false);
   const [message, setMessage] = useState('');
-  const [activeNvdbLayers, setActiveNvdbLayers] = useState([]);
+  const [activeNvdbLayers, setActiveNvdbLayers] = useState(() => (enableNvdbLayers ? ['accidents'] : []));
   const [selectedReport, setSelectedReport] = useState(null);
   const [accidentGeoJson, setAccidentGeoJson] = useState(null);
+  const [reportsGeoJson, setReportsGeoJson] = useState(null);
   const hasMapboxToken = Boolean(process.env.NEXT_PUBLIC_MAPBOX_TOKEN);
 
   useEffect(() => {
     pointRef.current = point;
   }, [point]);
+
+  useEffect(() => {
+    if (enableNvdbLayers) return;
+    setActiveNvdbLayers([]);
+  }, [enableNvdbLayers]);
 
   useEffect(() => {
     activeNvdbLayersRef.current = activeNvdbLayers;
@@ -522,12 +551,18 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     return accidentSummaryNearReport(selectedReport, accidentGeoJson);
   }, [accidentGeoJson, selectedReport]);
 
+  const selectedNearbyReportSummary = useMemo(() => {
+    if (!selectedReport || typeof selectedReport !== 'object') return null;
+    return nearbyReportSummary(selectedReport, reportsGeoJson);
+  }, [reportsGeoJson, selectedReport]);
+
   const popupOptions = useCallback(() => ({
     showImages: reportPopupMode !== 'reporting',
     showPublicStatus: reportPopupMode !== 'reporting',
     showNewReportButton: reportPopupMode === 'reporting',
+    nearbyReportsSummary: selectedNearbyReportSummary,
     accidentSummary: selectedAccidentSummary,
-  }), [reportPopupMode, selectedAccidentSummary]);
+  }), [reportPopupMode, selectedAccidentSummary, selectedNearbyReportSummary]);
 
   const clearSelectedReport = useCallback(() => {
     setSelectedReport(null);
@@ -585,6 +620,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     const response = await fetch('/api/reports');
     if (!response.ok) throw new Error('Kunne ikke hente meldinger');
     const geojson = await response.json();
+    setReportsGeoJson(geojson);
 
     const source = map.getSource('reports');
     if (source) {
