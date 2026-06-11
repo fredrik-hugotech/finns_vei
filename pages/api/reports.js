@@ -6,9 +6,13 @@ const DEMO_GEOJSON = {
   features: [
     {
       type: 'Feature',
+      id: 'demo-1',
       geometry: { type: 'Point', coordinates: DEFAULT_CENTER },
       properties: {
         id: 'demo-1',
+        report_id: 'demo-1',
+        support_count: 0,
+        image_urls: [],
         status: REPORT_STATUS.NEW,
         category: 'Farlig kryss',
         description: 'Demo-punkt. Koble til Supabase for ekte innmeldinger.',
@@ -31,7 +35,18 @@ export default async function handler(req, res) {
 
   try {
     const geojson = await getPublicReportGeoJson();
-    return res.status(200).json({ ...geojson, meta: { demo: false } });
+    const features = geojson.features || [];
+    const featuresWithReportId = features.filter((feature) => feature.id && feature.properties?.id && feature.properties?.report_id).length;
+    const featuresWithSupportCount = features.filter((feature) => feature.properties && Object.prototype.hasOwnProperty.call(feature.properties, 'support_count')).length;
+    return res.status(200).json({
+      ...geojson,
+      meta: {
+        demo: false,
+        featureCount: features.length,
+        featuresWithReportId,
+        featuresWithSupportCount,
+      },
+    });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: 'Kunne ikke hente kartdata' });

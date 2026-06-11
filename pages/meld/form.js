@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useMemo, useState } from 'react';
 import { DEFAULT_CENTER, REPORT_CATEGORIES, REPORTER_TYPES } from '../../lib/config';
+import { REPORT_IMAGE_MAX_BYTES, REPORT_IMAGE_MAX_COUNT } from '../../lib/reportImages';
 
 const ReportMap = dynamic(() => import('../../components/ReportMap'), {
   ssr: false,
@@ -24,8 +25,9 @@ export default function MeldForm() {
   const isAdult = reporterType === REPORTER_TYPES.ADULT;
   const [point, setPoint] = useState({ lng: DEFAULT_CENTER[0], lat: DEFAULT_CENTER[1] });
   const [form, setForm] = useState(INITIAL_FORM);
-  const [status, setStatus] = useState({ type: 'idle', message: 'Trykk i kartet eller bruk posisjonen din.' });
+  const [status, setStatus] = useState({ type: 'idle', message: 'Velg sted på kartet.' });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [images, setImages] = useState([]);
 
   const positionText = useMemo(() => `${point.lat.toFixed(5)}, ${point.lng.toFixed(5)}`, [point]);
 
@@ -51,33 +53,72 @@ export default function MeldForm() {
     );
   };
 
+
+  const addImages = (event) => {
+    const selected = Array.from(event.target.files || []);
+    event.target.value = '';
+    if (!selected.length) return;
+
+    const nextImages = [...images];
+    for (const file of selected) {
+      if (nextImages.length >= REPORT_IMAGE_MAX_COUNT) {
+        setStatus({ type: 'error', message: `Du kan legge ved maks ${REPORT_IMAGE_MAX_COUNT} bilder.` });
+        break;
+      }
+      if (!file.type.startsWith('image/') && !/\.(heic|heif)$/i.test(file.name)) {
+        setStatus({ type: 'error', message: 'Du kan bare legge ved bildefiler.' });
+        continue;
+      }
+      if (file.size > REPORT_IMAGE_MAX_BYTES) {
+        setStatus({ type: 'error', message: 'Et bilde er for stort. Maks 8 MB per bilde.' });
+        continue;
+      }
+      nextImages.push({
+        id: `${file.name}-${file.lastModified}-${Math.random().toString(16).slice(2)}`,
+        file,
+        previewUrl: URL.createObjectURL(file),
+      });
+    }
+    setImages(nextImages);
+  };
+
+  const removeImage = (id) => {
+    setImages((current) => {
+      const match = current.find((image) => image.id === id);
+      if (match?.previewUrl) URL.revokeObjectURL(match.previewUrl);
+      return current.filter((image) => image.id !== id);
+    });
+  };
+
   const submitReport = async (event) => {
     event.preventDefault();
     setIsSubmitting(true);
     setStatus({ type: 'idle', message: 'Sender meldingen...' });
 
-    const body = {
-      reporter_type: reporterType,
-      category: form.category,
-      description: form.description,
-      lat: point.lat,
-      lng: point.lng,
-      contact_name: isAdult ? form.contact_name : '',
-      contact_email: isAdult ? form.contact_email : '',
-      contact_phone: isAdult ? form.contact_phone : '',
-    };
+    const body = new FormData();
+    body.set('reporter_type', reporterType);
+    body.set('category', form.category);
+    body.set('description', form.description);
+    body.set('lat', String(point.lat));
+    body.set('lng', String(point.lng));
+    body.set('contact_name', isAdult ? form.contact_name : '');
+    body.set('contact_email', isAdult ? form.contact_email : '');
+    body.set('contact_phone', isAdult ? form.contact_phone : '');
+    images.forEach((image) => body.append('images', image.file));
 
     try {
+      if (images.length) setStatus({ type: 'idle', message: 'Laster opp bilde …' });
       const response = await fetch('/api/report', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body,
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || 'Kunne ikke sende meldingen');
 
       setForm(INITIAL_FORM);
-      setStatus({ type: payload.warning ? 'warning' : 'success', message: payload.warning || 'Takk! Meldingen er sendt med status Ny.' });
+      images.forEach((image) => URL.revokeObjectURL(image.previewUrl));
+      setImages([]);
+      setStatus({ type: payload.warning ? 'warning' : 'success', message: payload.warning || 'Takk for at du sier fra!' });
     } catch (error) {
       setStatus({ type: 'error', message: error.message || 'Noe gikk galt.' });
     } finally {
@@ -111,7 +152,7 @@ export default function MeldForm() {
             </label>
 
             <fieldset>
-              <legend>Hva gjelder det?</legend>
+              <legend>Hva føles utrygt?</legend>
               <div className="chip-grid">
                 {REPORT_CATEGORIES.map((category) => (
                   <label className="chip" key={category}>
@@ -123,9 +164,38 @@ export default function MeldForm() {
             </fieldset>
 
             <label>
-              Kort beskrivelse
-              <textarea name="description" value={form.description} onChange={updateField} required minLength={3} maxLength={1200} placeholder="Hva er farlig her?" />
+              Fortell kort
+              <textarea name="description" value={form.description} onChange={updateField} required minLength={3} maxLength={1200} placeholder="Hva gjør stedet utrygt?" />
             </label>
+
+            <section className="image-upload-card" aria-labelledby="image-upload-title">
+              <div>
+                <h2 id="image-upload-title">Legg til bilde</h2>
+                <p>Valgfritt. Bruk kamera eller velg fra mobilen.</p>
+              </div>
+              <div className="image-upload-actions">
+                <label className="image-upload-button">
+                  Kamera
+                  <input type="file" accept="image/*" capture="environment" onChange={addImages} disabled={isSubmitting || images.length >= REPORT_IMAGE_MAX_COUNT} />
+                </label>
+                <label className="image-upload-button image-upload-button--secondary">
+                  Bilder
+                  <input type="file" accept="image/*,.heic,.heif" multiple onChange={addImages} disabled={isSubmitting || images.length >= REPORT_IMAGE_MAX_COUNT} />
+                </label>
+              </div>
+              {images.length > 0 && (
+                <div className="image-preview-grid">
+                  {images.map((image, index) => (
+                    <figure className="image-preview" key={image.id}>
+                      <img src={image.previewUrl} alt={`Valgt bilde ${index + 1}`} />
+                      <figcaption>{Math.round(image.file.size / 1024)} KB</figcaption>
+                      <button type="button" onClick={() => removeImage(image.id)}>Fjern</button>
+                    </figure>
+                  ))}
+                </div>
+              )}
+              <p className="image-upload-note">Du kan sende meldingen uten bilde.</p>
+            </section>
 
             {isAdult && (
               <div className="optional-contact">

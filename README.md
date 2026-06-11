@@ -111,6 +111,67 @@ Set these in Vercel Project Settings and locally in `.env.local` when developing
 - Public map insight should focus on report density/support and accident context. Mapbox clustering is visual-only for now; future case grouping can use `road_reference`, category and a 25–50m distance threshold before introducing fields such as `case_group_id` or `cluster_key`.
 - Accident counts in Trello use the small report radius (`NVDB_ACCIDENT_REPORT_RADIUS_M`) and should be read as “on/near the point”, not broad-area accident analysis.
 
+
+## Map marker identity notes
+
+- Report category icons live in `public/map-icons/` and are loaded as small static SVG assets for the Mapbox `reports-category-symbol` layer. They are intentionally simple monochrome placeholders in a Phosphor-inspired direction and can be replaced later with finalized licensed SVG assets using the same filenames.
+- Category icon mapping is isolated in `lib/reportCategoryIcons.js`; unknown categories fall back to `other` and existing Supabase category values are not renamed.
+- Future cluster improvements can use Mapbox `clusterProperties` to aggregate `support_count` into a `support_sum`, but current clusters intentionally remain report-count only.
+- A future “Bekymringsgrad” heatmap can be based on reports, `support_count`, and category weighting. This phase does not add report heatmap layers.
+
+
+## Backoffice status and AI suggestions
+
+Trello is the internal backoffice workspace. Trello comments and AI output are private by default; public map text is only updated by explicit `#public` comments or by approving an AI suggestion through a protected endpoint.
+
+Required report columns:
+
+```sql
+ALTER TABLE public.reports
+ADD COLUMN IF NOT EXISTS status_updated_at timestamptz,
+ADD COLUMN IF NOT EXISTS public_status_note text,
+ADD COLUMN IF NOT EXISTS public_status_updated_at timestamptz,
+ADD COLUMN IF NOT EXISTS public_status_source text,
+ADD COLUMN IF NOT EXISTS ai_internal_summary text,
+ADD COLUMN IF NOT EXISTS ai_public_status_suggestion text,
+ADD COLUMN IF NOT EXISTS ai_priority_suggestion text,
+ADD COLUMN IF NOT EXISTS ai_next_action_suggestion text,
+ADD COLUMN IF NOT EXISTS ai_suggestion_updated_at timestamptz,
+ADD COLUMN IF NOT EXISTS ai_suggestion_status text DEFAULT 'none',
+ADD COLUMN IF NOT EXISTS ai_suggestion_note text;
+```
+
+Allowed `ai_suggestion_status` values are `none`, `draft`, `approved`, and `rejected`.
+
+New optional environment variables:
+
+| Variable | Scope | Default | Purpose |
+| --- | --- | --- | --- |
+| `BACKOFFICE_SECRET` | Server secret | falls back to `DEBUG_SECRET` | Protects internal backoffice AI endpoints. |
+| `OPENAI_API_KEY` | Server secret | unset | Enables AI suggestion generation when backoffice AI is enabled. |
+| `BACKOFFICE_AI_ENABLED` | Server | `false` | Must be `true` before `/api/backoffice/ai/suggest` will call OpenAI. |
+| `BACKOFFICE_AI_MODEL` | Server | `gpt-5.2-mini` | OpenAI model used for suggestions. |
+| `BACKOFFICE_AI_MAX_COMMENTS` | Server | `8` | Limits Trello actions/comments included in AI input, max 10. |
+| `BACKOFFICE_AI_DAILY_LIMIT` | Server | unset | Reserved for future persisted usage limiting. |
+| `BACKOFFICE_AI_REQUIRE_APPROVAL` | Server | `true` | Documents that AI suggestions require approval before publishing. |
+| `BACKOFFICE_AI_TRELLO_COMMENT` | Server | `false` | If `true`, writes AI suggestions back to Trello as an internal “ikke publisert” comment. |
+
+Trello webhook setup:
+
+- Create a Trello webhook for board `NNRJWwld` using callback URL `https://<your-domain>/api/trello/webhook`.
+- Trello verifies the callback with `HEAD /api/trello/webhook`, which returns `200`.
+- `POST /api/trello/webhook` handles card moves between `Ny melding`, `Registrert`, `Startet`, and `Fullført` by updating `reports.status` and `status_updated_at` by `trello_card_id`.
+- Normal Trello comments remain internal. Only comments starting with `#public` update `public_status_note`.
+
+Backoffice AI endpoints:
+
+- `GET /api/backoffice/ai/report?id=<report-id>&secret=<BACKOFFICE_SECRET>` returns safe internal suggestion fields only.
+- `POST /api/backoffice/ai/suggest?id=<report-id>&secret=<BACKOFFICE_SECRET>` creates an AI draft and stores it in `ai_*` fields. It does not change `public_status_note`.
+- `POST /api/backoffice/ai/approve-public-status?id=<report-id>&secret=<BACKOFFICE_SECRET>` copies the existing AI public suggestion to `public_status_note` and marks it approved.
+- `POST /api/backoffice/ai/reject?id=<report-id>&secret=<BACKOFFICE_SECRET>` marks the suggestion rejected and does not change public map text.
+
+Future batch mode can run nightly AI suggestions for cases with new Trello activity, many supports, or status changes. For now AI only runs when explicitly triggered by a protected backoffice endpoint.
+
 ## Local development
 
 ```bash
@@ -134,3 +195,22 @@ This repo is intended to deploy through the linked Vercel GitHub integration. In
 
 - Optional image upload to Supabase Storage bucket `report-images`.
 - Admin-only workflow views for follow-up status changes.
+
+## Report image uploads
+
+The report form accepts up to three optional images and uploads them server-side to Supabase Storage.
+
+Required Supabase setup for the MVP:
+
+- Create a public Storage bucket named `report-images` (or set `SUPABASE_STORAGE_BUCKET_REPORT_IMAGES`).
+- Ensure `public.reports.image_urls` exists as a `jsonb` array column.
+- Recommended env defaults:
+  - `SUPABASE_STORAGE_BUCKET_REPORT_IMAGES=report-images`
+  - `REPORT_IMAGE_MAX_COUNT=3`
+  - `REPORT_IMAGE_MAX_BYTES=8388608`
+
+Images are stored under `reports/<report-id>/...` and `reports.image_urls` stores objects with `url`, `path`, `content_type`, and `size`. Trello card descriptions include image links, and the app best-effort attaches each public image URL to the Trello card. Report creation still succeeds if image upload or Trello attachment fails.
+
+## Brand assets
+
+A placeholder Finns.Fairway logo lives at `public/brand/finns-fairway-logo.svg`. Replace it with the official local logo file when available, keeping the same path if possible.
