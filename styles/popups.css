@@ -61,6 +61,7 @@
   font-weight: 600;
 }
 
+.three-d-button,
 .street-view-button,
 .share-button,
 .continue-report-button {
@@ -74,6 +75,7 @@
   width: 100%;
 }
 
+.three-d-button,
 .share-button,
 .street-view-button {
   background: var(--color-surface);
@@ -82,6 +84,12 @@
   display: inline-flex;
   justify-content: center;
   text-decoration: none;
+}
+
+.three-d-button--active {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
 }
 
 .continue-report-button {

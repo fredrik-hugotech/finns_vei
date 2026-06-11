@@ -153,6 +153,7 @@ function popupHtml(featureOrProperties = {}, options = {}) {
       ${reportId ? `<button class="support-button" data-report-id="${reportId}" type="button" ${alreadySupported ? 'disabled' : ''}>${supportButtonLabel(rawReportId)}</button>` : missingReportIdDebug}
       ${reportId ? `<button class="share-button" data-report-id="${reportId}" type="button">Del sak</button>` : ''}
       ${streetViewUrl ? `<a class="street-view-button" href="${escapeHtml(streetViewUrl)}" target="_blank" rel="noopener noreferrer">Se Street View</a>` : ''}
+      ${options.showThreeDButton !== false ? `<button class="three-d-button${options.isThreeDActive ? ' three-d-button--active' : ''}" data-toggle-3d="true" type="button" aria-pressed="${options.isThreeDActive ? 'true' : 'false'}">3D</button>` : ''}
       ${showNewReportButton ? '<button class="continue-report-button" data-close-selected="true" type="button">Meld ny sak likevel</button>' : ''}
       ${showImages ? reportImagesHtml(properties) : ''}
     </article>
@@ -183,6 +184,7 @@ const NVDB_LAYERS = [
   { type: 'accidents', label: 'Ulykker', color: MAP_COLORS.accidentLayer },
 ];
 const ACCIDENT_LAYER_IDS = ['accident-heatmap', 'accident-points', 'accident-point-symbol'];
+const THREE_D_BUILDINGS_LAYER_ID = '3d-buildings';
 const SELECTED_REPORT_SOURCE_ID = 'selected-report';
 const SELECTED_REPORT_LAYER_IDS = ['selected-report-radius-fill', 'selected-report-radius-line', 'selected-report-ring'];
 const REPORT_LAYER_IDS = ['selected-report-radius-fill', 'selected-report-radius-line', 'reports-clusters', 'reports-cluster-count', 'reports-circle', 'reports-category-symbol', 'selected-report-ring', 'reports-support-badge'];
@@ -237,6 +239,43 @@ async function ensureReportCategorySymbolLayer(map) {
   }
 }
 
+
+function firstExistingLayer(map, layerIds = []) {
+  return layerIds.find((layerId) => map.getLayer(layerId));
+}
+
+function ensureThreeDBuildingsLayer(map) {
+  if (!map?.isStyleLoaded?.()) return false;
+  if (!map.getSource('composite')) return false;
+
+  if (map.getLayer(THREE_D_BUILDINGS_LAYER_ID)) {
+    map.setLayoutProperty(THREE_D_BUILDINGS_LAYER_ID, 'visibility', 'visible');
+    return true;
+  }
+
+  try {
+    map.addLayer({
+      id: THREE_D_BUILDINGS_LAYER_ID,
+      source: 'composite',
+      'source-layer': 'building',
+      type: 'fill-extrusion',
+      minzoom: 14,
+      filter: ['==', ['get', 'extrude'], 'true'],
+      paint: MAP_STYLE.threeDBuildingsPaint,
+    }, firstExistingLayer(map, ['accident-heatmap', 'accident-points', 'selected-report-radius-fill', 'reports-clusters', 'reports-circle']));
+    return true;
+  } catch (error) {
+    console.warn('3D-bygg kunne ikke aktiveres.', error);
+    return false;
+  }
+}
+
+function hideThreeDBuildingsLayer(map) {
+  if (map?.getLayer?.(THREE_D_BUILDINGS_LAYER_ID)) {
+    map.setLayoutProperty(THREE_D_BUILDINGS_LAYER_ID, 'visibility', 'none');
+  }
+}
+
 export default function ReportMap({ selectable = false, point, onPointChange, className = 'map-canvas', showReports = true, enableNvdbLayers = false, reportPopupMode = 'full' }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
@@ -247,6 +286,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   const [message, setMessage] = useState('');
   const [activeNvdbLayers, setActiveNvdbLayers] = useState([]);
   const [selectedReport, setSelectedReport] = useState(null);
+  const [isThreeDEnabled, setIsThreeDEnabled] = useState(false);
   const hasMapboxToken = Boolean(process.env.NEXT_PUBLIC_MAPBOX_TOKEN);
 
   useEffect(() => {
@@ -448,10 +488,14 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     showImages: reportPopupMode !== 'reporting',
     showPublicStatus: reportPopupMode !== 'reporting',
     showNewReportButton: reportPopupMode === 'reporting',
-  }), [reportPopupMode]);
+    isThreeDActive: isThreeDEnabled,
+  }), [isThreeDEnabled, reportPopupMode]);
 
   const clearSelectedReport = useCallback(() => {
     setSelectedReport(null);
+    setIsThreeDEnabled(false);
+    const map = mapRef.current;
+    if (map) map.easeTo({ pitch: 0, duration: 450 });
   }, []);
 
   const selectReport = useCallback((feature, { fly = true } = {}) => {
@@ -464,13 +508,15 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       const isMobile = typeof window !== 'undefined' && window.matchMedia?.('(max-width: 640px)').matches;
       map.flyTo({
         center: [coordinates.lng, coordinates.lat],
-        zoom: Math.max(map.getZoom(), 15.5),
+        zoom: Math.max(map.getZoom(), isThreeDEnabled ? 16 : 15.5),
+        pitch: isThreeDEnabled ? (isMobile ? 55 : 60) : map.getPitch(),
+        bearing: isThreeDEnabled ? (map.getBearing() || 28) : map.getBearing(),
         offset: isMobile ? [0, -120] : [0, 0],
         duration: 700,
         essential: true,
       });
     }
-  }, []);
+  }, [isThreeDEnabled]);
 
   const focusSharedReport = useCallback((geojson) => {
     const map = mapRef.current;
@@ -633,6 +679,12 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       }
     };
 
+    const handleThreeDClick = (event) => {
+      const button = event.target?.closest?.('[data-toggle-3d]');
+      if (!button || !selectedReport) return;
+      setIsThreeDEnabled((current) => !current);
+    };
+
     const handleSupportClick = async (event) => {
       const button = event.target?.closest?.('.support-button');
       if (!button) return;
@@ -684,13 +736,46 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
 
     window.addEventListener('click', handlePopupCloseClick);
     window.addEventListener('click', handleShareClick);
+    window.addEventListener('click', handleThreeDClick);
     window.addEventListener('click', handleSupportClick);
     return () => {
       window.removeEventListener('click', handlePopupCloseClick);
       window.removeEventListener('click', handleShareClick);
+      window.removeEventListener('click', handleThreeDClick);
       window.removeEventListener('click', handleSupportClick);
     };
-  }, [clearSelectedReport, getSupportToken, loadReports, showReports]);
+  }, [clearSelectedReport, getSupportToken, loadReports, selectedReport, showReports]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+
+    if (!selectedReport || !isThreeDEnabled) {
+      hideThreeDBuildingsLayer(map);
+      if (!selectedReport || map.getPitch() > 0) map.easeTo({ pitch: 0, duration: 450 });
+      return;
+    }
+
+    if (!ensureThreeDBuildingsLayer(map)) {
+      setIsThreeDEnabled(false);
+      setMessage('3D er ikke tilgjengelig i dette kartet.');
+      return;
+    }
+
+    const coordinates = reportCoordinates(selectedReport);
+    if (!coordinates) return;
+    const isMobile = typeof window !== 'undefined' && window.matchMedia?.('(max-width: 640px)').matches;
+    map.easeTo({
+      center: [coordinates.lng, coordinates.lat],
+      zoom: Math.max(map.getZoom(), 16),
+      pitch: isMobile ? 55 : 60,
+      bearing: map.getBearing() || 28,
+      offset: isMobile ? [0, -120] : [0, 0],
+      duration: 650,
+      essential: true,
+    });
+    restoreMapLayerOrder(map);
+  }, [isThreeDEnabled, selectedReport]);
 
   useEffect(() => {
     const map = mapRef.current;
