@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
-import { DEFAULT_CENTER, REPORT_STATUS, STATUS_COLORS } from '../lib/config';
+import { DEFAULT_CENTER, REPORT_STATUS } from '../lib/config';
+import { MAP_COLORS, MAP_STYLE } from '../lib/mapStyleConfig';
+import { REPORT_CATEGORY_ICON_IDS } from '../lib/reportCategoryIcons';
+import { normalizeImageEntries } from '../lib/reportImages';
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 
@@ -13,11 +16,10 @@ function escapeHtml(value = '') {
     .replace(/'/g, '&#039;');
 }
 
-function formatDate(value) {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  return new Intl.DateTimeFormat('no-NO', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
+function compactText(value = '', maxLength = 140) {
+  const text = String(value || '').trim();
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength - 1).trim()}…`;
 }
 
 function browserHasSupported(reportId) {
@@ -29,37 +31,68 @@ function supportButtonLabel(reportId) {
   return browserHasSupported(reportId) ? 'Du har støttet denne saken' : 'Støtt denne saken';
 }
 
-function popupHtml(properties = {}) {
-  const rawReportId = properties.id || '';
+function reportIdFromFeature(featureOrProperties = {}) {
+  const properties = featureOrProperties.properties || featureOrProperties || {};
+  return properties.id
+    || properties.report_id
+    || properties.reportId
+    || properties.uuid
+    || featureOrProperties.id
+    || '';
+}
+
+function shouldShowMissingReportIdDebug() {
+  return process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_VERCEL_ENV === 'preview';
+}
+
+
+function reportImagesHtml(properties = {}) {
+  const images = normalizeImageEntries(properties.image_urls || properties.image_urls_json);
+  if (!images.length) return '';
+  return `
+    <div class="report-popup-images popup-images">
+      ${images.slice(0, 3).map((image, index) => `
+        <a href="${escapeHtml(image.url)}" target="_blank" rel="noreferrer">
+          <img src="${escapeHtml(image.url)}" alt="Bilde ${index + 1} fra innmelding" loading="lazy" />
+        </a>
+      `).join('')}
+    </div>
+  `;
+}
+
+function popupHtml(featureOrProperties = {}) {
+  const properties = featureOrProperties.properties || featureOrProperties || {};
+  const rawReportId = reportIdFromFeature(featureOrProperties);
   const reportId = escapeHtml(rawReportId);
   const supportCount = Number(properties.support_count || 0);
   const alreadySupported = browserHasSupported(rawReportId);
+  const missingReportIdDebug = !reportId && shouldShowMissingReportIdDebug()
+    ? '<small class="support-debug">Mangler reportId for støtteknapp.</small>'
+    : '';
   return `
-    <article class="popup-card">
+    <article class="report-popup popup-card">
       <strong>${escapeHtml(properties.category || 'Melding')}</strong>
-      <p>${escapeHtml(properties.description || '')}</p>
+      ${properties.description ? `<p>${escapeHtml(compactText(properties.description))}</p>` : ''}
       <p>Status: <strong>${escapeHtml(properties.status || REPORT_STATUS.NEW)}</strong></p>
-      ${properties.road_reference ? `<p>Vegreferanse: ${escapeHtml(properties.road_reference)}</p>` : ''}
-      ${properties.created_at ? `<small>${escapeHtml(formatDate(properties.created_at))}</small>` : ''}
-      ${reportId ? `<button class="support-button" data-report-id="${reportId}" type="button" ${alreadySupported ? 'disabled' : ''}>${supportButtonLabel(rawReportId)}</button>` : ''}
+      ${properties.public_status_note ? `<p>${escapeHtml(compactText(properties.public_status_note, 180))}</p>` : ''}
+      ${properties.public_status_updated_at ? `<small>Oppdatert: ${escapeHtml(new Date(properties.public_status_updated_at).toLocaleDateString('no-NO'))}</small>` : ''}
+      ${reportImagesHtml(properties)}
+      ${reportId ? `<button class="support-button" data-report-id="${reportId}" type="button" ${alreadySupported ? 'disabled' : ''}>${supportButtonLabel(rawReportId)}</button>` : missingReportIdDebug}
       <small class="support-count" data-support-count-for="${reportId}">${supportCount} støtter denne saken</small>
     </article>
   `;
 }
 
-function accidentPopupHtml(properties = {}, coordinates = []) {
+function accidentPopupHtml(properties = {}) {
   const rows = [
     properties.date ? ['Dato', properties.date] : null,
     properties.year ? ['År', properties.year] : null,
     properties.severity ? ['Alvorlighet', properties.severity] : null,
     properties.accident_type ? ['Type', properties.accident_type] : null,
-    properties.description ? ['Beskrivelse', properties.description] : null,
-    properties.road_reference ? ['Vegreferanse', properties.road_reference] : null,
-    coordinates.length >= 2 ? ['Koordinater', `${Number(coordinates[1]).toFixed(5)}, ${Number(coordinates[0]).toFixed(5)}`] : null,
   ].filter(Boolean);
 
   return `
-    <article class="popup-card popup-card--accident">
+    <article class="accident-popup popup-card popup-card--accident">
       <strong>Ulykke</strong>
       ${rows.map(([label, value]) => `<p><span>${escapeHtml(label)}:</span> ${escapeHtml(value)}</p>`).join('')}
       <small>Kilde: ${escapeHtml(properties.source || 'NVDB')}</small>
@@ -67,10 +100,75 @@ function accidentPopupHtml(properties = {}, coordinates = []) {
   `;
 }
 
-const MIN_ACCIDENT_ZOOM = 13;
+const MIN_ACCIDENT_FETCH_ZOOM = 12;
+const ACCIDENT_HEATMAP_MAX_ZOOM = 15;
+const ACCIDENT_POINT_MIN_ZOOM = 15;
 const NVDB_LAYERS = [
-  { type: 'accidents', label: 'Ulykker', color: '#dc2626' },
+  { type: 'accidents', label: 'Ulykker', color: MAP_COLORS.accidentLayer },
 ];
+const ACCIDENT_LAYER_IDS = ['accident-heatmap', 'accident-points', 'accident-point-symbol'];
+const REPORT_LAYER_IDS = ['reports-clusters', 'reports-cluster-count', 'reports-circle', 'reports-category-symbol', 'reports-support-badge'];
+
+function moveLayersToTop(map, layerIds) {
+  layerIds.forEach((layerId) => {
+    if (map.getLayer(layerId)) map.moveLayer(layerId);
+  });
+}
+
+function restoreMapLayerOrder(map) {
+  moveLayersToTop(map, ACCIDENT_LAYER_IDS);
+  moveLayersToTop(map, REPORT_LAYER_IDS);
+}
+
+function loadImageElement(src) {
+  return new Promise((resolve, reject) => {
+    const image = new Image(32, 32);
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error(`Kunne ikke laste kartikon: ${src}`));
+    image.src = src;
+  });
+}
+
+async function loadReportCategoryIcons(map) {
+  const results = await Promise.allSettled(REPORT_CATEGORY_ICON_IDS.map(async (iconId) => {
+    if (map.hasImage(iconId)) return iconId;
+    const image = await loadImageElement(`/map-icons/${iconId}.svg`);
+    if (!map.hasImage(iconId)) map.addImage(iconId, image, { pixelRatio: 2 });
+    return iconId;
+  }));
+
+  const loaded = results
+    .filter((result) => result.status === 'fulfilled')
+    .map((result) => result.value);
+
+  results
+    .filter((result) => result.status === 'rejected')
+    .forEach((result) => console.warn(result.reason));
+
+  return loaded;
+}
+
+async function ensureReportCategorySymbolLayer(map) {
+  if (!map.getSource('reports') || map.getLayer('reports-category-symbol')) return;
+
+  try {
+    const loadedIcons = await loadReportCategoryIcons(map);
+    if (!loadedIcons.length || map.getLayer('reports-category-symbol')) return;
+
+    map.addLayer({
+      id: 'reports-category-symbol',
+      type: 'symbol',
+      source: 'reports',
+      filter: ['!', ['has', 'point_count']],
+      layout: MAP_STYLE.reportCategorySymbolLayout,
+      paint: MAP_STYLE.reportCategorySymbolPaint,
+    }, map.getLayer('reports-support-badge') ? 'reports-support-badge' : undefined);
+
+    restoreMapLayerOrder(map);
+  } catch (error) {
+    console.warn('Kategoriikoner kunne ikke lastes. Sirkelmarkører brukes som fallback.', error);
+  }
+}
 
 export default function ReportMap({ selectable = false, point, onPointChange, className = 'map-canvas', showReports = true, enableNvdbLayers = false }) {
   const containerRef = useRef(null);
@@ -92,7 +190,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     if (map) {
       NVDB_LAYERS.forEach((layer) => {
         const layerIds = layer.type === 'accidents'
-          ? ['accident-clusters', 'accident-cluster-count', 'accident-points']
+          ? ACCIDENT_LAYER_IDS
           : [`nvdb-${layer.type}-line`, `nvdb-${layer.type}-point`, `nvdb-${layer.type}-fill`];
         layerIds.forEach((layerId) => {
           if (map.getLayer(layerId)) {
@@ -109,7 +207,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
 
     const lngLat = [nextPoint.lng, nextPoint.lat];
     if (!markerRef.current) {
-      markerRef.current = new mapboxgl.Marker({ color: '#111827', draggable: selectable })
+      markerRef.current = new mapboxgl.Marker({ color: MAP_STYLE.selectableMarker.color, draggable: selectable })
         .setLngLat(lngLat)
         .addTo(map);
 
@@ -130,8 +228,8 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     const activeLayers = activeNvdbLayersRef.current;
     if (!map || !enableNvdbLayers || activeLayers.length === 0) return;
 
-    if (activeLayers.includes('accidents') && map.getZoom() < MIN_ACCIDENT_ZOOM) {
-      setMessage('Zoom inn for å se ulykker');
+    if (activeLayers.includes('accidents') && map.getZoom() < MIN_ACCIDENT_FETCH_ZOOM) {
+      setMessage('Zoom inn');
       const source = map.getSource('accident-source');
       if (source) source.setData({ type: 'FeatureCollection', features: [], meta: { reason: 'zoom_too_low' } });
       return;
@@ -150,10 +248,23 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       if (!response.ok) throw new Error(`Kunne ikke hente ${layerConfig.label}`);
       const geojson = await response.json();
       const featureCount = geojson.meta?.featureCount ?? geojson.features?.length ?? 0;
+      const rawObjectCount = Number(geojson.meta?.rawObjectCount ?? 0);
+      const pointFeatureCount = Number(geojson.meta?.pointFeatureCount ?? featureCount);
+      const invalidGeometryCount = Number(geojson.meta?.invalidGeometryCount ?? 0);
       if (geojson.meta?.degraded) {
-        setMessage('Ulykkeslag utilgjengelig');
+        setMessage('Ulykker utilgjengelig');
+      } else if (geojson.meta?.reason === 'zoom_too_low' || geojson.meta?.reason === 'bbox_too_broad') {
+        setMessage('Zoom inn');
+      } else if (layerType === 'accidents' && rawObjectCount > 0 && pointFeatureCount === 0) {
+        const geometryDebug = shouldShowMissingReportIdDebug() && invalidGeometryCount > 0 ? ' (geometri kunne ikke tolkes)' : '';
+        setMessage(`Ulykker: 0${geometryDebug}`);
       } else if (layerType === 'accidents') {
-        setMessage(featureCount > 0 ? `Ulykker lastet: ${featureCount}` : 'Ingen ulykker i kartutsnittet');
+        const geometryDebug = shouldShowMissingReportIdDebug() && invalidGeometryCount > 0 ? ` (${invalidGeometryCount} geometri kunne ikke tolkes)` : '';
+        if (pointFeatureCount > 0 && map.getZoom() < ACCIDENT_POINT_MIN_ZOOM) {
+          setMessage(`Varmekart${geometryDebug}`);
+        } else {
+          setMessage(pointFeatureCount > 0 ? `Ulykker: ${pointFeatureCount}${geometryDebug}` : 'Ingen ulykker');
+        }
       } else {
         setMessage(`NVDB-lag lastet: ${featureCount} objekter`);
       }
@@ -163,86 +274,62 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       if (source) {
         source.setData(geojson);
         const layerIds = layerType === 'accidents'
-          ? ['accident-clusters', 'accident-cluster-count', 'accident-points']
+          ? ACCIDENT_LAYER_IDS
           : ['line', 'point', 'fill'].map((shape) => `${sourceId}-${shape}`);
         layerIds.forEach((layerId) => {
           if (map.getLayer(layerId)) map.setLayoutProperty(layerId, 'visibility', 'visible');
         });
+        if (layerType === 'accidents') restoreMapLayerOrder(map);
         return;
       }
 
       map.addSource(sourceId, {
         type: 'geojson',
         data: geojson,
-        cluster: layerType === 'accidents',
-        clusterMaxZoom: 15,
-        clusterRadius: 42,
+        cluster: false,
       });
 
       if (layerType === 'accidents') {
         map.addLayer({
-          id: 'accident-clusters',
-          type: 'circle',
+          id: 'accident-heatmap',
+          type: 'heatmap',
           source: sourceId,
-          filter: ['has', 'point_count'],
-          paint: {
-            'circle-color': '#7f1d1d',
-            'circle-radius': ['step', ['get', 'point_count'], 15, 10, 20, 50, 26],
-            'circle-opacity': 0.9,
-            'circle-stroke-color': '#fee2e2',
-            'circle-stroke-width': 2,
-          },
-        });
-        map.addLayer({
-          id: 'accident-cluster-count',
-          type: 'symbol',
-          source: sourceId,
-          filter: ['has', 'point_count'],
-          layout: {
-            'text-field': ['get', 'point_count_abbreviated'],
-            'text-size': 12,
-            'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-          },
-          paint: { 'text-color': '#ffffff' },
+          minzoom: MIN_ACCIDENT_FETCH_ZOOM,
+          maxzoom: ACCIDENT_HEATMAP_MAX_ZOOM,
+          paint: MAP_STYLE.accidentHeatmapPaint,
         });
         map.addLayer({
           id: 'accident-points',
           type: 'circle',
           source: sourceId,
-          filter: ['!', ['has', 'point_count']],
-          paint: {
-            'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 5, 16, 8],
-            'circle-color': '#991b1b',
-            'circle-opacity': 0.9,
-            'circle-stroke-color': '#fee2e2',
-            'circle-stroke-width': 2,
-          },
+          minzoom: ACCIDENT_POINT_MIN_ZOOM,
+          filter: ['match', ['geometry-type'], ['Point'], true, false],
+          paint: MAP_STYLE.accidentPointPaint,
+        });
+        map.addLayer({
+          id: 'accident-point-symbol',
+          type: 'symbol',
+          source: sourceId,
+          minzoom: ACCIDENT_POINT_MIN_ZOOM,
+          filter: ['match', ['geometry-type'], ['Point'], true, false],
+          layout: MAP_STYLE.accidentSymbolLayout,
+          paint: MAP_STYLE.accidentSymbolPaint,
         });
 
-        map.on('mouseenter', 'accident-clusters', () => { map.getCanvas().style.cursor = 'pointer'; });
-        map.on('mouseleave', 'accident-clusters', () => { map.getCanvas().style.cursor = ''; });
-        map.on('click', 'accident-clusters', (event) => {
-          const feature = event.features?.[0];
-          const clusterId = feature?.properties?.cluster_id;
-          const sourceForCluster = map.getSource(sourceId);
-          if (!sourceForCluster || clusterId === undefined) return;
-          new mapboxgl.Popup({ maxWidth: '240px' })
-            .setLngLat(feature.geometry.coordinates)
-            .setHTML(`<strong>${feature.properties.point_count} ulykker i området</strong>`)
-            .addTo(map);
-          sourceForCluster.getClusterExpansionZoom(clusterId, (error, zoom) => {
-            if (!error) map.easeTo({ center: feature.geometry.coordinates, zoom });
-          });
-        });
-        map.on('mouseenter', 'accident-points', () => { map.getCanvas().style.cursor = 'pointer'; });
-        map.on('mouseleave', 'accident-points', () => { map.getCanvas().style.cursor = ''; });
-        map.on('click', 'accident-points', (event) => {
+        restoreMapLayerOrder(map);
+
+        const showAccidentPopup = (event) => {
           const feature = event.features?.[0];
           if (!feature) return;
-          new mapboxgl.Popup({ maxWidth: '300px' })
+          new mapboxgl.Popup({ maxWidth: '260px' })
             .setLngLat(event.lngLat)
-            .setHTML(accidentPopupHtml(feature.properties, feature.geometry?.coordinates || []))
+            .setHTML(accidentPopupHtml(feature.properties))
             .addTo(map);
+        };
+        ['accident-points', 'accident-point-symbol'].forEach((layerId) => {
+          map.on('mouseenter', layerId, () => { map.getCanvas().style.cursor = 'pointer'; });
+          map.on('mouseleave', layerId, () => { map.getCanvas().style.cursor = ''; });
+          map.on('click', layerId, showAccidentPopup);
         });
         return;
       }
@@ -252,34 +339,21 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         type: 'fill',
         source: sourceId,
         filter: ['match', ['geometry-type'], ['Polygon', 'MultiPolygon'], true, false],
-        paint: {
-          'fill-color': layerConfig.color,
-          'fill-opacity': 0.22,
-        },
+        paint: MAP_STYLE.nvdbFillPaint(layerConfig.color),
       });
       map.addLayer({
         id: `${sourceId}-line`,
         type: 'line',
         source: sourceId,
         filter: ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false],
-        paint: {
-          'line-color': layerConfig.color,
-          'line-width': ['interpolate', ['linear'], ['zoom'], 9, 4, 15, 8],
-          'line-opacity': 0.9,
-        },
+        paint: MAP_STYLE.nvdbLinePaint(layerConfig.color),
       });
       map.addLayer({
         id: `${sourceId}-point`,
         type: 'circle',
         source: sourceId,
         filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
-        paint: {
-          'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 7, 15, 12],
-          'circle-color': layerConfig.color,
-          'circle-opacity': 0.95,
-          'circle-stroke-color': '#111827',
-          'circle-stroke-width': 2,
-        },
+        paint: MAP_STYLE.nvdbPointPaint(layerConfig.color),
       });
 
       map.on('click', `${sourceId}-point`, (event) => {
@@ -312,6 +386,8 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     const source = map.getSource('reports');
     if (source) {
       source.setData(geojson);
+      ensureReportCategorySymbolLayer(map);
+      moveLayersToTop(map, REPORT_LAYER_IDS);
       return;
     }
 
@@ -319,53 +395,30 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       type: 'geojson',
       data: geojson,
       cluster: true,
-      clusterMaxZoom: 14,
-      clusterRadius: 48,
+      clusterMaxZoom: MAP_STYLE.reportClusterSource.clusterMaxZoom,
+      clusterRadius: MAP_STYLE.reportClusterSource.clusterRadius,
     });
     map.addLayer({
       id: 'reports-clusters',
       type: 'circle',
       source: 'reports',
       filter: ['has', 'point_count'],
-      paint: {
-        'circle-color': '#2563eb',
-        'circle-radius': ['step', ['get', 'point_count'], 18, 5, 24, 15, 32],
-        'circle-opacity': 0.9,
-        'circle-stroke-color': '#ffffff',
-        'circle-stroke-width': 3,
-      },
+      paint: MAP_STYLE.reportClusterPaint,
     });
     map.addLayer({
       id: 'reports-cluster-count',
       type: 'symbol',
       source: 'reports',
       filter: ['has', 'point_count'],
-      layout: {
-        'text-field': ['get', 'point_count_abbreviated'],
-        'text-size': 13,
-      },
-      paint: { 'text-color': '#ffffff' },
+      layout: MAP_STYLE.reportClusterCountLayout,
+      paint: MAP_STYLE.reportClusterCountPaint,
     });
     map.addLayer({
       id: 'reports-circle',
       type: 'circle',
       source: 'reports',
       filter: ['!', ['has', 'point_count']],
-      paint: {
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 7, 15, 13],
-        'circle-color': [
-          'match',
-          ['get', 'status'],
-          REPORT_STATUS.NEW, STATUS_COLORS[REPORT_STATUS.NEW],
-          REPORT_STATUS.REGISTERED, STATUS_COLORS[REPORT_STATUS.REGISTERED],
-          REPORT_STATUS.STARTED, STATUS_COLORS[REPORT_STATUS.STARTED],
-          REPORT_STATUS.DONE, STATUS_COLORS[REPORT_STATUS.DONE],
-          '#6b7280',
-        ],
-        'circle-stroke-color': '#ffffff',
-        'circle-stroke-width': 3,
-        'circle-opacity': 0.95,
-      },
+      paint: MAP_STYLE.reportPointPaint,
     });
 
     map.addLayer({
@@ -373,19 +426,11 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       type: 'symbol',
       source: 'reports',
       filter: ['all', ['!', ['has', 'point_count']], ['>', ['coalesce', ['to-number', ['get', 'support_count']], 0], 0]],
-      layout: {
-        'text-field': ['concat', '❤️ ', ['to-string', ['get', 'support_count']]],
-        'text-size': 10,
-        'text-offset': [1.05, -1.05],
-        'text-anchor': 'center',
-        'text-allow-overlap': true,
-      },
-      paint: {
-        'text-color': '#7f1d1d',
-        'text-halo-color': '#ffffff',
-        'text-halo-width': 2,
-      },
+      layout: MAP_STYLE.reportSupportBadgeLayout,
+      paint: MAP_STYLE.reportSupportBadgePaint,
     });
+
+    moveLayersToTop(map, REPORT_LAYER_IDS);
 
     map.on('mouseenter', 'reports-circle', () => { map.getCanvas().style.cursor = 'pointer'; });
     map.on('mouseleave', 'reports-circle', () => { map.getCanvas().style.cursor = ''; });
@@ -405,11 +450,12 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       const feature = event.features?.[0];
       if (!feature) return;
       event.originalEvent.cancelBubble = true;
-      new mapboxgl.Popup({ maxWidth: '320px' })
+      new mapboxgl.Popup({ maxWidth: '280px' })
         .setLngLat(feature.geometry.coordinates)
-        .setHTML(popupHtml(feature.properties))
+        .setHTML(popupHtml(feature))
         .addTo(map);
     });
+    ensureReportCategorySymbolLayer(map);
   }, [showReports]);
 
 
@@ -447,7 +493,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           body: JSON.stringify({ reportId, supportToken: getSupportToken() }),
         });
         const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error || 'Kunne ikke støtte saken');
+        if (!response.ok) throw new Error(payload.code || payload.error || 'Kunne ikke støtte saken');
         window.localStorage.setItem(storageKey, '1');
         button.textContent = 'Du har støttet denne saken';
         button.disabled = true;
@@ -460,7 +506,8 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         console.error(error);
         button.disabled = false;
         button.textContent = 'Støtt denne saken';
-        setMessage('Kunne ikke støtte saken akkurat nå.');
+        const debugSuffix = shouldShowMissingReportIdDebug() && error?.message ? ` (${error.message})` : '';
+        setMessage(`Kunne ikke støtte saken akkurat nå.${debugSuffix}`);
       }
     };
 
@@ -490,14 +537,14 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         await refreshNvdbLayers();
       } catch (error) {
         console.error(error);
-        setMessage('Kartet åpnet, men meldinger kunne ikke hentes akkurat nå.');
+        setMessage('Kartdata kunne ikke hentes.');
       }
     });
 
     map.on('moveend', () => {
       refreshNvdbLayers().catch((error) => {
         console.error(error);
-        setMessage('NVDB-lag kunne ikke hentes akkurat nå.');
+        setMessage('Lag kunne ikke hentes.');
       });
     });
 
@@ -524,7 +571,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   useEffect(() => {
     refreshNvdbLayers().catch((error) => {
       console.error(error);
-      setMessage('NVDB-lag kunne ikke hentes akkurat nå.');
+      setMessage('Lag kunne ikke hentes.');
     });
   }, [refreshNvdbLayers]);
 
@@ -536,8 +583,8 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     <div className="map-wrap">
       <div ref={containerRef} className={className} />
       {enableNvdbLayers && (
-        <div className="nvdb-toggle-card" aria-label="NVDB-lag">
-          <strong>NVDB-lag</strong>
+        <div className="layer-control nvdb-toggle-card" aria-label="NVDB-lag">
+          <strong>Lag</strong>
           {NVDB_LAYERS.map((layer) => (
             <button
               key={layer.type}
@@ -550,7 +597,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           ))}
         </div>
       )}
-      {message && <div className="map-message">{message}</div>}
+      {message && <div className="accident-status map-message">{message}</div>}
     </div>
   );
 }
