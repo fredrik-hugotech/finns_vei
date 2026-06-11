@@ -258,7 +258,6 @@ const NVDB_LAYERS = [
   { type: 'accidents', label: 'Ulykker', color: MAP_COLORS.accidentLayer },
 ];
 const ACCIDENT_LAYER_IDS = ['accident-points', 'accident-point-symbol'];
-const THREE_D_BUILDINGS_LAYER_ID = '3d-buildings';
 const SELECTED_REPORT_SOURCE_ID = 'selected-report';
 const SELECTED_REPORT_RADIUS_METERS = 40;
 const SELECTED_REPORT_LAYER_IDS = ['selected-report-radius-fill', 'selected-report-radius-line', 'selected-report-ring'];
@@ -315,42 +314,6 @@ async function ensureReportCategorySymbolLayer(map) {
 }
 
 
-function firstExistingLayer(map, layerIds = []) {
-  return layerIds.find((layerId) => map.getLayer(layerId));
-}
-
-function ensureThreeDBuildingsLayer(map) {
-  if (!map?.isStyleLoaded?.()) return false;
-  if (!map.getSource('composite')) return false;
-
-  if (map.getLayer(THREE_D_BUILDINGS_LAYER_ID)) {
-    map.setLayoutProperty(THREE_D_BUILDINGS_LAYER_ID, 'visibility', 'visible');
-    return true;
-  }
-
-  try {
-    map.addLayer({
-      id: THREE_D_BUILDINGS_LAYER_ID,
-      source: 'composite',
-      'source-layer': 'building',
-      type: 'fill-extrusion',
-      minzoom: 14,
-      filter: ['==', ['get', 'extrude'], 'true'],
-      paint: MAP_STYLE.threeDBuildingsPaint,
-    }, firstExistingLayer(map, ['accident-points', 'selected-report-radius-fill', 'reports-clusters', 'reports-circle']));
-    return true;
-  } catch (error) {
-    console.warn('3D-bygg kunne ikke aktiveres.', error);
-    return false;
-  }
-}
-
-function hideThreeDBuildingsLayer(map) {
-  if (map?.getLayer?.(THREE_D_BUILDINGS_LAYER_ID)) {
-    map.setLayoutProperty(THREE_D_BUILDINGS_LAYER_ID, 'visibility', 'none');
-  }
-}
-
 export default function ReportMap({ selectable = false, point, onPointChange, className = 'map-canvas', showReports = true, enableNvdbLayers = false, reportPopupMode = 'full' }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
@@ -361,8 +324,6 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   const [message, setMessage] = useState('');
   const [activeNvdbLayers, setActiveNvdbLayers] = useState([]);
   const [selectedReport, setSelectedReport] = useState(null);
-  const [isThreeDActive, setIsThreeDActive] = useState(false);
-  const [mapZoom, setMapZoom] = useState(null);
   const [accidentGeoJson, setAccidentGeoJson] = useState(null);
   const hasMapboxToken = Boolean(process.env.NEXT_PUBLIC_MAPBOX_TOKEN);
 
@@ -570,12 +531,6 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
 
   const clearSelectedReport = useCallback(() => {
     setSelectedReport(null);
-    setIsThreeDActive(false);
-    const map = mapRef.current;
-    if (map) {
-      hideThreeDBuildingsLayer(map);
-      map.easeTo({ pitch: 0, duration: 450 });
-    }
   }, []);
 
   const handleSelectedReportClose = useCallback((event) => {
@@ -598,15 +553,14 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       const isMobile = typeof window !== 'undefined' && window.matchMedia?.('(max-width: 640px)').matches;
       map.flyTo({
         center: [coordinates.lng, coordinates.lat],
-        zoom: Math.max(map.getZoom(), isThreeDActive ? 16 : 15.5),
-        pitch: isThreeDActive ? (isMobile ? 55 : 60) : map.getPitch(),
-        bearing: isThreeDActive ? (map.getBearing() || 28) : map.getBearing(),
+        zoom: Math.max(map.getZoom(), 15.5),
+        pitch: 0,
         offset: isMobile ? [0, -120] : [0, 0],
         duration: 700,
         essential: true,
       });
     }
-  }, [isThreeDActive]);
+  }, []);
 
   const focusSharedReport = useCallback((geojson) => {
     const map = mapRef.current;
@@ -816,7 +770,6 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           };
         });
         setMessage(payload.alreadySupported ? 'Du har allerede støttet denne saken.' : 'Takk for støtten!');
-        setMapZoom(map.getZoom());
         await loadReports();
       } catch (error) {
         console.error(error);
@@ -836,43 +789,6 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       window.removeEventListener('click', handleSupportClick);
     };
   }, [clearSelectedReport, getSupportToken, loadReports, showReports]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !map.isStyleLoaded()) return;
-
-    const zoom = mapZoom ?? map.getZoom();
-    const shouldUseThreeD = Boolean(selectedReport) && (isThreeDActive ? zoom >= 15.5 : zoom >= 16);
-    if (!shouldUseThreeD) {
-      hideThreeDBuildingsLayer(map);
-      if (isThreeDActive) setIsThreeDActive(false);
-      if (!selectedReport || map.getPitch() > 0) map.easeTo({ pitch: 0, duration: 450 });
-      return;
-    }
-
-    if (!ensureThreeDBuildingsLayer(map)) {
-      if (isThreeDActive) setIsThreeDActive(false);
-      setMessage('3D er ikke tilgjengelig i dette kartet.');
-      return;
-    }
-
-    const coordinates = reportCoordinates(selectedReport);
-    if (!coordinates) return;
-    if (!isThreeDActive) setIsThreeDActive(true);
-    const isMobile = typeof window !== 'undefined' && window.matchMedia?.('(max-width: 640px)').matches;
-    if (map.getPitch() < 45 || !isThreeDActive) {
-      map.easeTo({
-        center: [coordinates.lng, coordinates.lat],
-        zoom: Math.max(map.getZoom(), 16),
-        pitch: isMobile ? 55 : 60,
-        bearing: map.getBearing() || 28,
-        offset: isMobile ? [0, -120] : [0, 0],
-        duration: 650,
-        essential: true,
-      });
-    }
-    restoreMapLayerOrder(map);
-  }, [isThreeDActive, mapZoom, selectedReport]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -925,14 +841,12 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     });
 
     mapRef.current = map;
-    setMapZoom(map.getZoom());
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right');
 
     map.on('load', async () => {
       if (pointRef.current) placeMarker(pointRef.current);
       try {
-        setMapZoom(map.getZoom());
         await loadReports();
         await refreshNvdbLayers();
       } catch (error) {
@@ -942,7 +856,6 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     });
 
     map.on('moveend', () => {
-      setMapZoom(map.getZoom());
       refreshNvdbLayers().catch((error) => {
         console.error(error);
         setMessage('Lag kunne ikke hentes.');
