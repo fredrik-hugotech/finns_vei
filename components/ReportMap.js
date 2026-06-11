@@ -72,6 +72,50 @@ function reportShareUrl(reportId) {
   return `${window.location.origin}/map?report=${encodeURIComponent(reportId)}`;
 }
 
+
+function reportCoordinates(featureOrProperties = {}) {
+  const properties = featureOrProperties.properties || featureOrProperties || {};
+  const coordinates = featureOrProperties.geometry?.coordinates;
+  const lng = Number(Array.isArray(coordinates) ? coordinates[0] : properties.lng ?? properties.longitude);
+  const lat = Number(Array.isArray(coordinates) ? coordinates[1] : properties.lat ?? properties.latitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return { lat, lng };
+}
+
+function googleStreetViewUrl(featureOrProperties = {}) {
+  const coordinates = reportCoordinates(featureOrProperties);
+  if (!coordinates) return '';
+  return `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${encodeURIComponent(`${coordinates.lat},${coordinates.lng}`)}`;
+}
+
+function selectedReportGeoJson(feature = null) {
+  const coordinates = reportCoordinates(feature);
+  if (!coordinates) return { type: 'FeatureCollection', features: [] };
+
+  const center = [coordinates.lng, coordinates.lat];
+  const radiusMeters = 40;
+  const earthRadiusMeters = 6371008.8;
+  const latRadians = coordinates.lat * Math.PI / 180;
+  const ring = Array.from({ length: 65 }, (_, index) => {
+    const bearing = (index / 64) * Math.PI * 2;
+    const dx = radiusMeters * Math.cos(bearing);
+    const dy = radiusMeters * Math.sin(bearing);
+    const lng = coordinates.lng + (dx / (earthRadiusMeters * Math.cos(latRadians))) * (180 / Math.PI);
+    const lat = coordinates.lat + (dy / earthRadiusMeters) * (180 / Math.PI);
+    return [lng, lat];
+  });
+
+  return {
+    type: 'FeatureCollection',
+    features: [
+      { type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring] }, properties: { kind: 'radius' } },
+      { type: 'Feature', geometry: { type: 'Point', coordinates: center }, properties: { kind: 'point' } },
+    ],
+  };
+}
+
+// TODO: Later, find nearby reports within 25–50m and show “Flere saker i nærheten”.
+
 function reportImagesHtml(properties = {}) {
   const images = normalizeImageEntries(properties.image_urls || properties.image_urls_json);
   if (!images.length) return '';
@@ -98,6 +142,7 @@ function popupHtml(featureOrProperties = {}, options = {}) {
   const showImages = options.showImages !== false;
   const showPublicStatus = options.showPublicStatus !== false;
   const showNewReportButton = Boolean(options.showNewReportButton);
+  const streetViewUrl = googleStreetViewUrl(featureOrProperties);
   return `
     <article class="report-popup popup-card">
       <strong>${escapeHtml(properties.category || 'Melding')}</strong>
@@ -107,7 +152,8 @@ function popupHtml(featureOrProperties = {}, options = {}) {
       <small class="support-count" data-support-count-for="${reportId}">${supportCount} støtter denne saken</small>
       ${reportId ? `<button class="support-button" data-report-id="${reportId}" type="button" ${alreadySupported ? 'disabled' : ''}>${supportButtonLabel(rawReportId)}</button>` : missingReportIdDebug}
       ${reportId ? `<button class="share-button" data-report-id="${reportId}" type="button">Del sak</button>` : ''}
-      ${showNewReportButton ? '<button class="continue-report-button" data-close-popup="true" type="button">Meld ny sak likevel</button>' : ''}
+      ${streetViewUrl ? `<a class="street-view-button" href="${escapeHtml(streetViewUrl)}" target="_blank" rel="noopener noreferrer">Se Street View</a>` : ''}
+      ${showNewReportButton ? '<button class="continue-report-button" data-close-selected="true" type="button">Meld ny sak likevel</button>' : ''}
       ${showImages ? reportImagesHtml(properties) : ''}
     </article>
   `;
@@ -137,7 +183,9 @@ const NVDB_LAYERS = [
   { type: 'accidents', label: 'Ulykker', color: MAP_COLORS.accidentLayer },
 ];
 const ACCIDENT_LAYER_IDS = ['accident-heatmap', 'accident-points', 'accident-point-symbol'];
-const REPORT_LAYER_IDS = ['reports-clusters', 'reports-cluster-count', 'reports-circle', 'reports-category-symbol', 'reports-support-badge'];
+const SELECTED_REPORT_SOURCE_ID = 'selected-report';
+const SELECTED_REPORT_LAYER_IDS = ['selected-report-radius-fill', 'selected-report-radius-line', 'selected-report-ring'];
+const REPORT_LAYER_IDS = ['reports-clusters', 'reports-cluster-count', 'selected-report-radius-fill', 'selected-report-radius-line', 'reports-circle', 'reports-category-symbol', 'selected-report-ring', 'reports-support-badge'];
 
 function moveLayersToTop(map, layerIds) {
   layerIds.forEach((layerId) => {
@@ -198,6 +246,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   const focusedReportRef = useRef(false);
   const [message, setMessage] = useState('');
   const [activeNvdbLayers, setActiveNvdbLayers] = useState([]);
+  const [selectedReport, setSelectedReport] = useState(null);
   const hasMapboxToken = Boolean(process.env.NEXT_PUBLIC_MAPBOX_TOKEN);
 
   useEffect(() => {
@@ -401,16 +450,27 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     showNewReportButton: reportPopupMode === 'reporting',
   }), [reportPopupMode]);
 
-  const openReportPopup = useCallback((feature, lngLat = null) => {
+  const clearSelectedReport = useCallback(() => {
+    setSelectedReport(null);
+  }, []);
+
+  const selectReport = useCallback((feature, { fly = true } = {}) => {
     const map = mapRef.current;
-    if (!map || !feature) return;
-    const coordinates = lngLat || feature.geometry?.coordinates;
-    if (!coordinates) return;
-    new mapboxgl.Popup({ maxWidth: reportPopupMode === 'reporting' ? '260px' : '280px' })
-      .setLngLat(coordinates)
-      .setHTML(popupHtml(feature, popupOptions()))
-      .addTo(map);
-  }, [popupOptions, reportPopupMode]);
+    const coordinates = reportCoordinates(feature);
+    if (!map || !feature || !coordinates) return;
+
+    setSelectedReport(feature);
+    if (fly) {
+      const isMobile = typeof window !== 'undefined' && window.matchMedia?.('(max-width: 640px)').matches;
+      map.flyTo({
+        center: [coordinates.lng, coordinates.lat],
+        zoom: Math.max(map.getZoom(), 15.5),
+        offset: isMobile ? [0, -120] : [0, 0],
+        duration: 700,
+        essential: true,
+      });
+    }
+  }, []);
 
   const focusSharedReport = useCallback((geojson) => {
     const map = mapRef.current;
@@ -418,12 +478,15 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     const reportId = new URLSearchParams(window.location.search).get('report');
     if (!reportId) return;
     const feature = (geojson.features || []).find((item) => String(reportIdFromFeature(item)) === String(reportId));
-    if (!feature?.geometry?.coordinates) return;
+    if (!feature?.geometry?.coordinates) {
+      focusedReportRef.current = true;
+      setMessage('Fant ikke saken i kartet.');
+      return;
+    }
 
     focusedReportRef.current = true;
-    map.easeTo({ center: feature.geometry.coordinates, zoom: Math.max(map.getZoom(), 15), duration: 700 });
-    window.setTimeout(() => openReportPopup(feature), 750);
-  }, [openReportPopup, selectable]);
+    selectReport(feature);
+  }, [selectReport, selectable]);
 
   const loadReports = useCallback(async () => {
     const map = mapRef.current;
@@ -499,7 +562,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       const feature = event.features?.[0];
       if (!feature) return;
       event.originalEvent.cancelBubble = true;
-      openReportPopup(feature, feature.geometry.coordinates);
+      selectReport(feature);
     };
     ['reports-circle', 'reports-support-badge'].forEach((layerId) => {
       map.on('mouseenter', layerId, () => { map.getCanvas().style.cursor = 'pointer'; });
@@ -508,7 +571,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     });
     ensureReportCategorySymbolLayer(map);
     focusSharedReport(geojson);
-  }, [focusSharedReport, openReportPopup, showReports]);
+  }, [focusSharedReport, selectReport, showReports]);
 
 
   const getSupportToken = useCallback(() => {
@@ -525,9 +588,9 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     if (!showReports) return undefined;
 
     const handlePopupCloseClick = (event) => {
-      const button = event.target?.closest?.('[data-close-popup]');
+      const button = event.target?.closest?.('[data-close-selected]');
       if (!button) return;
-      button.closest('.mapboxgl-popup')?.querySelector('.mapboxgl-popup-close-button')?.click();
+      clearSelectedReport();
     };
 
     const handleShareClick = async (event) => {
@@ -598,6 +661,16 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         document.querySelectorAll(`[data-support-count-for=\"${reportId}\"]`).forEach((node) => {
           node.textContent = `${payload.support_count} støtter denne saken`;
         });
+        setSelectedReport((current) => {
+          if (!current || String(reportIdFromFeature(current)) !== String(reportId)) return current;
+          return {
+            ...current,
+            properties: {
+              ...(current.properties || {}),
+              support_count: payload.support_count,
+            },
+          };
+        });
         setMessage(payload.alreadySupported ? 'Du har allerede støttet denne saken.' : 'Takk for støtten!');
         await loadReports();
       } catch (error) {
@@ -617,7 +690,46 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       window.removeEventListener('click', handleShareClick);
       window.removeEventListener('click', handleSupportClick);
     };
-  }, [getSupportToken, loadReports, showReports]);
+  }, [clearSelectedReport, getSupportToken, loadReports, showReports]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+
+    const data = selectedReportGeoJson(selectedReport);
+    const source = map.getSource(SELECTED_REPORT_SOURCE_ID);
+    if (source) {
+      source.setData(data);
+      return;
+    }
+
+    map.addSource(SELECTED_REPORT_SOURCE_ID, {
+      type: 'geojson',
+      data,
+    });
+    map.addLayer({
+      id: 'selected-report-radius-fill',
+      type: 'fill',
+      source: SELECTED_REPORT_SOURCE_ID,
+      filter: ['==', ['get', 'kind'], 'radius'],
+      paint: MAP_STYLE.selectedReportRadiusFillPaint,
+    }, map.getLayer('reports-circle') ? 'reports-circle' : undefined);
+    map.addLayer({
+      id: 'selected-report-radius-line',
+      type: 'line',
+      source: SELECTED_REPORT_SOURCE_ID,
+      filter: ['==', ['get', 'kind'], 'radius'],
+      paint: MAP_STYLE.selectedReportRadiusLinePaint,
+    }, map.getLayer('reports-circle') ? 'reports-circle' : undefined);
+    map.addLayer({
+      id: 'selected-report-ring',
+      type: 'circle',
+      source: SELECTED_REPORT_SOURCE_ID,
+      filter: ['==', ['get', 'kind'], 'point'],
+      paint: MAP_STYLE.selectedReportRingPaint,
+    }, map.getLayer('reports-support-badge') ? 'reports-support-badge' : undefined);
+    restoreMapLayerOrder(map);
+  }, [selectedReport]);
 
   useEffect(() => {
     if (!containerRef.current || !hasMapboxToken) return undefined;
@@ -702,6 +814,12 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
             </button>
           ))}
         </div>
+      )}
+      {selectedReport && (
+        <section className="selected-report-sheet" aria-label="Valgt sak">
+          <button className="selected-report-close" type="button" aria-label="Lukk sak" onClick={clearSelectedReport}>×</button>
+          <div dangerouslySetInnerHTML={{ __html: popupHtml(selectedReport, popupOptions()) }} />
+        </section>
       )}
       {message && <div className="accident-status map-message">{message}</div>}
     </div>
