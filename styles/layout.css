@@ -1,0 +1,152 @@
+.page {
+  display: grid;
+  min-height: 100dvh;
+  padding: max(0.75rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right)) max(0.75rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
+  place-items: center;
+}
+
+.page--home {
+  background: var(--color-bg);
+}
+
+.hero-card {
+  max-width: 360px;
+  padding: 1.05rem;
+  width: 100%;
+}
+
+.brand-mark {
+  display: none;
+}
+
+.eyebrow {
+  color: var(--color-muted);
+  font-weight: 600;
+  letter-spacing: 0;
+  margin: 0 0 0.35rem;
+  text-transform: none;
+}
+
+h1,
+h2,
+h3 {
+  color: var(--color-text);
+  font-family: var(--font-heading);
+  letter-spacing: 0;
+}
+
+h1 {
+  font-size: 1.6rem;
+  line-height: 1.15;
+  margin: 0;
+}
+
+h2 {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.lede {
+  color: var(--color-muted);
+  font-size: 0.95rem;
+  line-height: 1.4;
+  margin: 0.5rem 0 0.75rem;
+}
+
+.form-page {
+  min-height: 100dvh;
+  padding: max(0.5rem, env(safe-area-inset-top)) max(0.5rem, env(safe-area-inset-right)) max(0.75rem, env(safe-area-inset-bottom)) max(0.5rem, env(safe-area-inset-left));
+}
+
+.top-bar {
+  align-items: center;
+  display: flex;
+  font-weight: 600;
+  justify-content: space-between;
+  margin: 0 auto 0.5rem;
+  max-width: 1120px;
+}
+
+.top-bar span {
+  color: var(--color-muted);
+  font-size: 0.8rem;
+}
+
+.form-layout {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: minmax(320px, 400px) minmax(0, 1fr);
+  margin: 0 auto;
+  max-width: 1120px;
+}
+
+.form-map-card,
+.map-wrap,
+.map-page {
+  position: relative;
+}
+
+.form-map-card {
+  min-height: 420px;
+  order: 2;
+}
+
+.report-form {
+  align-self: start;
+  order: 1;
+}
+
+.map-page {
+  min-height: 100dvh;
+  overflow: hidden;
+}
+
+@media (max-width: 860px) {
+  .form-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .form-map-card {
+    order: 1;
+  }
+
+  .report-form {
+    margin-left: -0.5rem;
+    margin-right: -0.5rem;
+    order: 2;
+    position: relative;
+    z-index: 3;
+  }
+
+  .form-map-card,
+  .form-map {
+    height: 54dvh;
+    min-height: 320px;
+  }
+}
+
+@media (max-width: 640px) {
+  .page {
+    align-items: start;
+  }
+
+  .hero-card {
+    padding: 0.85rem;
+  }
+
+  h1 {
+    font-size: 1.42rem;
+  }
+
+  h2 {
+    font-size: 1rem;
+  }
+
+  p,
+  label,
+  input,
+  textarea,
+  button {
+    font-size: 0.95rem;
+  }
+}

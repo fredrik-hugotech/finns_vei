@@ -111,6 +111,14 @@ Set these in Vercel Project Settings and locally in `.env.local` when developing
 - Public map insight should focus on report density/support and accident context. Mapbox clustering is visual-only for now; future case grouping can use `road_reference`, category and a 25–50m distance threshold before introducing fields such as `case_group_id` or `cluster_key`.
 - Accident counts in Trello use the small report radius (`NVDB_ACCIDENT_REPORT_RADIUS_M`) and should be read as “on/near the point”, not broad-area accident analysis.
 
+
+## Map marker identity notes
+
+- Report category icons live in `public/map-icons/` and are loaded as small static SVG assets for the Mapbox `reports-category-symbol` layer. They are intentionally simple monochrome placeholders in a Phosphor-inspired direction and can be replaced later with finalized licensed SVG assets using the same filenames.
+- Category icon mapping is isolated in `lib/reportCategoryIcons.js`; unknown categories fall back to `other` and existing Supabase category values are not renamed.
+- Future cluster improvements can use Mapbox `clusterProperties` to aggregate `support_count` into a `support_sum`, but current clusters intentionally remain report-count only.
+- A future “Bekymringsgrad” heatmap can be based on reports, `support_count`, and category weighting. This phase does not add report heatmap layers.
+
 ## Local development
 
 ```bash
@@ -134,3 +142,22 @@ This repo is intended to deploy through the linked Vercel GitHub integration. In
 
 - Optional image upload to Supabase Storage bucket `report-images`.
 - Admin-only workflow views for follow-up status changes.
+
+## Report image uploads
+
+The report form accepts up to three optional images and uploads them server-side to Supabase Storage.
+
+Required Supabase setup for the MVP:
+
+- Create a public Storage bucket named `report-images` (or set `SUPABASE_STORAGE_BUCKET_REPORT_IMAGES`).
+- Ensure `public.reports.image_urls` exists as a `jsonb` array column.
+- Recommended env defaults:
+  - `SUPABASE_STORAGE_BUCKET_REPORT_IMAGES=report-images`
+  - `REPORT_IMAGE_MAX_COUNT=3`
+  - `REPORT_IMAGE_MAX_BYTES=8388608`
+
+Images are stored under `reports/<report-id>/...` and `reports.image_urls` stores objects with `url`, `path`, `content_type`, and `size`. Trello card descriptions include image links, and the app best-effort attaches each public image URL to the Trello card. Report creation still succeeds if image upload or Trello attachment fails.
+
+## Brand assets
+
+A placeholder Finns.Fairway logo lives at `public/brand/finns-fairway-logo.svg`. Replace it with the official local logo file when available, keeping the same path if possible.
