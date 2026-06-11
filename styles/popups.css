@@ -1,16 +1,16 @@
 .popup-card {
   color: var(--color-text);
   display: grid;
-  font-size: 0.82rem;
-  gap: 0.3rem;
-  line-height: 1.35;
+  font-size: 0.8rem;
+  gap: 0.28rem;
+  line-height: 1.34;
   min-width: 0;
 }
 
 .popup-card strong {
   color: var(--color-text);
-  font-size: 0.94rem;
-  font-weight: 600;
+  font-size: 0.9rem;
+  font-weight: 650;
   line-height: 1.2;
   padding-right: 1.2rem;
 }
@@ -22,7 +22,7 @@
 .popup-card small,
 .support-count {
   color: var(--color-muted);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
 }
 
 .popup-card--accident span {
@@ -31,10 +31,10 @@
 }
 
 .support-button {
-  font-size: 0.82rem;
-  margin-top: 0.2rem;
-  min-height: 36px;
-  padding: 0.38rem 0.58rem;
+  font-size: 0.8rem;
+  margin-top: 0.16rem;
+  min-height: 34px;
+  padding: 0.34rem 0.54rem;
   width: 100%;
 }
 
@@ -45,22 +45,22 @@
 
 .popup-images {
   display: grid;
-  gap: 0.38rem;
+  gap: 0.32rem;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 0.15rem 0;
+  margin: 0.12rem 0;
 }
 
 .popup-images img {
   aspect-ratio: 1;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  max-height: 84px;
+  max-height: 76px;
   object-fit: cover;
   width: 100%;
 }
 
 .popup-images a:first-child img {
-  max-height: 96px;
+  max-height: 88px;
 }
 
 @media (max-width: 640px) {
