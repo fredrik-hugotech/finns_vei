@@ -12,10 +12,36 @@ function logWebhook(event, details = {}) {
   console.log(JSON.stringify({ scope: 'api/trello/webhook', event, ...details }));
 }
 
+function stringValues(value, depth = 0) {
+  if (depth > 4 || value === null || value === undefined) return [];
+  if (typeof value === 'string') return [value];
+  if (Array.isArray(value)) return value.flatMap((item) => stringValues(item, depth + 1));
+  if (typeof value === 'object') return Object.values(value).flatMap((item) => stringValues(item, depth + 1));
+  return [];
+}
+
 function publicCommentText(text = '') {
   const trimmed = String(text || '').trim();
   if (!trimmed.toLowerCase().startsWith('#public')) return null;
   return trimmed.replace(/^#public\s*/i, '').trim() || null;
+}
+
+export function extractTrelloCommentText(action = {}) {
+  const directCandidates = [
+    action?.data?.text,
+    action?.data?.comment?.text,
+    action?.display?.entities?.comment?.text,
+    action?.display?.entities?.text?.text,
+  ].filter((value) => typeof value === 'string' && value.trim());
+
+  const publicDirect = directCandidates.find((value) => publicCommentText(value));
+  if (publicDirect) return publicDirect;
+
+  const nestedPublic = stringValues({ data: action?.data, display: action?.display })
+    .find((value) => publicCommentText(value));
+  if (nestedPublic) return nestedPublic;
+
+  return directCandidates[0] || '';
 }
 
 async function handleListMove(action) {
@@ -34,13 +60,19 @@ async function handleListMove(action) {
 
 async function handleComment(action) {
   const cardId = action?.data?.card?.id;
-  const text = publicCommentText(action?.data?.text || action?.data?.comment?.text || '');
-  logWebhook('comment_seen', { actionType: action?.type, cardId, hasPublicPrefix: Boolean(text) });
-  if (!cardId || !text) return { handled: false, reason: 'not_public_comment' };
+  const rawText = extractTrelloCommentText(action);
+  const text = publicCommentText(rawText);
+  logWebhook('comment_seen', {
+    actionType: action?.type,
+    cardId,
+    hasText: Boolean(rawText),
+    hasPublicPrefix: Boolean(text),
+  });
+  if (!cardId || !text) return { handled: false, reason: 'not_public_comment', hasText: Boolean(rawText), hasPublicPrefix: Boolean(text) };
 
   const updated = await setPublicStatusFromTrelloComment({ trelloCardId: cardId, publicStatusNote: text });
-  logWebhook('public_note_sync_completed', { cardId, reportId: updated?.id || null, updated: Boolean(updated) });
-  return { handled: true, reportId: updated?.id || null };
+  logWebhook('public_note_update_result', { cardId, reportId: updated?.id || null, updated: Boolean(updated) });
+  return { handled: true, reportId: updated?.id || null, updated: Boolean(updated) };
 }
 
 export default async function handler(req, res) {
@@ -66,7 +98,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, actionType, ...result });
     }
 
-    if (actionType === 'commentCard') {
+    if (actionType === 'commentCard' || extractTrelloCommentText(action)) {
       const result = await handleComment(action);
       return res.status(200).json({ ok: true, actionType, ...result });
     }
