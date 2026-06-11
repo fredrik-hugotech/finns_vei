@@ -8,7 +8,7 @@ const TRELLO_LIST_STATUS_MAP = {
   'Fullført': REPORT_STATUS.DONE,
 };
 
-const PUBLIC_PREFIX_RE = /^\s*#public\b[:\-\s]*/i;
+const PUBLIC_PREFIX_RE = /^\s*\\?#public\b[:\-\s]*/i;
 
 function logWebhook(event, details = {}) {
   console.log(JSON.stringify({ scope: 'api/trello/webhook', event, ...details }));
