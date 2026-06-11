@@ -61,6 +61,31 @@
   font-weight: 600;
 }
 
+.share-button,
+.continue-report-button {
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 650;
+  margin-top: 0.08rem;
+  min-height: 32px;
+  padding: 0.3rem 0.5rem;
+  width: 100%;
+}
+
+.share-button {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.continue-report-button {
+  background: transparent;
+  border: 0;
+  color: var(--color-muted);
+  text-decoration: underline;
+}
+
 .support-button {
   font-size: 0.8rem;
   margin-top: 0.16rem;

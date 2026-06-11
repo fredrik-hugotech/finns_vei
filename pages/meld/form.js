@@ -2,7 +2,7 @@ import Head from 'next/head';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { DEFAULT_CENTER, REPORT_CATEGORIES, REPORTER_TYPES } from '../../lib/config';
 import { REPORT_IMAGE_MAX_BYTES, REPORT_IMAGE_MAX_COUNT } from '../../lib/reportImages';
 
@@ -25,11 +25,9 @@ export default function MeldForm() {
   const isAdult = reporterType === REPORTER_TYPES.ADULT;
   const [point, setPoint] = useState({ lng: DEFAULT_CENTER[0], lat: DEFAULT_CENTER[1] });
   const [form, setForm] = useState(INITIAL_FORM);
-  const [status, setStatus] = useState({ type: 'idle', message: 'Velg sted på kartet.' });
+  const [status, setStatus] = useState({ type: 'idle', message: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [images, setImages] = useState([]);
-
-  const positionText = useMemo(() => `${point.lat.toFixed(5)}, ${point.lng.toFixed(5)}`, [point]);
 
   const updateField = (event) => {
     const { name, value } = event.target;
@@ -46,13 +44,12 @@ export default function MeldForm() {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setPoint({ lat: position.coords.latitude, lng: position.coords.longitude });
-        setStatus({ type: 'success', message: 'Posisjon valgt.' });
+        setStatus({ type: 'idle', message: '' });
       },
       () => setStatus({ type: 'error', message: 'Fikk ikke tilgang til posisjon. Trykk i kartet i stedet.' }),
       { enableHighAccuracy: true, timeout: 10000 },
     );
   };
-
 
   const addImages = (event) => {
     const selected = Array.from(event.target.files || []);
@@ -134,22 +131,17 @@ export default function MeldForm() {
       <main className="form-page">
         <header className="top-bar">
           <Link href="/meld">Tilbake</Link>
-          <span>{isAdult ? 'Voksen' : 'Barn'} · ingen innlogging</span>
         </header>
 
         <section className="form-layout">
           <div className="form-map-card">
-            <ReportMap selectable point={point} onPointChange={setPoint} className="form-map" showReports={false} />
+            <ReportMap selectable point={point} onPointChange={setPoint} className="form-map" showReports reportPopupMode="reporting" />
+            <div className="selected-place-pill" aria-live="polite">✓ Sted valgt</div>
             <button className="geo-button" type="button" onClick={useMyPosition}>Bruk min posisjon</button>
           </div>
 
           <form className="report-form" onSubmit={submitReport}>
-            <p className="eyebrow">Steg 2 av 2</p>
             <h1>Meld fra</h1>
-            <label>
-              Valgt sted
-              <output>{positionText}</output>
-            </label>
 
             <fieldset>
               <legend>Hva føles utrygt?</legend>
@@ -170,8 +162,7 @@ export default function MeldForm() {
 
             <section className="image-upload-card" aria-labelledby="image-upload-title">
               <div>
-                <h2 id="image-upload-title">Legg til bilde</h2>
-                <p>Valgfritt. Bruk kamera eller velg fra mobilen.</p>
+                <h2 id="image-upload-title">Bilde</h2>
               </div>
               <div className="image-upload-actions">
                 <label className="image-upload-button">
@@ -194,7 +185,6 @@ export default function MeldForm() {
                   ))}
                 </div>
               )}
-              <p className="image-upload-note">Du kan sende meldingen uten bilde.</p>
             </section>
 
             {isAdult && (
@@ -206,10 +196,9 @@ export default function MeldForm() {
               </div>
             )}
 
-            {!isAdult && <p className="privacy-note">Du melder som barn. Vi spør ikke om navn, e-post eller telefon.</p>}
 
             <button className="big-button big-button--primary" type="submit" disabled={isSubmitting}>{isSubmitting ? 'Sender...' : 'Send melding'}</button>
-            <div className={`notice notice--${status.type}`} role="status">{status.message}</div>
+            {status.message && <div className={`notice notice--${status.type}`} role="status">{status.message}</div>}
           </form>
         </section>
       </main>

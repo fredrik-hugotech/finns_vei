@@ -67,6 +67,10 @@ function shouldShowMissingReportIdDebug() {
   return process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_VERCEL_ENV === 'preview';
 }
 
+function reportShareUrl(reportId) {
+  if (!reportId || typeof window === 'undefined') return '';
+  return `${window.location.origin}/map?report=${encodeURIComponent(reportId)}`;
+}
 
 function reportImagesHtml(properties = {}) {
   const images = normalizeImageEntries(properties.image_urls || properties.image_urls_json);
@@ -82,7 +86,7 @@ function reportImagesHtml(properties = {}) {
   `;
 }
 
-function popupHtml(featureOrProperties = {}) {
+function popupHtml(featureOrProperties = {}, options = {}) {
   const properties = featureOrProperties.properties || featureOrProperties || {};
   const rawReportId = reportIdFromFeature(featureOrProperties);
   const reportId = escapeHtml(rawReportId);
@@ -91,15 +95,20 @@ function popupHtml(featureOrProperties = {}) {
   const missingReportIdDebug = !reportId && shouldShowMissingReportIdDebug()
     ? '<small class="support-debug">Mangler reportId for støtteknapp.</small>'
     : '';
+  const showImages = options.showImages !== false;
+  const showPublicStatus = options.showPublicStatus !== false;
+  const showNewReportButton = Boolean(options.showNewReportButton);
   return `
     <article class="report-popup popup-card">
       <strong>${escapeHtml(properties.category || 'Melding')}</strong>
       ${properties.description ? `<p>${escapeHtml(compactText(properties.description))}</p>` : ''}
       <p>Status: <strong>${escapeHtml(properties.status || REPORT_STATUS.NEW)}</strong></p>
-      ${publicStatusUpdateHtml(properties)}
+      ${showPublicStatus ? publicStatusUpdateHtml(properties) : ''}
       <small class="support-count" data-support-count-for="${reportId}">${supportCount} støtter denne saken</small>
       ${reportId ? `<button class="support-button" data-report-id="${reportId}" type="button" ${alreadySupported ? 'disabled' : ''}>${supportButtonLabel(rawReportId)}</button>` : missingReportIdDebug}
-      ${reportImagesHtml(properties)}
+      ${reportId ? `<button class="share-button" data-report-id="${reportId}" type="button">Del sak</button>` : ''}
+      ${showNewReportButton ? '<button class="continue-report-button" data-close-popup="true" type="button">Meld ny sak likevel</button>' : ''}
+      ${showImages ? reportImagesHtml(properties) : ''}
     </article>
   `;
 }
@@ -180,12 +189,13 @@ async function ensureReportCategorySymbolLayer(map) {
   }
 }
 
-export default function ReportMap({ selectable = false, point, onPointChange, className = 'map-canvas', showReports = true, enableNvdbLayers = false }) {
+export default function ReportMap({ selectable = false, point, onPointChange, className = 'map-canvas', showReports = true, enableNvdbLayers = false, reportPopupMode = 'full' }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const markerRef = useRef(null);
   const pointRef = useRef(point);
   const activeNvdbLayersRef = useRef([]);
+  const focusedReportRef = useRef(false);
   const [message, setMessage] = useState('');
   const [activeNvdbLayers, setActiveNvdbLayers] = useState([]);
   const hasMapboxToken = Boolean(process.env.NEXT_PUBLIC_MAPBOX_TOKEN);
@@ -385,6 +395,36 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     ));
   };
 
+  const popupOptions = useCallback(() => ({
+    showImages: reportPopupMode !== 'reporting',
+    showPublicStatus: reportPopupMode !== 'reporting',
+    showNewReportButton: reportPopupMode === 'reporting',
+  }), [reportPopupMode]);
+
+  const openReportPopup = useCallback((feature, lngLat = null) => {
+    const map = mapRef.current;
+    if (!map || !feature) return;
+    const coordinates = lngLat || feature.geometry?.coordinates;
+    if (!coordinates) return;
+    new mapboxgl.Popup({ maxWidth: reportPopupMode === 'reporting' ? '260px' : '280px' })
+      .setLngLat(coordinates)
+      .setHTML(popupHtml(feature, popupOptions()))
+      .addTo(map);
+  }, [popupOptions, reportPopupMode]);
+
+  const focusSharedReport = useCallback((geojson) => {
+    const map = mapRef.current;
+    if (!map || selectable || focusedReportRef.current || typeof window === 'undefined') return;
+    const reportId = new URLSearchParams(window.location.search).get('report');
+    if (!reportId) return;
+    const feature = (geojson.features || []).find((item) => String(reportIdFromFeature(item)) === String(reportId));
+    if (!feature?.geometry?.coordinates) return;
+
+    focusedReportRef.current = true;
+    map.easeTo({ center: feature.geometry.coordinates, zoom: Math.max(map.getZoom(), 15), duration: 700 });
+    window.setTimeout(() => openReportPopup(feature), 750);
+  }, [openReportPopup, selectable]);
+
   const loadReports = useCallback(async () => {
     const map = mapRef.current;
     if (!map || !showReports) return;
@@ -398,6 +438,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       source.setData(geojson);
       ensureReportCategorySymbolLayer(map);
       moveLayersToTop(map, REPORT_LAYER_IDS);
+      focusSharedReport(geojson);
       return;
     }
 
@@ -442,8 +483,6 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
 
     moveLayersToTop(map, REPORT_LAYER_IDS);
 
-    map.on('mouseenter', 'reports-circle', () => { map.getCanvas().style.cursor = 'pointer'; });
-    map.on('mouseleave', 'reports-circle', () => { map.getCanvas().style.cursor = ''; });
     map.on('mouseenter', 'reports-clusters', () => { map.getCanvas().style.cursor = 'pointer'; });
     map.on('mouseleave', 'reports-clusters', () => { map.getCanvas().style.cursor = ''; });
     map.on('click', 'reports-clusters', (event) => {
@@ -456,17 +495,20 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         map.easeTo({ center: feature.geometry.coordinates, zoom });
       });
     });
-    map.on('click', 'reports-circle', (event) => {
+    const showReportPopup = (event) => {
       const feature = event.features?.[0];
       if (!feature) return;
       event.originalEvent.cancelBubble = true;
-      new mapboxgl.Popup({ maxWidth: '280px' })
-        .setLngLat(feature.geometry.coordinates)
-        .setHTML(popupHtml(feature))
-        .addTo(map);
+      openReportPopup(feature, feature.geometry.coordinates);
+    };
+    ['reports-circle', 'reports-support-badge'].forEach((layerId) => {
+      map.on('mouseenter', layerId, () => { map.getCanvas().style.cursor = 'pointer'; });
+      map.on('mouseleave', layerId, () => { map.getCanvas().style.cursor = ''; });
+      map.on('click', layerId, showReportPopup);
     });
     ensureReportCategorySymbolLayer(map);
-  }, [showReports]);
+    focusSharedReport(geojson);
+  }, [focusSharedReport, openReportPopup, showReports]);
 
 
   const getSupportToken = useCallback(() => {
@@ -481,6 +523,52 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
 
   useEffect(() => {
     if (!showReports) return undefined;
+
+    const handlePopupCloseClick = (event) => {
+      const button = event.target?.closest?.('[data-close-popup]');
+      if (!button) return;
+      button.closest('.mapboxgl-popup')?.querySelector('.mapboxgl-popup-close-button')?.click();
+    };
+
+    const handleShareClick = async (event) => {
+      const button = event.target?.closest?.('.share-button');
+      if (!button) return;
+      const reportId = button.getAttribute('data-report-id');
+      const url = reportShareUrl(reportId);
+      if (!url) return;
+
+      const shareData = {
+        title: 'Finns.Vei – støtt trafikksak',
+        text: 'Se og støtt denne trafikksaken på Finns.Vei.',
+        url,
+      };
+
+      try {
+        if (navigator.share) {
+          await navigator.share(shareData);
+          setMessage('Deling åpnet');
+          return;
+        }
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(url);
+        } else {
+          const input = document.createElement('input');
+          input.value = url;
+          input.setAttribute('readonly', '');
+          input.style.position = 'fixed';
+          input.style.opacity = '0';
+          document.body.appendChild(input);
+          input.select();
+          document.execCommand('copy');
+          input.remove();
+        }
+        setMessage('Lenke kopiert');
+      } catch (error) {
+        if (error?.name === 'AbortError') return;
+        console.error(error);
+        setMessage('Kunne ikke dele akkurat nå.');
+      }
+    };
 
     const handleSupportClick = async (event) => {
       const button = event.target?.closest?.('.support-button');
@@ -521,8 +609,14 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       }
     };
 
+    window.addEventListener('click', handlePopupCloseClick);
+    window.addEventListener('click', handleShareClick);
     window.addEventListener('click', handleSupportClick);
-    return () => window.removeEventListener('click', handleSupportClick);
+    return () => {
+      window.removeEventListener('click', handlePopupCloseClick);
+      window.removeEventListener('click', handleShareClick);
+      window.removeEventListener('click', handleSupportClick);
+    };
   }, [getSupportToken, loadReports, showReports]);
 
   useEffect(() => {
@@ -560,6 +654,8 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
 
     if (selectable) {
       map.on('click', (event) => {
+        const reportLayers = ['reports-circle', 'reports-category-symbol', 'reports-support-badge'].filter((layerId) => map.getLayer(layerId));
+        if (reportLayers.length && map.queryRenderedFeatures(event.point, { layers: reportLayers }).length) return;
         const next = { lng: event.lngLat.lng, lat: event.lngLat.lat };
         onPointChange?.(next);
         placeMarker(next);

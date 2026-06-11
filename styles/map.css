@@ -15,6 +15,20 @@
   height: 100dvh;
 }
 
+
+.selected-place-pill {
+  background: rgba(17, 24, 39, 0.88);
+  border-radius: 999px;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  left: 0.7rem;
+  padding: 0.34rem 0.56rem;
+  position: absolute;
+  top: 0.7rem;
+  z-index: var(--z-map-control);
+}
+
 .geo-button {
   background: var(--color-surface);
   border-color: var(--color-border);
@@ -141,11 +155,26 @@
   width: 22px;
 }
 
+
+@media (max-width: 860px) {
+  .form-map-card,
+  .form-map {
+    height: 58dvh;
+    min-height: 380px;
+  }
+}
+
 @media (max-width: 640px) {
   .nvdb-toggle-card {
     bottom: auto;
     top: max(0.55rem, env(safe-area-inset-top));
     width: 86px;
+  }
+
+  .form-map-card,
+  .form-map {
+    height: 60dvh;
+    min-height: 390px;
   }
 
   .map-message {
