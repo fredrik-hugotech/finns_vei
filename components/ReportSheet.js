@@ -128,6 +128,7 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
           </div>
         ) : (
           <form className="sheet-form" onSubmit={submitReport}>
+            <div className="sheet-scroll">
             <header className="sheet__header">
               <h2>Meld fra</h2>
               <button type="button" className="sheet__location" onClick={onChangeLocation}>
@@ -197,10 +198,13 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
             )}
 
             {status.type === 'error' && <div className="notice notice--error" role="status">{status.message}</div>}
+            </div>
 
-            <button className="big-button big-button--primary sheet-submit" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (status.message || 'Sender …') : 'Send melding'}
-            </button>
+            <div className="sheet-footer">
+              <button className="big-button big-button--primary" type="submit" disabled={isSubmitting}>
+                {isSubmitting ? (status.message || 'Sender …') : 'Send melding'}
+              </button>
+            </div>
           </form>
         )}
       </section>

@@ -146,14 +146,36 @@
   border-radius: 24px 24px 0 0;
   bottom: 0;
   box-shadow: 0 -12px 40px -14px rgba(16, 48, 43, 0.45);
-  display: grid;
-  gap: 0.95rem;
+  display: flex;
+  flex-direction: column;
   left: 0;
-  max-height: 90dvh;
-  overflow-y: auto;
-  padding: 0.5rem 1.15rem calc(1.1rem + env(safe-area-inset-bottom));
+  max-height: 92dvh;
+  overflow: hidden;
   position: absolute;
   right: 0;
+}
+
+.sheet-form {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sheet-scroll {
+  display: grid;
+  flex: 1;
+  gap: 0.8rem;
+  overflow-y: auto;
+  padding: 0.15rem 1.15rem 0.85rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sheet-footer {
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  flex: none;
+  padding: 0.7rem 1.15rem calc(0.8rem + env(safe-area-inset-bottom));
 }
 
 @keyframes sheet-up {
@@ -212,8 +234,8 @@
 }
 
 .sheet textarea {
-  min-height: 96px;
-  padding-top: 0.62rem;
+  min-height: 74px;
+  padding-top: 0.6rem;
 }
 
 .sheet input::placeholder,
@@ -260,15 +282,18 @@
 .sheet-field {
   border: 0;
   display: grid;
-  gap: 0.4rem;
+  gap: 0.3rem;
   margin: 0;
   padding: 0;
 }
 
 .sheet-field__label,
 .sheet-field legend {
-  font-size: 0.92rem;
-  font-weight: 600;
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 650;
+  margin-bottom: 0.05rem;
+  padding: 0;
 }
 
 .sheet-field__label em {
@@ -288,13 +313,13 @@
   align-items: center;
   background: var(--color-surface-muted);
   border: 1.5px solid transparent;
-  border-radius: 16px;
+  border-radius: 14px;
   color: var(--color-text);
   cursor: pointer;
   display: grid;
-  gap: 0.42rem;
+  gap: 0.32rem;
   justify-items: center;
-  padding: 0.72rem 0.35rem;
+  padding: 0.55rem 0.3rem;
   text-align: center;
   transition: transform 120ms ease, background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
 }
@@ -307,9 +332,9 @@
   align-items: center;
   color: var(--color-primary);
   display: inline-flex;
-  height: 26px;
+  height: 23px;
   justify-content: center;
-  width: 26px;
+  width: 23px;
 }
 
 .category-card__icon svg {
@@ -409,12 +434,12 @@
   width: 22px;
 }
 
-.optional-contact input {
-  margin: 0;
+.optional-contact {
+  gap: 0.4rem;
 }
 
-.sheet-submit {
-  margin-top: 0.2rem;
+.optional-contact input {
+  margin: 0;
 }
 
 /* Success state */
@@ -422,7 +447,8 @@
   display: grid;
   gap: 0.5rem;
   justify-items: center;
-  padding: 1.1rem 0.5rem 0.4rem;
+  overflow-y: auto;
+  padding: 1.4rem 1.15rem calc(1.2rem + env(safe-area-inset-bottom));
   text-align: center;
 }
 
