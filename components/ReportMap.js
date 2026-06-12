@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import { DEFAULT_CENTER, REPORT_STATUS } from '../lib/config';
 import { MAP_COLORS, MAP_STYLE } from '../lib/mapStyleConfig';
-import { REPORT_CATEGORY_ICON_IDS, reportCategoryIconId } from '../lib/reportCategoryIcons';
 import { REPORT_STATUS_META, REPORT_STATUS_ORDER, reportStatusMeta } from '../lib/reportStatusMeta';
 import { normalizeImageEntries } from '../lib/reportImages';
 
@@ -151,17 +150,24 @@ function reportImagesHtml(properties = {}) {
   `;
 }
 
-function reportInsightHtml(properties, { nearbyCount, radiusM }) {
+function formatDate(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('no-NO', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function reportMarkerIconHtml() {
+  return '<span class="popup-head__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5.5 4.5h13a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H11l-3.6 3.1a0.6 0.6 0 0 1-1-0.46V16.5H5.5a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2z" fill="var(--color-primary)"/><path d="M12 7.6v3.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="12" cy="13.4" r="1.05" fill="#fff"/></svg></span>';
+}
+
+function popupStatsHtml(properties, { nearbyCount, radiusM }) {
   const roadOwner = properties.road_owner || properties.road_authority || '';
-  const roadAuthority = properties.road_authority || '';
   const rows = [];
-  if (roadOwner) {
-    const sub = roadAuthority && roadAuthority !== roadOwner ? ` <span class="insight-sub">(${escapeHtml(roadAuthority)})</span>` : '';
-    rows.push(`<div class="insight-row"><dt>Veieier</dt><dd>${escapeHtml(roadOwner)}${sub}</dd></div>`);
-  }
-  rows.push(`<div class="insight-row"><dt>Saker innen ${radiusM} m</dt><dd>${nearbyCount}</dd></div>`);
-  rows.push(`<div class="insight-row insight-row--accidents"><dt>Ulykker innen ${radiusM} m</dt><dd data-accidents><span class="insight-muted">Henter …</span></dd></div>`);
-  return `<section class="popup-insight"><dl>${rows.join('')}</dl></section>`;
+  if (roadOwner) rows.push(`<div><dt>Veieier</dt><dd>${escapeHtml(roadOwner)}</dd></div>`);
+  rows.push(`<div><dt>Saker innen ${radiusM} m</dt><dd>${nearbyCount}</dd></div>`);
+  rows.push(`<div><dt>Ulykker innen ${radiusM} m</dt><dd data-accidents><span class="insight-muted">Henter …</span></dd></div>`);
+  return `<dl class="popup-stats">${rows.join('')}</dl>`;
 }
 
 function popupHtml(featureOrProperties = {}, context = { nearbyCount: 1, radiusM: NEARBY_RADIUS_M }) {
@@ -171,28 +177,38 @@ function popupHtml(featureOrProperties = {}, context = { nearbyCount: 1, radiusM
   const supportCount = Number(properties.support_count || 0);
   const alreadySupported = browserHasSupported(rawReportId);
   const category = properties.category || 'Melding';
-  const categoryIcon = reportCategoryIconId(category);
+  const description = properties.description;
   const note = properties.public_status_note;
-  const updatedAt = properties.public_status_updated_at;
   const missingReportIdDebug = !reportId && shouldShowMissingReportIdDebug()
     ? '<small class="support-debug">Mangler reportId for støtteknapp.</small>'
     : '';
+  const citizenDate = formatDate(properties.created_at);
+  const officialDate = formatDate(properties.public_status_updated_at);
   return `
     <article class="report-popup popup-card">
       <header class="popup-head">
-        <img class="popup-head__icon" src="/map-icons/${categoryIcon}.svg" alt="" aria-hidden="true" />
-        <strong>${escapeHtml(category)}</strong>
+        ${reportMarkerIconHtml()}
+        <div class="popup-head__titles">
+          <strong>${escapeHtml(category)}</strong>
+          ${statusPillHtml(properties.status || REPORT_STATUS.NEW)}
+        </div>
       </header>
-      ${statusPillHtml(properties.status || REPORT_STATUS.NEW)}
-      ${reportInsightHtml(properties, context)}
-      ${properties.description ? `<p class="popup-desc">${escapeHtml(compactText(properties.description))}</p>` : ''}
-      ${note ? `
-        <div class="popup-update">
-          <p class="popup-update__label">${ICON.info}<span>Oppdatering fra Finns.Fairway</span></p>
-          <p class="popup-update__text">${escapeHtml(compactText(note, 220))}</p>
-          ${updatedAt ? `<small>Oppdatert ${escapeHtml(new Date(updatedAt).toLocaleDateString('no-NO'))}</small>` : ''}
-        </div>` : ''}
-      ${reportImagesHtml(properties)}
+
+      <div class="popup-thread">
+        <article class="msg msg--citizen">
+          <header class="msg__meta"><span class="msg__author">Innbygger</span>${citizenDate ? `<time>${escapeHtml(citizenDate)}</time>` : ''}</header>
+          <p class="msg__text">${description ? escapeHtml(compactText(description, 400)) : 'Ingen beskrivelse lagt ved.'}</p>
+          ${reportImagesHtml(properties)}
+        </article>
+        ${note ? `
+        <article class="msg msg--official">
+          <header class="msg__meta"><span class="msg__author">${ICON.info}Finns.Fairway</span>${officialDate ? `<time>${escapeHtml(officialDate)}</time>` : ''}</header>
+          <p class="msg__text">${escapeHtml(compactText(note, 400))}</p>
+        </article>` : ''}
+      </div>
+
+      ${popupStatsHtml(properties, context)}
+
       <div class="popup-actions">
         ${reportId
           ? `<button class="support-button${alreadySupported ? ' support-button--done' : ''}" data-report-id="${reportId}" type="button" ${alreadySupported ? 'disabled' : ''}>${supportButtonInner(alreadySupported)}</button>`
@@ -255,31 +271,18 @@ function loadImageElement(src) {
   });
 }
 
-async function loadReportCategoryIcons(map) {
-  const results = await Promise.allSettled(REPORT_CATEGORY_ICON_IDS.map(async (iconId) => {
-    if (map.hasImage(iconId)) return iconId;
-    const image = await loadImageElement(`/map-icons/${iconId}.svg`);
-    if (!map.hasImage(iconId)) map.addImage(iconId, image, { pixelRatio: 2 });
-    return iconId;
-  }));
-
-  const loaded = results
-    .filter((result) => result.status === 'fulfilled')
-    .map((result) => result.value);
-
-  results
-    .filter((result) => result.status === 'rejected')
-    .forEach((result) => console.warn(result.reason));
-
-  return loaded;
+async function loadReportMarkerIcon(map) {
+  if (map.hasImage('report-marker')) return;
+  const image = await loadImageElement('/map-icons/report.svg');
+  if (!map.hasImage('report-marker')) map.addImage('report-marker', image, { pixelRatio: 2 });
 }
 
 async function ensureReportCategorySymbolLayer(map) {
   if (!map.getSource('reports') || map.getLayer('reports-category-symbol')) return;
 
   try {
-    const loadedIcons = await loadReportCategoryIcons(map);
-    if (!loadedIcons.length || map.getLayer('reports-category-symbol')) return;
+    await loadReportMarkerIcon(map);
+    if (map.getLayer('reports-category-symbol')) return;
 
     map.addLayer({
       id: 'reports-category-symbol',
@@ -292,7 +295,7 @@ async function ensureReportCategorySymbolLayer(map) {
 
     restoreMapLayerOrder(map);
   } catch (error) {
-    console.warn('Kategoriikoner kunne ikke lastes. Sirkelmarkører brukes som fallback.', error);
+    console.warn('Markørikon kunne ikke lastes. Sirkelmarkører brukes som fallback.', error);
   }
 }
 
