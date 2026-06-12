@@ -708,8 +708,11 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       try {
         if (navigator.share) {
           await navigator.share(shareData);
+        } else if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(url);
+          setMessage('Lenke kopiert');
         } else {
-          window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank', 'noopener,width=620,height=520');
+          window.open(url, '_blank', 'noopener');
         }
       } catch (error) {
         // Share cancelled by the user — nothing to do.
@@ -728,7 +731,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
 
     window.addEventListener('click', handlePopupAction);
     return () => window.removeEventListener('click', handlePopupAction);
-  }, []);
+  }, [setMessage]);
 
   useEffect(() => {
     if (!containerRef.current || !hasMapboxToken) return undefined;
