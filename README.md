@@ -104,6 +104,30 @@ The grouping is best-effort: without the `case_id` column reports are still link
 
 Trello cards also link back to the public case (`<base>/sak/<caseId>`) and, as a case grows, the anchor card is renamed `Sak: <kategori> · N meldinger` for a quick overview. The base URL is taken from `PUBLIC_BASE_URL`/`NEXT_PUBLIC_SITE_URL`, falling back to Vercel's `VERCEL_PROJECT_PRODUCTION_URL`/`VERCEL_URL`. Set `PUBLIC_BASE_URL` to your production domain for stable links.
 
+### Public status updates as a thread
+
+Every `#public` Trello comment is appended to `public.report_status_updates` (keyed by the shared `trello_card_id`) so the case popup shows **each** Finns.Fairway reply as its own message in the conversation, in chronological order with the citizen voices — not just the latest. `public_status_note` is still updated as the latest note for backward compatibility and the share page.
+
+```sql
+CREATE TABLE IF NOT EXISTS public.report_status_updates (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  trello_card_id text NOT NULL,
+  note text NOT NULL,
+  source text DEFAULT 'trello_comment',
+  trello_action_id text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS report_status_updates_card_idx
+ON public.report_status_updates(trello_card_id, created_at);
+
+CREATE UNIQUE INDEX IF NOT EXISTS report_status_updates_action_unique_idx
+ON public.report_status_updates(trello_action_id)
+WHERE trello_action_id IS NOT NULL;
+```
+
+The unique index on `trello_action_id` makes webhook retries idempotent. The feature is best-effort: without the table, the popup falls back to the single `public_status_note`. The public GeoJSON exposes `updates_json` per feature.
+
 ## Environment variables
 
 Set these in Vercel Project Settings and locally in `.env.local` when developing. Do not commit secrets.

@@ -182,12 +182,26 @@ function facetRowHtml(properties) {
   return `<div class="facet-row">${facets.map((facet) => `<span class="facet" title="${escapeHtml(facet.category || '')}">${categoryGlyph(facet.category)}${Number(facet.count) > 1 ? `<b>${Number(facet.count)}</b>` : ''}</span>`).join('')}</div>`;
 }
 
-function voiceMessagesHtml(properties) {
-  return parseJsonArray(properties.voices_json).map((voice) => `
-    <article class="msg msg--citizen">
-      <header class="msg__meta"><span class="msg__author">Innbygger${voice.category ? ` · ${escapeHtml(voice.category)}` : ''}</span>${voice.created_at ? `<time>${escapeHtml(formatDate(voice.created_at))}</time>` : ''}</header>
-      <p class="msg__text">${escapeHtml(compactText(voice.note, 400))}</p>
-    </article>`).join('');
+function threadMessagesHtml(properties) {
+  const voices = parseJsonArray(properties.voices_json).map((voice) => ({
+    author: 'citizen', category: voice.category, text: voice.note, ts: voice.created_at,
+  }));
+  let updates = parseJsonArray(properties.updates_json).map((update) => ({
+    author: 'official', text: update.note, ts: update.created_at,
+  }));
+  if (!updates.length && properties.public_status_note) {
+    updates = [{ author: 'official', text: properties.public_status_note, ts: properties.public_status_updated_at || null }];
+  }
+  const messages = [...voices, ...updates].filter((message) => message.text);
+  messages.sort((a, b) => new Date(a.ts || 0).getTime() - new Date(b.ts || 0).getTime());
+  return messages.map((message) => {
+    const time = message.ts ? `<time>${escapeHtml(formatDate(message.ts))}</time>` : '';
+    if (message.author === 'official') {
+      return `<article class="msg msg--official"><header class="msg__meta"><span class="msg__author">${ICON.info}Finns.Fairway</span>${time}</header><p class="msg__text">${escapeHtml(compactText(message.text, 400))}</p></article>`;
+    }
+    const category = message.category ? ` · ${escapeHtml(message.category)}` : '';
+    return `<article class="msg msg--citizen"><header class="msg__meta"><span class="msg__author">Innbygger${category}</span>${time}</header><p class="msg__text">${escapeHtml(compactText(message.text, 400))}</p></article>`;
+  }).join('');
 }
 
 function popupStatsHtml(properties, { nearbyCount, radiusM }) {
@@ -207,12 +221,10 @@ function popupHtml(featureOrProperties = {}, context = { nearbyCount: 1, radiusM
   const alreadySupported = browserHasSupported(rawReportId);
   const category = properties.category || 'Melding';
   const description = properties.description;
-  const note = properties.public_status_note;
   const missingReportIdDebug = !reportId && shouldShowMissingReportIdDebug()
     ? '<small class="support-debug">Mangler reportId for støtteknapp.</small>'
     : '';
   const citizenDate = formatDate(properties.created_at);
-  const officialDate = formatDate(properties.public_status_updated_at);
   const coords = (featureOrProperties.geometry && featureOrProperties.geometry.coordinates) || [];
   const lng = Number(coords[0]);
   const lat = Number(coords[1]);
@@ -235,12 +247,7 @@ function popupHtml(featureOrProperties = {}, context = { nearbyCount: 1, radiusM
           <p class="msg__text">${description ? escapeHtml(compactText(description, 400)) : 'Ingen beskrivelse lagt ved.'}</p>
           ${reportImagesHtml(properties)}
         </article>
-        ${voiceMessagesHtml(properties)}
-        ${note ? `
-        <article class="msg msg--official">
-          <header class="msg__meta"><span class="msg__author">${ICON.info}Finns.Fairway</span>${officialDate ? `<time>${escapeHtml(officialDate)}</time>` : ''}</header>
-          <p class="msg__text">${escapeHtml(compactText(note, 400))}</p>
-        </article>` : ''}
+        ${threadMessagesHtml(properties)}
       </div>
 
       ${popupStatsHtml(properties, context)}
