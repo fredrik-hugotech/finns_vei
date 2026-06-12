@@ -229,6 +229,7 @@ function popupHtml(featureOrProperties = {}, context = { nearbyCount: 1, radiusM
   const lng = Number(coords[0]);
   const lat = Number(coords[1]);
   const hasCoords = Number.isFinite(lat) && Number.isFinite(lng);
+  const replies = threadMessagesHtml(properties);
   return `
     <article class="report-popup popup-card">
       <header class="popup-head">
@@ -247,7 +248,7 @@ function popupHtml(featureOrProperties = {}, context = { nearbyCount: 1, radiusM
           <p class="msg__text">${description ? escapeHtml(compactText(description, 400)) : 'Ingen beskrivelse lagt ved.'}</p>
           ${reportImagesHtml(properties)}
         </article>
-        ${threadMessagesHtml(properties)}
+        ${replies ? `<div class="popup-replies" data-replies>${replies}</div>` : ''}
       </div>
 
       ${popupStatsHtml(properties, context)}
@@ -663,6 +664,10 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         .setHTML(popupHtml(feature, { nearbyCount, radiusM: NEARBY_RADIUS_M }))
         .addTo(map);
       popupRef.current = popup;
+      requestAnimationFrame(() => {
+        const replies = popup.getElement()?.querySelector('[data-replies]');
+        if (replies) replies.scrollTop = replies.scrollHeight;
+      });
       fillAccidentSummary(popup, center, NEARBY_RADIUS_M);
     });
     ensureReportCategorySymbolLayer(map);

@@ -125,6 +125,26 @@
   padding: 0.5rem 0.6rem;
 }
 
+.popup-replies {
+  display: grid;
+  gap: 0.4rem;
+  max-height: 172px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 3px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+.popup-replies::-webkit-scrollbar {
+  width: 5px;
+}
+
+.popup-replies::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 999px;
+}
+
 .msg--citizen {
   background: var(--color-surface-muted);
 }
