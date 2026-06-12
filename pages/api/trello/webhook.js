@@ -38,17 +38,20 @@ function normalizeBody(body) {
 }
 
 function publicCommentText(text = '') {
-  // Drop leading whitespace and zero-width / BOM characters that Trello (or a
-  // copy-paste) can prepend, then look for the #public prefix.
+  // Drop leading whitespace, zero-width / BOM characters, and markdown wrappers
+  // (` * _ ~ >) that Trello or a copy-paste can prepend, then look for #public.
   const raw = String(text || '');
   let i = 0;
   while (i < raw.length) {
     const ch = raw[i];
     const code = raw.charCodeAt(i);
-    if (ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r' || code === 0xFEFF || code === 0x2060 || (code >= 0x200B && code <= 0x200D)) { i += 1; continue; }
+    const isSpace = ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r';
+    const isHidden = code === 0xFEFF || code === 0x2060 || (code >= 0x200B && code <= 0x200D);
+    const isWrapper = ch === '`' || ch === '*' || ch === '_' || ch === '~' || ch === '>';
+    if (isSpace || isHidden || isWrapper) { i += 1; continue; }
     break;
   }
-  const trimmed = raw.slice(i).trim();
+  const trimmed = raw.slice(i).replace(/[\s`*_~]+$/, '').trim();
   if (!trimmed.toLowerCase().startsWith('#public')) return null;
   return trimmed.replace(/^#public\s*/i, '').trim() || null;
 }
