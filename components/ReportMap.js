@@ -105,6 +105,63 @@ function fillAccidentSummary(popup, center, radiusM) {
     });
 }
 
+function scrollRepliesToBottom(popup) {
+  requestAnimationFrame(() => {
+    const replies = popup.getElement()?.querySelector('[data-replies]');
+    if (replies) replies.scrollTop = replies.scrollHeight;
+  });
+}
+
+// Fetch the freshest thread for an open case and re-render the popup only when
+// something has actually changed (new replies, support, status) — no page reload.
+async function refreshPopupThread(popup, feature, center, nearbyCount) {
+  const reportId = reportIdFromFeature(feature);
+  if (!reportId) return;
+  let data;
+  try {
+    const response = await fetch(`/api/report-thread?id=${encodeURIComponent(reportId)}`);
+    if (!response.ok) return;
+    data = await response.json();
+  } catch (error) {
+    return;
+  }
+  if (!data || !popup.getElement()) return;
+
+  const props = feature.properties || {};
+  const freshSig = JSON.stringify([data.voices, data.updates, data.support_count, data.public_status_note, data.status]);
+  const cachedSig = JSON.stringify([
+    parseJsonArray(props.voices_json),
+    parseJsonArray(props.updates_json),
+    Number(props.support_count || 0),
+    props.public_status_note || null,
+    props.status || null,
+  ]);
+  if (freshSig === cachedSig) return;
+
+  const fresh = {
+    ...feature,
+    properties: {
+      ...props,
+      status: data.status ?? props.status,
+      category: data.category ?? props.category,
+      description: data.description ?? props.description,
+      created_at: data.created_at ?? props.created_at,
+      road_owner: data.road_owner ?? props.road_owner,
+      road_authority: data.road_authority ?? props.road_authority,
+      support_count: data.support_count ?? props.support_count,
+      public_status_note: data.public_status_note ?? null,
+      public_status_updated_at: data.public_status_updated_at ?? null,
+      image_urls: data.image_urls ?? props.image_urls,
+      facets_json: JSON.stringify(data.facets || []),
+      voices_json: JSON.stringify(data.voices || []),
+      updates_json: JSON.stringify(data.updates || []),
+    },
+  };
+  popup.setHTML(popupHtml(fresh, { nearbyCount, radiusM: NEARBY_RADIUS_M }));
+  scrollRepliesToBottom(popup);
+  fillAccidentSummary(popup, center, NEARBY_RADIUS_M);
+}
+
 function escapeHtml(value = '') {
   return String(value)
     .replace(/&/g, '&amp;')
@@ -664,11 +721,9 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         .setHTML(popupHtml(feature, { nearbyCount, radiusM: NEARBY_RADIUS_M }))
         .addTo(map);
       popupRef.current = popup;
-      requestAnimationFrame(() => {
-        const replies = popup.getElement()?.querySelector('[data-replies]');
-        if (replies) replies.scrollTop = replies.scrollHeight;
-      });
+      scrollRepliesToBottom(popup);
       fillAccidentSummary(popup, center, NEARBY_RADIUS_M);
+      refreshPopupThread(popup, feature, center, nearbyCount);
     });
     ensureReportCategorySymbolLayer(map);
   }, [showReports]);
