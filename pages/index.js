@@ -19,7 +19,12 @@ export default function Home() {
     mapApiRef.current = api;
   }, []);
 
+  const haptic = (ms = 8) => {
+    if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(ms);
+  };
+
   const startPick = () => {
+    haptic(10);
     setGeoStatus('');
     setMode('pick');
   };
@@ -27,6 +32,7 @@ export default function Home() {
   const confirmLocation = () => {
     const center = mapApiRef.current?.getCenter();
     if (!center) return;
+    haptic(10);
     setPickedPoint(center);
     setMode('form');
   };
