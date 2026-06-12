@@ -38,7 +38,17 @@ function normalizeBody(body) {
 }
 
 function publicCommentText(text = '') {
-  const trimmed = String(text || '').trim();
+  // Drop leading whitespace and zero-width / BOM characters that Trello (or a
+  // copy-paste) can prepend, then look for the #public prefix.
+  const raw = String(text || '');
+  let i = 0;
+  while (i < raw.length) {
+    const ch = raw[i];
+    const code = raw.charCodeAt(i);
+    if (ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r' || code === 0xFEFF || code === 0x2060 || (code >= 0x200B && code <= 0x200D)) { i += 1; continue; }
+    break;
+  }
+  const trimmed = raw.slice(i).trim();
   if (!trimmed.toLowerCase().startsWith('#public')) return null;
   return trimmed.replace(/^#public\s*/i, '').trim() || null;
 }
@@ -115,6 +125,7 @@ async function handleComment(action) {
     cardId,
     hasText: Boolean(rawText),
     hasPublicPrefix: Boolean(text),
+    textPreview: JSON.stringify(String(rawText || '').slice(0, 80)),
   });
   if (!cardId || !text) return { handled: false, reason: 'not_public_comment', hasText: Boolean(rawText), hasPublicPrefix: Boolean(text) };
 

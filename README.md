@@ -124,6 +124,10 @@ ON public.report_status_updates(trello_card_id, created_at);
 CREATE UNIQUE INDEX IF NOT EXISTS report_status_updates_action_unique_idx
 ON public.report_status_updates(trello_action_id)
 WHERE trello_action_id IS NOT NULL;
+
+-- The API uses the service_role key. If a freshly created table is not granted
+-- automatically (Supabase error 42501), grant access explicitly:
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.report_status_updates TO service_role;
 ```
 
 The unique index on `trello_action_id` makes webhook retries idempotent. The feature is best-effort: without the table, the popup falls back to the single `public_status_note`. The public GeoJSON exposes `updates_json` per feature.
