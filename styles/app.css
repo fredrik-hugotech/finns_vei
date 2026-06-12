@@ -31,7 +31,7 @@
   background: var(--color-primary);
   border: none;
   border-radius: var(--radius-pill);
-  bottom: max(1.1rem, calc(env(safe-area-inset-bottom) + 0.9rem));
+  bottom: max(4.25rem, calc(env(safe-area-inset-bottom) + 3.6rem));
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.85), 0 10px 26px -8px rgba(11, 93, 77, 0.55);
   color: #fff;
   display: inline-flex;
