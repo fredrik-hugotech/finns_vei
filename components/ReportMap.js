@@ -106,6 +106,13 @@ const ACCIDENT_POINT_MIN_ZOOM = 15;
 const NVDB_LAYERS = [
   { type: 'accidents', label: 'Ulykker', color: MAP_COLORS.accidentLayer },
 ];
+
+const REPORT_STATUS_LEGEND = [
+  { label: REPORT_STATUS.NEW, color: MAP_COLORS.reportNew },
+  { label: REPORT_STATUS.REGISTERED, color: MAP_COLORS.reportRegistered },
+  { label: REPORT_STATUS.STARTED, color: MAP_COLORS.reportStarted },
+  { label: REPORT_STATUS.DONE, color: MAP_COLORS.reportDone },
+];
 const ACCIDENT_LAYER_IDS = ['accident-heatmap', 'accident-points', 'accident-point-symbol'];
 const REPORT_LAYER_IDS = ['reports-clusters', 'reports-cluster-count', 'reports-circle', 'reports-category-symbol', 'reports-support-badge'];
 
@@ -178,6 +185,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   const activeNvdbLayersRef = useRef([]);
   const [message, setMessage] = useState('');
   const [activeNvdbLayers, setActiveNvdbLayers] = useState([]);
+  const [legendOpen, setLegendOpen] = useState(() => (typeof window !== 'undefined' ? window.innerWidth > 720 : false));
   const hasMapboxToken = Boolean(process.env.NEXT_PUBLIC_MAPBOX_TOKEN);
 
   useEffect(() => {
@@ -583,8 +591,8 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     <div className="map-wrap">
       <div ref={containerRef} className={className} />
       {enableNvdbLayers && (
-        <div className="layer-control nvdb-toggle-card" aria-label="NVDB-lag">
-          <strong>Lag</strong>
+        <div className="layer-control nvdb-toggle-card" aria-label="Kartlag">
+          <strong>Kartlag</strong>
           {NVDB_LAYERS.map((layer) => (
             <button
               key={layer.type}
@@ -595,6 +603,45 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
               {layer.label}
             </button>
           ))}
+        </div>
+      )}
+      {showReports && (
+        <div className={`map-legend${legendOpen ? ' map-legend--open' : ''}`}>
+          <button
+            type="button"
+            className="map-legend__toggle"
+            aria-expanded={legendOpen}
+            onClick={() => setLegendOpen((open) => !open)}
+          >
+            <span className="map-legend__keys" aria-hidden="true">
+              {REPORT_STATUS_LEGEND.map((item) => (
+                <span key={item.label} className="map-legend__dot" style={{ background: item.color }} />
+              ))}
+            </span>
+            Tegnforklaring
+          </button>
+          {legendOpen && (
+            <div className="map-legend__panel">
+              <p className="map-legend__heading">Status på melding</p>
+              <ul className="map-legend__list">
+                {REPORT_STATUS_LEGEND.map((item) => (
+                  <li key={item.label}>
+                    <span className="map-legend__swatch" style={{ background: item.color }} />
+                    {item.label}
+                  </li>
+                ))}
+              </ul>
+              <p className="map-legend__note">Større prikk = flere har støttet saken.</p>
+              {enableNvdbLayers && (
+                <ul className="map-legend__list">
+                  <li>
+                    <span className="map-legend__swatch" style={{ background: MAP_COLORS.accidentPoint }} />
+                    Ulykke (NVDB)
+                  </li>
+                </ul>
+              )}
+            </div>
+          )}
         </div>
       )}
       {message && <div className="accident-status map-message">{message}</div>}

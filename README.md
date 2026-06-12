@@ -213,4 +213,4 @@ Images are stored under `reports/<report-id>/...` and `reports.image_urls` store
 
 ## Brand assets
 
-A placeholder Finns.Fairway logo lives at `public/brand/finns-fairway-logo.svg`. Replace it with the official local logo file when available, keeping the same path if possible.
+The brand mark used for the favicon and in-app logo lives at `public/brand/finns-vei-mark.svg`, and the in-app wordmark is rendered by `components/Logo.js` (mark + “Finns vei”). The legacy `public/brand/finns-fairway-logo.svg` placeholder is no longer referenced and can be removed once a final licensed logo is in place.
