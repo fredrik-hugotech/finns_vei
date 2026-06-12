@@ -47,7 +47,7 @@ function publicCommentText(text = '') {
     const code = raw.charCodeAt(i);
     const isSpace = ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r';
     const isHidden = code === 0xFEFF || code === 0x2060 || (code >= 0x200B && code <= 0x200D);
-    const isWrapper = ch === '`' || ch === '*' || ch === '_' || ch === '~' || ch === '>';
+    const isWrapper = ch === '`' || ch === '*' || ch === '_' || ch === '~' || ch === '>' || ch === '\\';
     if (isSpace || isHidden || isWrapper) { i += 1; continue; }
     break;
   }
