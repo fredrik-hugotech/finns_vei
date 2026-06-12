@@ -186,13 +186,23 @@
   gap: 0.46rem;
 }
 
-.map-legend__swatch {
-  border: 1.5px solid var(--color-surface);
-  border-radius: var(--radius-pill);
-  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.14);
+.legend-icon {
+  align-items: center;
+  display: inline-flex;
   flex: none;
-  height: 13px;
-  width: 13px;
+  height: 16px;
+  justify-content: center;
+  width: 16px;
+}
+
+.legend-icon svg {
+  height: 100%;
+  width: 100%;
+}
+
+.legend-icon--accident {
+  height: 17px;
+  width: 17px;
 }
 
 .map-legend__note {

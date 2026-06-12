@@ -1,53 +1,180 @@
 .popup-card {
   color: var(--color-text);
   display: grid;
-  font-size: 0.8rem;
-  gap: 0.28rem;
-  line-height: 1.34;
+  font-size: 0.82rem;
+  gap: 0.46rem;
+  line-height: 1.4;
   min-width: 0;
 }
 
-.popup-card strong {
-  color: var(--color-text);
-  font-size: 0.9rem;
-  font-weight: 650;
-  line-height: 1.2;
+.popup-head {
+  align-items: center;
+  display: flex;
+  gap: 0.42rem;
   padding-right: 1.2rem;
+}
+
+.popup-head__icon {
+  flex: none;
+  height: 20px;
+  width: 20px;
+}
+
+.popup-head strong {
+  color: var(--color-text);
+  font-size: 0.96rem;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 .popup-card p {
   margin: 0;
 }
 
-.popup-card small,
-.support-count {
-  color: var(--color-muted);
-  font-size: 0.7rem;
+.popup-desc {
+  color: var(--color-text);
 }
 
-.popup-card--accident span {
+.popup-card small {
+  color: var(--color-muted);
+  font-size: 0.72rem;
+}
+
+/* Shared inline glyph sizing */
+.popup-glyph {
+  flex: none;
+  height: 1.05em;
+  width: 1.05em;
+}
+
+.status-icon {
+  flex: none;
+  height: 1em;
+  width: 1em;
+}
+
+/* Status pill (icon + colour) */
+.status-pill {
+  align-items: center;
+  align-self: start;
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+  font-size: 0.74rem;
+  font-weight: 700;
+  gap: 0.32rem;
+  letter-spacing: 0.01em;
+  padding: 0.22rem 0.56rem 0.22rem 0.42rem;
+}
+
+.status-pill--ny { background: #fef3c7; color: #92400e; }
+.status-pill--registrert { background: #ffedd5; color: #b45309; }
+.status-pill--startet { background: #dbeafe; color: #1d4ed8; }
+.status-pill--fullfort { background: #dcfce7; color: #15803d; }
+.status-pill--ukjent { background: #f3f4f6; color: #374151; }
+
+/* Municipality / Trello update — must stand out as the official answer */
+.popup-update {
+  background: #f0f7ff;
+  border: 1px solid #d4e4fb;
+  border-left: 3px solid var(--color-info);
+  border-radius: var(--radius-sm);
+  display: grid;
+  gap: 0.22rem;
+  padding: 0.5rem 0.58rem;
+}
+
+.popup-update__label {
+  align-items: center;
+  color: var(--color-info);
+  display: flex;
+  font-size: 0.7rem;
+  font-weight: 700;
+  gap: 0.3rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.popup-update__text {
+  color: var(--color-text);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+/* Accident rows */
+.popup-glyph--accident {
+  height: 1.25em;
+  width: 1.25em;
+}
+
+.popup-rows {
+  display: grid;
+  gap: 0.18rem;
+  margin: 0;
+}
+
+.popup-rows div {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: space-between;
+}
+
+.popup-rows dt {
   color: var(--color-muted);
   font-weight: 600;
 }
 
+.popup-rows dd {
+  color: var(--color-text);
+  margin: 0;
+  text-align: right;
+}
+
+/* Actions */
+.popup-actions {
+  display: grid;
+  gap: 0.28rem;
+  margin-top: 0.12rem;
+}
+
 .support-button {
-  font-size: 0.8rem;
-  margin-top: 0.16rem;
-  min-height: 34px;
-  padding: 0.34rem 0.54rem;
+  font-size: 0.84rem;
+  gap: 0.4rem;
+  min-height: 40px;
+  padding: 0.42rem 0.6rem;
   width: 100%;
+}
+
+.support-button .popup-glyph {
+  height: 1.1em;
+  width: 1.1em;
+}
+
+.support-button--done {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: var(--color-success);
+}
+
+.support-button--done:hover {
+  background: #ecfdf5;
 }
 
 .support-button:disabled {
   cursor: default;
-  opacity: 0.7;
+  opacity: 1;
+}
+
+.support-count {
+  color: var(--color-muted);
+  font-size: 0.74rem;
+  text-align: center;
 }
 
 .popup-images {
   display: grid;
   gap: 0.32rem;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 0.12rem 0;
+  margin: 0.04rem 0;
 }
 
 .popup-images img {

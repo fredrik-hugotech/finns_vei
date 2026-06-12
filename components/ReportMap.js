@@ -2,10 +2,36 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import { DEFAULT_CENTER, REPORT_STATUS } from '../lib/config';
 import { MAP_COLORS, MAP_STYLE } from '../lib/mapStyleConfig';
-import { REPORT_CATEGORY_ICON_IDS } from '../lib/reportCategoryIcons';
+import { REPORT_CATEGORY_ICON_IDS, reportCategoryIconId } from '../lib/reportCategoryIcons';
+import { REPORT_STATUS_META, REPORT_STATUS_ORDER, reportStatusMeta } from '../lib/reportStatusMeta';
 import { normalizeImageEntries } from '../lib/reportImages';
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
+
+const ICON = {
+  info: '<svg class="popup-glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="currentColor" opacity="0.16"/><path d="M12 11v5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="7.6" r="1.2" fill="currentColor"/></svg>',
+  support: '<svg class="popup-glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.3l-1.45-1.32C5.4 14.36 2 11.28 2 7.5 2 5.42 3.64 3.8 5.75 3.8c1.18 0 2.31.55 3.05 1.42L12 8.4l3.2-3.18A4.13 4.13 0 0 1 18.25 3.8C20.36 3.8 22 5.42 22 7.5c0 3.78-3.4 6.86-8.55 11.49z" fill="currentColor"/></svg>',
+  check: '<svg class="popup-glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4 4 10-11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  accident: '<svg class="popup-glyph popup-glyph--accident" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l9.2 16.5H2.8z" fill="currentColor" opacity="0.16"/><path d="M12 3.5l9.2 16.5H2.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 10v4.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17.4" r="1.15" fill="currentColor"/></svg>',
+};
+
+function supportCountLabel(count = 0) {
+  const value = Number(count) || 0;
+  if (value <= 0) return 'Bli den første som støtter';
+  if (value === 1) return '1 person støtter saken';
+  return `${value} støtter saken`;
+}
+
+function statusPillHtml(status) {
+  const meta = reportStatusMeta(status);
+  return `<span class="status-pill status-pill--${meta.key}">${meta.icon}<span>${escapeHtml(meta.label)}</span></span>`;
+}
+
+function supportButtonInner(alreadySupported) {
+  return alreadySupported
+    ? `${ICON.check}<span>Du har støttet</span>`
+    : `${ICON.support}<span>Støtt denne saken</span>`;
+}
 
 function escapeHtml(value = '') {
   return String(value)
@@ -25,10 +51,6 @@ function compactText(value = '', maxLength = 140) {
 function browserHasSupported(reportId) {
   if (typeof window === 'undefined' || !reportId) return false;
   return window.localStorage.getItem(`finns-vei-supported-${reportId}`) === '1';
-}
-
-function supportButtonLabel(reportId) {
-  return browserHasSupported(reportId) ? 'Du har støttet denne saken' : 'Støtt denne saken';
 }
 
 function reportIdFromFeature(featureOrProperties = {}) {
@@ -66,19 +88,34 @@ function popupHtml(featureOrProperties = {}) {
   const reportId = escapeHtml(rawReportId);
   const supportCount = Number(properties.support_count || 0);
   const alreadySupported = browserHasSupported(rawReportId);
+  const category = properties.category || 'Melding';
+  const categoryIcon = reportCategoryIconId(category);
+  const note = properties.public_status_note;
+  const updatedAt = properties.public_status_updated_at;
   const missingReportIdDebug = !reportId && shouldShowMissingReportIdDebug()
     ? '<small class="support-debug">Mangler reportId for støtteknapp.</small>'
     : '';
   return `
     <article class="report-popup popup-card">
-      <strong>${escapeHtml(properties.category || 'Melding')}</strong>
-      ${properties.description ? `<p>${escapeHtml(compactText(properties.description))}</p>` : ''}
-      <p>Status: <strong>${escapeHtml(properties.status || REPORT_STATUS.NEW)}</strong></p>
-      ${properties.public_status_note ? `<p>${escapeHtml(compactText(properties.public_status_note, 180))}</p>` : ''}
-      ${properties.public_status_updated_at ? `<small>Oppdatert: ${escapeHtml(new Date(properties.public_status_updated_at).toLocaleDateString('no-NO'))}</small>` : ''}
+      <header class="popup-head">
+        <img class="popup-head__icon" src="/map-icons/${categoryIcon}.svg" alt="" aria-hidden="true" />
+        <strong>${escapeHtml(category)}</strong>
+      </header>
+      ${statusPillHtml(properties.status || REPORT_STATUS.NEW)}
+      ${properties.description ? `<p class="popup-desc">${escapeHtml(compactText(properties.description))}</p>` : ''}
+      ${note ? `
+        <div class="popup-update">
+          <p class="popup-update__label">${ICON.info}<span>Oppdatering fra kommunen</span></p>
+          <p class="popup-update__text">${escapeHtml(compactText(note, 220))}</p>
+          ${updatedAt ? `<small>Oppdatert ${escapeHtml(new Date(updatedAt).toLocaleDateString('no-NO'))}</small>` : ''}
+        </div>` : ''}
       ${reportImagesHtml(properties)}
-      ${reportId ? `<button class="support-button" data-report-id="${reportId}" type="button" ${alreadySupported ? 'disabled' : ''}>${supportButtonLabel(rawReportId)}</button>` : missingReportIdDebug}
-      <small class="support-count" data-support-count-for="${reportId}">${supportCount} støtter denne saken</small>
+      <div class="popup-actions">
+        ${reportId
+          ? `<button class="support-button${alreadySupported ? ' support-button--done' : ''}" data-report-id="${reportId}" type="button" ${alreadySupported ? 'disabled' : ''}>${supportButtonInner(alreadySupported)}</button>`
+          : missingReportIdDebug}
+        <small class="support-count" data-support-count-for="${reportId}">${supportCountLabel(supportCount)}</small>
+      </div>
     </article>
   `;
 }
@@ -93,8 +130,13 @@ function accidentPopupHtml(properties = {}) {
 
   return `
     <article class="accident-popup popup-card popup-card--accident">
-      <strong>Ulykke</strong>
-      ${rows.map(([label, value]) => `<p><span>${escapeHtml(label)}:</span> ${escapeHtml(value)}</p>`).join('')}
+      <header class="popup-head">
+        ${ICON.accident}
+        <strong>Trafikkulykke</strong>
+      </header>
+      ${rows.length ? `<dl class="popup-rows">
+        ${rows.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join('')}
+      </dl>` : ''}
       <small>Kilde: ${escapeHtml(properties.source || 'NVDB')}</small>
     </article>
   `;
@@ -107,12 +149,6 @@ const NVDB_LAYERS = [
   { type: 'accidents', label: 'Ulykker', color: MAP_COLORS.accidentLayer },
 ];
 
-const REPORT_STATUS_LEGEND = [
-  { label: REPORT_STATUS.NEW, color: MAP_COLORS.reportNew },
-  { label: REPORT_STATUS.REGISTERED, color: MAP_COLORS.reportRegistered },
-  { label: REPORT_STATUS.STARTED, color: MAP_COLORS.reportStarted },
-  { label: REPORT_STATUS.DONE, color: MAP_COLORS.reportDone },
-];
 const ACCIDENT_LAYER_IDS = ['accident-heatmap', 'accident-points', 'accident-point-symbol'];
 const REPORT_LAYER_IDS = ['reports-clusters', 'reports-cluster-count', 'reports-circle', 'reports-category-symbol', 'reports-support-badge'];
 
@@ -493,7 +529,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       }
 
       button.disabled = true;
-      button.textContent = 'Støtter...';
+      button.innerHTML = '<span>Sender …</span>';
       try {
         const response = await fetch('/api/report-support', {
           method: 'POST',
@@ -503,17 +539,19 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         const payload = await response.json();
         if (!response.ok) throw new Error(payload.code || payload.error || 'Kunne ikke støtte saken');
         window.localStorage.setItem(storageKey, '1');
-        button.textContent = 'Du har støttet denne saken';
+        button.classList.add('support-button--done');
+        button.innerHTML = supportButtonInner(true);
         button.disabled = true;
         document.querySelectorAll(`[data-support-count-for=\"${reportId}\"]`).forEach((node) => {
-          node.textContent = `${payload.support_count} støtter denne saken`;
+          node.textContent = supportCountLabel(payload.support_count);
         });
         setMessage(payload.alreadySupported ? 'Du har allerede støttet denne saken.' : 'Takk for støtten!');
         await loadReports();
       } catch (error) {
         console.error(error);
         button.disabled = false;
-        button.textContent = 'Støtt denne saken';
+        button.classList.remove('support-button--done');
+        button.innerHTML = supportButtonInner(false);
         const debugSuffix = shouldShowMissingReportIdDebug() && error?.message ? ` (${error.message})` : '';
         setMessage(`Kunne ikke støtte saken akkurat nå.${debugSuffix}`);
       }
@@ -614,8 +652,8 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
             onClick={() => setLegendOpen((open) => !open)}
           >
             <span className="map-legend__keys" aria-hidden="true">
-              {REPORT_STATUS_LEGEND.map((item) => (
-                <span key={item.label} className="map-legend__dot" style={{ background: item.color }} />
+              {REPORT_STATUS_ORDER.map((status) => (
+                <span key={status} className="map-legend__dot" style={{ background: REPORT_STATUS_META[status].marker }} />
               ))}
             </span>
             Tegnforklaring
@@ -624,18 +662,31 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
             <div className="map-legend__panel">
               <p className="map-legend__heading">Status på melding</p>
               <ul className="map-legend__list">
-                {REPORT_STATUS_LEGEND.map((item) => (
-                  <li key={item.label}>
-                    <span className="map-legend__swatch" style={{ background: item.color }} />
-                    {item.label}
-                  </li>
-                ))}
+                {REPORT_STATUS_ORDER.map((status) => {
+                  const meta = REPORT_STATUS_META[status];
+                  return (
+                    <li key={status}>
+                      <span
+                        className="legend-icon"
+                        style={{ color: meta.marker }}
+                        aria-hidden="true"
+                        dangerouslySetInnerHTML={{ __html: meta.icon }}
+                      />
+                      {meta.label}
+                    </li>
+                  );
+                })}
               </ul>
-              <p className="map-legend__note">Større prikk = flere har støttet saken.</p>
+              <p className="map-legend__note">Større markør = flere har støttet saken.</p>
               {enableNvdbLayers && (
                 <ul className="map-legend__list">
                   <li>
-                    <span className="map-legend__swatch" style={{ background: MAP_COLORS.accidentPoint }} />
+                    <span
+                      className="legend-icon legend-icon--accident"
+                      style={{ color: MAP_COLORS.accidentPoint }}
+                      aria-hidden="true"
+                      dangerouslySetInnerHTML={{ __html: ICON.accident }}
+                    />
                     Ulykke (NVDB)
                   </li>
                 </ul>
