@@ -236,20 +236,7 @@
   border: 1px solid var(--color-border) !important;
   border-radius: var(--radius-md) !important;
   box-shadow: var(--shadow-popup) !important;
-  max-height: min(76vh, 540px) !important;
-  overflow-y: auto !important;
-  overscroll-behavior: contain;
   padding: 0.58rem 0.66rem !important;
-  scrollbar-width: thin;
-}
-
-.mapboxgl-popup-content::-webkit-scrollbar {
-  width: 5px;
-}
-
-.mapboxgl-popup-content::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 999px;
 }
 
 .mapboxgl-popup-close-button {

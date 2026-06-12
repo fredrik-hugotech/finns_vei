@@ -109,8 +109,8 @@ function fillAccidentSummary(popup, center, radiusM) {
 
 function scrollRepliesToBottom(popup) {
   requestAnimationFrame(() => {
-    const replies = popup.getElement()?.querySelector('[data-replies]');
-    if (replies) replies.scrollTop = replies.scrollHeight;
+    const thread = popup.getElement()?.querySelector('[data-thread]');
+    if (thread) thread.scrollTop = thread.scrollHeight;
   });
 }
 
@@ -310,13 +310,13 @@ function popupHtml(featureOrProperties = {}, context = { nearbyCount: 1, radiusM
 
       ${facetRowHtml(properties)}
 
-      <div class="popup-thread">
+      <div class="popup-thread" data-thread>
         <article class="msg msg--citizen">
           <header class="msg__meta"><span class="msg__author">Innbygger</span>${citizenDate ? `<time>${escapeHtml(citizenDate)}</time>` : ''}</header>
           <p class="msg__text">${description ? escapeHtml(compactText(description, 400)) : 'Ingen beskrivelse lagt ved.'}</p>
           ${reportImagesHtml(properties)}
         </article>
-        ${replies ? `<div class="popup-replies" data-replies>${replies}</div>` : ''}
+        ${replies ? `<div class="popup-replies">${replies}</div>` : ''}
       </div>
 
       ${popupStatsHtml(properties, context)}
