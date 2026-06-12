@@ -89,6 +89,19 @@ ADD COLUMN IF NOT EXISTS category text;
 
 `POST /api/report-support` accepts optional `note` and `category`. The code is resilient: if these columns are missing it still records the support (without the voice), so deploys never break support — but apply the migration to capture voices and facets. The public GeoJSON (`GET /api/reports`) then exposes `facets_json` (concern counts) and `voices_json` (supporter notes) per feature.
 
+### Case grouping (one Trello card per place)
+
+To avoid a Trello card per individual report, a new report within `CASE_GROUP_RADIUS_M` (default 35 m) of an existing open case (a report that already anchors a Trello card and is not `Fullført`) is linked to that case instead of creating a new card: it shares the anchor's `trello_card_id`/`trello_list_id`, gets `case_id` set to the anchor, and a comment is added to the anchor's Trello card. Grouped reports still enrich their own NVDB data in Supabase but do not overwrite the shared card description, and they move status together with the case via the Trello webhook.
+
+```sql
+ALTER TABLE public.reports
+ADD COLUMN IF NOT EXISTS case_id uuid;
+
+CREATE INDEX IF NOT EXISTS reports_case_id_idx ON public.reports(case_id);
+```
+
+The grouping is best-effort: without the `case_id` column reports are still linked by sharing the Trello card; with it, `case_id` ties the whole case together. Tune the radius with the optional `CASE_GROUP_RADIUS_M` env var.
+
 ## Environment variables
 
 Set these in Vercel Project Settings and locally in `.env.local` when developing. Do not commit secrets.
