@@ -6,8 +6,8 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>Finns vei</title>
-        <meta name="description" content="Meld fra om farlige steder i trafikken, eller se kart over meldinger." />
+        <title>Finns Fairway</title>
+        <meta name="description" content="For en trygg og aktiv oppvekst. Meld fra om steder som føles utrygge i trafikken, eller se kart over meldinger." />
       </Head>
       <main className="page page--home">
         <section className="hero-card">

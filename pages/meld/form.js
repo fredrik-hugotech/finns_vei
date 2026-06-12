@@ -129,7 +129,7 @@ export default function MeldForm() {
   return (
     <>
       <Head>
-        <title>Skjema – Finns vei</title>
+        <title>Skjema – Finns Fairway</title>
       </Head>
       <main className="form-page">
         <header className="top-bar">

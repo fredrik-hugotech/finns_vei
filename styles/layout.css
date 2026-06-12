@@ -7,7 +7,7 @@
 
 .page--home {
   background:
-    radial-gradient(120% 80% at 50% -10%, #fffaf0 0%, rgba(255, 250, 240, 0) 60%),
+    radial-gradient(120% 80% at 50% -10%, var(--color-beige) 0%, rgba(236, 225, 205, 0) 62%),
     var(--color-bg);
 }
 
@@ -44,43 +44,45 @@
   display: none;
 }
 
-/* Brand logo (mark + wordmark) */
+/* Brand logo: three-dot mark + stacked "Finns Fairway" wordmark */
 .logo {
   align-items: center;
-  color: var(--color-text);
+  color: var(--color-primary);
   display: inline-flex;
   font-family: var(--font-heading);
-  font-weight: 700;
   gap: 0.5rem;
-  letter-spacing: -0.02em;
   line-height: 1;
 }
 
 .logo__mark {
   flex: none;
-  height: 1.55em;
-  width: 1.55em;
+  height: 1.95em;
+  width: 1.95em;
 }
 
 .logo__word {
-  white-space: nowrap;
+  display: inline-grid;
+  font-weight: 700;
+  letter-spacing: 0.005em;
+  line-height: 0.95;
+  text-align: left;
 }
 
-.logo__word-accent {
-  color: var(--color-muted);
-  font-weight: 650;
+.logo__word-top,
+.logo__word-bottom {
+  display: block;
 }
 
 .logo--sm {
-  font-size: 1.05rem;
+  font-size: 0.95rem;
 }
 
 .logo--md {
-  font-size: 1.35rem;
+  font-size: 1.2rem;
 }
 
 .logo--lg {
-  font-size: 1.85rem;
+  font-size: 1.55rem;
 }
 
 .eyebrow {

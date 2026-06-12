@@ -95,9 +95,9 @@
 }
 
 .nvdb-toggle--active {
-  background: #fff7d6;
-  border-color: #d6a900;
-  color: var(--color-text);
+  background: #dcefe9;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 .map-message {

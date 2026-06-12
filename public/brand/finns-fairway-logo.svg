@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 96" role="img" aria-labelledby="title desc">
-  <title id="title">Finns.Fairway logo placeholder</title>
-  <desc id="desc">Tekstbasert plassholder. Erstatt med den offisielle Finns.Fairway-logoen.</desc>
-  <rect width="420" height="96" rx="28" fill="#f7f3e8"/>
-  <circle cx="52" cy="48" r="26" fill="#7bbf43"/>
-  <path d="M38 52c14-22 34-22 49 0" fill="none" stroke="#153b2f" stroke-width="7" stroke-linecap="round"/>
-  <text x="96" y="58" font-family="Arial, sans-serif" font-size="34" font-weight="800" fill="#153b2f">Finns.Fairway</text>
-</svg>

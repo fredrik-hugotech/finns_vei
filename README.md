@@ -213,4 +213,4 @@ Images are stored under `reports/<report-id>/...` and `reports.image_urls` store
 
 ## Brand assets
 
-The brand mark used for the favicon and in-app logo lives at `public/brand/finns-vei-mark.svg`, and the in-app wordmark is rendered by `components/Logo.js` (mark + “Finns vei”). The legacy `public/brand/finns-fairway-logo.svg` placeholder is no longer referenced and can be removed once a final licensed logo is in place.
+The Finns Fairway brand mark (three dots) used for the favicon lives at `public/brand/finns-fairway-mark.svg`, and the in-app logo (mark + stacked “Finns Fairway” wordmark) is rendered by `components/Logo.js`. Brand colours and fonts are centralised in `styles/theme.css` (`--color-primary` deep green, cream background) and `pages/_app.js` (Poppins headings via `next/font`).

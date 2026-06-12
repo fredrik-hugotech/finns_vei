@@ -6,7 +6,7 @@ export default function Meld() {
   return (
     <>
       <Head>
-        <title>Meld fra – Finns vei</title>
+        <title>Meld fra – Finns Fairway</title>
       </Head>
       <main className="page">
         <section className="hero-card">

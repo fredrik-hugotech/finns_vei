@@ -11,7 +11,7 @@ export default function MapPage() {
   return (
     <>
       <Head>
-        <title>Kart – Finns vei</title>
+        <title>Kart – Finns Fairway</title>
       </Head>
       <main className="map-page">
         <ReportMap className="map-canvas" enableNvdbLayers />
