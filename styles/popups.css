@@ -133,6 +133,7 @@
   display: grid;
   gap: 0.3rem;
   max-height: 138px;
+  min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   padding-right: 3px;
