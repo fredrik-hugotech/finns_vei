@@ -228,7 +228,7 @@
 }
 
 .mapboxgl-popup {
-  max-width: min(280px, calc(100vw - 32px)) !important;
+  max-width: min(300px, calc(100vw - 32px)) !important;
   z-index: var(--z-popup);
 }
 

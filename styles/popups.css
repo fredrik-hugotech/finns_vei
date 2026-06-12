@@ -100,6 +100,77 @@
   line-height: 1.4;
 }
 
+/* Report insight: road owner, nearby cases, accidents within radius */
+.popup-insight {
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.46rem 0.56rem;
+}
+
+.popup-insight dl {
+  display: grid;
+  gap: 0.32rem;
+  margin: 0;
+}
+
+.insight-row {
+  align-items: baseline;
+  display: flex;
+  gap: 0.6rem;
+  justify-content: space-between;
+}
+
+.insight-row dt {
+  color: var(--color-muted);
+  flex: none;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.insight-row dd {
+  color: var(--color-text);
+  font-size: 0.84rem;
+  font-weight: 700;
+  margin: 0;
+  text-align: right;
+}
+
+.insight-row--accidents {
+  align-items: flex-start;
+}
+
+.insight-row--accidents dd {
+  display: grid;
+  gap: 0.12rem;
+  justify-items: end;
+}
+
+.insight-sub {
+  color: var(--color-muted);
+  font-weight: 500;
+}
+
+.insight-muted {
+  color: var(--color-muted);
+  font-weight: 500;
+}
+
+.accident-list {
+  display: grid;
+  gap: 0.12rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  text-align: right;
+}
+
+.accident-list li {
+  color: var(--color-text);
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
 /* Accident rows */
 .popup-glyph--accident {
   height: 1.25em;

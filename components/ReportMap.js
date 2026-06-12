@@ -33,6 +33,75 @@ function supportButtonInner(alreadySupported) {
     : `${ICON.support}<span>Støtt denne saken</span>`;
 }
 
+const NEARBY_RADIUS_M = 20;
+
+function distanceMeters([lng1, lat1], [lng2, lat2]) {
+  const R = 6371000;
+  const toRad = (deg) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+function bboxAround([lng, lat], meters) {
+  const dLat = meters / 111320;
+  const dLng = meters / (111320 * Math.cos((lat * Math.PI) / 180));
+  return [lng - dLng, lat - dLat, lng + dLng, lat + dLat].map((value) => value.toFixed(6)).join(',');
+}
+
+function countNearbyReports(data, center, radiusM) {
+  const features = data?.features || [];
+  let count = 0;
+  for (const feature of features) {
+    const coords = feature.geometry?.coordinates;
+    if (Array.isArray(coords) && distanceMeters(center, coords) <= radiusM) count += 1;
+  }
+  return count;
+}
+
+async function fetchAccidentsNear(center, radiusM) {
+  const bbox = bboxAround(center, Math.max(radiusM * 3, 90));
+  const response = await fetch(`/api/nvdb/layer?type=accidents&bbox=${encodeURIComponent(bbox)}&zoom=17`);
+  if (!response.ok) throw new Error('Kunne ikke hente ulykker');
+  const geojson = await response.json();
+  if (geojson?.meta?.degraded) throw new Error('Ulykkesdata utilgjengelig');
+  return (geojson.features || [])
+    .filter((feature) => feature.geometry?.type === 'Point' && Array.isArray(feature.geometry.coordinates))
+    .map((feature) => ({
+      dist: distanceMeters(center, feature.geometry.coordinates),
+      year: feature.properties?.year || (feature.properties?.date ? String(feature.properties.date).slice(0, 4) : ''),
+      type: feature.properties?.accident_type || '',
+      severity: feature.properties?.severity || '',
+    }))
+    .filter((accident) => accident.dist <= radiusM)
+    .sort((a, b) => (Number(b.year) || 0) - (Number(a.year) || 0));
+}
+
+function accidentSummaryHtml(accidents) {
+  if (!accidents.length) return '<span class="insight-muted">Ingen registrerte</span>';
+  const items = accidents.slice(0, 6).map((accident) => {
+    const label = [accident.year, accident.type || 'Ulykke'].filter(Boolean).join(' · ');
+    const severity = accident.severity ? ` <span class="insight-sub">${escapeHtml(accident.severity)}</span>` : '';
+    return `<li>${escapeHtml(label)}${severity}</li>`;
+  }).join('');
+  const more = accidents.length > 6 ? `<li class="insight-muted">+${accidents.length - 6} flere</li>` : '';
+  return `<strong>${accidents.length}</strong><ul class="accident-list">${items}${more}</ul>`;
+}
+
+function fillAccidentSummary(popup, center, radiusM) {
+  const target = () => popup.getElement()?.querySelector('[data-accidents]');
+  fetchAccidentsNear(center, radiusM)
+    .then((accidents) => {
+      const node = target();
+      if (node) node.innerHTML = accidentSummaryHtml(accidents);
+    })
+    .catch(() => {
+      const node = target();
+      if (node) node.innerHTML = '<span class="insight-muted">Utilgjengelig nå</span>';
+    });
+}
+
 function escapeHtml(value = '') {
   return String(value)
     .replace(/&/g, '&amp;')
@@ -82,7 +151,20 @@ function reportImagesHtml(properties = {}) {
   `;
 }
 
-function popupHtml(featureOrProperties = {}) {
+function reportInsightHtml(properties, { nearbyCount, radiusM }) {
+  const roadOwner = properties.road_owner || properties.road_authority || '';
+  const roadAuthority = properties.road_authority || '';
+  const rows = [];
+  if (roadOwner) {
+    const sub = roadAuthority && roadAuthority !== roadOwner ? ` <span class="insight-sub">(${escapeHtml(roadAuthority)})</span>` : '';
+    rows.push(`<div class="insight-row"><dt>Veieier</dt><dd>${escapeHtml(roadOwner)}${sub}</dd></div>`);
+  }
+  rows.push(`<div class="insight-row"><dt>Saker innen ${radiusM} m</dt><dd>${nearbyCount}</dd></div>`);
+  rows.push(`<div class="insight-row insight-row--accidents"><dt>Ulykker innen ${radiusM} m</dt><dd data-accidents><span class="insight-muted">Henter …</span></dd></div>`);
+  return `<section class="popup-insight"><dl>${rows.join('')}</dl></section>`;
+}
+
+function popupHtml(featureOrProperties = {}, context = { nearbyCount: 1, radiusM: NEARBY_RADIUS_M }) {
   const properties = featureOrProperties.properties || featureOrProperties || {};
   const rawReportId = reportIdFromFeature(featureOrProperties);
   const reportId = escapeHtml(rawReportId);
@@ -102,10 +184,11 @@ function popupHtml(featureOrProperties = {}) {
         <strong>${escapeHtml(category)}</strong>
       </header>
       ${statusPillHtml(properties.status || REPORT_STATUS.NEW)}
+      ${reportInsightHtml(properties, context)}
       ${properties.description ? `<p class="popup-desc">${escapeHtml(compactText(properties.description))}</p>` : ''}
       ${note ? `
         <div class="popup-update">
-          <p class="popup-update__label">${ICON.info}<span>Oppdatering fra kommunen</span></p>
+          <p class="popup-update__label">${ICON.info}<span>Oppdatering fra Finns.Fairway</span></p>
           <p class="popup-update__text">${escapeHtml(compactText(note, 220))}</p>
           ${updatedAt ? `<small>Oppdatert ${escapeHtml(new Date(updatedAt).toLocaleDateString('no-NO'))}</small>` : ''}
         </div>` : ''}
@@ -219,6 +302,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   const markerRef = useRef(null);
   const pointRef = useRef(point);
   const activeNvdbLayersRef = useRef([]);
+  const reportsDataRef = useRef({ type: 'FeatureCollection', features: [] });
   const [message, setMessage] = useState('');
   const [activeNvdbLayers, setActiveNvdbLayers] = useState([]);
   const [legendOpen, setLegendOpen] = useState(() => (typeof window !== 'undefined' ? window.innerWidth > 720 : false));
@@ -427,6 +511,8 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     if (!response.ok) throw new Error('Kunne ikke hente meldinger');
     const geojson = await response.json();
 
+    reportsDataRef.current = geojson;
+
     const source = map.getSource('reports');
     if (source) {
       source.setData(geojson);
@@ -494,10 +580,14 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       const feature = event.features?.[0];
       if (!feature) return;
       event.originalEvent.cancelBubble = true;
-      new mapboxgl.Popup({ maxWidth: '280px' })
-        .setLngLat(feature.geometry.coordinates)
-        .setHTML(popupHtml(feature))
+      const center = feature.geometry.coordinates;
+      map.easeTo({ center, zoom: Math.max(map.getZoom(), 17), duration: 600 });
+      const nearbyCount = countNearbyReports(reportsDataRef.current, center, NEARBY_RADIUS_M);
+      const popup = new mapboxgl.Popup({ maxWidth: '300px' })
+        .setLngLat(center)
+        .setHTML(popupHtml(feature, { nearbyCount, radiusM: NEARBY_RADIUS_M }))
         .addTo(map);
+      fillAccidentSummary(popup, center, NEARBY_RADIUS_M);
     });
     ensureReportCategorySymbolLayer(map);
   }, [showReports]);
