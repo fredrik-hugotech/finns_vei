@@ -30,6 +30,36 @@
   gap: 0.22rem;
 }
 
+/* Concern facets — round icons showing the types of concern raised on a case */
+.facet-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.facet {
+  align-items: center;
+  background: #e9f3ef;
+  border-radius: var(--radius-pill);
+  color: var(--color-primary);
+  display: inline-flex;
+  gap: 0.18rem;
+  height: 30px;
+  justify-content: center;
+  min-width: 30px;
+  padding: 0 0.42rem;
+}
+
+.facet svg {
+  height: 17px;
+  width: 17px;
+}
+
+.facet b {
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
 .popup-head strong {
   color: var(--color-text);
   font-size: 0.96rem;

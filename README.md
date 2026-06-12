@@ -77,6 +77,18 @@ WHERE support_token IS NOT NULL;
 
 Support stores a browser-generated token plus optional hashed IP/user-agent values only; raw IP addresses are never stored.
 
+### Supporting with a voice (concern + note)
+
+A support can carry an optional **concern** and **note** so a case becomes a collection of citizen voices, not just a `+1`. Each report popup aggregates these into round concern facets and a conversation thread. Add the columns with:
+
+```sql
+ALTER TABLE public.report_supports
+ADD COLUMN IF NOT EXISTS note text,
+ADD COLUMN IF NOT EXISTS category text;
+```
+
+`POST /api/report-support` accepts optional `note` and `category`. The code is resilient: if these columns are missing it still records the support (without the voice), so deploys never break support — but apply the migration to capture voices and facets. The public GeoJSON (`GET /api/reports`) then exposes `facets_json` (concern counts) and `voices_json` (supporter notes) per feature.
+
 ## Environment variables
 
 Set these in Vercel Project Settings and locally in `.env.local` when developing. Do not commit secrets.

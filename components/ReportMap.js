@@ -3,7 +3,9 @@ import mapboxgl from 'mapbox-gl';
 import { DEFAULT_CENTER, REPORT_STATUS } from '../lib/config';
 import { MAP_COLORS, MAP_STYLE } from '../lib/mapStyleConfig';
 import { REPORT_STATUS_META, REPORT_STATUS_ORDER, reportStatusMeta } from '../lib/reportStatusMeta';
+import { categoryGlyph } from '../lib/reportCategoryGlyphs';
 import { normalizeImageEntries } from '../lib/reportImages';
+import SupportSheet from './SupportSheet';
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 
@@ -163,6 +165,31 @@ function reportMarkerIconHtml() {
   return '<span class="popup-head__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5.5 4.5h13a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H11l-3.6 3.1a0.6 0.6 0 0 1-1-0.46V16.5H5.5a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2z" fill="var(--color-primary)"/><path d="M12 7.6v3.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="12" cy="13.4" r="1.05" fill="#fff"/></svg></span>';
 }
 
+function parseJsonArray(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value !== 'string' || !value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function facetRowHtml(properties) {
+  const facets = parseJsonArray(properties.facets_json);
+  if (!facets.length) return '';
+  return `<div class="facet-row">${facets.map((facet) => `<span class="facet" title="${escapeHtml(facet.category || '')}">${categoryGlyph(facet.category)}${Number(facet.count) > 1 ? `<b>${Number(facet.count)}</b>` : ''}</span>`).join('')}</div>`;
+}
+
+function voiceMessagesHtml(properties) {
+  return parseJsonArray(properties.voices_json).map((voice) => `
+    <article class="msg msg--citizen">
+      <header class="msg__meta"><span class="msg__author">Innbygger${voice.category ? ` · ${escapeHtml(voice.category)}` : ''}</span>${voice.created_at ? `<time>${escapeHtml(formatDate(voice.created_at))}</time>` : ''}</header>
+      <p class="msg__text">${escapeHtml(compactText(voice.note, 400))}</p>
+    </article>`).join('');
+}
+
 function popupStatsHtml(properties, { nearbyCount, radiusM }) {
   const roadOwner = properties.road_owner || properties.road_authority || '';
   const rows = [];
@@ -200,12 +227,15 @@ function popupHtml(featureOrProperties = {}, context = { nearbyCount: 1, radiusM
         </div>
       </header>
 
+      ${facetRowHtml(properties)}
+
       <div class="popup-thread">
         <article class="msg msg--citizen">
           <header class="msg__meta"><span class="msg__author">Innbygger</span>${citizenDate ? `<time>${escapeHtml(citizenDate)}</time>` : ''}</header>
           <p class="msg__text">${description ? escapeHtml(compactText(description, 400)) : 'Ingen beskrivelse lagt ved.'}</p>
           ${reportImagesHtml(properties)}
         </article>
+        ${voiceMessagesHtml(properties)}
         ${note ? `
         <article class="msg msg--official">
           <header class="msg__meta"><span class="msg__author">${ICON.info}Finns.Fairway</span>${officialDate ? `<time>${escapeHtml(officialDate)}</time>` : ''}</header>
@@ -318,9 +348,11 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   const pointRef = useRef(point);
   const activeNvdbLayersRef = useRef([]);
   const reportsDataRef = useRef({ type: 'FeatureCollection', features: [] });
+  const popupRef = useRef(null);
   const [message, setMessage] = useState('');
   const [activeNvdbLayers, setActiveNvdbLayers] = useState([]);
   const [legendOpen, setLegendOpen] = useState(() => (typeof window !== 'undefined' ? window.innerWidth > 720 : false));
+  const [supportTarget, setSupportTarget] = useState(null);
   const hasMapboxToken = Boolean(process.env.NEXT_PUBLIC_MAPBOX_TOKEN);
 
   useEffect(() => {
@@ -623,6 +655,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         .setLngLat(center)
         .setHTML(popupHtml(feature, { nearbyCount, radiusM: NEARBY_RADIUS_M }))
         .addTo(map);
+      popupRef.current = popup;
       fillAccidentSummary(popup, center, NEARBY_RADIUS_M);
     });
     ensureReportCategorySymbolLayer(map);
@@ -642,50 +675,30 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   useEffect(() => {
     if (!showReports) return undefined;
 
-    const handleSupportClick = async (event) => {
+    const handleSupportClick = (event) => {
       const button = event.target?.closest?.('.support-button');
       if (!button) return;
       const reportId = button.getAttribute('data-report-id');
       if (!reportId) return;
-
-      const storageKey = `finns-vei-supported-${reportId}`;
-      if (window.localStorage.getItem(storageKey)) {
+      if (window.localStorage.getItem(`finns-vei-supported-${reportId}`)) {
         setMessage('Du har allerede støttet denne saken fra denne nettleseren.');
         return;
       }
-
-      button.disabled = true;
-      button.innerHTML = '<span>Sender …</span>';
-      try {
-        const response = await fetch('/api/report-support', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ reportId, supportToken: getSupportToken() }),
-        });
-        const payload = await response.json();
-        if (!response.ok) throw new Error(payload.code || payload.error || 'Kunne ikke støtte saken');
-        window.localStorage.setItem(storageKey, '1');
-        button.classList.add('support-button--done');
-        button.innerHTML = supportButtonInner(true);
-        button.disabled = true;
-        document.querySelectorAll(`[data-support-count-for=\"${reportId}\"]`).forEach((node) => {
-          node.textContent = supportCountLabel(payload.support_count);
-        });
-        setMessage(payload.alreadySupported ? 'Du har allerede støttet denne saken.' : 'Takk for støtten!');
-        await loadReports();
-      } catch (error) {
-        console.error(error);
-        button.disabled = false;
-        button.classList.remove('support-button--done');
-        button.innerHTML = supportButtonInner(false);
-        const debugSuffix = shouldShowMissingReportIdDebug() && error?.message ? ` (${error.message})` : '';
-        setMessage(`Kunne ikke støtte saken akkurat nå.${debugSuffix}`);
-      }
+      setSupportTarget({ reportId });
     };
 
     window.addEventListener('click', handleSupportClick);
     return () => window.removeEventListener('click', handleSupportClick);
-  }, [getSupportToken, loadReports, showReports]);
+  }, [showReports]);
+
+  const handleSupportDone = useCallback((payload, reportId) => {
+    if (reportId) window.localStorage.setItem(`finns-vei-supported-${reportId}`, '1');
+    setSupportTarget(null);
+    popupRef.current?.remove();
+    popupRef.current = null;
+    setMessage(payload?.alreadySupported ? 'Du har allerede støttet denne saken.' : 'Takk for støtten!');
+    loadReports().catch((error) => console.error(error));
+  }, [loadReports]);
 
   useEffect(() => {
     const openStreetView = (button) => {
@@ -883,6 +896,14 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
             </div>
           )}
         </div>
+      )}
+      {supportTarget && (
+        <SupportSheet
+          reportId={supportTarget.reportId}
+          supportToken={getSupportToken()}
+          onClose={() => setSupportTarget(null)}
+          onDone={(payload) => handleSupportDone(payload, supportTarget.reportId)}
+        />
       )}
       {message && <div className="accident-status map-message">{message}</div>}
     </div>

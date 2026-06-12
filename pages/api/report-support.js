@@ -16,6 +16,18 @@ function cleanSupportToken(value) {
   return value.trim().slice(0, 160);
 }
 
+function cleanNote(value) {
+  if (typeof value !== 'string') return null;
+  const text = value.trim().slice(0, 600);
+  return text || null;
+}
+
+function cleanCategory(value) {
+  if (typeof value !== 'string') return null;
+  const text = value.trim().slice(0, 80);
+  return text || null;
+}
+
 function hashValue(value) {
   if (!value) return null;
   const salt = process.env.SUPPORT_HASH_SALT || process.env.SUPABASE_SERVICE_ROLE_KEY || 'finns-vei-support';
@@ -58,6 +70,8 @@ export default async function handler(req, res) {
 
   const reportId = cleanReportId(req.body?.reportId);
   const supportToken = cleanSupportToken(req.body?.supportToken);
+  const note = cleanNote(req.body?.note);
+  const category = cleanCategory(req.body?.category);
   const validReportUuid = UUID_RE.test(reportId);
   const configured = hasSupabaseConfig();
 
@@ -87,6 +101,8 @@ export default async function handler(req, res) {
     const result = await createReportSupport({
       reportId,
       supportToken,
+      note,
+      category,
       ipHash: hashValue(clientIp(req)),
       userAgentHash: hashValue(req.headers['user-agent'] || ''),
     });
