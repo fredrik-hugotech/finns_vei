@@ -4,8 +4,8 @@
 .mapboxgl-popup-content {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-control);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
 }
 
 .ui-button,
@@ -34,15 +34,16 @@
 .support-button,
 .image-upload-button {
   background: var(--color-primary);
-  border: 1px solid #d4a90b;
-  color: var(--color-text);
+  border: 1px solid var(--color-primary);
+  color: #ffffff;
 }
 
 .ui-button-primary:hover,
 .big-button--primary:hover,
 .support-button:hover,
 .image-upload-button:hover {
-  background: #f1c232;
+  background: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
 }
 
 .ui-button-secondary,
@@ -52,7 +53,7 @@
 .top-bar a {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  color: var(--color-text);
+  color: var(--color-primary);
 }
 
 .ui-button-secondary:hover,
@@ -60,8 +61,8 @@
 .image-upload-button--secondary:hover,
 .back-link:hover,
 .top-bar a:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
+  background: var(--color-surface-muted);
+  border-color: var(--color-primary);
 }
 
 .ui-control,

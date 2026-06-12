@@ -77,6 +77,57 @@ WHERE support_token IS NOT NULL;
 
 Support stores a browser-generated token plus optional hashed IP/user-agent values only; raw IP addresses are never stored.
 
+### Supporting with a voice (concern + note)
+
+A support can carry an optional **concern** and **note** so a case becomes a collection of citizen voices, not just a `+1`. Each report popup aggregates these into round concern facets and a conversation thread. Add the columns with:
+
+```sql
+ALTER TABLE public.report_supports
+ADD COLUMN IF NOT EXISTS note text,
+ADD COLUMN IF NOT EXISTS category text;
+```
+
+`POST /api/report-support` accepts optional `note` and `category`. The code is resilient: if these columns are missing it still records the support (without the voice), so deploys never break support — but apply the migration to capture voices and facets. The public GeoJSON (`GET /api/reports`) then exposes `facets_json` (concern counts) and `voices_json` (supporter notes) per feature.
+
+### Case grouping (one Trello card per place)
+
+To avoid a Trello card per individual report, a new report within `CASE_GROUP_RADIUS_M` (default 35 m) of an existing open case (a report that already anchors a Trello card and is not `Fullført`) is linked to that case instead of creating a new card: it shares the anchor's `trello_card_id`/`trello_list_id`, gets `case_id` set to the anchor, and a comment is added to the anchor's Trello card. Grouped reports still enrich their own NVDB data in Supabase but do not overwrite the shared card description, and they move status together with the case via the Trello webhook.
+
+```sql
+ALTER TABLE public.reports
+ADD COLUMN IF NOT EXISTS case_id uuid;
+
+CREATE INDEX IF NOT EXISTS reports_case_id_idx ON public.reports(case_id);
+```
+
+The grouping is best-effort: without the `case_id` column reports are still linked by sharing the Trello card; with it, `case_id` ties the whole case together. Tune the radius with the optional `CASE_GROUP_RADIUS_M` env var.
+
+Trello cards also link back to the public case (`<base>/sak/<caseId>`) and, as a case grows, the anchor card is renamed `Sak: <kategori> · N meldinger` for a quick overview. The base URL is taken from `PUBLIC_BASE_URL`/`NEXT_PUBLIC_SITE_URL`, falling back to Vercel's `VERCEL_PROJECT_PRODUCTION_URL`/`VERCEL_URL`. Set `PUBLIC_BASE_URL` to your production domain for stable links.
+
+### Public status updates as a thread
+
+Every `#public` Trello comment is appended to `public.report_status_updates` (keyed by the shared `trello_card_id`) so the case popup shows **each** Finns.Fairway reply as its own message in the conversation, in chronological order with the citizen voices — not just the latest. `public_status_note` is still updated as the latest note for backward compatibility and the share page.
+
+```sql
+CREATE TABLE IF NOT EXISTS public.report_status_updates (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  trello_card_id text NOT NULL,
+  note text NOT NULL,
+  source text DEFAULT 'trello_comment',
+  trello_action_id text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS report_status_updates_card_idx
+ON public.report_status_updates(trello_card_id, created_at);
+
+CREATE UNIQUE INDEX IF NOT EXISTS report_status_updates_action_unique_idx
+ON public.report_status_updates(trello_action_id)
+WHERE trello_action_id IS NOT NULL;
+```
+
+The unique index on `trello_action_id` makes webhook retries idempotent. The feature is best-effort: without the table, the popup falls back to the single `public_status_note`. The public GeoJSON exposes `updates_json` per feature.
+
 ## Environment variables
 
 Set these in Vercel Project Settings and locally in `.env.local` when developing. Do not commit secrets.
@@ -213,4 +264,4 @@ Images are stored under `reports/<report-id>/...` and `reports.image_urls` store
 
 ## Brand assets
 
-A placeholder Finns.Fairway logo lives at `public/brand/finns-fairway-logo.svg`. Replace it with the official local logo file when available, keeping the same path if possible.
+The Finns Fairway brand mark (three dots) used for the favicon lives at `public/brand/finns-fairway-mark.svg`, and the in-app logo (mark + stacked “Finns Fairway” wordmark) is rendered by `components/Logo.js`. Brand colours and fonts are centralised in `styles/theme.css` (`--color-primary` deep green, cream background) and `pages/_app.js` (Poppins headings via `next/font`).

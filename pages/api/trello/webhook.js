@@ -1,5 +1,5 @@
 import { REPORT_STATUS } from '../../../lib/config';
-import { hasSupabaseConfig, setPublicStatusFromTrelloComment, setReportStatusFromTrello } from '../../../lib/supabaseRest';
+import { addCaseStatusUpdate, hasSupabaseConfig, setPublicStatusFromTrelloComment, setReportStatusFromTrello } from '../../../lib/supabaseRest';
 
 const TRELLO_LIST_STATUS_MAP = {
   'Ny melding': REPORT_STATUS.NEW,
@@ -119,6 +119,7 @@ async function handleComment(action) {
   if (!cardId || !text) return { handled: false, reason: 'not_public_comment', hasText: Boolean(rawText), hasPublicPrefix: Boolean(text) };
 
   logWebhook('public_comment_detected', { cardId, noteLength: text.length });
+  await addCaseStatusUpdate({ trelloCardId: cardId, note: text, source: 'trello_comment', trelloActionId: action?.id || null });
   logWebhook('supabase_update_started', { cardId, matchField: 'trello_card_id' });
   const updated = await setPublicStatusFromTrelloComment({ trelloCardId: cardId, publicStatusNote: text });
   if (!updated?.id) {

@@ -4,9 +4,11 @@
 @import './forms.css';
 @import './map.css';
 @import './popups.css';
+@import './app.css';
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html,
@@ -14,6 +16,12 @@ body,
 #__next {
   margin: 0;
   min-height: 100%;
+}
+
+html,
+body {
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -36,4 +44,14 @@ textarea {
 
 button {
   cursor: pointer;
+  touch-action: manipulation;
+}
+
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }

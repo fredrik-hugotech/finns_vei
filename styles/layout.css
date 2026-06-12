@@ -6,17 +6,83 @@
 }
 
 .page--home {
-  background: var(--color-bg);
+  background:
+    radial-gradient(120% 80% at 50% -10%, var(--color-beige) 0%, rgba(236, 225, 205, 0) 62%),
+    var(--color-bg);
 }
 
 .hero-card {
+  display: grid;
+  gap: 0.15rem;
+  justify-items: center;
   max-width: 360px;
-  padding: 1.05rem;
+  padding: 1.6rem 1.25rem;
+  text-align: center;
+  width: 100%;
+}
+
+.hero-logo {
+  margin: 0 0 0.15rem;
+}
+
+.hero-brand-link {
+  display: inline-flex;
+  margin-bottom: 0.35rem;
+  text-decoration: none;
+}
+
+.hero-card .lede {
+  margin-top: 0.1rem;
+}
+
+.hero-card .choice-stack {
+  margin-top: 0.65rem;
   width: 100%;
 }
 
 .brand-mark {
   display: none;
+}
+
+/* Brand logo: three-dot mark + stacked "Finns Fairway" wordmark */
+.logo {
+  align-items: center;
+  color: var(--color-primary);
+  display: inline-flex;
+  font-family: var(--font-heading);
+  gap: 0.5rem;
+  line-height: 1;
+}
+
+.logo__mark {
+  flex: none;
+  height: 1.95em;
+  width: 1.95em;
+}
+
+.logo__word {
+  display: inline-grid;
+  font-weight: 700;
+  letter-spacing: 0.005em;
+  line-height: 0.95;
+  text-align: left;
+}
+
+.logo__word-top,
+.logo__word-bottom {
+  display: block;
+}
+
+.logo--sm {
+  font-size: 0.95rem;
+}
+
+.logo--md {
+  font-size: 1.2rem;
+}
+
+.logo--lg {
+  font-size: 1.55rem;
 }
 
 .eyebrow {

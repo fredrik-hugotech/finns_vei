@@ -2,10 +2,108 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import { DEFAULT_CENTER, REPORT_STATUS } from '../lib/config';
 import { MAP_COLORS, MAP_STYLE } from '../lib/mapStyleConfig';
-import { REPORT_CATEGORY_ICON_IDS } from '../lib/reportCategoryIcons';
+import { REPORT_STATUS_META, REPORT_STATUS_ORDER, reportStatusMeta } from '../lib/reportStatusMeta';
+import { categoryGlyph } from '../lib/reportCategoryGlyphs';
 import { normalizeImageEntries } from '../lib/reportImages';
+import SupportSheet from './SupportSheet';
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
+
+const ICON = {
+  info: '<svg class="popup-glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="currentColor" opacity="0.16"/><path d="M12 11v5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="7.6" r="1.2" fill="currentColor"/></svg>',
+  support: '<svg class="popup-glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.3l-1.45-1.32C5.4 14.36 2 11.28 2 7.5 2 5.42 3.64 3.8 5.75 3.8c1.18 0 2.31.55 3.05 1.42L12 8.4l3.2-3.18A4.13 4.13 0 0 1 18.25 3.8C20.36 3.8 22 5.42 22 7.5c0 3.78-3.4 6.86-8.55 11.49z" fill="currentColor"/></svg>',
+  check: '<svg class="popup-glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4 4 10-11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  accident: '<svg class="popup-glyph popup-glyph--accident" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l9.2 16.5H2.8z" fill="currentColor" opacity="0.16"/><path d="M12 3.5l9.2 16.5H2.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 10v4.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17.4" r="1.15" fill="currentColor"/></svg>',
+  share: '<svg class="popup-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.3 10.8l7.4-4.4M8.3 13.2l7.4 4.4"/></svg>',
+  streetview: '<svg class="popup-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="6.4" r="2.6"/><path d="M8 19l.6-4.6c-.7 0-1.2-.5-1.2-1.3 0-2 1.4-3.6 4.6-3.6s4.6 1.6 4.6 3.6c0 .8-.5 1.3-1.2 1.3L16 19"/></svg>',
+};
+
+function supportCountLabel(count = 0) {
+  const value = Number(count) || 0;
+  if (value <= 0) return 'Bli den første som støtter';
+  if (value === 1) return '1 person støtter saken';
+  return `${value} støtter saken`;
+}
+
+function statusPillHtml(status) {
+  const meta = reportStatusMeta(status);
+  return `<span class="status-pill status-pill--${meta.key}">${meta.icon}<span>${escapeHtml(meta.label)}</span></span>`;
+}
+
+function supportButtonInner(alreadySupported) {
+  return alreadySupported
+    ? `${ICON.check}<span>Du har støttet</span>`
+    : `${ICON.support}<span>Støtt denne saken</span>`;
+}
+
+const NEARBY_RADIUS_M = 20;
+
+function distanceMeters([lng1, lat1], [lng2, lat2]) {
+  const R = 6371000;
+  const toRad = (deg) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+function bboxAround([lng, lat], meters) {
+  const dLat = meters / 111320;
+  const dLng = meters / (111320 * Math.cos((lat * Math.PI) / 180));
+  return [lng - dLng, lat - dLat, lng + dLng, lat + dLat].map((value) => value.toFixed(6)).join(',');
+}
+
+function countNearbyReports(data, center, radiusM) {
+  const features = data?.features || [];
+  let count = 0;
+  for (const feature of features) {
+    const coords = feature.geometry?.coordinates;
+    if (Array.isArray(coords) && distanceMeters(center, coords) <= radiusM) count += 1;
+  }
+  return count;
+}
+
+async function fetchAccidentsNear(center, radiusM) {
+  const bbox = bboxAround(center, Math.max(radiusM * 3, 90));
+  const response = await fetch(`/api/nvdb/layer?type=accidents&bbox=${encodeURIComponent(bbox)}&zoom=17`);
+  if (!response.ok) throw new Error('Kunne ikke hente ulykker');
+  const geojson = await response.json();
+  if (geojson?.meta?.degraded) throw new Error('Ulykkesdata utilgjengelig');
+  return (geojson.features || [])
+    .filter((feature) => feature.geometry?.type === 'Point' && Array.isArray(feature.geometry.coordinates))
+    .map((feature) => ({
+      dist: distanceMeters(center, feature.geometry.coordinates),
+      year: feature.properties?.year || (feature.properties?.date ? String(feature.properties.date).slice(0, 4) : ''),
+      type: feature.properties?.accident_type || '',
+      severity: feature.properties?.severity || '',
+    }))
+    .filter((accident) => accident.dist <= radiusM)
+    .sort((a, b) => (Number(b.year) || 0) - (Number(a.year) || 0));
+}
+
+function accidentSummaryHtml(accidents) {
+  if (!accidents.length) return '<span class="insight-muted">Ingen registrerte</span>';
+  const items = accidents.slice(0, 6).map((accident) => {
+    const label = [accident.year, accident.type || 'Ulykke'].filter(Boolean).join(' · ');
+    const severity = accident.severity ? ` <span class="insight-sub">${escapeHtml(accident.severity)}</span>` : '';
+    return `<li>${escapeHtml(label)}${severity}</li>`;
+  }).join('');
+  const more = accidents.length > 6 ? `<li class="insight-muted">+${accidents.length - 6} flere</li>` : '';
+  return `<strong>${accidents.length}</strong><ul class="accident-list">${items}${more}</ul>`;
+}
+
+function fillAccidentSummary(popup, center, radiusM) {
+  const target = () => popup.getElement()?.querySelector('[data-accidents]');
+  fetchAccidentsNear(center, radiusM)
+    .then((accidents) => {
+      const node = target();
+      if (node) node.innerHTML = accidentSummaryHtml(accidents);
+    })
+    .catch(() => {
+      const node = target();
+      if (node) node.innerHTML = '<span class="insight-muted">Utilgjengelig nå</span>';
+    });
+}
 
 function escapeHtml(value = '') {
   return String(value)
@@ -25,10 +123,6 @@ function compactText(value = '', maxLength = 140) {
 function browserHasSupported(reportId) {
   if (typeof window === 'undefined' || !reportId) return false;
   return window.localStorage.getItem(`finns-vei-supported-${reportId}`) === '1';
-}
-
-function supportButtonLabel(reportId) {
-  return browserHasSupported(reportId) ? 'Du har støttet denne saken' : 'Støtt denne saken';
 }
 
 function reportIdFromFeature(featureOrProperties = {}) {
@@ -60,25 +154,114 @@ function reportImagesHtml(properties = {}) {
   `;
 }
 
-function popupHtml(featureOrProperties = {}) {
+function formatDate(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('no-NO', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function reportMarkerIconHtml() {
+  return '<span class="popup-head__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5.5 4.5h13a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H11l-3.6 3.1a0.6 0.6 0 0 1-1-0.46V16.5H5.5a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2z" fill="var(--color-primary)"/><path d="M12 7.6v3.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="12" cy="13.4" r="1.05" fill="#fff"/></svg></span>';
+}
+
+function parseJsonArray(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value !== 'string' || !value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function facetRowHtml(properties) {
+  const facets = parseJsonArray(properties.facets_json);
+  if (!facets.length) return '';
+  return `<div class="facet-row">${facets.map((facet) => `<span class="facet" title="${escapeHtml(facet.category || '')}">${categoryGlyph(facet.category)}${Number(facet.count) > 1 ? `<b>${Number(facet.count)}</b>` : ''}</span>`).join('')}</div>`;
+}
+
+function threadMessagesHtml(properties) {
+  const voices = parseJsonArray(properties.voices_json).map((voice) => ({
+    author: 'citizen', category: voice.category, text: voice.note, ts: voice.created_at,
+  }));
+  let updates = parseJsonArray(properties.updates_json).map((update) => ({
+    author: 'official', text: update.note, ts: update.created_at,
+  }));
+  if (!updates.length && properties.public_status_note) {
+    updates = [{ author: 'official', text: properties.public_status_note, ts: properties.public_status_updated_at || null }];
+  }
+  const messages = [...voices, ...updates].filter((message) => message.text);
+  messages.sort((a, b) => new Date(a.ts || 0).getTime() - new Date(b.ts || 0).getTime());
+  return messages.map((message) => {
+    const time = message.ts ? `<time>${escapeHtml(formatDate(message.ts))}</time>` : '';
+    if (message.author === 'official') {
+      return `<article class="msg msg--official"><header class="msg__meta"><span class="msg__author">${ICON.info}Finns.Fairway</span>${time}</header><p class="msg__text">${escapeHtml(compactText(message.text, 400))}</p></article>`;
+    }
+    const category = message.category ? ` · ${escapeHtml(message.category)}` : '';
+    return `<article class="msg msg--citizen"><header class="msg__meta"><span class="msg__author">Innbygger${category}</span>${time}</header><p class="msg__text">${escapeHtml(compactText(message.text, 400))}</p></article>`;
+  }).join('');
+}
+
+function popupStatsHtml(properties, { nearbyCount, radiusM }) {
+  const roadOwner = properties.road_owner || properties.road_authority || '';
+  const rows = [];
+  if (roadOwner) rows.push(`<div><dt>Veieier</dt><dd>${escapeHtml(roadOwner)}</dd></div>`);
+  rows.push(`<div><dt>Saker innen ${radiusM} m</dt><dd>${nearbyCount}</dd></div>`);
+  rows.push(`<div><dt>Ulykker innen ${radiusM} m</dt><dd data-accidents><span class="insight-muted">Henter …</span></dd></div>`);
+  return `<dl class="popup-stats">${rows.join('')}</dl>`;
+}
+
+function popupHtml(featureOrProperties = {}, context = { nearbyCount: 1, radiusM: NEARBY_RADIUS_M }) {
   const properties = featureOrProperties.properties || featureOrProperties || {};
   const rawReportId = reportIdFromFeature(featureOrProperties);
   const reportId = escapeHtml(rawReportId);
   const supportCount = Number(properties.support_count || 0);
   const alreadySupported = browserHasSupported(rawReportId);
+  const category = properties.category || 'Melding';
+  const description = properties.description;
   const missingReportIdDebug = !reportId && shouldShowMissingReportIdDebug()
     ? '<small class="support-debug">Mangler reportId for støtteknapp.</small>'
     : '';
+  const citizenDate = formatDate(properties.created_at);
+  const coords = (featureOrProperties.geometry && featureOrProperties.geometry.coordinates) || [];
+  const lng = Number(coords[0]);
+  const lat = Number(coords[1]);
+  const hasCoords = Number.isFinite(lat) && Number.isFinite(lng);
   return `
     <article class="report-popup popup-card">
-      <strong>${escapeHtml(properties.category || 'Melding')}</strong>
-      ${properties.description ? `<p>${escapeHtml(compactText(properties.description))}</p>` : ''}
-      <p>Status: <strong>${escapeHtml(properties.status || REPORT_STATUS.NEW)}</strong></p>
-      ${properties.public_status_note ? `<p>${escapeHtml(compactText(properties.public_status_note, 180))}</p>` : ''}
-      ${properties.public_status_updated_at ? `<small>Oppdatert: ${escapeHtml(new Date(properties.public_status_updated_at).toLocaleDateString('no-NO'))}</small>` : ''}
-      ${reportImagesHtml(properties)}
-      ${reportId ? `<button class="support-button" data-report-id="${reportId}" type="button" ${alreadySupported ? 'disabled' : ''}>${supportButtonLabel(rawReportId)}</button>` : missingReportIdDebug}
-      <small class="support-count" data-support-count-for="${reportId}">${supportCount} støtter denne saken</small>
+      <header class="popup-head">
+        ${reportMarkerIconHtml()}
+        <div class="popup-head__titles">
+          <strong>${escapeHtml(category)}</strong>
+          ${statusPillHtml(properties.status || REPORT_STATUS.NEW)}
+        </div>
+      </header>
+
+      ${facetRowHtml(properties)}
+
+      <div class="popup-thread">
+        <article class="msg msg--citizen">
+          <header class="msg__meta"><span class="msg__author">Innbygger</span>${citizenDate ? `<time>${escapeHtml(citizenDate)}</time>` : ''}</header>
+          <p class="msg__text">${description ? escapeHtml(compactText(description, 400)) : 'Ingen beskrivelse lagt ved.'}</p>
+          ${reportImagesHtml(properties)}
+        </article>
+        ${threadMessagesHtml(properties)}
+      </div>
+
+      ${popupStatsHtml(properties, context)}
+
+      <div class="popup-actions">
+        <div class="popup-share-actions">
+          ${reportId ? `<button class="popup-action share-button" type="button" data-report-id="${reportId}" data-category="${escapeHtml(category)}">${ICON.share}<span>Del sak</span></button>` : ''}
+          ${hasCoords ? `<button class="popup-action streetview-button" type="button" data-lat="${lat}" data-lng="${lng}">${ICON.streetview}<span>Street View</span></button>` : ''}
+        </div>
+        ${reportId
+          ? `<button class="support-button${alreadySupported ? ' support-button--done' : ''}" data-report-id="${reportId}" type="button" ${alreadySupported ? 'disabled' : ''}>${supportButtonInner(alreadySupported)}</button>`
+          : missingReportIdDebug}
+        <small class="support-count" data-support-count-for="${reportId}">${supportCountLabel(supportCount)}</small>
+      </div>
     </article>
   `;
 }
@@ -93,8 +276,13 @@ function accidentPopupHtml(properties = {}) {
 
   return `
     <article class="accident-popup popup-card popup-card--accident">
-      <strong>Ulykke</strong>
-      ${rows.map(([label, value]) => `<p><span>${escapeHtml(label)}:</span> ${escapeHtml(value)}</p>`).join('')}
+      <header class="popup-head">
+        ${ICON.accident}
+        <strong>Trafikkulykke</strong>
+      </header>
+      ${rows.length ? `<dl class="popup-rows">
+        ${rows.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join('')}
+      </dl>` : ''}
       <small>Kilde: ${escapeHtml(properties.source || 'NVDB')}</small>
     </article>
   `;
@@ -106,6 +294,7 @@ const ACCIDENT_POINT_MIN_ZOOM = 15;
 const NVDB_LAYERS = [
   { type: 'accidents', label: 'Ulykker', color: MAP_COLORS.accidentLayer },
 ];
+
 const ACCIDENT_LAYER_IDS = ['accident-heatmap', 'accident-points', 'accident-point-symbol'];
 const REPORT_LAYER_IDS = ['reports-clusters', 'reports-cluster-count', 'reports-circle', 'reports-category-symbol', 'reports-support-badge'];
 
@@ -129,31 +318,18 @@ function loadImageElement(src) {
   });
 }
 
-async function loadReportCategoryIcons(map) {
-  const results = await Promise.allSettled(REPORT_CATEGORY_ICON_IDS.map(async (iconId) => {
-    if (map.hasImage(iconId)) return iconId;
-    const image = await loadImageElement(`/map-icons/${iconId}.svg`);
-    if (!map.hasImage(iconId)) map.addImage(iconId, image, { pixelRatio: 2 });
-    return iconId;
-  }));
-
-  const loaded = results
-    .filter((result) => result.status === 'fulfilled')
-    .map((result) => result.value);
-
-  results
-    .filter((result) => result.status === 'rejected')
-    .forEach((result) => console.warn(result.reason));
-
-  return loaded;
+async function loadReportMarkerIcon(map) {
+  if (map.hasImage('report-marker')) return;
+  const image = await loadImageElement('/map-icons/report.svg');
+  if (!map.hasImage('report-marker')) map.addImage('report-marker', image, { pixelRatio: 2 });
 }
 
 async function ensureReportCategorySymbolLayer(map) {
   if (!map.getSource('reports') || map.getLayer('reports-category-symbol')) return;
 
   try {
-    const loadedIcons = await loadReportCategoryIcons(map);
-    if (!loadedIcons.length || map.getLayer('reports-category-symbol')) return;
+    await loadReportMarkerIcon(map);
+    if (map.getLayer('reports-category-symbol')) return;
 
     map.addLayer({
       id: 'reports-category-symbol',
@@ -166,23 +342,50 @@ async function ensureReportCategorySymbolLayer(map) {
 
     restoreMapLayerOrder(map);
   } catch (error) {
-    console.warn('Kategoriikoner kunne ikke lastes. Sirkelmarkører brukes som fallback.', error);
+    console.warn('Markørikon kunne ikke lastes. Sirkelmarkører brukes som fallback.', error);
   }
 }
 
-export default function ReportMap({ selectable = false, point, onPointChange, className = 'map-canvas', showReports = true, enableNvdbLayers = false }) {
+export default function ReportMap({ selectable = false, point, onPointChange, className = 'map-canvas', showReports = true, enableNvdbLayers = false, pickMode = false, pinnedPoint = null, onMapReady }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const markerRef = useRef(null);
+  const pinnedMarkerRef = useRef(null);
+  const onMapReadyRef = useRef(onMapReady);
   const pointRef = useRef(point);
   const activeNvdbLayersRef = useRef([]);
+  const reportsDataRef = useRef({ type: 'FeatureCollection', features: [] });
+  const popupRef = useRef(null);
   const [message, setMessage] = useState('');
   const [activeNvdbLayers, setActiveNvdbLayers] = useState([]);
+  const [legendOpen, setLegendOpen] = useState(() => (typeof window !== 'undefined' ? window.innerWidth > 720 : false));
+  const [supportTarget, setSupportTarget] = useState(null);
   const hasMapboxToken = Boolean(process.env.NEXT_PUBLIC_MAPBOX_TOKEN);
 
   useEffect(() => {
     pointRef.current = point;
   }, [point]);
+
+  useEffect(() => {
+    onMapReadyRef.current = onMapReady;
+  }, [onMapReady]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return undefined;
+    if (!pinnedPoint) {
+      pinnedMarkerRef.current?.remove();
+      pinnedMarkerRef.current = null;
+      return undefined;
+    }
+    const lngLat = [pinnedPoint.lng, pinnedPoint.lat];
+    if (!pinnedMarkerRef.current) {
+      pinnedMarkerRef.current = new mapboxgl.Marker({ color: '#0b5d4d' }).setLngLat(lngLat).addTo(map);
+    } else {
+      pinnedMarkerRef.current.setLngLat(lngLat);
+    }
+    return undefined;
+  }, [pinnedPoint]);
 
   useEffect(() => {
     activeNvdbLayersRef.current = activeNvdbLayers;
@@ -383,6 +586,8 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     if (!response.ok) throw new Error('Kunne ikke hente meldinger');
     const geojson = await response.json();
 
+    reportsDataRef.current = geojson;
+
     const source = map.getSource('reports');
     if (source) {
       source.setData(geojson);
@@ -450,10 +655,15 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       const feature = event.features?.[0];
       if (!feature) return;
       event.originalEvent.cancelBubble = true;
-      new mapboxgl.Popup({ maxWidth: '280px' })
-        .setLngLat(feature.geometry.coordinates)
-        .setHTML(popupHtml(feature))
+      const center = feature.geometry.coordinates;
+      map.easeTo({ center, zoom: Math.max(map.getZoom(), 17), duration: 600 });
+      const nearbyCount = countNearbyReports(reportsDataRef.current, center, NEARBY_RADIUS_M);
+      const popup = new mapboxgl.Popup({ maxWidth: '300px' })
+        .setLngLat(center)
+        .setHTML(popupHtml(feature, { nearbyCount, radiusM: NEARBY_RADIUS_M }))
         .addTo(map);
+      popupRef.current = popup;
+      fillAccidentSummary(popup, center, NEARBY_RADIUS_M);
     });
     ensureReportCategorySymbolLayer(map);
   }, [showReports]);
@@ -472,48 +682,76 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   useEffect(() => {
     if (!showReports) return undefined;
 
-    const handleSupportClick = async (event) => {
+    const handleSupportClick = (event) => {
       const button = event.target?.closest?.('.support-button');
       if (!button) return;
       const reportId = button.getAttribute('data-report-id');
       if (!reportId) return;
-
-      const storageKey = `finns-vei-supported-${reportId}`;
-      if (window.localStorage.getItem(storageKey)) {
+      if (window.localStorage.getItem(`finns-vei-supported-${reportId}`)) {
         setMessage('Du har allerede støttet denne saken fra denne nettleseren.');
         return;
       }
-
-      button.disabled = true;
-      button.textContent = 'Støtter...';
-      try {
-        const response = await fetch('/api/report-support', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ reportId, supportToken: getSupportToken() }),
-        });
-        const payload = await response.json();
-        if (!response.ok) throw new Error(payload.code || payload.error || 'Kunne ikke støtte saken');
-        window.localStorage.setItem(storageKey, '1');
-        button.textContent = 'Du har støttet denne saken';
-        button.disabled = true;
-        document.querySelectorAll(`[data-support-count-for=\"${reportId}\"]`).forEach((node) => {
-          node.textContent = `${payload.support_count} støtter denne saken`;
-        });
-        setMessage(payload.alreadySupported ? 'Du har allerede støttet denne saken.' : 'Takk for støtten!');
-        await loadReports();
-      } catch (error) {
-        console.error(error);
-        button.disabled = false;
-        button.textContent = 'Støtt denne saken';
-        const debugSuffix = shouldShowMissingReportIdDebug() && error?.message ? ` (${error.message})` : '';
-        setMessage(`Kunne ikke støtte saken akkurat nå.${debugSuffix}`);
-      }
+      setSupportTarget({ reportId });
     };
 
     window.addEventListener('click', handleSupportClick);
     return () => window.removeEventListener('click', handleSupportClick);
-  }, [getSupportToken, loadReports, showReports]);
+  }, [showReports]);
+
+  const handleSupportDone = useCallback((payload, reportId) => {
+    if (reportId) window.localStorage.setItem(`finns-vei-supported-${reportId}`, '1');
+    setSupportTarget(null);
+    popupRef.current?.remove();
+    popupRef.current = null;
+    setMessage(payload?.alreadySupported ? 'Du har allerede støttet denne saken.' : 'Takk for støtten!');
+    loadReports().catch((error) => console.error(error));
+  }, [loadReports]);
+
+  useEffect(() => {
+    const openStreetView = (button) => {
+      const lat = button.getAttribute('data-lat');
+      const lng = button.getAttribute('data-lng');
+      if (!lat || !lng) return;
+      window.open(`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`, '_blank', 'noopener');
+    };
+
+    const shareReport = async (button) => {
+      const id = button.getAttribute('data-report-id');
+      const category = button.getAttribute('data-category') || 'Sak';
+      if (!id) return;
+      const url = `${window.location.origin}/sak/${id}`;
+      const shareData = {
+        title: `Finns Fairway – ${category}`,
+        text: `Se denne saken i nabolaget: ${category}`,
+        url,
+      };
+      try {
+        if (navigator.share) {
+          await navigator.share(shareData);
+        } else if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(url);
+          setMessage('Lenke kopiert');
+        } else {
+          window.open(url, '_blank', 'noopener');
+        }
+      } catch (error) {
+        // Share cancelled by the user — nothing to do.
+      }
+    };
+
+    const handlePopupAction = (event) => {
+      const shareButton = event.target?.closest?.('.share-button');
+      if (shareButton) {
+        shareReport(shareButton);
+        return;
+      }
+      const streetviewButton = event.target?.closest?.('.streetview-button');
+      if (streetviewButton) openStreetView(streetviewButton);
+    };
+
+    window.addEventListener('click', handlePopupAction);
+    return () => window.removeEventListener('click', handlePopupAction);
+  }, [setMessage]);
 
   useEffect(() => {
     if (!containerRef.current || !hasMapboxToken) return undefined;
@@ -532,6 +770,14 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
 
     map.on('load', async () => {
       if (pointRef.current) placeMarker(pointRef.current);
+      onMapReadyRef.current?.({
+        getCenter: () => {
+          const center = map.getCenter();
+          return { lng: center.lng, lat: center.lat };
+        },
+        flyTo: ({ lng, lat }) => map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 16), duration: 700 }),
+        refreshReports: () => loadReports().catch((error) => console.error(error)),
+      });
       try {
         await loadReports();
         await refreshNvdbLayers();
@@ -582,9 +828,18 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   return (
     <div className="map-wrap">
       <div ref={containerRef} className={className} />
+      {pickMode && (
+        <div className="map-crosshair" aria-hidden="true">
+          <svg className="map-crosshair__pin" viewBox="0 0 40 52">
+            <path d="M20 2C11.2 2 4 9 4 17.6 4 28 20 50 20 50s16-22 16-32.4C36 9 28.8 2 20 2z" fill="#0b5d4d" stroke="#ffffff" strokeWidth="2.5" />
+            <circle cx="20" cy="17.6" r="5.4" fill="#ffffff" />
+          </svg>
+          <span className="map-crosshair__dot" />
+        </div>
+      )}
       {enableNvdbLayers && (
-        <div className="layer-control nvdb-toggle-card" aria-label="NVDB-lag">
-          <strong>Lag</strong>
+        <div className="layer-control nvdb-toggle-card" aria-label="Kartlag">
+          <strong>Kartlag</strong>
           {NVDB_LAYERS.map((layer) => (
             <button
               key={layer.type}
@@ -596,6 +851,66 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
             </button>
           ))}
         </div>
+      )}
+      {showReports && (
+        <div className={`map-legend${legendOpen ? ' map-legend--open' : ''}`}>
+          <button
+            type="button"
+            className="map-legend__toggle"
+            aria-expanded={legendOpen}
+            onClick={() => setLegendOpen((open) => !open)}
+          >
+            <span className="map-legend__keys" aria-hidden="true">
+              {REPORT_STATUS_ORDER.map((status) => (
+                <span key={status} className="map-legend__dot" style={{ background: REPORT_STATUS_META[status].marker }} />
+              ))}
+            </span>
+            Tegnforklaring
+          </button>
+          {legendOpen && (
+            <div className="map-legend__panel">
+              <p className="map-legend__heading">Status på melding</p>
+              <ul className="map-legend__list">
+                {REPORT_STATUS_ORDER.map((status) => {
+                  const meta = REPORT_STATUS_META[status];
+                  return (
+                    <li key={status}>
+                      <span
+                        className="legend-icon"
+                        style={{ color: meta.marker }}
+                        aria-hidden="true"
+                        dangerouslySetInnerHTML={{ __html: meta.icon }}
+                      />
+                      {meta.label}
+                    </li>
+                  );
+                })}
+              </ul>
+              <p className="map-legend__note">Større markør = flere har støttet saken.</p>
+              {enableNvdbLayers && (
+                <ul className="map-legend__list">
+                  <li>
+                    <span
+                      className="legend-icon legend-icon--accident"
+                      style={{ color: MAP_COLORS.accidentPoint }}
+                      aria-hidden="true"
+                      dangerouslySetInnerHTML={{ __html: ICON.accident }}
+                    />
+                    Ulykke (NVDB)
+                  </li>
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+      {supportTarget && (
+        <SupportSheet
+          reportId={supportTarget.reportId}
+          supportToken={getSupportToken()}
+          onClose={() => setSupportTarget(null)}
+          onDone={(payload) => handleSupportDone(payload, supportTarget.reportId)}
+        />
       )}
       {message && <div className="accident-status map-message">{message}</div>}
     </div>
