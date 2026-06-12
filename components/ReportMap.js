@@ -12,6 +12,8 @@ const ICON = {
   support: '<svg class="popup-glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.3l-1.45-1.32C5.4 14.36 2 11.28 2 7.5 2 5.42 3.64 3.8 5.75 3.8c1.18 0 2.31.55 3.05 1.42L12 8.4l3.2-3.18A4.13 4.13 0 0 1 18.25 3.8C20.36 3.8 22 5.42 22 7.5c0 3.78-3.4 6.86-8.55 11.49z" fill="currentColor"/></svg>',
   check: '<svg class="popup-glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4 4 10-11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   accident: '<svg class="popup-glyph popup-glyph--accident" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l9.2 16.5H2.8z" fill="currentColor" opacity="0.16"/><path d="M12 3.5l9.2 16.5H2.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 10v4.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17.4" r="1.15" fill="currentColor"/></svg>',
+  share: '<svg class="popup-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.3 10.8l7.4-4.4M8.3 13.2l7.4 4.4"/></svg>',
+  streetview: '<svg class="popup-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="6.4" r="2.6"/><path d="M8 19l.6-4.6c-.7 0-1.2-.5-1.2-1.3 0-2 1.4-3.6 4.6-3.6s4.6 1.6 4.6 3.6c0 .8-.5 1.3-1.2 1.3L16 19"/></svg>',
 };
 
 function supportCountLabel(count = 0) {
@@ -184,6 +186,10 @@ function popupHtml(featureOrProperties = {}, context = { nearbyCount: 1, radiusM
     : '';
   const citizenDate = formatDate(properties.created_at);
   const officialDate = formatDate(properties.public_status_updated_at);
+  const coords = (featureOrProperties.geometry && featureOrProperties.geometry.coordinates) || [];
+  const lng = Number(coords[0]);
+  const lat = Number(coords[1]);
+  const hasCoords = Number.isFinite(lat) && Number.isFinite(lng);
   return `
     <article class="report-popup popup-card">
       <header class="popup-head">
@@ -210,6 +216,10 @@ function popupHtml(featureOrProperties = {}, context = { nearbyCount: 1, radiusM
       ${popupStatsHtml(properties, context)}
 
       <div class="popup-actions">
+        <div class="popup-share-actions">
+          ${reportId ? `<button class="popup-action share-button" type="button" data-report-id="${reportId}" data-category="${escapeHtml(category)}">${ICON.share}<span>Del sak</span></button>` : ''}
+          ${hasCoords ? `<button class="popup-action streetview-button" type="button" data-lat="${lat}" data-lng="${lng}">${ICON.streetview}<span>Street View</span></button>` : ''}
+        </div>
         ${reportId
           ? `<button class="support-button${alreadySupported ? ' support-button--done' : ''}" data-report-id="${reportId}" type="button" ${alreadySupported ? 'disabled' : ''}>${supportButtonInner(alreadySupported)}</button>`
           : missingReportIdDebug}
@@ -676,6 +686,49 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     window.addEventListener('click', handleSupportClick);
     return () => window.removeEventListener('click', handleSupportClick);
   }, [getSupportToken, loadReports, showReports]);
+
+  useEffect(() => {
+    const openStreetView = (button) => {
+      const lat = button.getAttribute('data-lat');
+      const lng = button.getAttribute('data-lng');
+      if (!lat || !lng) return;
+      window.open(`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`, '_blank', 'noopener');
+    };
+
+    const shareReport = async (button) => {
+      const id = button.getAttribute('data-report-id');
+      const category = button.getAttribute('data-category') || 'Sak';
+      if (!id) return;
+      const url = `${window.location.origin}/sak/${id}`;
+      const shareData = {
+        title: `Finns Fairway – ${category}`,
+        text: `Se denne saken i nabolaget: ${category}`,
+        url,
+      };
+      try {
+        if (navigator.share) {
+          await navigator.share(shareData);
+        } else {
+          window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank', 'noopener,width=620,height=520');
+        }
+      } catch (error) {
+        // Share cancelled by the user — nothing to do.
+      }
+    };
+
+    const handlePopupAction = (event) => {
+      const shareButton = event.target?.closest?.('.share-button');
+      if (shareButton) {
+        shareReport(shareButton);
+        return;
+      }
+      const streetviewButton = event.target?.closest?.('.streetview-button');
+      if (streetviewButton) openStreetView(streetviewButton);
+    };
+
+    window.addEventListener('click', handlePopupAction);
+    return () => window.removeEventListener('click', handlePopupAction);
+  }, []);
 
   useEffect(() => {
     if (!containerRef.current || !hasMapboxToken) return undefined;

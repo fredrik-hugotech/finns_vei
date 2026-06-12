@@ -236,8 +236,38 @@
 /* Actions */
 .popup-actions {
   display: grid;
-  gap: 0.28rem;
+  gap: 0.3rem;
   margin-top: 0.12rem;
+}
+
+.popup-share-actions {
+  display: grid;
+  gap: 0.3rem;
+  grid-template-columns: 1fr 1fr;
+}
+
+.popup-action {
+  align-items: center;
+  background: var(--color-surface-muted);
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-primary);
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 650;
+  gap: 0.34rem;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0.34rem 0.5rem;
+}
+
+.popup-action:hover {
+  background: #e7e0d3;
+}
+
+.popup-action .popup-glyph {
+  height: 1.05em;
+  width: 1.05em;
 }
 
 .support-button {
