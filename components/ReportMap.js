@@ -251,14 +251,23 @@ function threadMessagesHtml(properties) {
   }
   const messages = [...voices, ...updates].filter((message) => message.text);
   messages.sort((a, b) => new Date(a.ts || 0).getTime() - new Date(b.ts || 0).getTime());
-  return messages.map((message) => {
+  let prevAuthor = null;
+  const html = messages.map((message) => {
+    const cont = message.author === prevAuthor;
+    prevAuthor = message.author;
     const time = message.ts ? `<time>${escapeHtml(formatDate(message.ts))}</time>` : '';
-    if (message.author === 'official') {
-      return `<article class="msg msg--official"><header class="msg__meta"><span class="msg__author">${ICON.info}Finns.Fairway</span>${time}</header><p class="msg__text">${escapeHtml(compactText(message.text, 400))}</p></article>`;
-    }
-    const category = message.category ? ` · ${escapeHtml(message.category)}` : '';
-    return `<article class="msg msg--citizen"><header class="msg__meta"><span class="msg__author">Innbygger${category}</span>${time}</header><p class="msg__text">${escapeHtml(compactText(message.text, 400))}</p></article>`;
-  }).join('');
+    const author = message.author === 'official'
+      ? `<span class="msg__author">${ICON.info}Finns.Fairway</span>`
+      : `<span class="msg__author">Innbygger${message.category ? ` · ${escapeHtml(message.category)}` : ''}</span>`;
+    // Group consecutive messages from the same author: only the first shows the
+    // author label, the rest just show the date — tighter and less repetitive.
+    const meta = cont
+      ? `<header class="msg__meta msg__meta--cont">${time}</header>`
+      : `<header class="msg__meta">${author}${time}</header>`;
+    const cls = `msg msg--${message.author === 'official' ? 'official' : 'citizen'}${cont ? ' msg--cont' : ''}`;
+    return `<article class="${cls}">${meta}<p class="msg__text">${escapeHtml(compactText(message.text, 400))}</p></article>`;
+  });
+  return html.join('');
 }
 
 function popupStatsHtml(properties, { nearbyCount, radiusM }) {
