@@ -102,6 +102,8 @@ CREATE INDEX IF NOT EXISTS reports_case_id_idx ON public.reports(case_id);
 
 The grouping is best-effort: without the `case_id` column reports are still linked by sharing the Trello card; with it, `case_id` ties the whole case together. Tune the radius with the optional `CASE_GROUP_RADIUS_M` env var.
 
+Trello cards also link back to the public case (`<base>/sak/<caseId>`) and, as a case grows, the anchor card is renamed `Sak: <kategori> · N meldinger` for a quick overview. The base URL is taken from `PUBLIC_BASE_URL`/`NEXT_PUBLIC_SITE_URL`, falling back to Vercel's `VERCEL_PROJECT_PRODUCTION_URL`/`VERCEL_URL`. Set `PUBLIC_BASE_URL` to your production domain for stable links.
+
 ## Environment variables
 
 Set these in Vercel Project Settings and locally in `.env.local` when developing. Do not commit secrets.
