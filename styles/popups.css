@@ -65,6 +65,44 @@
   font-weight: 700;
 }
 
+/* Road info: speed-limit sign + abbreviated road owner, as round symbols */
+.popup-roadinfo {
+  align-items: center;
+  display: flex;
+  flex: none;
+  gap: 0.42rem;
+}
+
+.speed-sign {
+  align-items: center;
+  background: #ffffff;
+  border: 3px solid #d11f2a;
+  border-radius: 50%;
+  color: #15161a;
+  display: inline-flex;
+  flex: none;
+  font-size: 0.92rem;
+  font-weight: 800;
+  height: 38px;
+  justify-content: center;
+  letter-spacing: -0.03em;
+  width: 38px;
+}
+
+.owner-badge {
+  align-items: center;
+  background: var(--color-primary);
+  border-radius: 50%;
+  color: #ffffff;
+  display: inline-flex;
+  flex: none;
+  font-size: 0.86rem;
+  font-weight: 700;
+  height: 38px;
+  justify-content: center;
+  width: 38px;
+}
+
 .popup-head strong {
   color: var(--color-text);
   font-size: 0.96rem;

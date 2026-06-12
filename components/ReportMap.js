@@ -150,6 +150,8 @@ async function refreshPopupThread(popup, feature, center, nearbyCount) {
       created_at: data.created_at ?? props.created_at,
       road_owner: data.road_owner ?? props.road_owner,
       road_authority: data.road_authority ?? props.road_authority,
+      road_category: data.road_category ?? props.road_category,
+      speed_limit: data.speed_limit ?? props.speed_limit,
       support_count: data.support_count ?? props.support_count,
       public_status_note: data.public_status_note ?? null,
       public_status_updated_at: data.public_status_updated_at ?? null,
@@ -272,12 +274,41 @@ function threadMessagesHtml(properties) {
   return html.join('');
 }
 
+function ownerInfo(properties) {
+  const owner = String(properties.road_owner || properties.road_authority || '').trim();
+  const lower = owner.toLowerCase();
+  let abbr = '';
+  if (lower.includes('kommune')) abbr = 'K';
+  else if (lower.includes('fylke')) abbr = 'F';
+  else if (lower.includes('stat')) abbr = 'S';
+  else if (lower.includes('privat')) abbr = 'P';
+  else {
+    const cat = String(properties.road_category || '').toUpperCase();
+    if (['K', 'F', 'R', 'E', 'P', 'S'].includes(cat)) abbr = cat;
+    else if (owner) abbr = owner.slice(0, 1).toUpperCase();
+  }
+  return abbr ? { abbr, full: owner || abbr } : null;
+}
+
+function roadInfoHtml(properties) {
+  const parts = [];
+  const speed = Number(properties.speed_limit);
+  if (Number.isFinite(speed) && speed > 0) {
+    parts.push(`<span class="speed-sign" title="Fartsgrense ${speed} km/t">${speed}</span>`);
+  }
+  const owner = ownerInfo(properties);
+  if (owner) {
+    parts.push(`<span class="owner-badge" title="Veieier: ${escapeHtml(owner.full)}">${escapeHtml(owner.abbr)}</span>`);
+  }
+  if (!parts.length) return '';
+  return `<div class="popup-roadinfo">${parts.join('')}</div>`;
+}
+
 function popupStatsHtml(properties, { nearbyCount, radiusM }) {
-  const roadOwner = properties.road_owner || properties.road_authority || '';
-  const rows = [];
-  if (roadOwner) rows.push(`<div><dt>Veieier</dt><dd>${escapeHtml(roadOwner)}</dd></div>`);
-  rows.push(`<div><dt>Saker innen ${radiusM} m</dt><dd>${nearbyCount}</dd></div>`);
-  rows.push(`<div><dt>Ulykker innen ${radiusM} m</dt><dd data-accidents><span class="insight-muted">Henter …</span></dd></div>`);
+  const rows = [
+    `<div><dt>Saker innen ${radiusM} m</dt><dd>${nearbyCount}</dd></div>`,
+    `<div><dt>Ulykker innen ${radiusM} m</dt><dd data-accidents><span class="insight-muted">Henter …</span></dd></div>`,
+  ];
   return `<dl class="popup-stats">${rows.join('')}</dl>`;
 }
 
@@ -308,6 +339,7 @@ function popupHtml(featureOrProperties = {}, context = { nearbyCount: 1, radiusM
         </div>
       </header>
 
+      ${roadInfoHtml(properties)}
       ${facetRowHtml(properties)}
 
       <div class="popup-thread" data-thread>
