@@ -89,7 +89,9 @@ function accidentSummaryHtml(accidents) {
     return `<li>${escapeHtml(label)}${severity}</li>`;
   }).join('');
   const more = accidents.length > 6 ? `<li class="insight-muted">+${accidents.length - 6} flere</li>` : '';
-  return `<strong>${accidents.length}</strong><ul class="accident-list">${items}${more}</ul>`;
+  // Collapsed by default so the list never bloats the popup; a small "vis ulykker"
+  // link on the card expands it on demand.
+  return `<details class="accidents-details"><summary><strong>${accidents.length}</strong><span class="accidents-toggle"></span></summary><ul class="accident-list">${items}${more}</ul></details>`;
 }
 
 function fillAccidentSummary(popup, center, radiusM) {
