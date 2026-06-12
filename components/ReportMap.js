@@ -94,76 +94,26 @@ function accidentSummaryHtml(accidents) {
   return `<details class="accidents-details"><summary><strong>${accidents.length}</strong><span class="accidents-toggle"></span></summary><ul class="accident-list">${items}${more}</ul></details>`;
 }
 
-function fillAccidentSummary(popup, center, radiusM) {
-  const target = () => popup.getElement()?.querySelector('[data-accidents]');
-  fetchAccidentsNear(center, radiusM)
-    .then((accidents) => {
-      const node = target();
-      if (node) node.innerHTML = accidentSummaryHtml(accidents);
-    })
-    .catch(() => {
-      const node = target();
-      if (node) node.innerHTML = '<span class="insight-muted">Utilgjengelig nå</span>';
-    });
-}
-
-function scrollRepliesToBottom(popup) {
-  requestAnimationFrame(() => {
-    const thread = popup.getElement()?.querySelector('[data-thread]');
-    if (thread) thread.scrollTop = thread.scrollHeight;
-  });
-}
-
-// Fetch the freshest thread for an open case and re-render the popup only when
-// something has actually changed (new replies, support, status) — no page reload.
-async function refreshPopupThread(popup, feature, center, nearbyCount) {
-  const reportId = reportIdFromFeature(feature);
-  if (!reportId) return;
-  let data;
-  try {
-    const response = await fetch(`/api/report-thread?id=${encodeURIComponent(reportId)}`);
-    if (!response.ok) return;
-    data = await response.json();
-  } catch (error) {
-    return;
-  }
-  if (!data || !popup.getElement()) return;
-
-  const props = feature.properties || {};
-  const freshSig = JSON.stringify([data.voices, data.updates, data.support_count, data.public_status_note, data.status]);
-  const cachedSig = JSON.stringify([
-    parseJsonArray(props.voices_json),
-    parseJsonArray(props.updates_json),
-    Number(props.support_count || 0),
-    props.public_status_note || null,
-    props.status || null,
-  ]);
-  if (freshSig === cachedSig) return;
-
-  const fresh = {
-    ...feature,
-    properties: {
-      ...props,
-      status: data.status ?? props.status,
-      category: data.category ?? props.category,
-      description: data.description ?? props.description,
-      created_at: data.created_at ?? props.created_at,
-      road_owner: data.road_owner ?? props.road_owner,
-      road_authority: data.road_authority ?? props.road_authority,
-      road_category: data.road_category ?? props.road_category,
-      speed_limit: data.speed_limit ?? props.speed_limit,
-      support_count: data.support_count ?? props.support_count,
-      public_status_note: data.public_status_note ?? null,
-      public_status_updated_at: data.public_status_updated_at ?? null,
-      image_urls: data.image_urls ?? props.image_urls,
-      facets_json: JSON.stringify(data.facets || []),
-      voices_json: JSON.stringify(data.voices || []),
-      updates_json: JSON.stringify(data.updates || []),
-    },
+// Merge the live /api/report-thread response onto the cached feature properties.
+function threadToProps(data, base = {}) {
+  return {
+    ...base,
+    status: data.status ?? base.status,
+    category: data.category ?? base.category,
+    description: data.description ?? base.description,
+    created_at: data.created_at ?? base.created_at,
+    road_owner: data.road_owner ?? base.road_owner,
+    road_authority: data.road_authority ?? base.road_authority,
+    road_category: data.road_category ?? base.road_category,
+    speed_limit: data.speed_limit ?? base.speed_limit,
+    support_count: data.support_count ?? base.support_count,
+    public_status_note: data.public_status_note ?? null,
+    public_status_updated_at: data.public_status_updated_at ?? null,
+    image_urls: data.image_urls ?? base.image_urls,
+    facets_json: JSON.stringify(data.facets || []),
+    voices_json: JSON.stringify(data.voices || []),
+    updates_json: JSON.stringify(data.updates || []),
   };
-  popup.setHTML(popupHtml(fresh, { nearbyCount, radiusM: NEARBY_RADIUS_M }));
-  scrollRepliesToBottom(popup);
-  fillAccidentSummary(popup, center, NEARBY_RADIUS_M);
 }
 
 function escapeHtml(value = '') {
@@ -304,30 +254,20 @@ function roadInfoHtml(properties) {
   return `<div class="popup-roadinfo">${parts.join('')}</div>`;
 }
 
-function popupStatsHtml(properties, { nearbyCount, radiusM }) {
+function popupStatsHtml(properties, { nearbyCount, radiusM, accidentsHtml }) {
+  const accidents = accidentsHtml || '<span class="insight-muted">Henter …</span>';
   const rows = [
     `<div><dt>Saker innen ${radiusM} m</dt><dd>${nearbyCount}</dd></div>`,
-    `<div><dt>Ulykker innen ${radiusM} m</dt><dd data-accidents><span class="insight-muted">Henter …</span></dd></div>`,
+    `<div><dt>Ulykker innen ${radiusM} m</dt><dd>${accidents}</dd></div>`,
   ];
   return `<dl class="popup-stats">${rows.join('')}</dl>`;
 }
 
 function popupHtml(featureOrProperties = {}, context = { nearbyCount: 1, radiusM: NEARBY_RADIUS_M }) {
   const properties = featureOrProperties.properties || featureOrProperties || {};
-  const rawReportId = reportIdFromFeature(featureOrProperties);
-  const reportId = escapeHtml(rawReportId);
-  const supportCount = Number(properties.support_count || 0);
-  const alreadySupported = browserHasSupported(rawReportId);
   const category = properties.category || 'Melding';
   const description = properties.description;
-  const missingReportIdDebug = !reportId && shouldShowMissingReportIdDebug()
-    ? '<small class="support-debug">Mangler reportId for støtteknapp.</small>'
-    : '';
   const citizenDate = formatDate(properties.created_at);
-  const coords = (featureOrProperties.geometry && featureOrProperties.geometry.coordinates) || [];
-  const lng = Number(coords[0]);
-  const lat = Number(coords[1]);
-  const hasCoords = Number.isFinite(lat) && Number.isFinite(lng);
   const replies = threadMessagesHtml(properties);
   return `
     <article class="report-popup popup-card">
@@ -352,18 +292,35 @@ function popupHtml(featureOrProperties = {}, context = { nearbyCount: 1, radiusM
       </div>
 
       ${popupStatsHtml(properties, context)}
-
-      <div class="popup-actions">
-        <div class="popup-share-actions">
-          ${reportId ? `<button class="popup-action share-button" type="button" data-report-id="${reportId}" data-category="${escapeHtml(category)}">${ICON.share}<span>Del sak</span></button>` : ''}
-          ${hasCoords ? `<button class="popup-action streetview-button" type="button" data-lat="${lat}" data-lng="${lng}">${ICON.streetview}<span>Street View</span></button>` : ''}
-        </div>
-        ${reportId
-          ? `<button class="support-button${alreadySupported ? ' support-button--done' : ''}" data-report-id="${reportId}" type="button" ${alreadySupported ? 'disabled' : ''}>${supportButtonInner(alreadySupported)}</button>`
-          : missingReportIdDebug}
-        <small class="support-count" data-support-count-for="${reportId}">${supportCountLabel(supportCount)}</small>
-      </div>
     </article>
+  `;
+}
+
+function caseActionsHtml(featureOrProperties = {}) {
+  const properties = featureOrProperties.properties || featureOrProperties || {};
+  const rawReportId = reportIdFromFeature(featureOrProperties);
+  const reportId = escapeHtml(rawReportId);
+  const supportCount = Number(properties.support_count || 0);
+  const alreadySupported = browserHasSupported(rawReportId);
+  const category = properties.category || 'Melding';
+  const coords = (featureOrProperties.geometry && featureOrProperties.geometry.coordinates) || [];
+  const lng = Number(coords[0]);
+  const lat = Number(coords[1]);
+  const hasCoords = Number.isFinite(lat) && Number.isFinite(lng);
+  const missingReportIdDebug = !reportId && shouldShowMissingReportIdDebug()
+    ? '<small class="support-debug">Mangler reportId for støtteknapp.</small>'
+    : '';
+  return `
+    <div class="popup-actions">
+      <div class="popup-share-actions">
+        ${reportId ? `<button class="popup-action share-button" type="button" data-report-id="${reportId}" data-category="${escapeHtml(category)}">${ICON.share}<span>Del sak</span></button>` : ''}
+        ${hasCoords ? `<button class="popup-action streetview-button" type="button" data-lat="${lat}" data-lng="${lng}">${ICON.streetview}<span>Street View</span></button>` : ''}
+      </div>
+      ${reportId
+        ? `<button class="support-button${alreadySupported ? ' support-button--done' : ''}" data-report-id="${reportId}" type="button" ${alreadySupported ? 'disabled' : ''}>${supportButtonInner(alreadySupported)}</button>`
+        : missingReportIdDebug}
+      <small class="support-count" data-support-count-for="${reportId}">${supportCountLabel(supportCount)}</small>
+    </div>
   `;
 }
 
@@ -456,11 +413,13 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   const pointRef = useRef(point);
   const activeNvdbLayersRef = useRef([]);
   const reportsDataRef = useRef({ type: 'FeatureCollection', features: [] });
-  const popupRef = useRef(null);
   const [message, setMessage] = useState('');
   const [activeNvdbLayers, setActiveNvdbLayers] = useState([]);
   const [legendOpen, setLegendOpen] = useState(() => (typeof window !== 'undefined' ? window.innerWidth > 720 : false));
   const [supportTarget, setSupportTarget] = useState(null);
+  const [caseData, setCaseData] = useState(null);
+  const [caseThread, setCaseThread] = useState(null);
+  const [caseAccidents, setCaseAccidents] = useState(null);
   const hasMapboxToken = Boolean(process.env.NEXT_PUBLIC_MAPBOX_TOKEN);
 
   useEffect(() => {
@@ -757,16 +716,10 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       if (!feature) return;
       event.originalEvent.cancelBubble = true;
       const center = feature.geometry.coordinates;
-      map.easeTo({ center, zoom: Math.max(map.getZoom(), 17), duration: 600 });
+      // Keep the marker visible above the bottom sheet by padding the bottom.
+      map.easeTo({ center, zoom: Math.max(map.getZoom(), 16), duration: 500, padding: { top: 0, right: 0, left: 0, bottom: 300 } });
       const nearbyCount = countNearbyReports(reportsDataRef.current, center, NEARBY_RADIUS_M);
-      const popup = new mapboxgl.Popup({ maxWidth: '300px' })
-        .setLngLat(center)
-        .setHTML(popupHtml(feature, { nearbyCount, radiusM: NEARBY_RADIUS_M }))
-        .addTo(map);
-      popupRef.current = popup;
-      scrollRepliesToBottom(popup);
-      fillAccidentSummary(popup, center, NEARBY_RADIUS_M);
-      refreshPopupThread(popup, feature, center, nearbyCount);
+      setCaseData({ feature, center, nearbyCount });
     });
     ensureReportCategorySymbolLayer(map);
   }, [showReports]);
@@ -804,10 +757,14 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   const handleSupportDone = useCallback((payload, reportId) => {
     if (reportId) window.localStorage.setItem(`finns-vei-supported-${reportId}`, '1');
     setSupportTarget(null);
-    popupRef.current?.remove();
-    popupRef.current = null;
     setMessage(payload?.alreadySupported ? 'Du har allerede støttet denne saken.' : 'Takk for støtten!');
     loadReports().catch((error) => console.error(error));
+    if (reportId) {
+      fetch(`/api/report-thread?id=${encodeURIComponent(reportId)}`)
+        .then((response) => (response.ok ? response.json() : null))
+        .then((data) => { if (data) setCaseThread(data); })
+        .catch(() => {});
+    }
   }, [loadReports]);
 
   useEffect(() => {
@@ -855,6 +812,28 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     window.addEventListener('click', handlePopupAction);
     return () => window.removeEventListener('click', handlePopupAction);
   }, [setMessage]);
+
+  useEffect(() => {
+    if (!caseData) {
+      setCaseThread(null);
+      setCaseAccidents(null);
+      return undefined;
+    }
+    let cancelled = false;
+    setCaseThread(null);
+    setCaseAccidents(null);
+    const reportId = reportIdFromFeature(caseData.feature);
+    if (reportId) {
+      fetch(`/api/report-thread?id=${encodeURIComponent(reportId)}`)
+        .then((response) => (response.ok ? response.json() : null))
+        .then((data) => { if (!cancelled && data) setCaseThread(data); })
+        .catch(() => {});
+    }
+    fetchAccidentsNear(caseData.center, NEARBY_RADIUS_M)
+      .then((accidents) => { if (!cancelled) setCaseAccidents(accidents); })
+      .catch(() => { if (!cancelled) setCaseAccidents('error'); });
+    return () => { cancelled = true; };
+  }, [caseData]);
 
   useEffect(() => {
     if (!containerRef.current || !hasMapboxToken) return undefined;
@@ -927,6 +906,17 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   if (!hasMapboxToken) {
     return <div className="map-missing">Mapbox-token mangler.</div>;
   }
+
+  const caseFeature = caseData
+    ? { ...caseData.feature, properties: caseThread ? threadToProps(caseThread, caseData.feature.properties) : caseData.feature.properties }
+    : null;
+  const caseAccidentsHtml = caseAccidents === null
+    ? undefined
+    : (caseAccidents === 'error' ? '<span class="insight-muted">Utilgjengelig nå</span>' : accidentSummaryHtml(caseAccidents));
+  const caseBodyHtml = caseFeature
+    ? popupHtml(caseFeature, { nearbyCount: caseData.nearbyCount, radiusM: NEARBY_RADIUS_M, accidentsHtml: caseAccidentsHtml })
+    : '';
+  const caseFooterHtml = caseFeature ? caseActionsHtml(caseFeature) : '';
 
   return (
     <div className="map-wrap">
@@ -1007,6 +997,17 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           )}
         </div>
       )}
+      {caseData && (
+        <div className="sheet-layer case-sheet-layer" role="dialog" aria-modal="true" aria-label="Sak">
+          <div className="sheet-backdrop" onClick={() => setCaseData(null)} />
+          <section className="sheet case-sheet">
+            <button type="button" className="sheet__handle" aria-label="Lukk" onClick={() => setCaseData(null)} />
+            <div className="sheet-scroll case-sheet__scroll" dangerouslySetInnerHTML={{ __html: caseBodyHtml }} />
+            <div className="sheet-footer case-sheet__footer" dangerouslySetInnerHTML={{ __html: caseFooterHtml }} />
+          </section>
+        </div>
+      )}
+
       {supportTarget && (
         <SupportSheet
           reportId={supportTarget.reportId}

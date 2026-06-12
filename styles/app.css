@@ -594,3 +594,27 @@
   line-height: 1.4;
   margin: 0;
 }
+
+/* Case detail bottom sheet — the card body scrolls, the actions stay fixed */
+.case-sheet__scroll {
+  padding-top: 0.5rem;
+}
+
+.case-sheet .popup-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.84rem;
+  max-height: none;
+}
+
+.case-sheet .popup-thread {
+  flex: none;
+  min-height: 0;
+  overflow: visible;
+  padding-right: 0;
+}
+
+.case-sheet__footer {
+  display: grid;
+}
