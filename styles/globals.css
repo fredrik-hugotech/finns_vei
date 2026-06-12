@@ -4,6 +4,7 @@
 @import './forms.css';
 @import './map.css';
 @import './popups.css';
+@import './app.css';
 
 * {
   box-sizing: border-box;

@@ -296,10 +296,12 @@ async function ensureReportCategorySymbolLayer(map) {
   }
 }
 
-export default function ReportMap({ selectable = false, point, onPointChange, className = 'map-canvas', showReports = true, enableNvdbLayers = false }) {
+export default function ReportMap({ selectable = false, point, onPointChange, className = 'map-canvas', showReports = true, enableNvdbLayers = false, pickMode = false, pinnedPoint = null, onMapReady }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const markerRef = useRef(null);
+  const pinnedMarkerRef = useRef(null);
+  const onMapReadyRef = useRef(onMapReady);
   const pointRef = useRef(point);
   const activeNvdbLayersRef = useRef([]);
   const reportsDataRef = useRef({ type: 'FeatureCollection', features: [] });
@@ -311,6 +313,27 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   useEffect(() => {
     pointRef.current = point;
   }, [point]);
+
+  useEffect(() => {
+    onMapReadyRef.current = onMapReady;
+  }, [onMapReady]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return undefined;
+    if (!pinnedPoint) {
+      pinnedMarkerRef.current?.remove();
+      pinnedMarkerRef.current = null;
+      return undefined;
+    }
+    const lngLat = [pinnedPoint.lng, pinnedPoint.lat];
+    if (!pinnedMarkerRef.current) {
+      pinnedMarkerRef.current = new mapboxgl.Marker({ color: '#0b5d4d' }).setLngLat(lngLat).addTo(map);
+    } else {
+      pinnedMarkerRef.current.setLngLat(lngLat);
+    }
+    return undefined;
+  }, [pinnedPoint]);
 
   useEffect(() => {
     activeNvdbLayersRef.current = activeNvdbLayers;
@@ -668,6 +691,14 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
 
     map.on('load', async () => {
       if (pointRef.current) placeMarker(pointRef.current);
+      onMapReadyRef.current?.({
+        getCenter: () => {
+          const center = map.getCenter();
+          return { lng: center.lng, lat: center.lat };
+        },
+        flyTo: ({ lng, lat }) => map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 16), duration: 700 }),
+        refreshReports: () => loadReports().catch((error) => console.error(error)),
+      });
       try {
         await loadReports();
         await refreshNvdbLayers();
@@ -718,6 +749,15 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   return (
     <div className="map-wrap">
       <div ref={containerRef} className={className} />
+      {pickMode && (
+        <div className="map-crosshair" aria-hidden="true">
+          <svg className="map-crosshair__pin" viewBox="0 0 40 52">
+            <path d="M20 2C11.2 2 4 9 4 17.6 4 28 20 50 20 50s16-22 16-32.4C36 9 28.8 2 20 2z" fill="#0b5d4d" stroke="#ffffff" strokeWidth="2.5" />
+            <circle cx="20" cy="17.6" r="5.4" fill="#ffffff" />
+          </svg>
+          <span className="map-crosshair__dot" />
+        </div>
+      )}
       {enableNvdbLayers && (
         <div className="layer-control nvdb-toggle-card" aria-label="Kartlag">
           <strong>Kartlag</strong>
