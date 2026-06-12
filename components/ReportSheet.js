@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { REPORT_CATEGORIES, REPORTER_TYPES } from '../lib/config';
-import { reportCategoryIconId } from '../lib/reportCategoryIcons';
+import { categoryGlyph } from '../lib/reportCategoryGlyphs';
 import { REPORT_IMAGE_MAX_BYTES, REPORT_IMAGE_MAX_COUNT } from '../lib/reportImages';
 
 const INITIAL_FORM = {
@@ -147,8 +147,8 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
                 {REPORT_CATEGORIES.map((category) => (
                   <label className={form.category === category ? 'category-card category-card--active' : 'category-card'} key={category}>
                     <input type="radio" name="category" value={category} checked={form.category === category} onChange={updateField} />
-                    <img src={`/map-icons/${reportCategoryIconId(category)}.svg`} alt="" aria-hidden="true" />
-                    <span>{category}</span>
+                    <span className="category-card__icon" aria-hidden="true" dangerouslySetInnerHTML={{ __html: categoryGlyph(category) }} />
+                    <span className="category-card__label">{category}</span>
                   </label>
                 ))}
               </div>
