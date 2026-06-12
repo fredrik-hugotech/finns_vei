@@ -187,10 +187,10 @@ function parseJsonArray(value) {
   }
 }
 
-function facetRowHtml(properties) {
+function facetBadges(properties) {
   const facets = parseJsonArray(properties.facets_json);
   if (!facets.length) return '';
-  return `<div class="facet-row">${facets.map((facet) => `<span class="facet" title="${escapeHtml(facet.category || '')}">${categoryGlyph(facet.category)}${Number(facet.count) > 1 ? `<b>${Number(facet.count)}</b>` : ''}</span>`).join('')}</div>`;
+  return facets.map((facet) => `<span class="facet" title="${escapeHtml(facet.category || '')}">${categoryGlyph(facet.category)}${Number(facet.count) > 1 ? `<b>${Number(facet.count)}</b>` : ''}</span>`).join('');
 }
 
 function threadMessagesHtml(properties) {
@@ -240,7 +240,7 @@ function ownerInfo(properties) {
   return abbr ? { abbr, full: owner || abbr } : null;
 }
 
-function roadInfoHtml(properties) {
+function roadBadges(properties) {
   const parts = [];
   const speed = Number(properties.speed_limit);
   if (Number.isFinite(speed) && speed > 0) {
@@ -250,8 +250,7 @@ function roadInfoHtml(properties) {
   if (owner) {
     parts.push(`<span class="owner-badge" title="Veieier: ${escapeHtml(owner.full)}">${escapeHtml(owner.abbr)}</span>`);
   }
-  if (!parts.length) return '';
-  return `<div class="popup-roadinfo">${parts.join('')}</div>`;
+  return parts.join('');
 }
 
 function popupStatsHtml(properties, { nearbyCount, radiusM, accidentsHtml }) {
@@ -279,8 +278,7 @@ function popupHtml(featureOrProperties = {}, context = { nearbyCount: 1, radiusM
         </div>
       </header>
 
-      ${roadInfoHtml(properties)}
-      ${facetRowHtml(properties)}
+      ${(() => { const symbols = roadBadges(properties) + facetBadges(properties); return symbols ? `<div class="popup-symbols">${symbols}</div>` : ''; })()}
 
       <div class="popup-thread" data-thread>
         <article class="msg msg--citizen">
