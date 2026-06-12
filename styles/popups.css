@@ -263,6 +263,38 @@
   font-weight: 500;
 }
 
+/* Collapsible accident list — keeps the card compact, "vis ulykker" to expand */
+.accidents-details summary {
+  align-items: baseline;
+  cursor: pointer;
+  display: inline-flex;
+  gap: 0.34rem;
+  justify-content: flex-end;
+  list-style: none;
+}
+
+.accidents-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.accidents-toggle {
+  color: var(--color-primary);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.accidents-details summary .accidents-toggle::after {
+  content: '· vis ulykker';
+}
+
+.accidents-details[open] summary .accidents-toggle::after {
+  content: '· skjul';
+}
+
+.accidents-details .accident-list {
+  margin-top: 0.22rem;
+}
+
 /* Accident rows */
 .popup-glyph--accident {
   height: 1.25em;
