@@ -1,7 +1,7 @@
 import Head from 'next/head';
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { clipAndSnapCells } from '../../lib/geoPrivacy';
+import { clipAndSnapCells, clipPath } from '../../lib/geoPrivacy';
 
 // Real-ish Kristiansand sports venues (routing snaps to the nearest road anyway).
 const VENUES = [
@@ -74,7 +74,8 @@ export default function SeedSpor() {
     if (!route) return null;
     const points = route.geometry.coordinates.map(([lng, lat]) => ({ lat, lng }));
     const cells = clipAndSnapCells(points);
-    return { cells, distanceM: Math.round(route.distance), durationS: Math.round(route.duration) };
+    const path = clipPath(points);
+    return { cells, path, distanceM: Math.round(route.distance), durationS: Math.round(route.duration) };
   }
 
   const generate = async () => {
@@ -99,7 +100,7 @@ export default function SeedSpor() {
       const jitter = { lat: hood.lat + (Math.random() - 0.5) * 0.004, lng: hood.lng + (Math.random() - 0.5) * 0.004 };
       try {
         const result = await routeCells(jitter, venue);
-        if (result && result.cells.length) {
+        if (result && result.path.length >= 2) {
           await fetch('/api/bike-trips', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -110,6 +111,7 @@ export default function SeedSpor() {
               distanceM: result.distanceM,
               durationS: result.durationS,
               cells: result.cells,
+              path: result.path,
             }),
           });
           ok += 1;

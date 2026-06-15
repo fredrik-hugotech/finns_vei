@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { distanceMeters, pathDistanceMeters, clipAndSnapCells } from '../lib/geoPrivacy';
+import { distanceMeters, pathDistanceMeters, clipAndSnapCells, clipPath } from '../lib/geoPrivacy';
 
 function haptic(ms = 8) {
   if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(ms);
@@ -91,7 +91,8 @@ export default function TripTracker({ club, helmet, mapApi, onDone, onCancel }) 
     // Privacy: clip the ends and snap to the grid here, on the device, so raw
     // coordinates never leave the phone — we only send anonymous cells.
     const cells = clipAndSnapCells(points);
-    await onDone?.({ club, helmet, distanceM: finalDistance, durationS, cells });
+    const path = clipPath(points);
+    await onDone?.({ club, helmet, distanceM: finalDistance, durationS, cells, path });
   };
 
   return (

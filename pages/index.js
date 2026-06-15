@@ -139,7 +139,7 @@ export default function Home() {
 
   // Called by TripTracker on stop — it has already clipped + snapped on-device,
   // so here we just persist the anonymous cells, distance and duration.
-  const finishTrip = async ({ club, helmet, distanceM, durationS, cells }) => {
+  const finishTrip = async ({ club, helmet, distanceM, durationS, cells, path }) => {
     if (!tripContext) return;
     try {
       const response = await fetch('/api/bike-trips', {
@@ -152,6 +152,7 @@ export default function Home() {
           distanceM,
           durationS,
           cells,
+          path,
           tripToken: tripToken(),
         }),
       });

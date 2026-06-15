@@ -10,7 +10,7 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: 'Ikke konfigurert' });
   }
 
-  const { competitionId, club, helmet, distanceM, durationS, cells, tripToken } = req.body || {};
+  const { competitionId, club, helmet, distanceM, durationS, cells, path, tripToken } = req.body || {};
 
   if (!competitionId) return res.status(400).json({ error: 'Mangler konkurranse' });
 
@@ -33,6 +33,7 @@ export default async function handler(req, res) {
       distanceM,
       durationS,
       cells: Array.isArray(cells) ? cells : [],
+      path: Array.isArray(path) ? path : [],
       tripToken: tripToken || null,
     });
 
