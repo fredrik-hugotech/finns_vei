@@ -402,33 +402,10 @@ async function ensureReportCategorySymbolLayer(map) {
   }
 }
 
-// Dim the light basemap to near-black while the spor heatmap is shown, so the
-// glow reads like Strava's global heatmap. Implemented as a world-covering fill
-// placed just under the heat layer (reliable across styles).
-function ensureSporDim(map, on) {
-  const SRC = 'spor-dim-src';
-  const LYR = 'spor-dim';
-  if (on) {
-    if (!map.getSource(SRC)) {
-      map.addSource(SRC, {
-        type: 'geojson',
-        data: { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]]] } },
-      });
-    }
-    if (!map.getLayer(LYR)) {
-      map.addLayer({ id: LYR, type: 'fill', source: SRC, paint: { 'fill-color': '#0a0d12', 'fill-opacity': 0.88 } });
-    }
-    if (map.getLayer('competition-heat')) map.moveLayer(LYR, 'competition-heat');
-  } else {
-    if (map.getLayer(LYR)) map.removeLayer(LYR);
-    if (map.getSource(SRC)) map.removeSource(SRC);
-  }
-}
-
 // Draw a competition's density heatmap from weighted route cells (each point's
-// `weight` = how many trips pass through it), Strava-style: glowing lines on a
-// dimmed basemap, brightest (white) where most children ride. While the layer
-// has data we dim the report markers. Passing an empty FC clears + restores.
+// `weight` = how many trips pass through it), so popular roads to/from venues
+// glow — brightest where most children ride. A vivid blue→red ramp keeps it
+// legible on the light basemap. While the layer has data we hide report markers.
 function showCompetitionTrips(map, geojson) {
   if (!map || !map.isStyleLoaded?.()) {
     // Style not ready yet — retry shortly so the overlay still appears.
@@ -453,22 +430,20 @@ function showCompetitionTrips(map, geojson) {
         'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 11, 0.8, 14, 1.2, 16, 1.7],
         // Small radius so the glow stays thin and line-like, not a blob.
         'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 11, 5, 14, 9, 16, 15],
-        'heatmap-opacity': 0.95,
+        'heatmap-opacity': 0.85,
+        // Vivid blue → purple → magenta → red ramp that pops on the light map.
         'heatmap-color': [
           'interpolate', ['linear'], ['heatmap-density'],
-          0, 'rgba(0,0,0,0)',
-          0.1, 'rgba(40,6,0,0.5)',
-          0.3, '#7a1500',
-          0.5, '#e8400c',
-          0.7, '#f6a01e',
-          0.9, '#ffe08a',
-          1, '#ffffff',
+          0, 'rgba(67,97,238,0)',
+          0.15, 'rgba(67,97,238,0.55)',
+          0.4, '#4361ee',
+          0.6, '#7209b7',
+          0.8, '#b5179e',
+          1, '#d11f2a',
         ],
       },
     });
   }
-
-  ensureSporDim(map, hasData);
 
   // Hide the report markers while the heatmap is visible, restore when cleared.
   for (const id of REPORT_LAYER_IDS) {
