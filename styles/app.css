@@ -929,6 +929,7 @@
 
 .admin-clubs { display: grid; gap: 0.45rem; }
 .admin-club-row { align-items: center; display: grid; gap: 0.4rem; grid-template-columns: 1.2fr 1fr auto; }
+.admin-club-row--name { grid-template-columns: 1fr auto; }
 .admin-club-remove {
   background: var(--color-surface-muted);
   border: none;

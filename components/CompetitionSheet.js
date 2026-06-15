@@ -164,7 +164,7 @@ export default function CompetitionSheet({ onClose, onShowTrips, onClearTrips, o
               <button type="button" className="comp-back" onClick={() => setView('detail')}>‹ Tilbake</button>
               <div className="support-intro">
                 <h2>Logg sykkeltur</h2>
-                <p>Registrer at du syklet til aktiviteten. Etterpå velger du omtrent hvor du syklet fra – vi runder det av så ingen ser nøyaktig sted.</p>
+                <p>Velg klubb og hjelm. Etterpå viser du på kartet hvor du syklet til (banen) og omtrent hvor du syklet fra – startstedet rundes av så ingen ser nøyaktig hvor du bor.</p>
               </div>
 
               {stats.competition.clubs.length > 0 && (
@@ -205,7 +205,7 @@ export default function CompetitionSheet({ onClose, onShowTrips, onClearTrips, o
         {view === 'log' && stats && (
           <div className="sheet-footer">
             <button className="big-button big-button--primary" type="button" onClick={goPickStart}>
-              Velg hvor du syklet fra
+              Videre til kartet
             </button>
           </div>
         )}

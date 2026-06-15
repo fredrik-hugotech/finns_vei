@@ -2,13 +2,7 @@ import Head from 'next/head';
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 
-const EMPTY_CLUB = { name: '', latlng: '' };
-
-function parseLatLng(value) {
-  const match = String(value || '').trim().match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
-  if (!match) return null;
-  return { lat: Number(match[1]), lng: Number(match[2]) };
-}
+const EMPTY_CLUB = { name: '' };
 
 export default function KonkurranserAdmin() {
   const router = useRouter();
@@ -70,10 +64,7 @@ export default function KonkurranserAdmin() {
     if (!name.trim()) { setStatus('Gi konkurransen et navn.'); return; }
     const payloadClubs = clubs
       .filter((club) => club.name.trim())
-      .map((club) => {
-        const coords = parseLatLng(club.latlng);
-        return coords ? { name: club.name.trim(), lat: coords.lat, lng: coords.lng } : { name: club.name.trim() };
-      });
+      .map((club) => ({ name: club.name.trim() }));
     try {
       const response = await fetch('/api/backoffice/competitions', {
         method: 'POST',
@@ -115,7 +106,7 @@ export default function KonkurranserAdmin() {
       <Head><title>Konkurranser – backoffice</title><meta name="robots" content="noindex" /></Head>
       <main className="page admin-page">
         <h1>Konkurranser</h1>
-        <p className="admin-help">Definer sykkelkonkurranser for barn. Klubbens posisjon (valgfritt) brukes som mål på bevegelseskartet – lim inn «lat, lng» fra Google Maps.</p>
+        <p className="admin-help">Definer sykkelkonkurranser for barn. Du legger bare inn klubbnavn – selve banen velges på kartet når barnet logger turen, så du slipper koordinater.</p>
 
         <label className="admin-field">
           <span>Backoffice-passord</span>
@@ -177,9 +168,8 @@ export default function KonkurranserAdmin() {
             <div className="admin-clubs">
               <span className="admin-field__label">Klubber</span>
               {clubs.map((club, index) => (
-                <div key={index} className="admin-club-row">
+                <div key={index} className="admin-club-row admin-club-row--name">
                   <input value={club.name} onChange={(event) => updateClub(index, 'name', event.target.value)} placeholder="Klubbnavn" />
-                  <input value={club.latlng} onChange={(event) => updateClub(index, 'latlng', event.target.value)} placeholder="lat, lng (valgfritt)" />
                   {clubs.length > 1 && (
                     <button type="button" className="admin-club-remove" onClick={() => removeClub(index)} aria-label="Fjern">×</button>
                   )}

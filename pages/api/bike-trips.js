@@ -29,13 +29,13 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Velg en klubb fra listen' });
     }
 
-    // Prefer the club's registered venue as the destination so the movement map
-    // points to a real, public activity location rather than anything the
-    // client supplies.
-    const dest = matchedClub && Number.isFinite(Number(matchedClub.lat))
-      ? { lat: matchedClub.lat, lng: matchedClub.lng, name: matchedClub.name }
-      : (destination && Number.isFinite(Number(destination.lat))
-        ? { lat: destination.lat, lng: destination.lng, name: clubName || (destination.name || '') }
+    // The destination is the actual venue/field the child cycled to (picked per
+    // trip on the map) — a public place, stored precisely. A club's optional
+    // registered coordinate is only a fallback.
+    const dest = (destination && Number.isFinite(Number(destination.lat)) && Number.isFinite(Number(destination.lng)))
+      ? { lat: Number(destination.lat), lng: Number(destination.lng), name: clubName || (destination.name || '') }
+      : (matchedClub && Number.isFinite(Number(matchedClub.lat))
+        ? { lat: matchedClub.lat, lng: matchedClub.lng, name: matchedClub.name }
         : null);
 
     await createBikeTrip({

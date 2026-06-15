@@ -150,14 +150,15 @@ The destination is a sports club / public venue, which is public and stored prec
   snaps the origin and resolves the destination from the selected club's venue).
 - Backoffice: `GET/POST/PATCH /api/backoffice/competitions` (auth via
   `BACKOFFICE_SECRET`). Admin UI at `/backoffice/konkurranser?secret=…` to create
-  competitions, define clubs (name + optional `lat, lng` venue) and show/hide them.
+  competitions, define clubs (names only — the venue/field is picked per trip on
+  the map, since a club can have many fields) and show/hide them.
 
 ```sql
 CREATE TABLE IF NOT EXISTS public.competitions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text NOT NULL,
   description text,
-  clubs jsonb NOT NULL DEFAULT '[]'::jsonb, -- [{ name, lat?, lng? }]
+  clubs jsonb NOT NULL DEFAULT '[]'::jsonb, -- [{ name }] (just names; venue is picked per trip)
   starts_on date,
   ends_on date,
   helmet_focus boolean NOT NULL DEFAULT true,

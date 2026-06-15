@@ -96,13 +96,24 @@ export default function Home() {
   };
 
   const startTripPick = ({ competition, club, helmet }) => {
-    setTripContext({ competition, club, helmet });
+    setTripContext({ competition, club, helmet, destination: null });
     setShowCompetitions(false);
     mapApiRef.current?.clearCompetitionTrips?.();
     setGeoStatus('');
-    setMode('trip-pick');
+    setMode('trip-dest');
   };
 
+  // Step 1: pick the venue/field the child cycled TO (public, precise).
+  const confirmTripDest = () => {
+    const center = mapApiRef.current?.getCenter();
+    if (!center || !tripContext) return;
+    haptic(10);
+    setTripContext((current) => ({ ...current, destination: { lat: center.lat, lng: center.lng } }));
+    setGeoStatus('');
+    setMode('trip-start');
+  };
+
+  // Step 2: pick roughly where they cycled FROM (snapped server-side to ~100 m).
   const confirmTripStart = async () => {
     const center = mapApiRef.current?.getCenter();
     if (!center || !tripContext) return;
@@ -116,6 +127,7 @@ export default function Home() {
           club: tripContext.club,
           helmet: tripContext.helmet,
           origin: { lat: center.lat, lng: center.lng },
+          destination: tripContext.destination || undefined,
           tripToken: tripToken(),
         }),
       });
@@ -150,7 +162,7 @@ export default function Home() {
         <ReportMap
           className="map-canvas"
           enableNvdbLayers
-          pickMode={mode === 'pick' || mode === 'trip-pick'}
+          pickMode={mode === 'pick' || mode === 'trip-dest' || mode === 'trip-start'}
           pinnedPoint={mode === 'form' ? pickedPoint : null}
           onMapReady={handleMapReady}
         />
@@ -188,9 +200,23 @@ export default function Home() {
           </>
         )}
 
-        {mode === 'trip-pick' && (
+        {mode === 'trip-dest' && (
           <>
-            <div className="pick-hint">Dra kartet til omtrent der du syklet fra</div>
+            <div className="pick-hint">1/2 · Dra til banen eller stedet du syklet til</div>
+            <div className="pick-bar">
+              <button type="button" className="big-button big-button--primary pick-bar__confirm" onClick={confirmTripDest}>Velg banen</button>
+              <div className="pick-bar__row">
+                <button type="button" className="big-button big-button--secondary" onClick={cancelTripPick}>Avbryt</button>
+                <button type="button" className="big-button big-button--secondary" onClick={useMyPosition}>Min posisjon</button>
+              </div>
+              <p className="pick-geo-status">Er du på banen nå? Trykk «Min posisjon».</p>
+            </div>
+          </>
+        )}
+
+        {mode === 'trip-start' && (
+          <>
+            <div className="pick-hint">2/2 · Dra til omtrent der du syklet fra</div>
             <div className="pick-bar">
               <button type="button" className="big-button big-button--primary pick-bar__confirm" onClick={confirmTripStart}>Lagre sykkeltur</button>
               <div className="pick-bar__row">
