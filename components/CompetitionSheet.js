@@ -21,6 +21,10 @@ function formatPeriod(competition) {
   return null;
 }
 
+function formatKm(meters) {
+  return ((Number(meters) || 0) / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 1 });
+}
+
 const TROPHY = ['🥇', '🥈', '🥉'];
 
 export default function CompetitionSheet({ onClose, onShowTrips, onClearTrips, onPickStart, initialCompetitionId = null }) {
@@ -137,20 +141,26 @@ export default function CompetitionSheet({ onClose, onShowTrips, onClearTrips, o
 
               <div className="comp-totals">
                 <div><strong>{stats.totals.trips}</strong><span>sykkelturer</span></div>
+                <div><strong>{formatKm(stats.totals.distanceM)}</strong><span>km totalt</span></div>
                 <div><strong>{stats.totals.trips ? Math.round((stats.totals.helmetTrips / stats.totals.trips) * 100) : 0}%</strong><span>med hjelm</span></div>
-                <div><strong>{stats.leaderboard.length}</strong><span>klubber</span></div>
               </div>
 
               <div className="comp-board">
-                <h3 className="comp-board__title">Stilling</h3>
+                <div className="comp-board__head">
+                  <h3 className="comp-board__title">Stilling</h3>
+                  <span className="comp-board__metric">Vinner: {stats.metric === 'distance' ? 'flest km' : 'flest turer'}</span>
+                </div>
                 {stats.leaderboard.length === 0 && <p className="comp-muted">Ingen turer logget ennå – bli den første!</p>}
                 <ol className="comp-board__list">
                   {stats.leaderboard.map((row, index) => (
                     <li key={row.club} className={index === 0 && row.trips > 0 ? 'comp-row comp-row--lead' : 'comp-row'}>
                       <span className="comp-row__rank">{TROPHY[index] || index + 1}</span>
                       <span className="comp-row__club">{row.club}</span>
-                      <span className="comp-row__helmet" title="Andel med hjelm">⛑ {row.helmetPct}%</span>
-                      <span className="comp-row__count">{row.trips}</span>
+                      <span className="comp-row__stats">
+                        <span className="comp-row__helmet" title="Andel med hjelm">⛑ {row.helmetPct}%</span>
+                        <span className={stats.metric === 'distance' ? 'comp-row__count comp-row__count--muted' : 'comp-row__count'}>{row.trips} turer</span>
+                        <span className={stats.metric === 'distance' ? 'comp-row__count' : 'comp-row__count comp-row__count--muted'}>{formatKm(row.distanceM)} km</span>
+                      </span>
                     </li>
                   ))}
                 </ol>
@@ -164,7 +174,7 @@ export default function CompetitionSheet({ onClose, onShowTrips, onClearTrips, o
               <button type="button" className="comp-back" onClick={() => setView('detail')}>‹ Tilbake</button>
               <div className="support-intro">
                 <h2>Logg sykkeltur</h2>
-                <p>Velg klubb og hjelm. Etterpå viser du på kartet hvor du syklet til (banen) og omtrent hvor du syklet fra – startstedet rundes av så ingen ser nøyaktig hvor du bor.</p>
+                <p>Velg klubb og hjelm, og trykk start. Telefonen måler distanse og tid mens du sykler. Startstedet rundes av og bare et anonymt varmekart lagres – ingen ser hvor du bor eller hvilken rute du tok.</p>
               </div>
 
               {stats.competition.clubs.length > 0 && (
@@ -205,7 +215,7 @@ export default function CompetitionSheet({ onClose, onShowTrips, onClearTrips, o
         {view === 'log' && stats && (
           <div className="sheet-footer">
             <button className="big-button big-button--primary" type="button" onClick={goPickStart}>
-              Videre til kartet
+              Start sykkeltur 🚴
             </button>
           </div>
         )}

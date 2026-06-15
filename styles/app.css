@@ -795,14 +795,45 @@
   padding: 0;
 }
 
+.comp-board__head {
+  align-items: baseline;
+  display: flex;
+  gap: 0.6rem;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+
+.comp-board__metric {
+  color: var(--color-primary);
+  font-size: 0.74rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .comp-row {
   align-items: center;
   background: var(--color-surface-muted);
   border-radius: var(--radius-md);
   display: grid;
   gap: 0.5rem;
-  grid-template-columns: 1.7rem 1fr auto auto;
+  grid-template-columns: 1.7rem 1fr auto;
   padding: 0.5rem 0.6rem;
+}
+
+.comp-row__stats {
+  align-items: center;
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.comp-row__count--muted {
+  background: transparent;
+  color: var(--color-muted);
+  font-weight: 600;
+  min-width: 0;
+  padding: 0;
 }
 
 .comp-row--lead {
@@ -951,4 +982,64 @@
   color: var(--color-primary);
   font-weight: 600;
   padding: 0.5rem 0.7rem;
+}
+
+/* Live GPS trip tracker (Strava-style) */
+.trip-tracker {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  bottom: max(0.9rem, calc(env(safe-area-inset-bottom) + 0.6rem));
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 0.6rem;
+  left: 50%;
+  padding: 0.85rem 0.9rem;
+  position: absolute;
+  transform: translateX(-50%);
+  width: min(460px, calc(100vw - 1.4rem));
+  z-index: 30;
+}
+
+.trip-tracker__stats {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.trip-tracker__stats > div {
+  background: var(--color-surface-muted);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: 0.05rem;
+  justify-items: center;
+  padding: 0.55rem 0.3rem;
+}
+
+.trip-tracker__stats strong {
+  color: var(--color-primary);
+  font-family: var(--font-heading);
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.trip-tracker__stats span {
+  color: var(--color-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.trip-tracker__hint {
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  margin: 0;
+  text-align: center;
+}
+
+.trip-tracker__hint--error { color: var(--color-danger, #d11f2a); }
+
+.trip-tracker__actions {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: 1fr 1.6fr;
 }

@@ -402,7 +402,8 @@ async function ensureReportCategorySymbolLayer(map) {
   }
 }
 
-// Draw a competition's movement: snapped-origin → venue lines plus venue dots.
+// Draw a competition's anonymous movement heatmap from aggregated, snapped path
+// cells (each point carries a `weight` = how many trips passed through the cell).
 // Passing an empty FeatureCollection clears the overlay.
 function showCompetitionTrips(map, geojson) {
   if (!map || !map.isStyleLoaded?.()) {
@@ -417,29 +418,46 @@ function showCompetitionTrips(map, geojson) {
   } else {
     map.addSource('competition-trips', { type: 'geojson', data });
     map.addLayer({
-      id: 'competition-trip-lines',
-      type: 'line',
+      id: 'competition-heat',
+      type: 'heatmap',
       source: 'competition-trips',
-      filter: ['==', ['get', 'kind'], 'trip'],
-      layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'line-color': '#0b5d4d',
-        'line-width': 2,
-        'line-opacity': 0.45,
+        'heatmap-weight': ['interpolate', ['linear'], ['coalesce', ['get', 'weight'], 1], 0, 0.2, 8, 1],
+        'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 10, 0.8, 16, 1.6],
+        'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 10, 14, 16, 26],
+        'heatmap-opacity': 0.78,
+        'heatmap-color': [
+          'interpolate', ['linear'], ['heatmap-density'],
+          0, 'rgba(11,93,77,0)',
+          0.25, 'rgba(47,125,79,0.45)',
+          0.55, 'rgba(47,125,79,0.85)',
+          0.8, '#f4b740',
+          1, '#d11f2a',
+        ],
       },
     });
+  }
+}
+
+// Local-only live route while tracking: shown on the rider's own device so it
+// feels like Strava. This is never uploaded — only clipped, snapped cells are.
+function showLivePath(map, geojson) {
+  if (!map || !map.isStyleLoaded?.()) {
+    if (map) setTimeout(() => showLivePath(map, geojson), 200);
+    return;
+  }
+  const data = geojson && geojson.type ? geojson : { type: 'FeatureCollection', features: [] };
+  const source = map.getSource('live-path');
+  if (source) {
+    source.setData(data);
+  } else {
+    map.addSource('live-path', { type: 'geojson', data });
     map.addLayer({
-      id: 'competition-venues',
-      type: 'circle',
-      source: 'competition-trips',
-      filter: ['==', ['get', 'kind'], 'venue'],
-      paint: {
-        'circle-radius': ['interpolate', ['linear'], ['coalesce', ['get', 'trips'], 1], 1, 7, 25, 16],
-        'circle-color': '#f4b740',
-        'circle-stroke-color': '#0b5d4d',
-        'circle-stroke-width': 2,
-        'circle-opacity': 0.92,
-      },
+      id: 'live-path-line',
+      type: 'line',
+      source: 'live-path',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#0b5d4d', 'line-width': 5, 'line-opacity': 0.9 },
     });
   }
 }
@@ -917,6 +935,9 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         refreshReports: () => loadReports().catch((error) => console.error(error)),
         showCompetitionTrips: (geojson) => showCompetitionTrips(map, geojson),
         clearCompetitionTrips: () => showCompetitionTrips(map, { type: 'FeatureCollection', features: [] }),
+        showLivePath: (geojson) => showLivePath(map, geojson),
+        clearLivePath: () => showLivePath(map, { type: 'FeatureCollection', features: [] }),
+        flyToLngLat: ({ lng, lat }) => map.easeTo({ center: [lng, lat], duration: 600 }),
       });
       try {
         await loadReports();

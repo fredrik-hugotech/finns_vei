@@ -10,12 +10,9 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: 'Ikke konfigurert' });
   }
 
-  const { competitionId, club, helmet, origin, destination, tripToken } = req.body || {};
+  const { competitionId, club, helmet, distanceM, durationS, cells, tripToken } = req.body || {};
 
   if (!competitionId) return res.status(400).json({ error: 'Mangler konkurranse' });
-  if (!origin || !Number.isFinite(Number(origin.lat)) || !Number.isFinite(Number(origin.lng))) {
-    return res.status(400).json({ error: 'Mangler startsted' });
-  }
 
   try {
     const competition = await getCompetition(competitionId);
@@ -29,21 +26,13 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Velg en klubb fra listen' });
     }
 
-    // The destination is the actual venue/field the child cycled to (picked per
-    // trip on the map) — a public place, stored precisely. A club's optional
-    // registered coordinate is only a fallback.
-    const dest = (destination && Number.isFinite(Number(destination.lat)) && Number.isFinite(Number(destination.lng)))
-      ? { lat: Number(destination.lat), lng: Number(destination.lng), name: clubName || (destination.name || '') }
-      : (matchedClub && Number.isFinite(Number(matchedClub.lat))
-        ? { lat: matchedClub.lat, lng: matchedClub.lng, name: matchedClub.name }
-        : null);
-
     await createBikeTrip({
       competitionId,
       club: clubName,
       helmet: Boolean(helmet),
-      origin: { lat: Number(origin.lat), lng: Number(origin.lng) },
-      destination: dest,
+      distanceM,
+      durationS,
+      cells: Array.isArray(cells) ? cells : [],
       tripToken: tripToken || null,
     });
 

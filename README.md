@@ -135,33 +135,38 @@ The unique index on `trello_action_id` makes webhook retries idempotent. The fea
 ## Children's cycling competitions
 
 A competition module lets the municipality run challenges such as *"the club that
-cycles to training the most times in August wins"*. Children log a bike trip in the
-map and tick whether they wore a helmet. Each competition has a leaderboard (trips
-per club + helmet share) and a movement map.
+cycles to training the most times in August wins"*. Children log a bike trip with a
+live **start/stop GPS tracker** (distance + duration, Strava-style) and tick whether
+they wore a helmet. Each competition has a leaderboard (trips, kilometres and helmet
+share) and an anonymous heatmap. The winning metric (`trips` or `distance`) is chosen
+per competition in the backoffice.
 
-**Privacy by design (children + GDPR):** a child's *exact* start point is never
-stored. The origin is snapped server-side to a coarse ~100 m grid cell
-(`lib/geoPrivacy.js`, applied inside `createBikeTrip`) before it is written, and the
-published map only shows the snapped origin → public venue. No names are collected.
-The destination is a sports club / public venue, which is public and stored precisely.
+**Privacy by design (children + GDPR):** raw GPS coordinates **never leave the
+device**. While tracking, the phone records the route only to draw the live line and
+compute distance. On stop, the device runs `clipAndSnapCells` (`lib/geoPrivacy.js`):
+it removes the segments within ~150 m of the start *and* end (protecting home and the
+exact destination), snaps the remainder to a coarse ~100 m grid, and uploads only that
+**unordered set of cells** plus distance and duration. The published map is an
+aggregated heatmap (per-cell counts) — no individual route is ever stored or shown.
+No names are collected. The server re-snaps cells defensively in `createBikeTrip`.
 
 - Public: `GET /api/competitions` (active list), `GET /api/competitions/[id]`
-  (competition + leaderboard + movement GeoJSON), `POST /api/bike-trips` (log a trip;
-  snaps the origin and resolves the destination from the selected club's venue).
+  (competition + leaderboard + heatmap GeoJSON), `POST /api/bike-trips` (log a trip:
+  `{ competitionId, club, helmet, distanceM, durationS, cells }`).
 - Backoffice: `GET/POST/PATCH /api/backoffice/competitions` (auth via
   `BACKOFFICE_SECRET`). Admin UI at `/backoffice/konkurranser?secret=…` to create
-  competitions, define clubs (names only — the venue/field is picked per trip on
-  the map, since a club can have many fields) and show/hide them.
+  competitions, define clubs (names only), pick the winning metric and show/hide them.
 
 ```sql
 CREATE TABLE IF NOT EXISTS public.competitions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text NOT NULL,
   description text,
-  clubs jsonb NOT NULL DEFAULT '[]'::jsonb, -- [{ name }] (just names; venue is picked per trip)
+  clubs jsonb NOT NULL DEFAULT '[]'::jsonb, -- [{ name }]
   starts_on date,
   ends_on date,
   helmet_focus boolean NOT NULL DEFAULT true,
+  metric text NOT NULL DEFAULT 'trips',     -- 'trips' | 'distance'
   active boolean NOT NULL DEFAULT true,
   created_at timestamptz NOT NULL DEFAULT now()
 );
@@ -171,12 +176,10 @@ CREATE TABLE IF NOT EXISTS public.bike_trips (
   competition_id uuid NOT NULL REFERENCES public.competitions(id) ON DELETE CASCADE,
   club text,
   helmet boolean NOT NULL DEFAULT false,
-  origin_lat double precision, -- snapped to ~100 m grid, never the exact start
-  origin_lng double precision,
-  dest_lat double precision,   -- public venue (club), precise
-  dest_lng double precision,
-  dest_name text,
-  trip_token text,             -- anonymous per-browser token (light dedup only)
+  distance_m double precision,              -- total ridden distance (metres)
+  duration_s integer,                       -- ride duration (seconds)
+  path_cells jsonb NOT NULL DEFAULT '[]'::jsonb, -- clipped+snapped [lng,lat] cells (heatmap)
+  trip_token text,                          -- anonymous per-browser token (light dedup)
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -186,6 +189,17 @@ ON public.bike_trips(competition_id);
 -- The API uses the service_role key. Grant access if Supabase reports 42501:
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.competitions TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.bike_trips TO service_role;
+```
+
+If you already created the v1 tables (with `origin_*`/`dest_*` columns), apply this
+additive migration to enable GPS tracking + the per-competition metric:
+
+```sql
+ALTER TABLE public.competitions ADD COLUMN IF NOT EXISTS metric text NOT NULL DEFAULT 'trips';
+ALTER TABLE public.bike_trips ADD COLUMN IF NOT EXISTS distance_m double precision;
+ALTER TABLE public.bike_trips ADD COLUMN IF NOT EXISTS duration_s integer;
+ALTER TABLE public.bike_trips ADD COLUMN IF NOT EXISTS path_cells jsonb NOT NULL DEFAULT '[]'::jsonb;
+NOTIFY pgrst, 'reload schema';
 ```
 
 The feature is additive — until the tables exist, `GET /api/competitions` simply

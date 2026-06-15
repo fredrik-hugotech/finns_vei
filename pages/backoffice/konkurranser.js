@@ -16,6 +16,7 @@ export default function KonkurranserAdmin() {
   const [startsOn, setStartsOn] = useState('');
   const [endsOn, setEndsOn] = useState('');
   const [helmetFocus, setHelmetFocus] = useState(true);
+  const [metric, setMetric] = useState('trips');
   const [clubs, setClubs] = useState([{ ...EMPTY_CLUB }]);
 
   useEffect(() => {
@@ -63,7 +64,7 @@ export default function KonkurranserAdmin() {
   const removeClub = (index) => setClubs((current) => current.filter((_, i) => i !== index));
 
   const resetForm = () => {
-    setName(''); setDescription(''); setStartsOn(''); setEndsOn(''); setHelmetFocus(true);
+    setName(''); setDescription(''); setStartsOn(''); setEndsOn(''); setHelmetFocus(true); setMetric('trips');
     setClubs([{ ...EMPTY_CLUB }]);
   };
 
@@ -83,6 +84,7 @@ export default function KonkurranserAdmin() {
           starts_on: startsOn || null,
           ends_on: endsOn || null,
           helmet_focus: helmetFocus,
+          metric,
           clubs: payloadClubs,
           active: true,
         }),
@@ -171,6 +173,14 @@ export default function KonkurranserAdmin() {
                 <input type="date" value={endsOn} onChange={(event) => setEndsOn(event.target.value)} />
               </label>
             </div>
+            <label className="admin-field">
+              <span>Vinnerkriterium</span>
+              <select className="comp-select" value={metric} onChange={(event) => setMetric(event.target.value)}>
+                <option value="trips">Flest turer</option>
+                <option value="distance">Flest kilometer</option>
+              </select>
+            </label>
+
             <label className="admin-check">
               <input type="checkbox" checked={helmetFocus} onChange={(event) => setHelmetFocus(event.target.checked)} />
               <span>Vis hjelm-fokus</span>

@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from 'react';
 import Logo from '../components/Logo';
 import ReportSheet from '../components/ReportSheet';
 import CompetitionSheet from '../components/CompetitionSheet';
+import TripTracker from '../components/TripTracker';
 
 const ReportMap = dynamic(() => import('../components/ReportMap'), {
   ssr: false,
@@ -95,39 +96,29 @@ export default function Home() {
     return token;
   };
 
-  const startTripPick = ({ competition, club, helmet }) => {
-    setTripContext({ competition, club, helmet, destination: null });
+  const startTrip = ({ competition, club, helmet }) => {
+    haptic(12);
+    setTripContext({ competition, club, helmet });
     setShowCompetitions(false);
     mapApiRef.current?.clearCompetitionTrips?.();
-    setGeoStatus('');
-    setMode('trip-dest');
+    setMode('trip-track');
   };
 
-  // Step 1: pick the venue/field the child cycled TO (public, precise).
-  const confirmTripDest = () => {
-    const center = mapApiRef.current?.getCenter();
-    if (!center || !tripContext) return;
-    haptic(10);
-    setTripContext((current) => ({ ...current, destination: { lat: center.lat, lng: center.lng } }));
-    setGeoStatus('');
-    setMode('trip-start');
-  };
-
-  // Step 2: pick roughly where they cycled FROM (snapped server-side to ~100 m).
-  const confirmTripStart = async () => {
-    const center = mapApiRef.current?.getCenter();
-    if (!center || !tripContext) return;
-    haptic(12);
+  // Called by TripTracker on stop — it has already clipped + snapped on-device,
+  // so here we just persist the anonymous cells, distance and duration.
+  const finishTrip = async ({ club, helmet, distanceM, durationS, cells }) => {
+    if (!tripContext) return;
     try {
       const response = await fetch('/api/bike-trips', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           competitionId: tripContext.competition.id,
-          club: tripContext.club,
-          helmet: tripContext.helmet,
-          origin: { lat: center.lat, lng: center.lng },
-          destination: tripContext.destination || undefined,
+          club,
+          helmet,
+          distanceM,
+          durationS,
+          cells,
           tripToken: tripToken(),
         }),
       });
@@ -137,17 +128,20 @@ export default function Home() {
       }
       haptic([10, 40, 14]);
       const focusId = tripContext.competition.id;
+      const km = (distanceM / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 2 });
       setTripContext(null);
       setMode('browse');
-      setMessage('Takk! Sykkelturen er registrert 🚲');
+      setMessage(`Takk! ${km} km registrert 🚲`);
       setCompetitionFocusId(focusId);
       setShowCompetitions(true);
     } catch (error) {
       setMessage(error.message || 'Noe gikk galt.');
+      setTripContext(null);
+      setMode('browse');
     }
   };
 
-  const cancelTripPick = () => {
+  const cancelTrip = () => {
     setTripContext(null);
     setMode('browse');
   };
@@ -162,7 +156,7 @@ export default function Home() {
         <ReportMap
           className="map-canvas"
           enableNvdbLayers
-          pickMode={mode === 'pick' || mode === 'trip-dest' || mode === 'trip-start'}
+          pickMode={mode === 'pick'}
           pinnedPoint={mode === 'form' ? pickedPoint : null}
           onMapReady={handleMapReady}
         />
@@ -200,32 +194,14 @@ export default function Home() {
           </>
         )}
 
-        {mode === 'trip-dest' && (
-          <>
-            <div className="pick-hint">1/2 · Dra til banen eller stedet du syklet til</div>
-            <div className="pick-bar">
-              <button type="button" className="big-button big-button--primary pick-bar__confirm" onClick={confirmTripDest}>Velg banen</button>
-              <div className="pick-bar__row">
-                <button type="button" className="big-button big-button--secondary" onClick={cancelTripPick}>Avbryt</button>
-                <button type="button" className="big-button big-button--secondary" onClick={useMyPosition}>Min posisjon</button>
-              </div>
-              <p className="pick-geo-status">Er du på banen nå? Trykk «Min posisjon».</p>
-            </div>
-          </>
-        )}
-
-        {mode === 'trip-start' && (
-          <>
-            <div className="pick-hint">2/2 · Dra til omtrent der du syklet fra</div>
-            <div className="pick-bar">
-              <button type="button" className="big-button big-button--primary pick-bar__confirm" onClick={confirmTripStart}>Lagre sykkeltur</button>
-              <div className="pick-bar__row">
-                <button type="button" className="big-button big-button--secondary" onClick={cancelTripPick}>Avbryt</button>
-                <button type="button" className="big-button big-button--secondary" onClick={useMyPosition}>Min posisjon</button>
-              </div>
-              <p className="pick-geo-status">Vi runder av startstedet til nærmeste ~100 m, så ingen ser nøyaktig hvor du bor.</p>
-            </div>
-          </>
+        {mode === 'trip-track' && tripContext && (
+          <TripTracker
+            club={tripContext.club}
+            helmet={tripContext.helmet}
+            mapApi={mapApiRef.current}
+            onDone={finishTrip}
+            onCancel={cancelTrip}
+          />
         )}
 
         {mode === 'form' && pickedPoint && (
@@ -243,7 +219,7 @@ export default function Home() {
             onClose={closeCompetitions}
             onShowTrips={(geojson) => mapApiRef.current?.showCompetitionTrips?.(geojson)}
             onClearTrips={() => mapApiRef.current?.clearCompetitionTrips?.()}
-            onPickStart={startTripPick}
+            onPickStart={startTrip}
           />
         )}
 
