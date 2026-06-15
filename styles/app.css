@@ -604,14 +604,19 @@
 .case-sheet .popup-card {
   display: flex;
   flex-direction: column;
-  gap: 0.42rem;
-  font-size: 0.84rem;
+  gap: 0.6rem;
+  font-size: 0.85rem;
   max-height: none;
 }
 
 .case-sheet__scroll {
   gap: 0.5rem;
-  padding-top: 0.4rem;
+  padding-top: 0.35rem;
+}
+
+.case-sheet__footer {
+  display: grid;
+  gap: 0.4rem;
 }
 
 .case-sheet .popup-thread {
