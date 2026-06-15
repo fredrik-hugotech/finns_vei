@@ -402,6 +402,48 @@ async function ensureReportCategorySymbolLayer(map) {
   }
 }
 
+// Draw a competition's movement: snapped-origin → venue lines plus venue dots.
+// Passing an empty FeatureCollection clears the overlay.
+function showCompetitionTrips(map, geojson) {
+  if (!map || !map.isStyleLoaded?.()) {
+    // Style not ready yet — retry shortly so the overlay still appears.
+    if (map) setTimeout(() => showCompetitionTrips(map, geojson), 200);
+    return;
+  }
+  const data = geojson && geojson.type ? geojson : { type: 'FeatureCollection', features: [] };
+  const source = map.getSource('competition-trips');
+  if (source) {
+    source.setData(data);
+  } else {
+    map.addSource('competition-trips', { type: 'geojson', data });
+    map.addLayer({
+      id: 'competition-trip-lines',
+      type: 'line',
+      source: 'competition-trips',
+      filter: ['==', ['get', 'kind'], 'trip'],
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': '#0b5d4d',
+        'line-width': 2,
+        'line-opacity': 0.45,
+      },
+    });
+    map.addLayer({
+      id: 'competition-venues',
+      type: 'circle',
+      source: 'competition-trips',
+      filter: ['==', ['get', 'kind'], 'venue'],
+      paint: {
+        'circle-radius': ['interpolate', ['linear'], ['coalesce', ['get', 'trips'], 1], 1, 7, 25, 16],
+        'circle-color': '#f4b740',
+        'circle-stroke-color': '#0b5d4d',
+        'circle-stroke-width': 2,
+        'circle-opacity': 0.92,
+      },
+    });
+  }
+}
+
 export default function ReportMap({ selectable = false, point, onPointChange, className = 'map-canvas', showReports = true, enableNvdbLayers = false, pickMode = false, pinnedPoint = null, onMapReady }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
@@ -873,6 +915,8 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         },
         flyTo: ({ lng, lat }) => map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 16), duration: 700 }),
         refreshReports: () => loadReports().catch((error) => console.error(error)),
+        showCompetitionTrips: (geojson) => showCompetitionTrips(map, geojson),
+        clearCompetitionTrips: () => showCompetitionTrips(map, { type: 'FeatureCollection', features: [] }),
       });
       try {
         await loadReports();

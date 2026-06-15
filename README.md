@@ -132,6 +132,64 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.report_status_updates TO service_
 
 The unique index on `trello_action_id` makes webhook retries idempotent. The feature is best-effort: without the table, the popup falls back to the single `public_status_note`. The public GeoJSON exposes `updates_json` per feature.
 
+## Children's cycling competitions
+
+A competition module lets the municipality run challenges such as *"the club that
+cycles to training the most times in August wins"*. Children log a bike trip in the
+map and tick whether they wore a helmet. Each competition has a leaderboard (trips
+per club + helmet share) and a movement map.
+
+**Privacy by design (children + GDPR):** a child's *exact* start point is never
+stored. The origin is snapped server-side to a coarse ~100 m grid cell
+(`lib/geoPrivacy.js`, applied inside `createBikeTrip`) before it is written, and the
+published map only shows the snapped origin → public venue. No names are collected.
+The destination is a sports club / public venue, which is public and stored precisely.
+
+- Public: `GET /api/competitions` (active list), `GET /api/competitions/[id]`
+  (competition + leaderboard + movement GeoJSON), `POST /api/bike-trips` (log a trip;
+  snaps the origin and resolves the destination from the selected club's venue).
+- Backoffice: `GET/POST/PATCH /api/backoffice/competitions` (auth via
+  `BACKOFFICE_SECRET`). Admin UI at `/backoffice/konkurranser?secret=…` to create
+  competitions, define clubs (name + optional `lat, lng` venue) and show/hide them.
+
+```sql
+CREATE TABLE IF NOT EXISTS public.competitions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  description text,
+  clubs jsonb NOT NULL DEFAULT '[]'::jsonb, -- [{ name, lat?, lng? }]
+  starts_on date,
+  ends_on date,
+  helmet_focus boolean NOT NULL DEFAULT true,
+  active boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.bike_trips (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  competition_id uuid NOT NULL REFERENCES public.competitions(id) ON DELETE CASCADE,
+  club text,
+  helmet boolean NOT NULL DEFAULT false,
+  origin_lat double precision, -- snapped to ~100 m grid, never the exact start
+  origin_lng double precision,
+  dest_lat double precision,   -- public venue (club), precise
+  dest_lng double precision,
+  dest_name text,
+  trip_token text,             -- anonymous per-browser token (light dedup only)
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS bike_trips_competition_idx
+ON public.bike_trips(competition_id);
+
+-- The API uses the service_role key. Grant access if Supabase reports 42501:
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.competitions TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.bike_trips TO service_role;
+```
+
+The feature is additive — until the tables exist, `GET /api/competitions` simply
+returns an empty list and the rest of the app is unaffected.
+
 ## Environment variables
 
 Set these in Vercel Project Settings and locally in `.env.local` when developing. Do not commit secrets.
