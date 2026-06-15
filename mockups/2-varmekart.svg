@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="1480" viewBox="0 0 760 1480" font-family="'Poppins','Segoe UI',sans-serif">
+  <defs>
+    <filter id="blur" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="20"/></filter>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="6" stdDeviation="12" flood-color="#0b5d4d" flood-opacity="0.18"/></filter>
+  </defs>
+  <rect width="760" height="1480" rx="54" fill="#f3eee1"/>
+  <rect x="310" y="26" width="140" height="12" rx="6" fill="#d9d2c0"/>
+  <!-- header -->
+  <g transform="translate(40,70)">
+    <circle cx="14" cy="16" r="7" fill="#0b5d4d"/><circle cx="34" cy="16" r="7" fill="#f4b740"/><circle cx="54" cy="16" r="7" fill="#d11f2a"/>
+    <text x="78" y="22" font-size="26" font-weight="700" fill="#1f2a26">Finns Fairway</text>
+    <text x="0" y="58" font-size="30" font-weight="800" fill="#0b5d4d">Varmekart</text>
+    <text x="0" y="88" font-size="20" fill="#6b746f">Dagens løsning – aggregert, ingen enkeltruter</text>
+  </g>
+  
+  <g transform="translate(40,180)" filter="url(#soft)">
+    <clipPath id="mc2"><rect width="680" height="720" rx="26"/></clipPath>
+    <g clip-path="url(#mc2)">
+      
+    <rect x="0" y="0" width="680" height="720" fill="#dfe6df"/>
+    <path d="M0 446.4 C 204 360, 374.00000000000006 561.6, 680 432 L 680 720 L 0 720 Z" fill="#cfe3dd" opacity="0.8"/>
+    <path d="M68 0 C 136 216, 34 360, 122.39999999999999 720" stroke="#bcd6ea" stroke-width="22" fill="none" opacity="0.7"/>
+    <line x1="97.14285714285714" y1="0" x2="79.14285714285714" y2="720" stroke="#ffffff" stroke-width="9"/>
+<line x1="194.28571428571428" y1="0" x2="176.28571428571428" y2="720" stroke="#ffffff" stroke-width="9"/>
+<line x1="291.42857142857144" y1="0" x2="273.42857142857144" y2="720" stroke="#ffffff" stroke-width="9"/>
+<line x1="388.57142857142856" y1="0" x2="370.57142857142856" y2="720" stroke="#ffffff" stroke-width="9"/>
+<line x1="485.7142857142857" y1="0" x2="467.7142857142857" y2="720" stroke="#ffffff" stroke-width="9"/>
+<line x1="582.8571428571429" y1="0" x2="564.8571428571429" y2="720" stroke="#ffffff" stroke-width="9"/>
+<line x1="0" y1="80" x2="680" y2="90" stroke="#ffffff" stroke-width="9"/>
+<line x1="0" y1="160" x2="680" y2="170" stroke="#ffffff" stroke-width="9"/>
+<line x1="0" y1="240" x2="680" y2="250" stroke="#ffffff" stroke-width="9"/>
+<line x1="0" y1="320" x2="680" y2="330" stroke="#ffffff" stroke-width="9"/>
+<line x1="0" y1="400" x2="680" y2="410" stroke="#ffffff" stroke-width="9"/>
+<line x1="0" y1="480" x2="680" y2="490" stroke="#ffffff" stroke-width="9"/>
+<line x1="0" y1="560" x2="680" y2="570" stroke="#ffffff" stroke-width="9"/>
+<line x1="0" y1="640" x2="680" y2="650" stroke="#ffffff" stroke-width="9"/>
+    <rect x="394.4" y="129.6" width="70" height="52" rx="7" fill="#cdd8cf"/>
+    <rect x="204" y="288" width="58" height="46" rx="7" fill="#cdd8cf"/>
+  
+      <circle cx="400" cy="535" r="46" fill="#d11f2a" filter="url(#blur)" opacity="0.7"/><circle cx="388" cy="560" r="44" fill="#d11f2a" filter="url(#blur)" opacity="0.7"/><circle cx="360" cy="600" r="42" fill="#f4b740" filter="url(#blur)" opacity="0.7"/><circle cx="300" cy="650" r="40" fill="#f4b740" filter="url(#blur)" opacity="0.7"/><circle cx="250" cy="700" r="38" fill="#2f7d4f" filter="url(#blur)" opacity="0.7"/><circle cx="200" cy="760" r="36" fill="#2f7d4f" filter="url(#blur)" opacity="0.7"/><circle cx="620" cy="300" r="40" fill="#f4b740" filter="url(#blur)" opacity="0.7"/><circle cx="540" cy="400" r="40" fill="#2f7d4f" filter="url(#blur)" opacity="0.7"/><circle cx="470" cy="470" r="40" fill="#2f7d4f" filter="url(#blur)" opacity="0.7"/><circle cx="150" cy="820" r="40" fill="#2f7d4f" filter="url(#blur)" opacity="0.7"/><circle cx="230" cy="740" r="40" fill="#2f7d4f" filter="url(#blur)" opacity="0.7"/><circle cx="320" cy="650" r="40" fill="#2f7d4f" filter="url(#blur)" opacity="0.7"/>
+      <circle cx="400" cy="535" r="22" fill="#f4b740" stroke="#0b5d4d" stroke-width="4"/><text x="400" y="543" font-size="22" text-anchor="middle">⚽</text>
+    </g>
+    <rect width="680" height="720" rx="26" fill="none" stroke="#e4ddcb" stroke-width="2"/>
+  </g>
+  <g transform="translate(40,924)">
+    <rect width="680" height="320" rx="26" fill="#fff" filter="url(#soft)"/>
+    <text x="28" y="50" font-size="24" font-weight="800" fill="#1f2a26">Varmekart (slik det er nå)</text>
+    <text x="28" y="86" font-size="19" fill="#6b746f">Alle turer smelter sammen – ingen enkeltspor</text>
+    <g transform="translate(28,120)">
+      <rect width="624" height="22" rx="11" fill="url(#hg)"/>
+      <defs><linearGradient id="hg"><stop offset="0" stop-color="#2f7d4f"/><stop offset="0.6" stop-color="#f4b740"/><stop offset="1" stop-color="#d11f2a"/></linearGradient></defs>
+      <text x="0" y="56" font-size="18" fill="#6b746f">Få turer</text>
+      <text x="624" y="56" font-size="18" fill="#6b746f" text-anchor="end">Mange turer</text>
+    </g>
+    <rect x="28" y="206" width="624" height="84" rx="14" fill="#e9f3ef"/>
+    <text x="44" y="240" font-size="18" fill="#0b5d4d" font-weight="700">🔒 Tryggest for barn – umulig å spore én person</text>
+    <text x="44" y="270" font-size="18" fill="#3c4a44">…men du ser ikke din egen rute som en strek</text>
+  </g>
+  </svg>
