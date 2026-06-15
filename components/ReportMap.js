@@ -402,10 +402,33 @@ async function ensureReportCategorySymbolLayer(map) {
   }
 }
 
+// Dim the light basemap to near-black while the spor heatmap is shown, so the
+// glow reads like Strava's global heatmap. Implemented as a world-covering fill
+// placed just under the heat layer (reliable across styles).
+function ensureSporDim(map, on) {
+  const SRC = 'spor-dim-src';
+  const LYR = 'spor-dim';
+  if (on) {
+    if (!map.getSource(SRC)) {
+      map.addSource(SRC, {
+        type: 'geojson',
+        data: { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]]] } },
+      });
+    }
+    if (!map.getLayer(LYR)) {
+      map.addLayer({ id: LYR, type: 'fill', source: SRC, paint: { 'fill-color': '#0a0d12', 'fill-opacity': 0.88 } });
+    }
+    if (map.getLayer('competition-heat')) map.moveLayer(LYR, 'competition-heat');
+  } else {
+    if (map.getLayer(LYR)) map.removeLayer(LYR);
+    if (map.getSource(SRC)) map.removeSource(SRC);
+  }
+}
+
 // Draw a competition's density heatmap from weighted route cells (each point's
-// `weight` = how many trips pass through it), so popular roads to/from venues
-// glow Strava-style. While the layer has data we dim the report markers.
-// Passing an empty FC clears + restores.
+// `weight` = how many trips pass through it), Strava-style: glowing lines on a
+// dimmed basemap, brightest (white) where most children ride. While the layer
+// has data we dim the report markers. Passing an empty FC clears + restores.
 function showCompetitionTrips(map, geojson) {
   if (!map || !map.isStyleLoaded?.()) {
     // Style not ready yet — retry shortly so the overlay still appears.
@@ -426,25 +449,28 @@ function showCompetitionTrips(map, geojson) {
       source: 'competition-trips',
       paint: {
         // 1 trip = faint, many trips = full heat.
-        'heatmap-weight': ['interpolate', ['linear'], ['coalesce', ['get', 'weight'], 1], 1, 0.35, 10, 1],
-        'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 11, 0.7, 14, 1.1, 16, 1.6],
-        // Small radius so the glow hugs the roads instead of becoming a blob.
-        'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 11, 6, 14, 11, 16, 18],
-        'heatmap-opacity': 0.82,
+        'heatmap-weight': ['interpolate', ['linear'], ['coalesce', ['get', 'weight'], 1], 1, 0.4, 10, 1],
+        'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 11, 0.8, 14, 1.2, 16, 1.7],
+        // Small radius so the glow stays thin and line-like, not a blob.
+        'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 11, 5, 14, 9, 16, 15],
+        'heatmap-opacity': 0.95,
         'heatmap-color': [
           'interpolate', ['linear'], ['heatmap-density'],
-          0, 'rgba(11,93,77,0)',
-          0.15, 'rgba(34,139,110,0.45)',
-          0.4, 'rgba(116,185,80,0.8)',
-          0.6, '#f4d03f',
-          0.8, '#f39c12',
-          1, '#e8400c',
+          0, 'rgba(0,0,0,0)',
+          0.1, 'rgba(40,6,0,0.5)',
+          0.3, '#7a1500',
+          0.5, '#e8400c',
+          0.7, '#f6a01e',
+          0.9, '#ffe08a',
+          1, '#ffffff',
         ],
       },
     });
   }
 
-  // Dim the report markers while the heatmap is visible, restore when cleared.
+  ensureSporDim(map, hasData);
+
+  // Hide the report markers while the heatmap is visible, restore when cleared.
   for (const id of REPORT_LAYER_IDS) {
     if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', hasData ? 'none' : 'visible');
   }
