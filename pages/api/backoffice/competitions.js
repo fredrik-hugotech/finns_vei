@@ -8,7 +8,16 @@ import {
 
 export default async function handler(req, res) {
   if (!isBackofficeAuthorized(req)) {
-    return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
+    // Safe diagnostic: reveal only whether a secret is configured (boolean),
+    // never the value, so we can tell "no secret in Vercel" from "wrong password".
+    const secretConfigured = Boolean(process.env.BACKOFFICE_SECRET || process.env.DEBUG_SECRET);
+    return res.status(403).json({
+      error: secretConfigured
+        ? 'Feil passord – verdien matcher ikke BACKOFFICE_SECRET i Vercel.'
+        : 'Ingen BACKOFFICE_SECRET er aktiv i produksjon. Legg den til i Vercel (Production) og redeploy.',
+      code: 'forbidden',
+      secretConfigured,
+    });
   }
   if (!hasSupabaseConfig()) {
     return res.status(503).json({ error: 'Supabase is not configured', code: 'missing_supabase_config' });
