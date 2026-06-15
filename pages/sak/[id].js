@@ -43,7 +43,7 @@ export default function SakPage({ report, shareUrl }) {
               <p>{report.public_status_note}</p>
             </div>
           )}
-          <Link className="big-button big-button--primary" href="/">Åpne i kartet</Link>
+          <Link className="big-button big-button--primary" href={`/?sak=${encodeURIComponent(report.id)}`}>Åpne og støtt saken</Link>
         </section>
       </main>
     </>

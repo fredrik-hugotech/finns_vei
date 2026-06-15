@@ -73,7 +73,7 @@ export default function SupportSheet({ reportId, supportToken, onClose, onDone }
             </fieldset>
 
             <label className="sheet-field">
-              <span className="sheet-field__label">Din vinkel <em>(valgfritt)</em></span>
+              <span className="sheet-field__label">Ditt innspill <em>(valgfritt)</em></span>
               <textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={600} placeholder="F.eks. mangler nedsenket fortauskant for syklister …" />
             </label>
 

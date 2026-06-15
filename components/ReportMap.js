@@ -636,6 +636,27 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     ));
   };
 
+  // Open a case sheet straight from a feature (shared-link deep links + clicks).
+  const openReportCase = useCallback((feature) => {
+    const map = mapRef.current;
+    if (!map || !feature?.geometry?.coordinates) return;
+    const center = feature.geometry.coordinates;
+    map.easeTo({ center, zoom: Math.max(map.getZoom(), 16), duration: 500, padding: { top: 0, right: 0, left: 0, bottom: 300 } });
+    const nearbyCount = countNearbyReports(reportsDataRef.current, center, NEARBY_RADIUS_M);
+    setCaseData({ feature, center, nearbyCount });
+  }, []);
+
+  // Locate a report by id in the loaded GeoJSON and open its case sheet.
+  const openCaseById = useCallback((id) => {
+    if (!id) return false;
+    const wanted = String(id);
+    const features = reportsDataRef.current?.features || [];
+    const feature = features.find((item) => String(reportIdFromFeature(item)) === wanted);
+    if (!feature) return false;
+    openReportCase(feature);
+    return true;
+  }, [openReportCase]);
+
   const loadReports = useCallback(async () => {
     const map = mapRef.current;
     if (!map || !showReports) return;
@@ -713,15 +734,10 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       const feature = event.features?.[0];
       if (!feature) return;
       event.originalEvent.cancelBubble = true;
-      const center = feature.geometry.coordinates;
-      // Keep the marker visible above the bottom sheet by padding the bottom.
-      map.easeTo({ center, zoom: Math.max(map.getZoom(), 16), duration: 500, padding: { top: 0, right: 0, left: 0, bottom: 300 } });
-      const nearbyCount = countNearbyReports(reportsDataRef.current, center, NEARBY_RADIUS_M);
-      setCaseData({ feature, center, nearbyCount });
+      openReportCase(feature);
     });
     ensureReportCategorySymbolLayer(map);
-  }, [showReports]);
-
+  }, [showReports, openReportCase]);
 
   const getSupportToken = useCallback(() => {
     const storageKey = 'finns-vei-support-token';
@@ -861,6 +877,10 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       try {
         await loadReports();
         await refreshNvdbLayers();
+        // Shared "Del sak" links arrive as /?sak=<id> — open that case sheet
+        // so the visitor lands straight on the full, supportable case card.
+        const sharedId = new URLSearchParams(window.location.search).get('sak');
+        if (sharedId) openCaseById(sharedId);
       } catch (error) {
         console.error(error);
         setMessage('Kartdata kunne ikke hentes.');
@@ -888,7 +908,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       map.remove();
       mapRef.current = null;
     };
-  }, [hasMapboxToken, loadReports, onPointChange, placeMarker, refreshNvdbLayers, selectable]);
+  }, [hasMapboxToken, loadReports, onPointChange, placeMarker, refreshNvdbLayers, selectable, openCaseById]);
 
   useEffect(() => {
     if (point) placeMarker(point);
