@@ -402,9 +402,10 @@ async function ensureReportCategorySymbolLayer(map) {
   }
 }
 
-// Draw a competition's routes as Strava-style lines (one per trip, coloured by
-// club, ends already clipped). While the spor layer has data we dim the report
-// markers so the routes read clearly. Passing an empty FC clears + restores.
+// Draw a competition's density heatmap from weighted route cells (each point's
+// `weight` = how many trips pass through it), so popular roads to/from venues
+// glow Strava-style. While the layer has data we dim the report markers.
+// Passing an empty FC clears + restores.
 function showCompetitionTrips(map, geojson) {
   if (!map || !map.isStyleLoaded?.()) {
     // Style not ready yet — retry shortly so the overlay still appears.
@@ -419,28 +420,31 @@ function showCompetitionTrips(map, geojson) {
     source.setData(data);
   } else {
     map.addSource('competition-trips', { type: 'geojson', data });
-    // Soft white casing underneath for contrast on the map.
     map.addLayer({
-      id: 'competition-trip-casing',
-      type: 'line',
+      id: 'competition-heat',
+      type: 'heatmap',
       source: 'competition-trips',
-      layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': '#ffffff', 'line-width': 6, 'line-opacity': 0.5, 'line-blur': 0.4 },
-    });
-    map.addLayer({
-      id: 'competition-trip-lines',
-      type: 'line',
-      source: 'competition-trips',
-      layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'line-color': ['coalesce', ['get', 'color'], '#0b5d4d'],
-        'line-width': ['interpolate', ['linear'], ['zoom'], 11, 2.5, 15, 4],
-        'line-opacity': 0.6,
+        // 1 trip = faint, many trips = full heat.
+        'heatmap-weight': ['interpolate', ['linear'], ['coalesce', ['get', 'weight'], 1], 1, 0.35, 10, 1],
+        'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 11, 0.7, 14, 1.1, 16, 1.6],
+        // Small radius so the glow hugs the roads instead of becoming a blob.
+        'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 11, 6, 14, 11, 16, 18],
+        'heatmap-opacity': 0.82,
+        'heatmap-color': [
+          'interpolate', ['linear'], ['heatmap-density'],
+          0, 'rgba(11,93,77,0)',
+          0.15, 'rgba(34,139,110,0.45)',
+          0.4, 'rgba(116,185,80,0.8)',
+          0.6, '#f4d03f',
+          0.8, '#f39c12',
+          1, '#e8400c',
+        ],
       },
     });
   }
 
-  // Dim the report markers while routes are visible, restore when cleared.
+  // Dim the report markers while the heatmap is visible, restore when cleared.
   for (const id of REPORT_LAYER_IDS) {
     if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', hasData ? 'none' : 'visible');
   }
