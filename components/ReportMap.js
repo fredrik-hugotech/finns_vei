@@ -422,10 +422,10 @@ function showCompetitionTrips(map, geojson) {
       type: 'heatmap',
       source: 'competition-trips',
       paint: {
-        'heatmap-weight': ['interpolate', ['linear'], ['coalesce', ['get', 'weight'], 1], 0, 0.2, 8, 1],
-        'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 10, 0.8, 16, 1.6],
-        'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 10, 14, 16, 26],
-        'heatmap-opacity': 0.78,
+        'heatmap-weight': ['interpolate', ['linear'], ['coalesce', ['get', 'weight'], 1], 0, 0.35, 6, 1],
+        'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 10, 1, 16, 1.8],
+        'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 10, 18, 14, 28, 16, 40],
+        'heatmap-opacity': 0.8,
         'heatmap-color': [
           'interpolate', ['linear'], ['heatmap-density'],
           0, 'rgba(11,93,77,0)',
