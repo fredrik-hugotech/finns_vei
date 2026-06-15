@@ -1043,3 +1043,69 @@
   gap: 0.5rem;
   grid-template-columns: 1fr 1.6fr;
 }
+
+/* Split footer (two actions) */
+.sheet-footer--split {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: 1fr 1fr;
+}
+
+/* Persistent "spor på kart" chip when a competition heatmap is shown */
+.comp-chip {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.92);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-control);
+  display: inline-flex;
+  gap: 0.1rem;
+  left: 50%;
+  max-width: min(440px, calc(100vw - 1.4rem));
+  padding: 0.18rem 0.18rem 0.18rem 0.2rem;
+  position: fixed;
+  top: max(0.6rem, calc(env(safe-area-inset-top) + 0.3rem));
+  transform: translateX(-50%);
+  z-index: 23;
+}
+
+.comp-chip__main {
+  align-items: center;
+  background: none;
+  border: none;
+  color: var(--color-text);
+  display: inline-flex;
+  font-size: 0.82rem;
+  font-weight: 700;
+  gap: 0.4rem;
+  max-width: 320px;
+  padding: 0.34rem 0.5rem;
+}
+
+.comp-chip__dot {
+  background: var(--color-primary);
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(11, 93, 77, 0.18);
+  flex: none;
+  height: 10px;
+  width: 10px;
+}
+
+.comp-chip__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.comp-chip__close {
+  background: var(--color-surface-muted);
+  border: none;
+  border-radius: 50%;
+  color: var(--color-muted);
+  flex: none;
+  font-size: 0.9rem;
+  height: 30px;
+  width: 30px;
+}

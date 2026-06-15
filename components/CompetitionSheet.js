@@ -27,7 +27,7 @@ function formatKm(meters) {
 
 const TROPHY = ['🥇', '🥈', '🥉'];
 
-export default function CompetitionSheet({ onClose, onShowTrips, onClearTrips, onPickStart, initialCompetitionId = null }) {
+export default function CompetitionSheet({ onClose, onShowTrips, onClearTrips, onPickStart, onViewOnMap, initialCompetitionId = null }) {
   const [view, setView] = useState('list'); // list | detail | log
   const [competitions, setCompetitions] = useState(null);
   const [stats, setStats] = useState(null);
@@ -45,7 +45,7 @@ export default function CompetitionSheet({ onClose, onShowTrips, onClearTrips, o
       const data = await response.json();
       setStats(data);
       setView('detail');
-      onShowTrips?.(data.geojson);
+      onShowTrips?.(data.geojson, data.competition);
     } catch (err) {
       setError(err.message || 'Noe gikk galt.');
     } finally {
@@ -206,9 +206,12 @@ export default function CompetitionSheet({ onClose, onShowTrips, onClearTrips, o
         </div>
 
         {view === 'detail' && stats && (
-          <div className="sheet-footer">
+          <div className="sheet-footer sheet-footer--split">
+            <button className="big-button big-button--secondary" type="button" onClick={() => { haptic(8); onViewOnMap?.(stats.competition); }}>
+              Vis spor på kart 🗺️
+            </button>
             <button className="big-button big-button--primary" type="button" onClick={startLog} disabled={loadingDetail}>
-              Logg sykkeltur
+              Logg sykkeltur 🚴
             </button>
           </div>
         )}

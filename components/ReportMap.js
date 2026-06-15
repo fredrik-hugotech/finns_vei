@@ -439,8 +439,7 @@ function showCompetitionTrips(map, geojson) {
   }
 }
 
-// Local-only live route while tracking: shown on the rider's own device so it
-// feels like Strava. This is never uploaded — only clipped, snapped cells are.
+// Local-only live route while tracking: shown on the rider's own device so it// feels like Strava. This is never uploaded — only clipped, snapped cells are.
 function showLivePath(map, geojson) {
   if (!map || !map.isStyleLoaded?.()) {
     if (map) setTimeout(() => showLivePath(map, geojson), 200);
@@ -459,6 +458,34 @@ function showLivePath(map, geojson) {
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: { 'line-color': '#0b5d4d', 'line-width': 5, 'line-opacity': 0.9 },
     });
+  }
+}
+
+// Frame a FeatureCollection (points/lines) in view, leaving room at the bottom
+// for the competition sheet/chip so the heatmap sits in the visible area.
+function fitToGeoJson(map, geojson) {
+  if (!map || !geojson?.features?.length) return;
+  let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity;
+  const visit = ([lng, lat]) => {
+    if (!Number.isFinite(lng) || !Number.isFinite(lat)) return;
+    if (lng < minLng) minLng = lng; if (lng > maxLng) maxLng = lng;
+    if (lat < minLat) minLat = lat; if (lat > maxLat) maxLat = lat;
+  };
+  for (const feature of geojson.features) {
+    const g = feature.geometry;
+    if (!g) continue;
+    if (g.type === 'Point') visit(g.coordinates);
+    else if (g.type === 'LineString') g.coordinates.forEach(visit);
+  }
+  if (!Number.isFinite(minLng) || !Number.isFinite(maxLng)) return;
+  try {
+    map.fitBounds([[minLng, minLat], [maxLng, maxLat]], {
+      padding: { top: 90, left: 50, right: 50, bottom: 120 },
+      maxZoom: 15,
+      duration: 600,
+    });
+  } catch (_error) {
+    // ignore fit errors (e.g. degenerate bounds)
   }
 }
 
@@ -937,6 +964,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         clearCompetitionTrips: () => showCompetitionTrips(map, { type: 'FeatureCollection', features: [] }),
         showLivePath: (geojson) => showLivePath(map, geojson),
         clearLivePath: () => showLivePath(map, { type: 'FeatureCollection', features: [] }),
+        fitCompetition: (geojson) => fitToGeoJson(map, geojson),
         flyToLngLat: ({ lng, lat }) => map.easeTo({ center: [lng, lat], duration: 600 }),
       });
       try {
