@@ -36,7 +36,10 @@ export default function KonkurranserAdmin() {
     try {
       const response = await fetch('/api/backoffice/competitions', { headers: authHeaders() });
       if (response.status === 403) { setStatus('Feil passord.'); setCompetitions([]); return; }
-      if (!response.ok) throw new Error('Kunne ikke hente konkurranser');
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || `Kunne ikke hente konkurranser (HTTP ${response.status})`);
+      }
       const data = await response.json();
       setCompetitions(data.competitions || []);
     } catch (error) {
@@ -79,7 +82,10 @@ export default function KonkurranserAdmin() {
           active: true,
         }),
       });
-      if (!response.ok) throw new Error('Kunne ikke opprette konkurransen');
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || `Kunne ikke opprette konkurransen (HTTP ${response.status})`);
+      }
       setStatus('Konkurranse opprettet ✓');
       resetForm();
       load();
