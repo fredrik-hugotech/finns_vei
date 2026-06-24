@@ -402,10 +402,10 @@ async function ensureReportCategorySymbolLayer(map) {
   }
 }
 
-// Draw a competition's density heatmap from weighted route cells (each point's
-// `weight` = how many trips pass through it), so popular roads to/from venues
-// glow — brightest where most children ride. A vivid blue→red ramp keeps it
-// legible on the light basemap. While the layer has data we hide report markers.
+// Draw a competition's route density as weighted lines: every road segment is
+// coloured/sized by how many trips used it, so busy routes to/from venues stand
+// out as strong, bright lines and quiet ones stay faint. While the layer has
+// data we hide report markers. Passing an empty FC clears + restores.
 function showCompetitionTrips(map, geojson) {
   if (!map || !map.isStyleLoaded?.()) {
     // Style not ready yet — retry shortly so the overlay still appears.
@@ -420,32 +420,34 @@ function showCompetitionTrips(map, geojson) {
     source.setData(data);
   } else {
     map.addSource('competition-trips', { type: 'geojson', data });
+    // Soft white casing so the coloured lines read on the light basemap.
     map.addLayer({
-      id: 'competition-heat',
-      type: 'heatmap',
+      id: 'competition-trip-casing',
+      type: 'line',
       source: 'competition-trips',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        // 1 trip = faint, many trips = full heat.
-        'heatmap-weight': ['interpolate', ['linear'], ['coalesce', ['get', 'weight'], 1], 1, 0.4, 10, 1],
-        'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 11, 0.8, 14, 1.2, 16, 1.7],
-        // Small radius so the glow stays thin and line-like, not a blob.
-        'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 11, 5, 14, 9, 16, 15],
-        'heatmap-opacity': 0.85,
-        // Vivid blue → purple → magenta → red ramp that pops on the light map.
-        'heatmap-color': [
-          'interpolate', ['linear'], ['heatmap-density'],
-          0, 'rgba(67,97,238,0)',
-          0.15, 'rgba(67,97,238,0.55)',
-          0.4, '#4361ee',
-          0.6, '#7209b7',
-          0.8, '#b5179e',
-          1, '#d11f2a',
-        ],
+        'line-color': '#ffffff',
+        'line-opacity': 0.55,
+        'line-width': ['interpolate', ['linear'], ['get', 'weight'], 1, 3.5, 8, 11],
+      },
+    });
+    // Single-hue intensity: faint pink for 1 trip → hot, bright red for many.
+    map.addLayer({
+      id: 'competition-trip-lines',
+      type: 'line',
+      source: 'competition-trips',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': ['interpolate', ['linear'], ['get', 'weight'],
+          1, '#fbb6ce', 3, '#f43f6e', 6, '#e11d2e', 10, '#ff1130'],
+        'line-opacity': ['interpolate', ['linear'], ['get', 'weight'], 1, 0.5, 6, 1],
+        'line-width': ['interpolate', ['linear'], ['get', 'weight'], 1, 2, 4, 4, 8, 7, 14, 10],
       },
     });
   }
 
-  // Hide the report markers while the heatmap is visible, restore when cleared.
+  // Hide the report markers while the lines are visible, restore when cleared.
   for (const id of REPORT_LAYER_IDS) {
     if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', hasData ? 'none' : 'visible');
   }
