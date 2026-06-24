@@ -59,12 +59,22 @@ export default function CaseAdminPanel({ reportId, currentStatus, lat, lng, onSa
 
   return (
     <div className="case-admin">
-      <div className="case-admin__head">
-        <span className="case-admin__label">Behandle sak</span>
-        <div className="case-admin__links">
-          {Number.isFinite(Number(lat)) && <button type="button" className="case-admin__link" onClick={openStreetView}>Street View</button>}
-          {trelloUrl && <a className="case-admin__link" href={trelloUrl} target="_blank" rel="noopener noreferrer">Trello</a>}
-        </div>
+      <span className="case-admin__label">Behandle sak</span>
+
+      <div className="case-admin__actions">
+        <a
+          className="big-button big-button--secondary case-admin__trello"
+          href={trelloUrl || '#'}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-disabled={!trelloUrl}
+          onClick={(e) => { if (!trelloUrl) e.preventDefault(); }}
+        >
+          Åpne i Trello
+        </a>
+        {Number.isFinite(Number(lat)) && (
+          <button type="button" className="big-button big-button--secondary case-admin__sv" onClick={openStreetView}>Street View</button>
+        )}
       </div>
 
       <label className="case-admin__field">
