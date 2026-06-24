@@ -91,6 +91,7 @@ export default function Backoffice() {
               <Link className="admin-menu__item" href="/">Se kart</Link>
               <Link className="admin-menu__item" href="/backoffice/liste">Se liste</Link>
               <Link className="admin-menu__item" href="/backoffice/tetthet">Sykkelspor</Link>
+              <Link className="admin-menu__item" href="/backoffice/konkurranser">Konkurranser</Link>
               {boardUrl && <a className="admin-menu__item" href={boardUrl} target="_blank" rel="noopener noreferrer">Åpne Trello</a>}
             </nav>
             <button type="button" className="admin-login__logout" onClick={logout}>Logg ut</button>

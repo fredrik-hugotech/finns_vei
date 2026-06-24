@@ -37,6 +37,11 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
   const [club, setClub] = useState('');
   const [helmet, setHelmet] = useState(true);
   const [routeType, setRouteType] = useState('fritid');
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    try { setIsAdmin(Boolean(window.localStorage.getItem('ff-admin-secret'))); } catch (_e) { /* ignore */ }
+  }, []);
 
   const loadDetail = useCallback(async (id) => {
     setLoadingDetail(true);
@@ -108,6 +113,9 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
               <div className="support-intro">
                 <h2>Konkurranser</h2>
               </div>
+              {isAdmin && (
+                <a className="comp-admin-link" href="/backoffice/konkurranser">+ Opprett / administrer konkurranser</a>
+              )}
               {competitions === null && <p className="comp-muted">Laster …</p>}
               {competitions && competitions.length === 0 && (
                 <p className="comp-muted">Ingen aktive konkurranser akkurat nå. Kom tilbake snart!</p>

@@ -22,7 +22,12 @@ export default function KonkurranserAdmin() {
   useEffect(() => {
     if (router.isReady && typeof router.query.secret === 'string') {
       setSecret(router.query.secret);
+      return;
     }
+    try {
+      const stored = window.localStorage.getItem('ff-admin-secret');
+      if (stored) setSecret(stored);
+    } catch (_e) { /* ignore */ }
   }, [router.isReady, router.query.secret]);
 
   const authHeaders = useCallback(() => ({
@@ -118,16 +123,20 @@ export default function KonkurranserAdmin() {
     <>
       <Head><title>Konkurranser – backoffice</title><meta name="robots" content="noindex" /></Head>
       <main className="page admin-page">
+        <a className="admin-back-link" href="/backoffice">‹ Meny</a>
         <h1>Konkurranser</h1>
-        <p className="admin-help">Definer sykkelkonkurranser for barn. Du legger bare inn klubbnavn – selve banen velges på kartet når barnet logger turen, så du slipper koordinater.</p>
 
-        <label className="admin-field">
-          <span>Backoffice-passord</span>
-          <input type="password" value={secret} onChange={(event) => setSecret(event.target.value)} placeholder="BACKOFFICE_SECRET" />
-        </label>
-        <button type="button" className="big-button big-button--secondary" onClick={load} disabled={!secret || loading}>
-          {loading ? 'Laster …' : 'Hent konkurranser'}
-        </button>
+        {!secret && (
+          <>
+            <label className="admin-field">
+              <span>Passord</span>
+              <input type="password" value={secret} onChange={(event) => setSecret(event.target.value)} placeholder="Passord" />
+            </label>
+            <button type="button" className="big-button big-button--secondary" onClick={load} disabled={!secret || loading}>
+              {loading ? 'Laster …' : 'Hent konkurranser'}
+            </button>
+          </>
+        )}
 
         {status && <div className="admin-status">{status}</div>}
 

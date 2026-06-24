@@ -1691,3 +1691,18 @@
 .spor-panel strong { color: var(--color-primary); font-size: 1rem; }
 .spor-panel__meta { color: var(--color-muted); font-size: 0.82rem; }
 .spor-panel__msg { color: var(--color-text); font-size: 0.9rem; margin: 0; }
+
+/* Admin shortcut inside the competition sheet (visible to staff only) */
+.comp-admin-link {
+  align-items: center;
+  background: #e9f3ef;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  color: var(--color-primary);
+  display: flex;
+  font-size: 0.9rem;
+  font-weight: 700;
+  justify-content: center;
+  min-height: 46px;
+  text-decoration: none;
+}
