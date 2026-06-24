@@ -164,6 +164,7 @@ export default function Home() {
 
         <div className="app-topbar">
           <span className="app-brand"><Logo size="sm" /></span>
+          <a className="app-staff-link" href="/backoffice">Ansatt</a>
         </div>
 
         {mode === 'browse' && (

@@ -7,10 +7,27 @@
 
 /* Brand pill top-left */
 .app-topbar {
+  align-items: center;
+  display: flex;
+  gap: 0.4rem;
   left: max(0.6rem, env(safe-area-inset-left));
   position: absolute;
   top: max(0.6rem, env(safe-area-inset-top));
   z-index: 14;
+}
+
+/* Discreet staff entry next to the brand */
+.app-staff-link {
+  background: rgba(255, 255, 255, 0.88);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  color: var(--color-muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 0.26rem 0.6rem;
+  text-decoration: none;
 }
 
 .app-brand {
