@@ -52,7 +52,7 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
     } finally {
       setLoadingDetail(false);
     }
-  }, [onShowTrips]);
+  }, []);
 
   useEffect(() => {
     let active = true;
