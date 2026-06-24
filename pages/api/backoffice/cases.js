@@ -22,6 +22,16 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
+      // Single case (for the card-level admin panel): return its Trello link.
+      if (typeof req.query.id === 'string' && req.query.id) {
+        const report = await getReportById(req.query.id);
+        if (!report) return res.status(404).json({ error: 'Fant ikke saken' });
+        return res.status(200).json({
+          id: report.id,
+          status: report.status || null,
+          trelloCardUrl: report.trello_card_id ? `https://trello.com/c/${report.trello_card_id}` : null,
+        });
+      }
       const cases = await listReportsForBackoffice({ limit: 150 });
       return res.status(200).json({
         cases,

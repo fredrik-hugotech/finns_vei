@@ -1,18 +1,30 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { REPORT_STATUS } from '../lib/config';
 
 const STATUSES = Object.values(REPORT_STATUS);
 const SECRET_KEY = 'ff-admin-secret';
 
-// Card-level admin controls shown inside the case sheet when an admin is logged
-// in. Change status and post a public update — both logged to Trello.
-export default function CaseAdminPanel({ reportId, currentStatus, onSaved }) {
+// The case card, rebuilt for staff: change status, post a public update (logged
+// to Trello), and jump to Street View or the Trello card. Replaces the citizen
+// actions (Del sak / Støtt) entirely when an admin is logged in.
+export default function CaseAdminPanel({ reportId, currentStatus, lat, lng, onSaved }) {
   const [status, setStatus] = useState(currentStatus || REPORT_STATUS.NEW);
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
+  const [trelloUrl, setTrelloUrl] = useState(null);
 
   const secret = () => (typeof window !== 'undefined' ? window.localStorage.getItem(SECRET_KEY) : '');
+
+  useEffect(() => { setStatus(currentStatus || REPORT_STATUS.NEW); }, [currentStatus]);
+
+  useEffect(() => {
+    if (!reportId) return;
+    fetch(`/api/backoffice/cases?id=${encodeURIComponent(reportId)}`, { headers: { 'x-backoffice-secret': secret() } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d) setTrelloUrl(d.trelloCardUrl); })
+      .catch(() => {});
+  }, [reportId]);
 
   const save = async () => {
     setBusy(true); setMsg('');
@@ -38,24 +50,43 @@ export default function CaseAdminPanel({ reportId, currentStatus, onSaved }) {
     }
   };
 
+  const openStreetView = () => {
+    if (!Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng))) return;
+    window.open(`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`, '_blank', 'noopener');
+  };
+
+  const dirty = (status && status !== currentStatus) || note.trim().length > 0;
+
   return (
     <div className="case-admin">
-      <span className="case-admin__label">Admin</span>
+      <div className="case-admin__head">
+        <span className="case-admin__label">Behandle sak</span>
+        <div className="case-admin__links">
+          {Number.isFinite(Number(lat)) && <button type="button" className="case-admin__link" onClick={openStreetView}>Street View</button>}
+          {trelloUrl && <a className="case-admin__link" href={trelloUrl} target="_blank" rel="noopener noreferrer">Trello</a>}
+        </div>
+      </div>
+
       <label className="case-admin__field">
         <span>Status</span>
         <select value={status} onChange={(e) => setStatus(e.target.value)} className="case-admin__select">
           {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
       </label>
-      <textarea
-        className="case-admin__note"
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-        placeholder="Offentlig oppdatering (vises i saken og logges i Trello)"
-        rows={2}
-      />
+
+      <label className="case-admin__field">
+        <span>Offentlig oppdatering</span>
+        <textarea
+          className="case-admin__note"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Skriv hva som skjer med saken. Vises for innbygger og logges i Trello."
+          rows={2}
+        />
+      </label>
+
       {msg && <p className="case-admin__msg">{msg}</p>}
-      <button type="button" className="big-button big-button--primary case-admin__save" onClick={save} disabled={busy}>
+      <button type="button" className="big-button big-button--primary case-admin__save" onClick={save} disabled={busy || !dirty}>
         {busy ? 'Lagrer …' : 'Lagre'}
       </button>
     </div>

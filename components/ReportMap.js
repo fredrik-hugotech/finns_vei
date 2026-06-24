@@ -1145,14 +1145,17 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           <section className="sheet case-sheet">
             <button type="button" className="sheet__handle" aria-label="Lukk" onClick={() => setCaseData(null)} />
             <div className="sheet-scroll case-sheet__scroll" dangerouslySetInnerHTML={{ __html: caseBodyHtml }} />
-            {adminSecret && caseFeature && (
+            {adminSecret && caseFeature ? (
               <CaseAdminPanel
                 reportId={reportIdFromFeature(caseFeature)}
                 currentStatus={caseFeature.properties?.status}
+                lat={caseFeature.geometry?.coordinates?.[1]}
+                lng={caseFeature.geometry?.coordinates?.[0]}
                 onSaved={handleCaseAdminSaved}
               />
+            ) : (
+              <div className="sheet-footer case-sheet__footer" dangerouslySetInnerHTML={{ __html: caseFooterHtml }} />
             )}
-            <div className="sheet-footer case-sheet__footer" dangerouslySetInnerHTML={{ __html: caseFooterHtml }} />
           </section>
         </div>
       )}
