@@ -351,7 +351,7 @@ const NVDB_LAYERS = [
   { type: 'accidents', label: 'Ulykker', color: MAP_COLORS.accidentLayer },
 ];
 
-const ACCIDENT_LAYER_IDS = ['accident-heatmap', 'accident-points', 'accident-point-symbol'];
+const ACCIDENT_LAYER_IDS = ['accident-points', 'accident-point-symbol'];
 const REPORT_LAYER_IDS = ['reports-clusters', 'reports-cluster-count', 'reports-circle', 'reports-category-symbol', 'reports-support-badge'];
 
 function moveLayersToTop(map, layerIds) {
@@ -672,14 +672,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       });
 
       if (layerType === 'accidents') {
-        map.addLayer({
-          id: 'accident-heatmap',
-          type: 'heatmap',
-          source: sourceId,
-          minzoom: MIN_ACCIDENT_FETCH_ZOOM,
-          maxzoom: ACCIDENT_HEATMAP_MAX_ZOOM,
-          paint: MAP_STYLE.accidentHeatmapPaint,
-        });
+        // Heatmap removed — the clear accident points read much better.
         map.addLayer({
           id: 'accident-points',
           type: 'circle',
@@ -977,9 +970,14 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         .then((data) => { if (!cancelled && data) setCaseThread(data); })
         .catch(() => {});
     }
-    // Accidents are internal (admin only) — not fetched for the public case card.
+    // Accidents are internal — fetched only for a logged-in admin.
+    if (adminSecret) {
+      fetchAccidentsNear(caseData.center, NEARBY_RADIUS_M)
+        .then((accidents) => { if (!cancelled) setCaseAccidents(accidents); })
+        .catch(() => { if (!cancelled) setCaseAccidents('error'); });
+    }
     return () => { cancelled = true; };
-  }, [caseData]);
+  }, [caseData, adminSecret]);
 
   useEffect(() => {
     if (!containerRef.current || !hasMapboxToken) return undefined;
@@ -1172,6 +1170,8 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
                 currentStatus={caseFeature.properties?.status}
                 lat={caseFeature.geometry?.coordinates?.[1]}
                 lng={caseFeature.geometry?.coordinates?.[0]}
+                accidents={caseAccidents}
+                radiusM={NEARBY_RADIUS_M}
                 onSaved={handleCaseAdminSaved}
               />
             ) : (
