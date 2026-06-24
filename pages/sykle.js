@@ -130,7 +130,7 @@ export default function Sykle() {
         {view === 'hub' && (
           <section className="kid-screen kid-hub">
             <div className="kid-brand"><Logo size="md" /></div>
-            <h1 className="kid-title">Hei! Hva vil du gjøre?</h1>
+            <h1 className="kid-title">Hva vil du gjøre?</h1>
             <button type="button" className="kid-big kid-big--green" onClick={() => { haptic(10); setView('setup'); }}>
               <Icon name="bike" size={42} strokeWidth={1.7} />
               <span>Registrer sykkeltur</span>

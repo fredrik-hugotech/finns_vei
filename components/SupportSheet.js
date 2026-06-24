@@ -52,7 +52,6 @@ export default function SupportSheet({ reportId, supportToken, onClose, onDone }
           <div className="sheet-scroll">
             <div className="support-intro">
               <h2>Støtt denne saken</h2>
-              <p>Si gjerne hva som bekymrer deg – det hjelper saksbehandler å se hele bildet. Alt er valgfritt.</p>
             </div>
 
             <fieldset className="sheet-field">

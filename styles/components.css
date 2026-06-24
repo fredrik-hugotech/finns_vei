@@ -19,11 +19,11 @@
   border-radius: var(--radius-md);
   cursor: pointer;
   display: inline-flex;
-  font-size: 0.86rem;
-  font-weight: 600;
+  font-size: 0.92rem;
+  font-weight: 650;
   justify-content: center;
-  min-height: 38px;
-  padding: 0.48rem 0.72rem;
+  min-height: 46px;
+  padding: 0.55rem 0.9rem;
   text-align: center;
   text-decoration: none;
   transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;

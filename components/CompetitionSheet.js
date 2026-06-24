@@ -107,7 +107,6 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
             <>
               <div className="support-intro">
                 <h2>Konkurranser</h2>
-                <p>Sykle til trening og fritidsaktiviteter – logg turen og hjelp klubben din til topps. Vi lagrer aldri nøyaktig hvor du bor.</p>
               </div>
               {competitions === null && <p className="comp-muted">Laster …</p>}
               {competitions && competitions.length === 0 && (
@@ -174,7 +173,6 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
               <button type="button" className="comp-back" onClick={() => setView('detail')}>‹ Tilbake</button>
               <div className="support-intro">
                 <h2>Logg sykkeltur</h2>
-                <p>Velg type rute, klubb og hjelm, og trykk start. Telefonen måler distanse og tid mens du sykler. Startstedet rundes av – ingen ser hvor du bor.</p>
               </div>
 
               <fieldset className="sheet-field">

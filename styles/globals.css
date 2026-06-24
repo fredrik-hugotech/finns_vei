@@ -29,6 +29,20 @@ body {
   color: var(--color-text);
   font-family: var(--font-body);
   font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  /* Brand the native checkboxes, radios, selects and range inputs in one line. */
+  accent-color: var(--color-primary);
+}
+
+/* Consistent heading rhythm everywhere (font + tight leading; spacing stays
+   owned by each layout's gap, so nothing shifts unexpectedly). */
+h1, h2, h3, h4 {
+  font-family: var(--font-heading);
+  line-height: 1.15;
+  letter-spacing: -0.01em;
 }
 
 a {

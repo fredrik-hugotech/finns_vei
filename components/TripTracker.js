@@ -137,8 +137,7 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mapApi
         <div><strong>{unsafeCount}</strong><span>utrygge</span></div>
       </div>
 
-      {acquiring && <p className="trip-tracker__hint">Finner posisjon … hold telefonen ute under åpen himmel.</p>}
-      {status === 'tracking' && <p className="trip-tracker__hint">Sykle som vanlig — trykk knappen under hvis noe føles utrygt.</p>}
+      {acquiring && <p className="trip-tracker__hint">Finner posisjon …</p>}
       {status === 'error' && <p className="trip-tracker__hint trip-tracker__hint--error">{errorMsg}</p>}
       {flash && <p className="trip-tracker__flash"><Icon name="check" size={15} />{flash}</p>}
 
