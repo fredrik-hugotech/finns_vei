@@ -35,6 +35,7 @@ export default function CompetitionSheet({ onClose, onShowTrips, onClearTrips, o
   const [error, setError] = useState('');
   const [club, setClub] = useState('');
   const [helmet, setHelmet] = useState(true);
+  const [routeType, setRouteType] = useState('fritid');
 
   const loadDetail = useCallback(async (id) => {
     setLoadingDetail(true);
@@ -94,7 +95,7 @@ export default function CompetitionSheet({ onClose, onShowTrips, onClearTrips, o
       return;
     }
     haptic(12);
-    onPickStart?.({ competition: stats.competition, club, helmet });
+    onPickStart?.({ competition: stats.competition, club, helmet, routeType });
   };
 
   return (
@@ -174,8 +175,16 @@ export default function CompetitionSheet({ onClose, onShowTrips, onClearTrips, o
               <button type="button" className="comp-back" onClick={() => setView('detail')}>‹ Tilbake</button>
               <div className="support-intro">
                 <h2>Logg sykkeltur</h2>
-                <p>Velg klubb og hjelm, og trykk start. Telefonen måler distanse og tid mens du sykler. Startstedet rundes av og bare et anonymt varmekart lagres – ingen ser hvor du bor eller hvilken rute du tok.</p>
+                <p>Velg type rute, klubb og hjelm, og trykk start. Telefonen måler distanse og tid mens du sykler. Startstedet rundes av – ingen ser hvor du bor.</p>
               </div>
+
+              <fieldset className="sheet-field">
+                <legend>Hva sykler du til?</legend>
+                <div className="segmented">
+                  <button type="button" className={routeType === 'fritid' ? 'segmented__option segmented__option--active' : 'segmented__option'} onClick={() => { haptic(6); setRouteType('fritid'); }}>⚽ Fritid</button>
+                  <button type="button" className={routeType === 'skole' ? 'segmented__option segmented__option--active' : 'segmented__option'} onClick={() => { haptic(6); setRouteType('skole'); }}>🏫 Skole</button>
+                </div>
+              </fieldset>
 
               {stats.competition.clubs.length > 0 && (
                 <label className="sheet-field">

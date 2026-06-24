@@ -109,6 +109,8 @@ function validatePayload(body = {}) {
     throw new Error('Skriv en kort beskrivelse');
   }
 
+  const bikeRouteType = body.bike_route_type === 'skole' ? 'skole' : (body.bike_route_type === 'fritid' ? 'fritid' : null);
+
   return {
     status: REPORT_STATUS.NEW,
     nvdb_status: 'pending',
@@ -117,6 +119,7 @@ function validatePayload(body = {}) {
     description,
     lat,
     lng,
+    ...(bikeRouteType ? { bike_route_type: bikeRouteType } : {}),
     contact_name: reporterType === REPORTER_TYPES.ADULT ? cleanString(body.contact_name, 160) : null,
     contact_email: reporterType === REPORTER_TYPES.ADULT ? cleanString(body.contact_email, 220) : null,
     contact_phone: reporterType === REPORTER_TYPES.ADULT ? cleanString(body.contact_phone, 80) : null,

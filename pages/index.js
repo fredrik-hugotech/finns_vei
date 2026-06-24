@@ -129,9 +129,9 @@ export default function Home() {
     return token;
   };
 
-  const startTrip = ({ competition, club, helmet }) => {
+  const startTrip = ({ competition, club, helmet, routeType }) => {
     haptic(12);
-    setTripContext({ competition, club, helmet });
+    setTripContext({ competition, club, helmet, routeType: routeType || 'fritid' });
     setShowCompetitions(false);
     mapApiRef.current?.clearCompetitionTrips?.();
     setMode('trip-track');
@@ -139,7 +139,7 @@ export default function Home() {
 
   // Called by TripTracker on stop — it has already clipped + snapped on-device,
   // so here we just persist the anonymous cells, distance and duration.
-  const finishTrip = async ({ club, helmet, distanceM, durationS, cells, path }) => {
+  const finishTrip = async ({ club, helmet, routeType, distanceM, durationS, cells, path }) => {
     if (!tripContext) return;
     try {
       const response = await fetch('/api/bike-trips', {
@@ -149,6 +149,7 @@ export default function Home() {
           competitionId: tripContext.competition.id,
           club,
           helmet,
+          routeType,
           distanceM,
           durationS,
           cells,
@@ -166,6 +167,7 @@ export default function Home() {
       setTripContext(null);
       setMode('browse');
       setMessage(`Takk! ${km} km registrert 🚲`);
+      mapApiRef.current?.refreshReports?.();
       setCompetitionFocusId(focusId);
       setShowCompetitions(true);
     } catch (error) {
@@ -232,6 +234,7 @@ export default function Home() {
           <TripTracker
             club={tripContext.club}
             helmet={tripContext.helmet}
+            routeType={tripContext.routeType}
             mapApi={mapApiRef.current}
             onDone={finishTrip}
             onCancel={cancelTrip}
