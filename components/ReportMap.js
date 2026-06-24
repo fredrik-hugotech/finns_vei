@@ -6,6 +6,7 @@ import { REPORT_STATUS_META, REPORT_STATUS_ORDER, reportStatusMeta } from '../li
 import { categoryGlyph } from '../lib/reportCategoryGlyphs';
 import { normalizeImageEntries } from '../lib/reportImages';
 import SupportSheet from './SupportSheet';
+import CaseAdminPanel from './CaseAdminPanel';
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 
@@ -518,7 +519,13 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   const [caseData, setCaseData] = useState(null);
   const [caseThread, setCaseThread] = useState(null);
   const [caseAccidents, setCaseAccidents] = useState(null);
+  const [adminSecret, setAdminSecret] = useState(null);
   const hasMapboxToken = Boolean(process.env.NEXT_PUBLIC_MAPBOX_TOKEN);
+
+  useEffect(() => {
+    // Admin controls on the case card appear only when a staff member is logged in.
+    try { setAdminSecret(window.localStorage.getItem('ff-admin-secret')); } catch (_e) { /* ignore */ }
+  }, []);
 
   useEffect(() => {
     pointRef.current = point;
@@ -881,6 +888,19 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     }
   }, [loadReports]);
 
+  // After an admin saves a status/update on the card, refresh the thread + map.
+  const handleCaseAdminSaved = useCallback(() => {
+    setMessage('Saken er oppdatert.');
+    loadReports().catch((error) => console.error(error));
+    const reportId = caseData ? reportIdFromFeature(caseData.feature) : '';
+    if (reportId) {
+      fetch(`/api/report-thread?id=${encodeURIComponent(reportId)}`)
+        .then((response) => (response.ok ? response.json() : null))
+        .then((data) => { if (data) setCaseThread(data); })
+        .catch(() => {});
+    }
+  }, [loadReports, caseData]);
+
   useEffect(() => {
     const openStreetView = (button) => {
       const lat = button.getAttribute('data-lat');
@@ -1125,6 +1145,13 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           <section className="sheet case-sheet">
             <button type="button" className="sheet__handle" aria-label="Lukk" onClick={() => setCaseData(null)} />
             <div className="sheet-scroll case-sheet__scroll" dangerouslySetInnerHTML={{ __html: caseBodyHtml }} />
+            {adminSecret && caseFeature && (
+              <CaseAdminPanel
+                reportId={reportIdFromFeature(caseFeature)}
+                currentStatus={caseFeature.properties?.status}
+                onSaved={handleCaseAdminSaved}
+              />
+            )}
             <div className="sheet-footer case-sheet__footer" dangerouslySetInnerHTML={{ __html: caseFooterHtml }} />
           </section>
         </div>

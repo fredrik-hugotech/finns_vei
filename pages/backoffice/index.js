@@ -1,133 +1,100 @@
 import Head from 'next/head';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
-import { reportStatusMeta } from '../../lib/reportStatusMeta';
+import Logo from '../../components/Logo';
 
-function timeAgo(value) {
-  if (!value) return '';
-  const diff = Date.now() - new Date(value).getTime();
-  const days = Math.floor(diff / 86400000);
-  if (days > 0) return `${days} d siden`;
-  const hours = Math.floor(diff / 3600000);
-  if (hours > 0) return `${hours} t siden`;
-  const mins = Math.floor(diff / 60000);
-  return `${Math.max(1, mins)} min siden`;
+const SECRET_KEY = 'ff-admin-secret';
+
+// Warm, emoji-free greetings rooted in Finns Fairway's purpose: a safe and
+// active childhood, and safer routes to school and leisure.
+const GREETINGS = [
+  'Velkommen tilbake. Hver sak du følger opp gjør veien litt tryggere for et barn.',
+  'Godt å se deg. Sammen bygger vi en tryggere og mer aktiv oppvekst.',
+  'Takk for innsatsen. Det dere gjør her teller – ett trygt veikryss om gangen.',
+  'Hei, og velkommen. Bak hver melding står et barn som fortjener en trygg skolevei.',
+  'Godt å ha deg på laget. Trygge veier skapes av folk som bryr seg.',
+  'Velkommen. I dag kan vi gjøre nærmiljøet litt tryggere å sykle og gå i.',
+  'Hyggelig at du er her. Trygg ferdsel for barn begynner med oppmerksomme voksne.',
+];
+
+function pickGreeting() {
+  // Stable per page load without relying on Math.random at module scope.
+  const index = Math.abs(new Date().getMinutes() + new Date().getSeconds()) % GREETINGS.length;
+  return GREETINGS[index];
 }
 
-export default function Dashboard() {
-  const router = useRouter();
+export default function Backoffice() {
   const [secret, setSecret] = useState('');
-  const [cases, setCases] = useState([]);
-  const [statuses, setStatuses] = useState([]);
+  const [authed, setAuthed] = useState(false);
   const [boardUrl, setBoardUrl] = useState('');
-  const [status, setStatus] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [drafts, setDrafts] = useState({});
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [greeting, setGreeting] = useState('');
+
+  const verify = useCallback(async (value) => {
+    setBusy(true); setError('');
+    try {
+      const r = await fetch('/api/backoffice/session', { headers: { 'x-backoffice-secret': value } });
+      if (!r.ok) { setError('Feil passord. Prøv igjen.'); setAuthed(false); return false; }
+      const d = await r.json();
+      setBoardUrl(d.trelloBoardUrl || '');
+      window.localStorage.setItem(SECRET_KEY, value);
+      setAuthed(true);
+      setGreeting(pickGreeting());
+      return true;
+    } catch (_e) {
+      setError('Noe gikk galt. Prøv igjen.');
+      return false;
+    } finally { setBusy(false); }
+  }, []);
 
   useEffect(() => {
-    if (router.isReady && typeof router.query.secret === 'string') setSecret(router.query.secret);
-  }, [router.isReady, router.query.secret]);
+    const stored = typeof window !== 'undefined' ? window.localStorage.getItem(SECRET_KEY) : '';
+    if (stored) { setSecret(stored); verify(stored); }
+  }, [verify]);
 
-  const headers = useCallback(() => ({ 'Content-Type': 'application/json', 'x-backoffice-secret': secret }), [secret]);
-
-  const load = useCallback(async () => {
-    if (!secret) return;
-    setLoading(true); setStatus('');
-    try {
-      const r = await fetch('/api/backoffice/cases', { headers: headers() });
-      if (r.status === 403) { setStatus('Feil passord.'); setCases([]); return; }
-      if (!r.ok) throw new Error('Kunne ikke hente saker');
-      const d = await r.json();
-      setCases(d.cases || []);
-      setStatuses(d.statuses || []);
-      setBoardUrl(d.trelloBoardUrl || '');
-    } catch (e) { setStatus(e.message || 'Noe gikk galt.'); }
-    finally { setLoading(false); }
-  }, [secret, headers]);
-
-  useEffect(() => { load(); }, [load]);
-
-  const changeStatus = async (id, newStatus) => {
-    setCases((cs) => cs.map((c) => (c.id === id ? { ...c, status: newStatus } : c)));
-    try {
-      await fetch('/api/backoffice/cases', { method: 'POST', headers: headers(), body: JSON.stringify({ action: 'set-status', id, status: newStatus }) });
-    } catch (_e) { setStatus('Kunne ikke endre status.'); }
-  };
-
-  const sendUpdate = async (id) => {
-    const text = (drafts[id] || '').trim();
-    if (text.length < 2) return;
-    try {
-      const r = await fetch('/api/backoffice/cases', { method: 'POST', headers: headers(), body: JSON.stringify({ action: 'add-update', id, text }) });
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok) { setStatus(d.error || 'Kunne ikke sende oppdatering.'); return; }
-      setDrafts((s) => ({ ...s, [id]: '' }));
-      setCases((cs) => cs.map((c) => (c.id === id ? { ...c, public_status_note: text } : c)));
-      setStatus('Oppdatering publisert.');
-    } catch (_e) { setStatus('Kunne ikke sende oppdatering.'); }
+  const logout = () => {
+    window.localStorage.removeItem(SECRET_KEY);
+    setAuthed(false); setSecret(''); setError('');
   };
 
   return (
     <>
-      <Head><title>Finns Fairway – Dashbord</title><meta name="robots" content="noindex" /></Head>
-      <main className="page admin-page">
-        <h1>Dashbord</h1>
-        <p className="admin-help">Internt for Finns.Fairway. Endre status og publiser offentlige oppdateringer her – Trello er fortsatt best til detaljert oppfølging.</p>
+      <Head><title>Finns Fairway – Innlogging</title><meta name="robots" content="noindex" /><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" /></Head>
+      <main className="admin-login">
+        <div className="admin-login__brand"><Logo size="md" /></div>
 
-        <label className="admin-field">
-          <span>Backoffice-passord</span>
-          <input type="password" value={secret} onChange={(e) => setSecret(e.target.value)} placeholder="BACKOFFICE_SECRET" />
-        </label>
-        <button type="button" className="big-button big-button--secondary" onClick={load} disabled={!secret || loading}>{loading ? 'Laster …' : 'Hent saker'}</button>
-
-        <div className="dash-links">
-          {boardUrl && <a className="dash-link dash-link--trello" href={boardUrl} target="_blank" rel="noopener noreferrer">Åpne Trello-board ↗</a>}
-          <Link className="dash-link" href={`/backoffice/tetthet?secret=${encodeURIComponent(secret)}`}>Tetthet-kart</Link>
-          <Link className="dash-link" href={`/backoffice/konkurranser?secret=${encodeURIComponent(secret)}`}>Konkurranser</Link>
-          <Link className="dash-link" href={`/backoffice/seed-spor?secret=${encodeURIComponent(secret)}`}>Generer demo-spor</Link>
-        </div>
-
-        {status && <div className="admin-status">{status}</div>}
-
-        <section className="admin-section">
-          <h2>Saker ({cases.length})</h2>
-          <div className="dash-cases">
-            {cases.map((c) => {
-              const meta = reportStatusMeta(c.status);
-              return (
-                <article key={c.id} className="dash-case">
-                  <div className="dash-case__top">
-                    <span className={`status-pill status-pill--${meta.key}`} dangerouslySetInnerHTML={{ __html: `${meta.icon}<span>${meta.label}</span>` }} />
-                    <span className="dash-case__time">{timeAgo(c.created_at)}</span>
-                  </div>
-                  <strong className="dash-case__title">{c.category}{c.bike_route_type ? ` · ${c.bike_route_type === 'skole' ? 'skolerute' : 'fritidsrute'}` : ''}</strong>
-                  {c.description && <p className="dash-case__desc">{c.description}</p>}
-                  {c.public_status_note && <p className="dash-case__note">Sist publisert: {c.public_status_note}</p>}
-
-                  <div className="dash-case__row">
-                    <select value={c.status} onChange={(e) => changeStatus(c.id, e.target.value)} className="comp-select dash-select">
-                      {statuses.map((s) => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                    {c.trello_card_id
-                      ? <a className="dash-link dash-link--sm" href={`https://trello.com/c/${c.trello_card_id}`} target="_blank" rel="noopener noreferrer">Trello ↗</a>
-                      : <span className="dash-case__time">Ingen Trello-kort</span>}
-                  </div>
-
-                  <div className="dash-case__row">
-                    <input
-                      className="dash-update-input"
-                      placeholder="Skriv offentlig oppdatering …"
-                      value={drafts[c.id] || ''}
-                      onChange={(e) => setDrafts((s) => ({ ...s, [c.id]: e.target.value }))}
-                    />
-                    <button type="button" className="big-button big-button--primary dash-send" onClick={() => sendUpdate(c.id)}>Send</button>
-                  </div>
-                </article>
-              );
-            })}
+        {!authed ? (
+          <form
+            className="admin-login__card"
+            onSubmit={(e) => { e.preventDefault(); verify(secret); }}
+          >
+            <h1>Logg inn</h1>
+            <p className="admin-login__sub">For ansatte i Finns Fairway.</p>
+            <input
+              type="password"
+              className="admin-login__input"
+              value={secret}
+              onChange={(e) => setSecret(e.target.value)}
+              placeholder="Passord"
+              autoFocus
+            />
+            {error && <p className="admin-login__error">{error}</p>}
+            <button type="submit" className="big-button big-button--primary admin-login__btn" disabled={busy || !secret}>
+              {busy ? 'Logger inn …' : 'Logg inn'}
+            </button>
+          </form>
+        ) : (
+          <div className="admin-login__card">
+            <p className="admin-login__greeting">{greeting}</p>
+            <nav className="admin-menu">
+              <Link className="admin-menu__item" href="/">Se kart</Link>
+              <Link className="admin-menu__item" href="/backoffice/liste">Se liste</Link>
+              {boardUrl && <a className="admin-menu__item" href={boardUrl} target="_blank" rel="noopener noreferrer">Åpne Trello</a>}
+            </nav>
+            <button type="button" className="admin-login__logout" onClick={logout}>Logg ut</button>
           </div>
-        </section>
+        )}
       </main>
     </>
   );

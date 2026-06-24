@@ -1440,3 +1440,130 @@
   padding: 0.45rem 0.6rem;
 }
 .dash-send { flex: none; width: auto; min-height: 40px; padding: 0 0.9rem; }
+
+/* ----------------------------------------------------------------------
+   Staff admin: login, menu, list, card-level controls
+   ---------------------------------------------------------------------- */
+.admin-login {
+  align-items: center;
+  background: var(--color-bg, #f3eee1);
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: max(1.5rem, env(safe-area-inset-top)) 1.2rem calc(1.5rem + env(safe-area-inset-bottom));
+}
+.admin-login__brand { display: flex; justify-content: center; }
+.admin-login__card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 0.9rem;
+  max-width: 380px;
+  padding: 1.4rem;
+  width: 100%;
+}
+.admin-login__card h1 { font-family: var(--font-heading); font-size: 1.5rem; margin: 0; }
+.admin-login__sub { color: var(--color-muted); font-size: 1rem; margin: 0; }
+.admin-login__input {
+  background: var(--color-surface-muted);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 17px;
+  min-height: 52px;
+  padding: 0.7rem 0.9rem;
+  width: 100%;
+}
+.admin-login__btn { font-size: 1.05rem; min-height: 52px; }
+.admin-login__error { color: var(--color-danger, #d11f2a); font-size: 0.95rem; margin: 0; }
+.admin-login__greeting {
+  color: var(--color-text);
+  font-family: var(--font-heading);
+  font-size: 1.2rem;
+  line-height: 1.4;
+  margin: 0;
+}
+.admin-menu { display: grid; gap: 0.7rem; }
+.admin-menu__item {
+  align-items: center;
+  background: var(--color-primary);
+  border-radius: var(--radius-md);
+  color: #fff;
+  display: flex;
+  font-family: var(--font-heading);
+  font-size: 1.2rem;
+  font-weight: 700;
+  justify-content: center;
+  min-height: 62px;
+  text-decoration: none;
+}
+.admin-menu__item:active { transform: scale(0.99); }
+.admin-login__logout {
+  background: none; border: none; color: var(--color-muted);
+  font-size: 1rem; justify-self: center; padding: 0.4rem; text-decoration: underline;
+}
+
+/* Saksliste */
+.admin-list-page { display: grid; gap: 1rem; margin: 0 auto; max-width: 640px; padding: 1.2rem 1.1rem calc(2rem + env(safe-area-inset-bottom)); }
+.admin-list-top { align-items: baseline; display: flex; gap: 0.8rem; }
+.admin-list-top h1 { font-family: var(--font-heading); margin: 0; }
+.admin-back-link { color: var(--color-primary); font-size: 1rem; font-weight: 700; text-decoration: none; }
+.admin-list-empty { color: var(--color-muted); font-size: 1rem; }
+.admin-list { display: grid; gap: 0.6rem; }
+.admin-list-item {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.85rem;
+  text-decoration: none;
+}
+.admin-list-item:active { transform: scale(0.995); }
+.admin-list-item__head { align-items: center; display: flex; justify-content: space-between; }
+.admin-list-item__time { color: var(--color-muted); font-size: 0.82rem; }
+.admin-list-item__title { font-size: 1.05rem; }
+.admin-list-item__desc { color: var(--color-text); font-size: 0.92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-list-item__open { color: var(--color-primary); font-size: 0.88rem; font-weight: 700; }
+
+/* Card-level admin panel inside the case sheet */
+.case-admin {
+  background: #f1f6f3;
+  border-top: 1px solid var(--color-border);
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.8rem 1.15rem;
+}
+.case-admin__label {
+  color: var(--color-primary);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.case-admin__field { display: grid; gap: 0.25rem; }
+.case-admin__field > span { color: var(--color-muted); font-size: 0.82rem; font-weight: 700; }
+.case-admin__select {
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 16px;
+  min-height: 46px;
+  padding: 0.5rem 0.6rem;
+  width: 100%;
+}
+.case-admin__note {
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 16px;
+  min-height: 56px;
+  padding: 0.6rem 0.7rem;
+  width: 100%;
+}
+.case-admin__msg { color: var(--color-primary); font-size: 0.88rem; margin: 0; }
+.case-admin__save { font-size: 1rem; min-height: 48px; }
