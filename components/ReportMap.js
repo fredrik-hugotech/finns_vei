@@ -523,9 +523,23 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   const hasMapboxToken = Boolean(process.env.NEXT_PUBLIC_MAPBOX_TOKEN);
 
   useEffect(() => {
-    // Admin controls on the case card appear only when a staff member is logged in.
-    try { setAdminSecret(window.localStorage.getItem('ff-admin-secret')); } catch (_e) { /* ignore */ }
+    // Admin controls appear only for a server-VERIFIED session. The stored
+    // password is re-checked against the backend so a stale/forged localStorage
+    // flag can never reveal the admin UI (and real authority is server-side too).
+    let cancelled = false;
+    let stored = '';
+    try { stored = window.localStorage.getItem('ff-admin-secret') || ''; } catch (_e) { stored = ''; }
+    if (!stored) return undefined;
+    fetch('/api/backoffice/session', { headers: { 'x-backoffice-secret': stored } })
+      .then((r) => { if (!cancelled) setAdminSecret(r.ok ? stored : null); if (!r.ok) { try { window.localStorage.removeItem('ff-admin-secret'); } catch (_e) { /* ignore */ } } })
+      .catch(() => { if (!cancelled) setAdminSecret(null); });
+    return () => { cancelled = true; };
   }, []);
+
+  const logoutAdmin = () => {
+    try { window.localStorage.removeItem('ff-admin-secret'); } catch (_e) { /* ignore */ }
+    setAdminSecret(null);
+  };
 
   useEffect(() => {
     pointRef.current = point;
@@ -1063,6 +1077,13 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   return (
     <div className="map-wrap">
       <div ref={containerRef} className={className} />
+      {showReports && adminSecret && (
+        <div className="admin-mode-badge">
+          <span className="admin-mode-badge__dot" aria-hidden="true" />
+          <span>Innlogget som admin</span>
+          <button type="button" className="admin-mode-badge__logout" onClick={logoutAdmin}>Logg ut</button>
+        </div>
+      )}
       {pickMode && (
         <div className="map-crosshair" aria-hidden="true">
           <svg className="map-crosshair__pin" viewBox="0 0 40 52">
