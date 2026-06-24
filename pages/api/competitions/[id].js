@@ -14,7 +14,9 @@ export default async function handler(req, res) {
   try {
     const stats = await getCompetitionStats(id);
     if (!stats) return res.status(404).json({ error: 'Fant ikke konkurransen' });
-    return res.status(200).json(stats);
+    // The density geojson is internal (admin only) — never expose it publicly.
+    const { geojson, ...publicStats } = stats;
+    return res.status(200).json(publicStats);
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: 'Kunne ikke hente konkurransen' });

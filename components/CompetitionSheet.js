@@ -28,7 +28,7 @@ function formatKm(meters) {
 
 const RANK_CLASS = ['comp-row__rank--gold', 'comp-row__rank--silver', 'comp-row__rank--bronze'];
 
-export default function CompetitionSheet({ onClose, onShowTrips, onClearTrips, onPickStart, onViewOnMap, initialCompetitionId = null }) {
+export default function CompetitionSheet({ onClose, onPickStart, initialCompetitionId = null }) {
   const [view, setView] = useState('list'); // list | detail | log
   const [competitions, setCompetitions] = useState(null);
   const [stats, setStats] = useState(null);
@@ -47,7 +47,6 @@ export default function CompetitionSheet({ onClose, onShowTrips, onClearTrips, o
       const data = await response.json();
       setStats(data);
       setView('detail');
-      onShowTrips?.(data.geojson, data.competition);
     } catch (err) {
       setError(err.message || 'Noe gikk galt.');
     } finally {
@@ -76,7 +75,6 @@ export default function CompetitionSheet({ onClose, onShowTrips, onClearTrips, o
 
   const backToList = () => {
     haptic(6);
-    onClearTrips?.();
     setStats(null);
     setView('list');
   };
@@ -216,10 +214,7 @@ export default function CompetitionSheet({ onClose, onShowTrips, onClearTrips, o
         </div>
 
         {view === 'detail' && stats && (
-          <div className="sheet-footer sheet-footer--split">
-            <button className="big-button big-button--secondary comp-action" type="button" onClick={() => { haptic(8); onViewOnMap?.(stats.competition); }}>
-              <Icon name="map" size={18} /> Vis spor på kart
-            </button>
+          <div className="sheet-footer">
             <button className="big-button big-button--primary comp-action" type="button" onClick={startLog} disabled={loadingDetail}>
               <Icon name="bike" size={18} /> Logg sykkeltur
             </button>

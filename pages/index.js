@@ -18,10 +18,8 @@ export default function Home() {
   const [geoStatus, setGeoStatus] = useState('');
   const [showCompetitions, setShowCompetitions] = useState(false);
   const [competitionFocusId, setCompetitionFocusId] = useState(null);
-  const [activeCompetition, setActiveCompetition] = useState(null);
   const [tripContext, setTripContext] = useState(null);
   const [message, setMessage] = useState('');
-  const lastTripsRef = useRef(null);
 
   const handleMapReady = useCallback((api) => {
     mapApiRef.current = api;
@@ -74,48 +72,16 @@ export default function Home() {
     mapApiRef.current?.refreshReports?.();
   };
 
-  // --- Competitions ---------------------------------------------------------
+  // --- Competitions (public: standings only — the density map is internal) ---
   const openCompetitions = () => {
     haptic(10);
     setCompetitionFocusId(null);
     setShowCompetitions(true);
   };
 
-  // Draw the heatmap for the opened competition and remember it as the active
-  // map layer (so it survives closing the sheet — that's what makes it visible).
-  const showCompetitionLayer = (geojson, competition) => {
-    lastTripsRef.current = geojson;
-    mapApiRef.current?.showCompetitionTrips?.(geojson);
-    if (competition) setActiveCompetition({ id: competition.id, name: competition.name });
-  };
-
-  // "Vis spor på kart": close the sheet and frame the heatmap.
-  const viewCompetitionOnMap = (competition) => {
-    if (competition) setActiveCompetition({ id: competition.id, name: competition.name });
-    setShowCompetitions(false);
-    setCompetitionFocusId(null);
-    if (lastTripsRef.current) mapApiRef.current?.fitCompetition?.(lastTripsRef.current);
-  };
-
-  // Remove the spor layer entirely (chip ✕ / back to the competition list).
-  const clearCompetitionLayer = () => {
-    mapApiRef.current?.clearCompetitionTrips?.();
-    lastTripsRef.current = null;
-    setActiveCompetition(null);
-  };
-
-  const reopenActiveCompetition = () => {
-    if (!activeCompetition) return;
-    haptic(8);
-    setCompetitionFocusId(activeCompetition.id);
-    setShowCompetitions(true);
-  };
-
-  // Closing the sheet keeps the layer visible and frames it on the map.
   const closeCompetitions = () => {
     setCompetitionFocusId(null);
     setShowCompetitions(false);
-    if (activeCompetition && lastTripsRef.current) mapApiRef.current?.fitCompetition?.(lastTripsRef.current);
   };
 
   const tripToken = () => {
@@ -191,7 +157,6 @@ export default function Home() {
       <main className="app-shell">
         <ReportMap
           className="map-canvas"
-          enableNvdbLayers
           pickMode={mode === 'pick'}
           pinnedPoint={mode === 'form' ? pickedPoint : null}
           onMapReady={handleMapReady}
@@ -254,21 +219,8 @@ export default function Home() {
           <CompetitionSheet
             initialCompetitionId={competitionFocusId}
             onClose={closeCompetitions}
-            onShowTrips={showCompetitionLayer}
-            onClearTrips={clearCompetitionLayer}
-            onViewOnMap={viewCompetitionOnMap}
             onPickStart={startTrip}
           />
-        )}
-
-        {activeCompetition && !showCompetitions && mode === 'browse' && (
-          <div className="comp-chip">
-            <button type="button" className="comp-chip__main" onClick={reopenActiveCompetition}>
-              <span className="comp-chip__dot" aria-hidden="true" />
-              <span className="comp-chip__text">Sykkelspor · {activeCompetition.name}</span>
-            </button>
-            <button type="button" className="comp-chip__close" aria-label="Skjul spor" onClick={clearCompetitionLayer}>✕</button>
-          </div>
         )}
 
         {message && (

@@ -253,11 +253,10 @@ function roadBadges(properties) {
   return parts.join('');
 }
 
-function popupStatsHtml(properties, { nearbyCount, radiusM, accidentsHtml }) {
-  const accidents = accidentsHtml || '<span class="insight-muted">Henter …</span>';
+function popupStatsHtml(properties, { nearbyCount, radiusM }) {
+  // Accident data is internal (admin only) — not surfaced in the public case card.
   const rows = [
     `<div><dt>Saker innen ${radiusM} m</dt><dd>${nearbyCount}</dd></div>`,
-    `<div><dt>Ulykker innen ${radiusM} m</dt><dd>${accidents}</dd></div>`,
   ];
   return `<dl class="popup-stats">${rows.join('')}</dl>`;
 }
@@ -944,9 +943,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         .then((data) => { if (!cancelled && data) setCaseThread(data); })
         .catch(() => {});
     }
-    fetchAccidentsNear(caseData.center, NEARBY_RADIUS_M)
-      .then((accidents) => { if (!cancelled) setCaseAccidents(accidents); })
-      .catch(() => { if (!cancelled) setCaseAccidents('error'); });
+    // Accidents are internal (admin only) — not fetched for the public case card.
     return () => { cancelled = true; };
   }, [caseData]);
 
