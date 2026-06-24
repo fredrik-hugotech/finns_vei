@@ -1668,3 +1668,26 @@
 .case-admin__accidents-list li { color: var(--color-text); font-size: 0.84rem; }
 .case-admin__accidents-more { color: var(--color-muted); }
 .case-admin__accidents-err { color: var(--color-muted); font-size: 0.82rem; margin: 0; }
+
+/* Internal sykkelspor map panel (/backoffice/tetthet) */
+.spor-panel {
+  background: rgba(255, 255, 255, 0.95);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-control);
+  display: grid;
+  gap: 0.45rem;
+  left: max(0.7rem, env(safe-area-inset-left));
+  max-width: 270px;
+  padding: 0.75rem 0.85rem;
+  position: absolute;
+  top: max(0.7rem, env(safe-area-inset-top));
+  width: calc(100vw - 1.6rem);
+  z-index: 30;
+}
+.spor-panel__back { color: var(--color-primary); font-size: 0.85rem; font-weight: 700; text-decoration: none; }
+.spor-panel strong { color: var(--color-primary); font-size: 1rem; }
+.spor-panel__meta { color: var(--color-muted); font-size: 0.82rem; }
+.spor-panel__msg { color: var(--color-text); font-size: 0.9rem; margin: 0; }

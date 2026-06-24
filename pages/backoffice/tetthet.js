@@ -1,16 +1,17 @@
 import Head from 'next/head';
+import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/router';
 
 const ReportMap = dynamic(() => import('../../components/ReportMap'), {
   ssr: false,
   loading: () => <div className="map-missing">Laster kart …</div>,
 });
 
-// Internal-only density map: where children cycle to/from activities.
-export default function TetthetInternal() {
-  const router = useRouter();
+const SECRET_KEY = 'ff-admin-secret';
+
+// Internal-only admin map: the tracks (density) left by competition rides.
+export default function Sykkelspor() {
   const mapApiRef = useRef(null);
   const [secret, setSecret] = useState('');
   const [competitions, setCompetitions] = useState([]);
@@ -19,32 +20,18 @@ export default function TetthetInternal() {
   const [status, setStatus] = useState('');
 
   useEffect(() => {
-    if (router.isReady && typeof router.query.secret === 'string') setSecret(router.query.secret);
-  }, [router.isReady, router.query.secret]);
+    const stored = typeof window !== 'undefined' ? window.localStorage.getItem(SECRET_KEY) : '';
+    if (stored) setSecret(stored);
+    else setStatus('not-authed');
+  }, []);
 
   const headers = useCallback(() => ({ 'x-backoffice-secret': secret }), [secret]);
 
-  const loadList = useCallback(async () => {
-    if (!secret) return;
-    setStatus('');
-    try {
-      const r = await fetch('/api/backoffice/competition-trips', { headers: headers() });
-      if (r.status === 403) { setStatus('Feil passord.'); return; }
-      const d = await r.json();
-      setCompetitions(d.competitions || []);
-      if ((d.competitions || []).length && !competitionId) setCompetitionId(d.competitions[0].id);
-    } catch (_e) { setStatus('Kunne ikke hente konkurranser.'); }
-  }, [secret, headers, competitionId]);
-
-  useEffect(() => { loadList(); }, [loadList]);
-
-  const handleMapReady = useCallback((api) => { mapApiRef.current = api; if (stats) api.showCompetitionTrips?.(stats.geojson); }, [stats]);
-
-  const show = useCallback(async () => {
-    if (!competitionId) return;
+  const show = useCallback(async (id) => {
+    if (!id) return;
     setStatus('Henter …');
     try {
-      const r = await fetch(`/api/backoffice/competition-trips?id=${encodeURIComponent(competitionId)}`, { headers: headers() });
+      const r = await fetch(`/api/backoffice/competition-trips?id=${encodeURIComponent(id)}`, { headers: headers() });
       if (!r.ok) { setStatus('Kunne ikke hente data.'); return; }
       const d = await r.json();
       setStats(d);
@@ -52,26 +39,51 @@ export default function TetthetInternal() {
       mapApiRef.current?.showCompetitionTrips?.(d.geojson);
       mapApiRef.current?.fitCompetition?.(d.geojson);
     } catch (_e) { setStatus('Kunne ikke hente data.'); }
-  }, [competitionId, headers]);
+  }, [headers]);
+
+  // Once we have a secret, load the competition list and show the first one.
+  useEffect(() => {
+    if (!secret) return;
+    fetch('/api/backoffice/competition-trips', { headers: { 'x-backoffice-secret': secret } })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('feil'))))
+      .then((d) => {
+        const list = d.competitions || [];
+        setCompetitions(list);
+        const first = (list.find((c) => c.active) || list[0])?.id || '';
+        if (first) { setCompetitionId(first); show(first); }
+      })
+      .catch(() => setStatus('Feil passord eller utilgjengelig.'));
+  }, [secret, show]);
+
+  const handleMapReady = useCallback((api) => {
+    mapApiRef.current = api;
+    if (stats?.geojson) { api.showCompetitionTrips?.(stats.geojson); api.fitCompetition?.(stats.geojson); }
+  }, [stats]);
+
+  const onSelect = (id) => { setCompetitionId(id); show(id); };
 
   return (
     <>
-      <Head><title>Tetthet (internt)</title><meta name="robots" content="noindex" /></Head>
+      <Head><title>Sykkelspor (internt)</title><meta name="robots" content="noindex" /></Head>
       <main className="app-shell">
         <ReportMap className="map-canvas" showReports={false} onMapReady={handleMapReady} />
 
-        <div className="tetthet-panel">
-          <strong>Tetthet · internt</strong>
-          <input type="password" value={secret} onChange={(e) => setSecret(e.target.value)} placeholder="BACKOFFICE_SECRET" />
-          <button type="button" className="big-button big-button--secondary" onClick={loadList} disabled={!secret}>Hent</button>
-          {competitions.length > 0 && (
-            <select className="comp-select" value={competitionId} onChange={(e) => setCompetitionId(e.target.value)}>
-              {competitions.map((c) => <option key={c.id} value={c.id}>{c.name}{c.active ? '' : ' (skjult)'}</option>)}
-            </select>
+        <div className="spor-panel">
+          <Link className="spor-panel__back" href="/backoffice">‹ Meny</Link>
+          {status === 'not-authed' ? (
+            <p className="spor-panel__msg">Logg inn først. <Link href="/backoffice">Til innlogging</Link></p>
+          ) : (
+            <>
+              <strong>Sykkelspor</strong>
+              {competitions.length > 0 && (
+                <select className="comp-select" value={competitionId} onChange={(e) => onSelect(e.target.value)}>
+                  {competitions.map((c) => <option key={c.id} value={c.id}>{c.name}{c.active ? '' : ' (skjult)'}</option>)}
+                </select>
+              )}
+              {stats && <span className="spor-panel__meta">{stats.totals.trips} turer · {(stats.totals.distanceM / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 0 })} km</span>}
+              {status && status !== 'not-authed' && <span className="spor-panel__meta">{status}</span>}
+            </>
           )}
-          <button type="button" className="big-button big-button--primary" onClick={show} disabled={!competitionId}>Vis tetthet</button>
-          {stats && <span className="tetthet-meta">{stats.totals.trips} turer · {(stats.totals.distanceM / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 0 })} km</span>}
-          {status && <span className="tetthet-meta">{status}</span>}
         </div>
       </main>
     </>
