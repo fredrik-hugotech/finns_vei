@@ -166,7 +166,7 @@ export default function Home() {
       const km = (distanceM / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 2 });
       setTripContext(null);
       setMode('browse');
-      setMessage(`Takk! ${km} km registrert 🚲`);
+      setMessage(`Takk! ${km} km registrert.`);
       mapApiRef.current?.refreshReports?.();
       setCompetitionFocusId(focusId);
       setShowCompetitions(true);

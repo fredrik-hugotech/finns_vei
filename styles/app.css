@@ -1130,45 +1130,53 @@
 .bike-track {
   background: linear-gradient(180deg, #eaf3ef 0%, #f3eee1 100%);
   border-radius: var(--radius-md);
-  height: 58px;
+  height: 60px;
   overflow: hidden;
   position: relative;
 }
 
+/* The road scrolls leftward under a stationary bike, so it reads as cycling
+   slowly forward while we register — not the bike sliding across the screen. */
 .bike-track__road {
-  background-image: repeating-linear-gradient(90deg, var(--color-border) 0 14px, transparent 14px 30px);
-  bottom: 16px;
+  animation: road-scroll 0.9s linear infinite;
+  background-image: repeating-linear-gradient(90deg, var(--color-border) 0 16px, transparent 16px 40px);
+  bottom: 15px;
   height: 3px;
-  left: 0;
+  left: -40px;
   position: absolute;
-  right: 0;
+  right: -40px;
+}
+
+@keyframes road-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-40px); }
 }
 
 .bike-track__bike {
-  animation: bike-ride 3.2s linear infinite;
-  bottom: 12px;
-  font-size: 1.7rem;
-  left: 0;
+  animation: bike-pedal 0.9s ease-in-out infinite;
+  bottom: 11px;
+  color: var(--color-primary);
+  left: 50%;
+  margin-left: -17px;
   position: absolute;
 }
 
-@keyframes bike-ride {
-  0% { transform: translateX(-12vw) scaleX(1); }
-  100% { transform: translateX(112vw) scaleX(1); }
+@keyframes bike-pedal {
+  0%, 100% { transform: translateY(0) rotate(-0.5deg); }
+  50% { transform: translateY(-2px) rotate(0.5deg); }
 }
 
-.bike-track--wait .bike-track__bike {
-  animation: bike-bob 1.1s ease-in-out infinite;
-  left: 50%;
-  margin-left: -0.85rem;
-}
-@keyframes bike-bob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-5px); }
+/* While waiting for GPS the road holds still and the bike just idles. */
+.bike-track--wait .bike-track__road { animation-play-state: paused; }
+.bike-track--wait .bike-track__bike { animation: bike-idle 1.4s ease-in-out infinite; }
+@keyframes bike-idle {
+  0%, 100% { transform: translateY(0); opacity: 0.7; }
+  50% { transform: translateY(-3px); opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bike-track__bike { animation: none; left: 50%; margin-left: -0.85rem; }
+  .bike-track__road,
+  .bike-track__bike { animation: none; }
 }
 
 .trip-tracker__flash {
@@ -1201,3 +1209,27 @@
 .trip-tracker__stop:disabled { opacity: 0.6; }
 
 .trip-tracker__actions .big-button--secondary { min-height: 56px; font-size: 1rem; }
+
+/* Icon + label alignment in tracker elements */
+.trip-tracker__pill { align-items: center; display: inline-flex; gap: 0.3rem; }
+.trip-tracker__flash { align-items: center; display: inline-flex; gap: 0.3rem; justify-content: center; }
+.trip-tracker__unsafe, .trip-tracker__stop { gap: 0.45rem; }
+.trip-tracker__pill svg, .trip-tracker__flash svg { flex: none; }
+
+/* Icon usage in competition sheet */
+.comp-card__icon { color: var(--color-primary); display: inline-flex; }
+.comp-action { gap: 0.4rem; }
+.comp-row__helmet { align-items: center; display: inline-flex; gap: 0.22rem; }
+
+/* Medal-coloured rank badges for the top three */
+.comp-row__rank {
+  align-items: center;
+  border-radius: 50%;
+  display: inline-flex;
+  height: 1.55rem;
+  justify-content: center;
+  width: 1.55rem;
+}
+.comp-row__rank--gold { background: #fde68a; color: #92400e; }
+.comp-row__rank--silver { background: #e5e7eb; color: #374151; }
+.comp-row__rank--bronze { background: #fcd9b6; color: #9a3412; }

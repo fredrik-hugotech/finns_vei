@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import Icon from './Icon';
 
 function haptic(ms = 8) {
   if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(ms);
@@ -25,7 +26,7 @@ function formatKm(meters) {
   return ((Number(meters) || 0) / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 1 });
 }
 
-const TROPHY = ['🥇', '🥈', '🥉'];
+const RANK_CLASS = ['comp-row__rank--gold', 'comp-row__rank--silver', 'comp-row__rank--bronze'];
 
 export default function CompetitionSheet({ onClose, onShowTrips, onClearTrips, onPickStart, onViewOnMap, initialCompetitionId = null }) {
   const [view, setView] = useState('list'); // list | detail | log
@@ -117,7 +118,7 @@ export default function CompetitionSheet({ onClose, onShowTrips, onClearTrips, o
               <div className="comp-list">
                 {(competitions || []).map((competition) => (
                   <button type="button" key={competition.id} className="comp-card" onClick={() => openDetail(competition)}>
-                    <span className="comp-card__icon" aria-hidden="true">🚲</span>
+                    <span className="comp-card__icon" aria-hidden="true"><Icon name="bike" size={22} /></span>
                     <span className="comp-card__body">
                       <strong>{competition.name}</strong>
                       {formatPeriod(competition) && <span className="comp-card__period">{formatPeriod(competition)}</span>}
@@ -155,10 +156,10 @@ export default function CompetitionSheet({ onClose, onShowTrips, onClearTrips, o
                 <ol className="comp-board__list">
                   {stats.leaderboard.map((row, index) => (
                     <li key={row.club} className={index === 0 && row.trips > 0 ? 'comp-row comp-row--lead' : 'comp-row'}>
-                      <span className="comp-row__rank">{TROPHY[index] || index + 1}</span>
+                      <span className={`comp-row__rank ${row.trips > 0 ? (RANK_CLASS[index] || '') : ''}`}>{index + 1}</span>
                       <span className="comp-row__club">{row.club}</span>
                       <span className="comp-row__stats">
-                        <span className="comp-row__helmet" title="Andel med hjelm">⛑ {row.helmetPct}%</span>
+                        <span className="comp-row__helmet" title="Andel med hjelm"><Icon name="helmet" size={14} /> {row.helmetPct}%</span>
                         <span className={stats.metric === 'distance' ? 'comp-row__count comp-row__count--muted' : 'comp-row__count'}>{row.trips} turer</span>
                         <span className={stats.metric === 'distance' ? 'comp-row__count' : 'comp-row__count comp-row__count--muted'}>{formatKm(row.distanceM)} km</span>
                       </span>
@@ -181,8 +182,8 @@ export default function CompetitionSheet({ onClose, onShowTrips, onClearTrips, o
               <fieldset className="sheet-field">
                 <legend>Hva sykler du til?</legend>
                 <div className="segmented">
-                  <button type="button" className={routeType === 'fritid' ? 'segmented__option segmented__option--active' : 'segmented__option'} onClick={() => { haptic(6); setRouteType('fritid'); }}>⚽ Fritid</button>
-                  <button type="button" className={routeType === 'skole' ? 'segmented__option segmented__option--active' : 'segmented__option'} onClick={() => { haptic(6); setRouteType('skole'); }}>🏫 Skole</button>
+                  <button type="button" className={routeType === 'fritid' ? 'segmented__option segmented__option--active' : 'segmented__option'} onClick={() => { haptic(6); setRouteType('fritid'); }}><Icon name="activity" size={16} /> Fritid</button>
+                  <button type="button" className={routeType === 'skole' ? 'segmented__option segmented__option--active' : 'segmented__option'} onClick={() => { haptic(6); setRouteType('skole'); }}><Icon name="school" size={16} /> Skole</button>
                 </div>
               </fieldset>
 
@@ -204,9 +205,9 @@ export default function CompetitionSheet({ onClose, onShowTrips, onClearTrips, o
                 onClick={() => { haptic(6); setHelmet((value) => !value); }}
                 aria-pressed={helmet}
               >
-                <span className="helmet-toggle__icon" aria-hidden="true">⛑</span>
+                <span className="helmet-toggle__icon" aria-hidden="true"><Icon name="helmet" size={20} /></span>
                 <span className="helmet-toggle__label">Jeg brukte hjelm</span>
-                <span className="helmet-toggle__check" aria-hidden="true">{helmet ? '✓' : ''}</span>
+                <span className="helmet-toggle__check" aria-hidden="true">{helmet ? <Icon name="check" size={18} /> : ''}</span>
               </button>
 
               {error && <div className="notice notice--error" role="status">{error}</div>}
@@ -216,18 +217,18 @@ export default function CompetitionSheet({ onClose, onShowTrips, onClearTrips, o
 
         {view === 'detail' && stats && (
           <div className="sheet-footer sheet-footer--split">
-            <button className="big-button big-button--secondary" type="button" onClick={() => { haptic(8); onViewOnMap?.(stats.competition); }}>
-              Vis spor på kart 🗺️
+            <button className="big-button big-button--secondary comp-action" type="button" onClick={() => { haptic(8); onViewOnMap?.(stats.competition); }}>
+              <Icon name="map" size={18} /> Vis spor på kart
             </button>
-            <button className="big-button big-button--primary" type="button" onClick={startLog} disabled={loadingDetail}>
-              Logg sykkeltur 🚴
+            <button className="big-button big-button--primary comp-action" type="button" onClick={startLog} disabled={loadingDetail}>
+              <Icon name="bike" size={18} /> Logg sykkeltur
             </button>
           </div>
         )}
         {view === 'log' && stats && (
           <div className="sheet-footer">
-            <button className="big-button big-button--primary" type="button" onClick={goPickStart}>
-              Start sykkeltur 🚴
+            <button className="big-button big-button--primary comp-action" type="button" onClick={goPickStart}>
+              <Icon name="bike" size={18} /> Start sykkeltur
             </button>
           </div>
         )}

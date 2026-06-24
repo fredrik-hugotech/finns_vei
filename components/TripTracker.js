@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { distanceMeters, pathDistanceMeters, clipAndSnapCells, clipPath } from '../lib/geoPrivacy';
+import Icon from './Icon';
 
 function haptic(pattern = 8) {
   if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(pattern);
@@ -85,7 +86,7 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mapApi
     if (!fix) { setFlash('Venter på posisjon …'); return; }
     haptic([20, 30, 20]);
     setUnsafeCount((n) => n + 1);
-    setFlash('Utrygt punkt lagret 🚩');
+    setFlash('Utrygt punkt lagret');
     setTimeout(() => setFlash(''), 2200);
     try {
       await fetch('/api/report', {
@@ -121,13 +122,13 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mapApi
   return (
     <div className="trip-tracker" role="dialog" aria-modal="true" aria-label="Sykkeltur pågår">
       <div className="trip-tracker__head">
-        <span className="trip-tracker__pill">{routeType === 'skole' ? '🏫 Skolerute' : '⚽ Fritidsrute'}</span>
-        {helmet && <span className="trip-tracker__pill trip-tracker__pill--ok">⛑ Hjelm</span>}
+        <span className="trip-tracker__pill"><Icon name={routeType === 'skole' ? 'school' : 'activity'} size={15} />{routeType === 'skole' ? 'Skolerute' : 'Fritidsrute'}</span>
+        {helmet && <span className="trip-tracker__pill trip-tracker__pill--ok"><Icon name="helmet" size={15} />Hjelm</span>}
       </div>
 
       <div className={acquiring ? 'bike-track bike-track--wait' : 'bike-track'} aria-hidden="true">
         <div className="bike-track__road" />
-        <div className="bike-track__bike">🚴</div>
+        <div className="bike-track__bike"><Icon name="bike" size={34} strokeWidth={1.7} /></div>
       </div>
 
       <div className="trip-tracker__stats">
@@ -136,19 +137,19 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mapApi
         <div><strong>{unsafeCount}</strong><span>utrygge</span></div>
       </div>
 
-      {acquiring && <p className="trip-tracker__hint">Finner posisjon … hold telefonen ute under åpen himmel 📡</p>}
-      {status === 'tracking' && <p className="trip-tracker__hint">Sykle som vanlig 🚲 — trykk knappen under hvis noe føles utrygt.</p>}
+      {acquiring && <p className="trip-tracker__hint">Finner posisjon … hold telefonen ute under åpen himmel.</p>}
+      {status === 'tracking' && <p className="trip-tracker__hint">Sykle som vanlig — trykk knappen under hvis noe føles utrygt.</p>}
       {status === 'error' && <p className="trip-tracker__hint trip-tracker__hint--error">{errorMsg}</p>}
-      {flash && <p className="trip-tracker__flash">{flash}</p>}
+      {flash && <p className="trip-tracker__flash"><Icon name="check" size={15} />{flash}</p>}
 
       <button type="button" className="big-button trip-tracker__unsafe" onClick={markUnsafe} disabled={saving || status === 'error'}>
-        🚩 Marker utrygt punkt her
+        <Icon name="flag" size={20} /> Marker utrygt punkt her
       </button>
 
       <div className="trip-tracker__actions">
         <button type="button" className="big-button big-button--secondary" onClick={onCancel} disabled={saving}>Avbryt</button>
         <button type="button" className="big-button trip-tracker__stop" onClick={stopAndSave} disabled={saving || status === 'error'}>
-          {saving ? 'Lagrer …' : '🏁 Stopp og lagre'}
+          <Icon name="stop" size={18} /> {saving ? 'Lagrer …' : 'Stopp og lagre'}
         </button>
       </div>
     </div>
