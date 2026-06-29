@@ -1706,3 +1706,36 @@
   min-height: 46px;
   text-decoration: none;
 }
+
+/* ----------------------------------------------------------------------
+   Larger screens: keep the app feel — sheets become centred floating cards,
+   content sits in a comfortable column instead of stretching edge to edge.
+   ---------------------------------------------------------------------- */
+@media (min-width: 768px) {
+  /* Bottom sheets -> centred app card (translateY entrance still works). */
+  .sheet {
+    border-radius: 26px;
+    bottom: clamp(1rem, 4vh, 2.2rem);
+    left: 0;
+    margin-inline: auto;
+    max-height: min(82vh, 760px);
+    right: 0;
+    width: min(460px, 92vw);
+  }
+  .sheet-footer { border-radius: 0 0 26px 26px; }
+
+  /* Kids app: comfortable centred column. */
+  .kid-screen { padding-inline: max(1.2rem, calc(50% - 230px)); }
+
+  /* Slightly tighter pick/track bars on wide screens. */
+  .pick-bar,
+  .trip-tracker { width: min(460px, 92vw); }
+}
+
+/* Very small phones (≤360px): scale the largest type down so nothing clips. */
+@media (max-width: 360px) {
+  .kid-title { font-size: 1.4rem; }
+  .kid-big { font-size: 1.2rem; min-height: 8.5rem; }
+  .kid-big-number { font-size: 2.6rem; }
+  .fab-meld { font-size: 0.96rem; padding: 0 1.3rem; }
+}

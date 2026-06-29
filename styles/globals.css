@@ -20,8 +20,10 @@ body,
 
 html,
 body {
+  height: 100%;
   overscroll-behavior: none;
   -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -30,11 +32,15 @@ body {
   font-family: var(--font-body);
   font-size: 16px;
   line-height: 1.5;
+  overflow-wrap: break-word;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   /* Brand the native checkboxes, radios, selects and range inputs in one line. */
   accent-color: var(--color-primary);
+  /* App feel: no long-press callout, no horizontal page drift. */
+  -webkit-touch-callout: none;
+  overflow-x: clip;
 }
 
 /* Consistent heading rhythm everywhere (font + tight leading; spacing stays
@@ -43,6 +49,36 @@ h1, h2, h3, h4 {
   font-family: var(--font-heading);
   line-height: 1.15;
   letter-spacing: -0.01em;
+}
+
+/* Chrome (buttons, links, labels, handles) is not selectable — it feels like a
+   native app. Real content and form fields stay selectable/editable. */
+button,
+a,
+label,
+.sheet__handle,
+.segmented,
+.fab-meld,
+.fab-konk {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input,
+textarea,
+select,
+[contenteditable] {
+  -webkit-user-select: auto;
+  user-select: auto;
+}
+
+/* Media never overflows its container or gets dragged around by a finger. */
+img,
+video {
+  max-width: 100%;
+}
+img {
+  -webkit-user-drag: none;
 }
 
 a {
