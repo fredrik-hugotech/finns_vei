@@ -51,6 +51,8 @@ export default function SakDetalj() {
   const [uploading, setUploading] = useState(false);
   const [accidents, setAccidents] = useState(null);
   const [showAcc, setShowAcc] = useState(false);
+  const [lightbox, setLightbox] = useState(null);
+  const [dragOver, setDragOver] = useState(false);
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
   const load = useCallback(async () => {
@@ -130,6 +132,18 @@ export default function SakDetalj() {
     catch (_e) { load(); }
   };
   const isImage = (a) => String(a.content_type || '').startsWith('image/');
+
+  // Paste an image from the clipboard (e.g. a screenshot of an email) → attach it.
+  useEffect(() => {
+    const onPaste = (e) => {
+      const items = e.clipboardData?.items ? Array.from(e.clipboardData.items) : [];
+      const files = items.filter((it) => it.kind === 'file' && String(it.type).startsWith('image/')).map((it) => it.getAsFile()).filter(Boolean);
+      if (files.length) doUpload(files);
+    };
+    window.addEventListener('paste', onPaste);
+    return () => window.removeEventListener('paste', onPaste);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, uploadVis]);
   const mapThumb = (c && mapboxToken && Number.isFinite(Number(c.lat)))
     ? `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/pin-s+0b5d4d(${c.lng},${c.lat})/${c.lng},${c.lat},15,0/560x300@2x?access_token=${mapboxToken}`
     : null;
@@ -163,7 +177,7 @@ export default function SakDetalj() {
                   <p className="sak-desc">{c.description || 'Ingen beskrivelse.'}</p>
                   {c.images?.length > 0 && (
                     <div className="sak-images">
-                      {c.images.map((src, i) => <a key={i} href={src} target="_blank" rel="noopener noreferrer"><img src={src} alt="" /></a>)}
+                      {c.images.map((src, i) => <button type="button" key={i} onClick={() => setLightbox(src)}><img src={src} alt="" /></button>)}
                     </div>
                   )}
                 </section>
@@ -176,17 +190,23 @@ export default function SakDetalj() {
                       <button type="button" className={uploadVis === 'public' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setUploadVis('public')}>Offentlig</button>
                     </div>
                   </div>
-                  <label className="sak-upload">
+                  <label
+                    className={dragOver ? 'sak-upload sak-upload--drag' : 'sak-upload'}
+                    onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={(e) => { e.preventDefault(); setDragOver(false); doUpload(e.dataTransfer.files); }}
+                  >
                     <input type="file" accept="image/*,application/pdf" multiple onChange={(e) => doUpload(e.target.files)} disabled={uploading} hidden />
-                    <span>{uploading ? 'Laster opp …' : `+ Legg til ${uploadVis === 'public' ? 'offentlig' : 'internt'} vedlegg`}</span>
+                    <strong>{uploading ? 'Laster opp …' : `+ Legg til ${uploadVis === 'public' ? 'offentlig' : 'internt'} vedlegg`}</strong>
+                    <span className="sak-upload__hint">Dra hit, eller lim inn bilde (Ctrl/Cmd + V)</span>
                   </label>
                   {(data.attachments || []).length > 0 && (
                     <div className="sak-att__grid">
                       {data.attachments.map((a) => (
                         <div key={a.id} className={a.visibility === 'public' ? 'sak-att sak-att--public' : 'sak-att'}>
-                          <a href={a.url} target="_blank" rel="noopener noreferrer" className="sak-att__thumb">
-                            {isImage(a) ? <img src={a.url} alt={a.filename || ''} /> : <span className="sak-att__file">PDF</span>}
-                          </a>
+                          {isImage(a)
+                            ? <button type="button" className="sak-att__thumb" onClick={() => setLightbox(a.url)}><img src={a.url} alt={a.filename || ''} /></button>
+                            : <a href={a.url} target="_blank" rel="noopener noreferrer" className="sak-att__thumb"><span className="sak-att__file">PDF</span></a>}
                           <div className="sak-att__meta">
                             <span className={a.visibility === 'public' ? 'sak-att__badge sak-att__badge--public' : 'sak-att__badge'}>{a.visibility === 'public' ? 'Offentlig' : 'Internt'}</span>
                             <div className="sak-att__row">
@@ -287,6 +307,12 @@ export default function SakDetalj() {
           </>
         )}
       </main>
+      {lightbox && (
+        <div className="lightbox" role="dialog" aria-modal="true" onClick={() => setLightbox(null)}>
+          <img src={lightbox} alt="Vedlegg i full størrelse" />
+          <button type="button" className="lightbox__close" aria-label="Lukk" onClick={() => setLightbox(null)}>✕</button>
+        </div>
+      )}
     </>
   );
 }
