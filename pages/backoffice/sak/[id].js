@@ -26,6 +26,9 @@ export default function SakDetalj() {
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [flash, setFlash] = useState('');
+  const [uploadVis, setUploadVis] = useState('internal');
+  const [uploading, setUploading] = useState(false);
+  const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -65,6 +68,36 @@ export default function SakDetalj() {
     } catch (_e) { setFlash('Noe gikk galt.'); } finally { setBusy(false); }
   };
 
+  const doUpload = async (fileList) => {
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+    setUploading(true); setFlash('');
+    try {
+      for (const file of files) {
+        const fd = new FormData();
+        fd.append('reportId', String(id));
+        fd.append('visibility', uploadVis);
+        fd.append('file', file);
+        const r = await fetch('/api/backoffice/attachment', { method: 'POST', body: fd });
+        if (!r.ok) { const d = await r.json().catch(() => ({})); setFlash(d.error || 'Opplasting feilet'); break; }
+      }
+      setFlash('Vedlegg lagt til');
+      load();
+    } catch (_e) { setFlash('Opplasting feilet'); } finally { setUploading(false); }
+  };
+  const toggleAtt = async (att) => {
+    await fetch('/api/backoffice/attachment', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: att.id, visibility: att.visibility === 'public' ? 'internal' : 'public' }) }).catch(() => {});
+    load();
+  };
+  const deleteAtt = async (att) => {
+    await fetch('/api/backoffice/attachment', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: att.id }) }).catch(() => {});
+    load();
+  };
+  const isImage = (a) => String(a.content_type || '').startsWith('image/');
+  const mapThumb = (c && mapboxToken && Number.isFinite(Number(c.lat)))
+    ? `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/pin-s+0b5d4d(${c.lng},${c.lat})/${c.lng},${c.lat},15,0/560x300@2x?access_token=${mapboxToken}`
+    : null;
+
   if (error === 'not-authed') {
     return <main className="page admin-page"><p className="admin-list-empty">Logg inn først. <Link href="/backoffice">Til innlogging</Link></p></main>;
   }
@@ -97,6 +130,38 @@ export default function SakDetalj() {
                   {c.images?.length > 0 && (
                     <div className="sak-images">
                       {c.images.map((src, i) => <a key={i} href={src} target="_blank" rel="noopener noreferrer"><img src={src} alt="" /></a>)}
+                    </div>
+                  )}
+                </section>
+
+                <section className="admin-section">
+                  <div className="sak-att__head">
+                    <h2>Vedlegg</h2>
+                    <div className="case-admin__notetabs sak-att__vis">
+                      <button type="button" className={uploadVis === 'internal' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setUploadVis('internal')}>Internt</button>
+                      <button type="button" className={uploadVis === 'public' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setUploadVis('public')}>Offentlig</button>
+                    </div>
+                  </div>
+                  <label className="sak-upload">
+                    <input type="file" accept="image/*,application/pdf" multiple onChange={(e) => doUpload(e.target.files)} disabled={uploading} hidden />
+                    <span>{uploading ? 'Laster opp …' : `+ Legg til ${uploadVis === 'public' ? 'offentlig' : 'internt'} vedlegg`}</span>
+                  </label>
+                  {(data.attachments || []).length > 0 && (
+                    <div className="sak-att__grid">
+                      {data.attachments.map((a) => (
+                        <div key={a.id} className={a.visibility === 'public' ? 'sak-att sak-att--public' : 'sak-att'}>
+                          <a href={a.url} target="_blank" rel="noopener noreferrer" className="sak-att__thumb">
+                            {isImage(a) ? <img src={a.url} alt={a.filename || ''} /> : <span className="sak-att__file">PDF</span>}
+                          </a>
+                          <div className="sak-att__meta">
+                            <span className={a.visibility === 'public' ? 'sak-att__badge sak-att__badge--public' : 'sak-att__badge'}>{a.visibility === 'public' ? 'Offentlig' : 'Internt'}</span>
+                            <div className="sak-att__row">
+                              <button type="button" onClick={() => toggleAtt(a)}>{a.visibility === 'public' ? 'Gjør intern' : 'Gjør offentlig'}</button>
+                              <button type="button" onClick={() => deleteAtt(a)}>Slett</button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </section>
@@ -142,6 +207,11 @@ export default function SakDetalj() {
 
                 <section className="admin-section">
                   <h2>Sted</h2>
+                  {mapThumb && (
+                    <Link href={`/?sak=${encodeURIComponent(c.id)}`} className="sak-mapthumb">
+                      <img src={mapThumb} alt="Kart over stedet" />
+                    </Link>
+                  )}
                   {ownerLabel(c.road_owner) && <p className="sak-kv"><span>Veieier</span><b>{ownerLabel(c.road_owner)}</b></p>}
                   {c.speed_limit && <p className="sak-kv"><span>Fartsgrense</span><b>{c.speed_limit} km/t</b></p>}
                   {c.road_reference && <p className="sak-kv"><span>Vegreferanse</span><b>{c.road_reference}</b></p>}
