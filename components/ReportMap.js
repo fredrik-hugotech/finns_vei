@@ -7,6 +7,7 @@ import { categoryGlyph } from '../lib/reportCategoryGlyphs';
 import { normalizeImageEntries } from '../lib/reportImages';
 import SupportSheet from './SupportSheet';
 import CaseAdminPanel from './CaseAdminPanel';
+import useSheetDrag from '../hooks/useSheetDrag';
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 
@@ -520,6 +521,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   const [caseThread, setCaseThread] = useState(null);
   const [caseAccidents, setCaseAccidents] = useState(null);
   const [adminSecret, setAdminSecret] = useState(null);
+  const caseSheetDrag = useSheetDrag(() => setCaseData(null));
   const hasMapboxToken = Boolean(process.env.NEXT_PUBLIC_MAPBOX_TOKEN);
 
   useEffect(() => {
@@ -1161,8 +1163,8 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       {caseData && (
         <div className="sheet-layer case-sheet-layer" role="dialog" aria-modal="true" aria-label="Sak">
           <div className="sheet-backdrop" onClick={() => setCaseData(null)} />
-          <section className="sheet case-sheet">
-            <button type="button" className="sheet__handle" aria-label="Lukk" onClick={() => setCaseData(null)} />
+          <section className="sheet case-sheet" ref={caseSheetDrag.sheetRef}>
+            <button type="button" className="sheet__handle" aria-label="Lukk" onClick={() => setCaseData(null)} {...caseSheetDrag.dragHandlers} />
             <div className="sheet-scroll case-sheet__scroll" dangerouslySetInnerHTML={{ __html: caseBodyHtml }} />
             {adminSecret && caseFeature ? (
               <CaseAdminPanel

@@ -1,6 +1,7 @@
 import 'mapbox-gl/dist/mapbox-gl.css';
 import '../styles/globals.css';
 import Head from 'next/head';
+import { useEffect } from 'react';
 import { Inter, Poppins } from 'next/font/google';
 
 const inter = Inter({
@@ -17,6 +18,12 @@ const poppins = Poppins({
 });
 
 export default function MyApp({ Component, pageProps }) {
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+  }, []);
+
   return (
     <div className={`${inter.variable} ${poppins.variable}`}>
       <Head>

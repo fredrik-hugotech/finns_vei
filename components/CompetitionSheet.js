@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import Icon from './Icon';
+import useSheetDrag from '../hooks/useSheetDrag';
 
 function haptic(ms = 8) {
   if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(ms);
@@ -38,6 +39,7 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
   const [helmet, setHelmet] = useState(true);
   const [routeType, setRouteType] = useState('fritid');
   const [isAdmin, setIsAdmin] = useState(false);
+  const sheetDrag = useSheetDrag(onClose);
 
   useEffect(() => {
     try { setIsAdmin(Boolean(window.localStorage.getItem('ff-admin-secret'))); } catch (_e) { /* ignore */ }
@@ -105,8 +107,8 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
   return (
     <div className="sheet-layer" role="dialog" aria-modal="true" aria-label="Konkurranser">
       <div className="sheet-backdrop" onClick={onClose} />
-      <section className="sheet">
-        <button type="button" className="sheet__handle" aria-label="Lukk" onClick={onClose} />
+      <section className="sheet" ref={sheetDrag.sheetRef}>
+        <button type="button" className="sheet__handle" aria-label="Lukk" onClick={onClose} {...sheetDrag.dragHandlers} />
         <div className="sheet-scroll">
           {view === 'list' && (
             <>

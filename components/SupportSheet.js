@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { REPORT_CATEGORIES } from '../lib/config';
 import { categoryGlyph } from '../lib/reportCategoryGlyphs';
+import useSheetDrag from '../hooks/useSheetDrag';
 
 function haptic(ms = 8) {
   if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(ms);
@@ -11,6 +12,7 @@ export default function SupportSheet({ reportId, supportToken, onClose, onDone }
   const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const sheetDrag = useSheetDrag(onClose);
 
   const toggleCategory = (value) => {
     haptic(6);
@@ -46,8 +48,8 @@ export default function SupportSheet({ reportId, supportToken, onClose, onDone }
   return (
     <div className="sheet-layer" role="dialog" aria-modal="true" aria-label="Støtt saken">
       <div className="sheet-backdrop" onClick={onClose} />
-      <section className="sheet">
-        <button type="button" className="sheet__handle" aria-label="Lukk" onClick={onClose} />
+      <section className="sheet" ref={sheetDrag.sheetRef}>
+        <button type="button" className="sheet__handle" aria-label="Lukk" onClick={onClose} {...sheetDrag.dragHandlers} />
         <form className="sheet-form" onSubmit={submit}>
           <div className="sheet-scroll">
             <div className="support-intro">

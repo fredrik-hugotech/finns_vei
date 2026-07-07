@@ -1,20 +1,18 @@
 {
   "name": "Finns Fairway",
   "short_name": "Finns Fairway",
-  "description": "For en trygg og aktiv oppvekst. Meld fra om utrygge steder i trafikken, eller se kart over meldinger.",
+  "description": "Meld fra om utrygge steder i trafikken, registrer sykkelturer og se kart over meldinger.",
   "lang": "nb",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#faf5ec",
+  "background_color": "#f4f6f2",
   "theme_color": "#0b5d4d",
   "icons": [
-    {
-      "src": "/brand/finns-fairway-mark.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    }
+    { "src": "/brand/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/brand/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/brand/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/brand/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
