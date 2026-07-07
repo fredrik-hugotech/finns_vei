@@ -16,6 +16,26 @@ function ownerLabel(owner) {
   const map = { kommune: 'Kommunal vei', fylke: 'Fylkesvei', stat: 'Riksvei/Europavei', privat: 'Privat vei' };
   return map[String(owner || '').toLowerCase()] || owner || null;
 }
+function distMeters(lng1, lat1, lng2, lat2) {
+  const R = 6371000, tr = (d) => (d * Math.PI) / 180;
+  const dLa = tr(lat2 - lat1), dLo = tr(lng2 - lng1);
+  const h = Math.sin(dLa / 2) ** 2 + Math.cos(tr(lat1)) * Math.cos(tr(lat2)) * Math.sin(dLo / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+async function fetchAccidents(lat, lng, radiusM = 50) {
+  const dLat = (radiusM * 3) / 111320;
+  const dLng = (radiusM * 3) / (111320 * Math.cos((lat * Math.PI) / 180));
+  const bbox = [lng - dLng, lat - dLat, lng + dLng, lat + dLat].map((v) => v.toFixed(6)).join(',');
+  const r = await fetch(`/api/nvdb/layer?type=accidents&bbox=${encodeURIComponent(bbox)}&zoom=17`);
+  if (!r.ok) throw new Error('feil');
+  const g = await r.json();
+  if (g?.meta?.degraded) throw new Error('degraded');
+  return (g.features || [])
+    .filter((f) => f.geometry?.type === 'Point' && Array.isArray(f.geometry.coordinates))
+    .map((f) => ({ dist: distMeters(lng, lat, f.geometry.coordinates[0], f.geometry.coordinates[1]), year: f.properties?.year || (f.properties?.date ? String(f.properties.date).slice(0, 4) : ''), type: f.properties?.accident_type || '', severity: f.properties?.severity || '' }))
+    .filter((a) => a.dist <= radiusM)
+    .sort((a, b) => (Number(b.year) || 0) - (Number(a.year) || 0));
+}
 
 export default function SakDetalj() {
   const router = useRouter();
@@ -29,6 +49,8 @@ export default function SakDetalj() {
   const [flash, setFlash] = useState('');
   const [uploadVis, setUploadVis] = useState('internal');
   const [uploading, setUploading] = useState(false);
+  const [accidents, setAccidents] = useState(null);
+  const [showAcc, setShowAcc] = useState(false);
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
   const load = useCallback(async () => {
@@ -47,6 +69,16 @@ export default function SakDetalj() {
 
   const c = data?.case;
   const meta = useMemo(() => reportStatusMeta(status || c?.status), [status, c]);
+
+  useEffect(() => {
+    if (!c || !Number.isFinite(Number(c.lat)) || !Number.isFinite(Number(c.lng))) return undefined;
+    let cancelled = false;
+    setAccidents(null);
+    fetchAccidents(Number(c.lat), Number(c.lng), 50)
+      .then((a) => { if (!cancelled) setAccidents(a); })
+      .catch(() => { if (!cancelled) setAccidents('error'); });
+    return () => { cancelled = true; };
+  }, [c]);
 
   const changeStatus = async (next) => {
     setStatus(next);
@@ -217,6 +249,19 @@ export default function SakDetalj() {
                   {ownerLabel(c.road_owner) && <p className="sak-kv"><span>Veieier</span><b>{ownerLabel(c.road_owner)}</b></p>}
                   {c.speed_limit && <p className="sak-kv"><span>Fartsgrense</span><b>{c.speed_limit} km/t</b></p>}
                   {c.road_reference && <p className="sak-kv"><span>Vegreferanse</span><b>{c.road_reference}</b></p>}
+                  {Array.isArray(accidents) && (
+                    <div className="case-admin__accidents">
+                      <button type="button" className="case-admin__accidents-toggle" onClick={() => setShowAcc((v) => !v)} disabled={accidents.length === 0}>
+                        <span>Ulykker innen 50 m</span>
+                        <span className="case-admin__accidents-count">{accidents.length}{accidents.length > 0 ? (showAcc ? ' · skjul' : ' · vis') : ''}</span>
+                      </button>
+                      {showAcc && accidents.length > 0 && (
+                        <ul className="case-admin__accidents-list">
+                          {accidents.slice(0, 12).map((a, i) => <li key={i}>{[a.year, a.type || 'Ulykke', a.severity].filter(Boolean).join(' · ')}</li>)}
+                        </ul>
+                      )}
+                    </div>
+                  )}
                   <div className="sak-side__actions">
                     <Link className="big-button big-button--secondary" href={`/?sak=${encodeURIComponent(c.id)}`}>Vis på kart</Link>
                     {Number.isFinite(Number(c.lat)) && <a className="big-button big-button--secondary" href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${c.lat},${c.lng}`} target="_blank" rel="noopener noreferrer">Street View</a>}
