@@ -1998,3 +1998,6 @@
   padding: 0.14rem 0.5rem;
   text-transform: uppercase;
 }
+
+.dash2__h2row { align-items: baseline; display: flex; gap: 0.8rem; justify-content: space-between; }
+.dash2__seeall { color: var(--color-primary); font-size: 0.85rem; font-weight: 700; text-decoration: none; white-space: nowrap; }

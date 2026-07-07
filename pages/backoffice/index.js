@@ -138,7 +138,10 @@ function Dashboard({ me, onLogout }) {
         </section>
 
         <section>
-          <h2 className="dash2__h2">Min dag <span className="dash2__hint">nye saker som venter</span></h2>
+          <div className="dash2__h2row">
+            <h2 className="dash2__h2">Min dag <span className="dash2__hint">nye saker som venter</span></h2>
+            <Link className="dash2__seeall" href="/backoffice/liste">Alle saker ›</Link>
+          </div>
           {cases === null && <p className="comp-muted">Laster …</p>}
           {cases && minDag.length === 0 && <p className="comp-muted">Ingen nye saker akkurat nå. Fint jobbet.</p>}
           <div className="admin-list">
