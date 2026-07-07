@@ -933,11 +933,14 @@
 
 /* Backoffice: competitions admin */
 .admin-page {
+  align-content: start;
   display: grid;
   gap: 0.9rem;
+  justify-items: stretch;
   margin: 0 auto;
   max-width: 640px;
   padding: 1.4rem 1.1rem calc(2rem + env(safe-area-inset-bottom));
+  width: 100%;
 }
 
 .admin-page h1 { font-family: var(--font-heading); margin: 0; }
@@ -1578,7 +1581,7 @@
 }
 
 /* Saksliste */
-.admin-list-page { display: grid; gap: 1rem; margin: 0 auto; max-width: 640px; padding: 1.2rem 1.1rem calc(2rem + env(safe-area-inset-bottom)); }
+.admin-list-page { align-content: start; display: grid; gap: 1rem; justify-items: stretch; margin: 0 auto; max-width: 640px; padding: 1.2rem 1.1rem calc(2rem + env(safe-area-inset-bottom)); width: 100%; }
 .admin-list-top { align-items: baseline; display: flex; gap: 0.8rem; }
 .admin-list-top h1 { font-family: var(--font-heading); margin: 0; }
 .admin-back-link { color: var(--color-primary); font-size: 1rem; font-weight: 700; text-decoration: none; }
@@ -1936,7 +1939,7 @@
 /* ----------------------------------------------------------------------
    Case workspace (/backoffice/sak/[id]) — the case card you work in
    ---------------------------------------------------------------------- */
-.sak-page { display: grid; gap: 0.85rem; margin: 0 auto; max-width: 940px; padding: 0.9rem 1.1rem calc(2.5rem + env(safe-area-inset-bottom)); }
+.sak-page { align-content: start; display: grid; gap: 0.85rem; justify-items: stretch; margin: 0 auto; max-width: 940px; padding: 0.9rem 1.1rem calc(2.5rem + env(safe-area-inset-bottom)); width: 100%; }
 .sak-top { align-items: center; display: flex; gap: 0.8rem; justify-content: space-between; }
 .sak-flash { background: var(--color-primary-tint); border-radius: var(--radius-pill); color: var(--color-primary); font-size: 0.8rem; font-weight: 700; padding: 0.24rem 0.7rem; }
 
@@ -2100,7 +2103,7 @@
    Melding → Innbyggerstemmer → Behandling → Sted → Vedlegg → Kontakt → Tidslinje.
    Every section gets an explicit order so nothing floats to the top. */
 @media (max-width: 779px) {
-  .sak-grid { display: flex; flex-direction: column; }
+  .sak-grid { display: flex; flex-direction: column; gap: 0; }
   .sak-main, .sak-side { display: contents; }
   .sak-s1 { order: 1; }      /* Melding */
   .sak-support { order: 2; } /* Innbyggerstemmer */
@@ -2109,6 +2112,29 @@
   .sak-s3 { order: 5; }      /* Vedlegg */
   .sak-s5 { order: 6; }      /* Kontakt */
   .sak-s6 { order: 7; }      /* Tidslinje */
+
+  /* Native app feel: one continuous edge-to-edge sheet, not floating cards.
+     The page becomes the surface; sections are full-bleed blocks split by
+     a hairline instead of margins + shadows on a visible canvas. */
+  .sak-page {
+    background: var(--color-surface);
+    gap: 0;
+    padding: 0 0 calc(2rem + env(safe-area-inset-bottom));
+  }
+  .sak-hero,
+  .sak-page .admin-section {
+    background: var(--color-surface);
+    border: 0;
+    border-bottom: 1px solid var(--color-border);
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0.95rem 1.15rem;
+  }
+  .sak-hero { padding-top: 1.05rem; }
+  .sak-page .admin-section:last-of-type { border-bottom: 0; }
+  .sak-nav { padding: 0.7rem 1.15rem 0.3rem; }
+  .sak-flashbar { border-radius: 0; margin: 0; }
+  .sak-footer { padding: 1.1rem; }
 }
 @media (min-width: 780px) {
   .sak-side { position: sticky; top: 4rem; align-self: start; }
