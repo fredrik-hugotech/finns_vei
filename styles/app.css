@@ -1980,3 +1980,8 @@
 }
 .lightbox img { border-radius: var(--radius-md); max-height: 92vh; max-width: 92vw; object-fit: contain; }
 .lightbox__close { background: rgba(255,255,255,0.15); border: none; border-radius: 50%; color: #fff; font-size: 1.2rem; height: 44px; position: fixed; right: 1rem; top: max(1rem, env(safe-area-inset-top)); width: 44px; }
+
+/* Workspace prev/next triage nav */
+.sak-nav { align-items: center; display: flex; justify-content: space-between; }
+.sak-nav__link { color: var(--color-primary); font-size: 0.9rem; font-weight: 700; text-decoration: none; }
+.sak-nav__pos { color: var(--color-muted); font-size: 0.82rem; }

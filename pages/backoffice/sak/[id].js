@@ -53,6 +53,7 @@ export default function SakDetalj() {
   const [showAcc, setShowAcc] = useState(false);
   const [lightbox, setLightbox] = useState(null);
   const [dragOver, setDragOver] = useState(false);
+  const [siblings, setSiblings] = useState(null);
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
   const load = useCallback(async () => {
@@ -69,8 +70,15 @@ export default function SakDetalj() {
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    fetch('/api/backoffice/cases').then((r) => (r.ok ? r.json() : null)).then((d) => { if (d) setSiblings((d.cases || []).map((x) => String(x.id))); }).catch(() => {});
+  }, []);
+
   const c = data?.case;
   const meta = useMemo(() => reportStatusMeta(status || c?.status), [status, c]);
+  const idx = siblings ? siblings.indexOf(String(id)) : -1;
+  const prevId = idx > 0 ? siblings[idx - 1] : null;
+  const nextId = idx >= 0 && siblings && idx < siblings.length - 1 ? siblings[idx + 1] : null;
 
   useEffect(() => {
     if (!c || !Number.isFinite(Number(c.lat)) || !Number.isFinite(Number(c.lng))) return undefined;
@@ -158,6 +166,13 @@ export default function SakDetalj() {
       <BackofficeHeader title={c ? c.category : 'Sak'} back="/backoffice/liste" />
       <main className="page sak-page">
         {flash && <div className="sak-flashbar">{flash}</div>}
+        {idx >= 0 && (
+          <nav className="sak-nav">
+            {prevId ? <Link className="sak-nav__link" href={`/backoffice/sak/${prevId}`}>‹ Forrige</Link> : <span />}
+            <span className="sak-nav__pos">{idx + 1} / {siblings.length}</span>
+            {nextId ? <Link className="sak-nav__link" href={`/backoffice/sak/${nextId}`}>Neste ›</Link> : <span />}
+          </nav>
+        )}
 
         {error && <div className="admin-status">{error}</div>}
         {!c && !error && <p className="admin-list-empty">Laster …</p>}
