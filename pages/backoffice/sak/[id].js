@@ -92,6 +92,7 @@ export default function SakDetalj() {
   };
 
   const c = data?.case;
+  const support = data?.support || { count: 0, voices: [], facets: [] };
   const meta = useMemo(() => reportStatusMeta(status || c?.status), [status, c]);
   const idx = siblings ? siblings.indexOf(String(id)) : -1;
   const prevId = idx > 0 ? siblings[idx - 1] : null;
@@ -223,6 +224,41 @@ export default function SakDetalj() {
                     <div className="sak-images">
                       {c.images.map((src, i) => <button type="button" key={i} onClick={() => setLightbox(src)}><img src={src} alt="" /></button>)}
                     </div>
+                  )}
+                </section>
+
+                <section className="admin-section sak-support">
+                  <div className="sak-support__head">
+                    <h2>Innbyggerstemmer</h2>
+                    <span className="sak-support__count" title="Antall som støtter saken">
+                      {support.count} støtte{support.count === 1 ? '' : 'r'}
+                    </span>
+                  </div>
+                  {support.facets.length > 0 && (
+                    <div className="sak-support__facets">
+                      {support.facets.map((f) => (
+                        <span key={f.category} className="sak-support__facet">{f.category}<b>{f.count}</b></span>
+                      ))}
+                    </div>
+                  )}
+                  {support.voices.length > 0 ? (
+                    <ul className="sak-voices">
+                      {support.voices.map((v, i) => (
+                        <li key={i} className="sak-voice">
+                          <p className="sak-voice__text">«{v.note}»</p>
+                          <div className="sak-voice__meta">
+                            {v.category && <span className="sak-voice__cat">{v.category}</span>}
+                            {v.created_at && <span className="sak-voice__time">{fmtDate(v.created_at)}</span>}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="sak-support__empty">
+                      {support.count > 0
+                        ? `${support.count} innbygger${support.count === 1 ? '' : 'e'} har støttet saken, men ingen har skrevet en kommentar ennå.`
+                        : 'Ingen innbyggere har støttet denne saken ennå.'}
+                    </p>
                   )}
                 </section>
 

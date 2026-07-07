@@ -1004,6 +1004,48 @@
 .admin-list__meta { color: var(--color-muted); display: block; font-size: 0.78rem; margin-top: 0.1rem; }
 .admin-list__item .big-button { flex: none; min-height: 40px; padding: 0 1rem; width: auto; }
 
+/* Competition admin cards */
+.comp-cards { display: grid; gap: 0.6rem; list-style: none; margin: 0.6rem 0 0; padding: 0; }
+.comp-card {
+  align-items: center;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  padding: 0.75rem 0.9rem;
+}
+.comp-card__body { display: grid; gap: 0.2rem; min-width: 0; }
+.comp-card__top { align-items: center; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.comp-card__name { font-size: 0.98rem; font-weight: 700; overflow-wrap: anywhere; }
+.comp-card__meta { color: var(--color-muted); font-size: 0.78rem; }
+.comp-badge {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  color: var(--color-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  padding: 0.14rem 0.5rem;
+  text-transform: uppercase;
+}
+.comp-badge--on { background: #dcefe2; border-color: #b7ddc4; color: #15803d; }
+.comp-toggle {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  color: var(--color-text);
+  flex: none;
+  font-size: 0.82rem;
+  font-weight: 700;
+  min-height: 38px;
+  padding: 0 0.95rem;
+  white-space: nowrap;
+}
+.comp-toggle:active { transform: scale(0.98); }
+
 .admin-status {
   background: var(--color-primary-tint);
   border-radius: var(--radius-md);
@@ -1765,6 +1807,34 @@
 .dash2__h2 { align-items: baseline; color: var(--color-text); display: flex; font-family: var(--font-heading); font-size: 1.05rem; gap: 0.5rem; margin: 0; }
 .dash2__hint { color: var(--color-muted); font-family: var(--font-body); font-size: 0.8rem; font-weight: 400; }
 
+/* Pulse bar: at-a-glance metrics across the top of the dashboard */
+.dash2__pulse {
+  -webkit-overflow-scrolling: touch;
+  display: grid;
+  gap: 0.5rem;
+  grid-auto-columns: minmax(30%, 1fr);
+  grid-auto-flow: column;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.dash2__pulse::-webkit-scrollbar { display: none; }
+@media (min-width: 640px) { .dash2__pulse { grid-auto-flow: row; grid-template-columns: repeat(5, 1fr); overflow: visible; } }
+.dash2-pulse {
+  align-items: flex-start;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.7rem 0.8rem;
+  text-decoration: none;
+}
+.dash2-pulse strong { font-family: var(--font-heading); font-size: 1.55rem; line-height: 1; }
+.dash2-pulse span { color: var(--color-muted); font-size: 0.76rem; font-weight: 600; line-height: 1.2; }
+.dash2-pulse--warn { background: #fbe3e0; border-color: #f3c6c0; }
+.dash2-pulse--warn strong, .dash2-pulse--warn span { color: var(--color-danger); }
+
 .dash2__tiles { display: grid; gap: 0.6rem; grid-template-columns: repeat(2, 1fr); }
 @media (min-width: 560px) { .dash2__tiles { grid-template-columns: repeat(4, 1fr); } }
 .dash2-tile {
@@ -1812,6 +1882,24 @@
   text-decoration: none;
 }
 .liste-filter--on { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+
+/* Saksliste sort control */
+.liste-sort { align-items: center; display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.liste-sort__label { color: var(--color-muted); font-size: 0.78rem; font-weight: 650; margin-right: 0.2rem; }
+.liste-sort__btn {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  font-weight: 650;
+  padding: 0.28rem 0.6rem;
+}
+.liste-sort__btn--on { background: var(--color-primary-tint); border-color: var(--color-primary); color: var(--color-primary); }
+
+/* Support heart badge on list/dashboard cards */
+.admin-list-item__headright { align-items: center; display: flex; gap: 0.55rem; }
+.admin-list-item__support { color: #c2410c; font-size: 0.8rem; font-weight: 800; white-space: nowrap; }
 
 /* Case admin: public/internal note tabs + timeline */
 .case-admin__notetabs {
@@ -1865,6 +1953,40 @@
 .sak-desc { color: var(--color-text); font-size: 1rem; margin: 0; white-space: pre-wrap; }
 .sak-images { display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); }
 .sak-images img { aspect-ratio: 1; border: 1px solid var(--color-border); border-radius: var(--radius-sm); object-fit: cover; width: 100%; }
+
+/* Innbyggerstemmer: citizen support voices in the workspace */
+.sak-support__head { align-items: center; display: flex; gap: 0.6rem; justify-content: space-between; }
+.sak-support__head h2 { margin: 0; }
+.sak-support__count {
+  background: #fdece3;
+  border-radius: var(--radius-pill);
+  color: #c2410c;
+  font-size: 0.8rem;
+  font-weight: 800;
+  padding: 0.25rem 0.7rem;
+  white-space: nowrap;
+}
+.sak-support__facets { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.6rem; }
+.sak-support__facet {
+  align-items: center;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  color: var(--color-text);
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 600;
+  gap: 0.4rem;
+  padding: 0.24rem 0.6rem;
+}
+.sak-support__facet b { color: var(--color-primary); font-weight: 800; }
+.sak-support__empty { color: var(--color-muted); font-size: 0.9rem; margin: 0.6rem 0 0; }
+.sak-voices { display: grid; gap: 0.5rem; list-style: none; margin: 0.7rem 0 0; padding: 0; }
+.sak-voice { background: var(--color-surface-2); border: 1px solid var(--color-border); border-left: 3px solid var(--color-primary); border-radius: var(--radius-md); padding: 0.6rem 0.75rem; }
+.sak-voice__text { color: var(--color-text); font-size: 0.94rem; line-height: 1.45; margin: 0; }
+.sak-voice__meta { align-items: baseline; color: var(--color-muted); display: flex; gap: 0.55rem; justify-content: space-between; margin-top: 0.35rem; }
+.sak-voice__cat { color: var(--color-primary); font-size: 0.72rem; font-weight: 700; }
+.sak-voice__time { font-size: 0.72rem; white-space: nowrap; }
 
 .sak-timeline { display: grid; gap: 0.6rem; list-style: none; margin: 0; padding: 0; }
 .sak-tl { background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 0.6rem 0.75rem; }

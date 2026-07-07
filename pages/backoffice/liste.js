@@ -24,11 +24,19 @@ function ownerShort(owner, speed) {
   return [o, s].filter(Boolean).join(' · ');
 }
 
+const SORTS = [
+  { key: 'new', label: 'Nyeste' },
+  { key: 'support', label: 'Mest støtte' },
+  { key: 'due', label: 'Frist' },
+  { key: 'old', label: 'Eldste' },
+];
+
 export default function Liste() {
   const router = useRouter();
   const [cases, setCases] = useState(null);
   const [error, setError] = useState('');
   const [q, setQ] = useState('');
+  const [sort, setSort] = useState('new');
   const active = typeof router.query.status === 'string' && STATUSES.includes(router.query.status) ? router.query.status : '';
 
   useEffect(() => {
@@ -40,10 +48,25 @@ export default function Liste() {
 
   const shown = useMemo(() => {
     const query = q.trim().toLowerCase();
-    return (cases || [])
+    const list = (cases || [])
       .filter((c) => !active || c.status === active)
       .filter((c) => !query || `${c.category} ${c.description || ''} ${ownerShort(c.road_owner, c.speed_limit)}`.toLowerCase().includes(query));
-  }, [cases, active, q]);
+    const byNew = (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    const sorters = {
+      new: byNew,
+      old: (a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0),
+      support: (a, b) => (Number(b.support_count || 0) - Number(a.support_count || 0)) || byNew(a, b),
+      due: (a, b) => {
+        if (!a.due_date && !b.due_date) return byNew(a, b);
+        if (!a.due_date) return 1;
+        if (!b.due_date) return -1;
+        return String(a.due_date).slice(0, 10).localeCompare(String(b.due_date).slice(0, 10));
+      },
+    };
+    return list.sort(sorters[sort] || byNew);
+  }, [cases, active, q, sort]);
+
+  const totalSupport = useMemo(() => (cases || []).reduce((n, c) => n + Number(c.support_count || 0), 0), [cases]);
 
   return (
     <>
@@ -59,11 +82,18 @@ export default function Liste() {
           ))}
         </div>
 
+        <div className="liste-sort">
+          <span className="liste-sort__label">Sorter</span>
+          {SORTS.map((s) => (
+            <button key={s.key} type="button" className={sort === s.key ? 'liste-sort__btn liste-sort__btn--on' : 'liste-sort__btn'} onClick={() => setSort(s.key)}>{s.label}</button>
+          ))}
+        </div>
+
         {error === 'not-authed' && <p className="admin-list-empty">Logg inn først. <Link href="/backoffice">Til innlogging</Link></p>}
         {error && error !== 'not-authed' && <p className="admin-list-empty">{error}</p>}
         {!error && cases === null && <p className="admin-list-empty">Laster …</p>}
         {!error && cases && shown.length === 0 && <p className="admin-list-empty">Ingen saker her.</p>}
-        {!error && cases && shown.length > 0 && <p className="sak-count">{shown.length} sak{shown.length === 1 ? '' : 'er'}</p>}
+        {!error && cases && shown.length > 0 && <p className="sak-count">{shown.length} sak{shown.length === 1 ? '' : 'er'}{totalSupport > 0 ? ` · ${totalSupport} støtter totalt` : ''}</p>}
 
         <div className="admin-list">
           {shown.map((c) => {
@@ -73,7 +103,10 @@ export default function Liste() {
               <Link key={c.id} className="admin-list-item" href={`/backoffice/sak/${encodeURIComponent(c.id)}`}>
                 <div className="admin-list-item__head">
                   <span className={`status-pill status-pill--${meta.key}`} dangerouslySetInnerHTML={{ __html: `${meta.icon}<span>${meta.label}</span>` }} />
-                  <span className="admin-list-item__time">{timeAgo(c.created_at)}</span>
+                  <span className="admin-list-item__headright">
+                    {Number(c.support_count) > 0 && <span className="admin-list-item__support" title="Innbyggerstøtte">♥ {c.support_count}</span>}
+                    <span className="admin-list-item__time">{timeAgo(c.created_at)}</span>
+                  </span>
                 </div>
                 <strong className="admin-list-item__title">{c.category}</strong>
                 {c.description && <span className="admin-list-item__desc">{c.description}</span>}

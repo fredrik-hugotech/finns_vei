@@ -109,32 +109,60 @@ function Dashboard({ me, onLogout }) {
 
   const counts = STATUSES.reduce((acc, s) => { acc[s] = 0; return acc; }, {});
   (cases || []).forEach((c) => { if (counts[c.status] !== undefined) counts[c.status] += 1; else counts[c.status] = (counts[c.status] || 0) + 1; });
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const myEmail = String(me.email || '').toLowerCase();
+
+  const open = (cases || []).filter((c) => c.status !== REPORT_STATUS.DONE);
+  const overdue = open.filter((c) => c.due_date && String(c.due_date).slice(0, 10) < todayStr);
+  const unassigned = open.filter((c) => !c.assignee_email);
+  const newToday = (cases || []).filter((c) => String(c.created_at || '').slice(0, 10) === todayStr);
+  const totalSupport = (cases || []).reduce((n, c) => n + Number(c.support_count || 0), 0);
+
   const minDag = (cases || [])
     .filter((c) => c.status === REPORT_STATUS.NEW)
     .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
     .slice(0, 6);
-  const myEmail = String(me.email || '').toLowerCase();
-  const todayStr = new Date().toISOString().slice(0, 10);
   const mine = (cases || [])
     .filter((c) => String(c.assignee_email || '').toLowerCase() === myEmail && c.status !== REPORT_STATUS.DONE)
     .sort((a, b) => (a.due_date || '9999-12-31').localeCompare(b.due_date || '9999-12-31'));
+  const mostSupported = open
+    .filter((c) => Number(c.support_count || 0) > 0)
+    .sort((a, b) => Number(b.support_count || 0) - Number(a.support_count || 0))
+    .slice(0, 5);
+
+  const pulse = [
+    { key: 'open', n: open.length, label: 'Åpne saker', href: '/backoffice/liste' },
+    { key: 'overdue', n: overdue.length, label: 'Forfalt', href: '/backoffice/liste', warn: overdue.length > 0 },
+    { key: 'unassigned', n: unassigned.length, label: 'Uten ansvarlig', href: '/backoffice/liste' },
+    { key: 'today', n: newToday.length, label: 'Nye i dag', href: '/backoffice/liste' },
+    { key: 'support', n: totalSupport, label: 'Innbyggerstøtter', href: '/backoffice/liste' },
+  ];
 
   const dueBadge = (c) => {
     if (!c.due_date) return null;
-    const overdue = String(c.due_date).slice(0, 10) < todayStr && c.status !== REPORT_STATUS.DONE;
-    return <span className={overdue ? 'sak-due sak-due--over' : 'sak-due'}>{overdue ? 'Forfalt' : 'Frist'} {fmtShort(c.due_date)}</span>;
+    const isOverdue = String(c.due_date).slice(0, 10) < todayStr && c.status !== REPORT_STATUS.DONE;
+    return <span className={isOverdue ? 'sak-due sak-due--over' : 'sak-due'}>{isOverdue ? 'Forfalt' : 'Frist'} {fmtShort(c.due_date)}</span>;
   };
   const renderCase = (c) => {
     const meta = reportStatusMeta(c.status);
+    const hasFoot = dueBadge(c) || Number(c.support_count) > 0 || c.assignee_email;
     return (
       <Link key={c.id} href={`/backoffice/sak/${encodeURIComponent(c.id)}`} className="admin-list-item">
         <div className="admin-list-item__head">
           <span className={`status-pill status-pill--${meta.key}`} dangerouslySetInnerHTML={{ __html: `${meta.icon}<span>${meta.label}</span>` }} />
-          <span className="admin-list-item__time">{timeAgo(c.created_at)} siden</span>
+          <span className="admin-list-item__headright">
+            {Number(c.support_count) > 0 && <span className="admin-list-item__support" title="Innbyggerstøtte">♥ {c.support_count}</span>}
+            <span className="admin-list-item__time">{timeAgo(c.created_at)} siden</span>
+          </span>
         </div>
         <strong className="admin-list-item__title">{c.category}</strong>
         {c.description && <span className="admin-list-item__desc">{c.description}</span>}
-        {(dueBadge(c)) && <span className="admin-list-item__foot">{dueBadge(c)}</span>}
+        {hasFoot && (
+          <span className="admin-list-item__foot">
+            {dueBadge(c)}
+            {c.assignee_email && <span className="admin-list-item__assignee">{c.assignee_email.split('@')[0]}</span>}
+          </span>
+        )}
       </Link>
     );
   };
@@ -150,6 +178,15 @@ function Dashboard({ me, onLogout }) {
           </div>
           <button type="button" className="dash2__logout" onClick={onLogout}>Logg ut</button>
         </header>
+
+        <div className="dash2__pulse">
+          {pulse.map((p) => (
+            <Link key={p.key} href={p.href} className={p.warn ? 'dash2-pulse dash2-pulse--warn' : 'dash2-pulse'}>
+              <strong>{cases === null ? '–' : p.n}</strong>
+              <span>{p.label}</span>
+            </Link>
+          ))}
+        </div>
 
         <section>
           <h2 className="dash2__h2">Status</h2>
@@ -170,6 +207,16 @@ function Dashboard({ me, onLogout }) {
           <section>
             <h2 className="dash2__h2">Mine saker <span className="dash2__hint">tildelt deg</span></h2>
             <div className="admin-list">{mine.slice(0, 8).map(renderCase)}</div>
+          </section>
+        )}
+
+        {mostSupported.length > 0 && (
+          <section>
+            <div className="dash2__h2row">
+              <h2 className="dash2__h2">Mest engasjement <span className="dash2__hint">flest innbyggere støtter</span></h2>
+              <Link className="dash2__seeall" href="/backoffice/liste">Se alle ›</Link>
+            </div>
+            <div className="admin-list">{mostSupported.map(renderCase)}</div>
           </section>
         )}
 

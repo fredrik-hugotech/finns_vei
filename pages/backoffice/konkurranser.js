@@ -126,23 +126,30 @@ export default function KonkurranserAdmin() {
         {status && <div className="admin-status">{status}</div>}
 
         <section className="admin-section">
-          <h2>Eksisterende</h2>
-          {competitions.length === 0 && <p className="comp-muted">Ingen konkurranser ennå.</p>}
-          <ul className="admin-list">
-            {competitions.map((competition) => (
-              <li key={competition.id} className="admin-list__item">
-                <div>
-                  <strong>{competition.name}</strong>
-                  <span className="admin-list__meta">
-                    {competition.active ? 'Aktiv' : 'Skjult'} · {competition.clubs.length} klubber
-                    {competition.starts_on ? ` · ${competition.starts_on}` : ''}{competition.ends_on ? `–${competition.ends_on}` : ''}
-                  </span>
-                </div>
-                <button type="button" className="big-button big-button--secondary" onClick={() => toggleActive(competition)}>
-                  {competition.active ? 'Skjul' : 'Aktiver'}
-                </button>
-              </li>
-            ))}
+          <div className="dash2__h2row"><h2 style={{ margin: 0 }}>Eksisterende</h2>{loading && <span className="comp-muted">Laster …</span>}</div>
+          {!loading && competitions.length === 0 && <p className="comp-muted">Ingen konkurranser ennå.</p>}
+          <ul className="comp-cards">
+            {competitions.map((competition) => {
+              const period = [competition.starts_on, competition.ends_on].filter(Boolean).join(' – ');
+              return (
+                <li key={competition.id} className="comp-card">
+                  <div className="comp-card__body">
+                    <div className="comp-card__top">
+                      <strong className="comp-card__name">{competition.name}</strong>
+                      <span className={competition.active ? 'comp-badge comp-badge--on' : 'comp-badge'}>{competition.active ? 'Aktiv' : 'Skjult'}</span>
+                    </div>
+                    <span className="comp-card__meta">
+                      {competition.clubs.length} klubb{competition.clubs.length === 1 ? '' : 'er'}
+                      {period ? ` · ${period}` : ''}
+                      {competition.metric === 'distance' ? ' · flest km' : ' · flest turer'}
+                    </span>
+                  </div>
+                  <button type="button" className="comp-toggle" onClick={() => toggleActive(competition)}>
+                    {competition.active ? 'Skjul' : 'Aktiver'}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </section>
 

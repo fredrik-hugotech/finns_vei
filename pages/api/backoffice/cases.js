@@ -7,6 +7,7 @@ import {
   addCaseStatusUpdate,
   getCaseTimeline,
   listCaseAttachments,
+  getCaseSupport,
   setPublicStatusFromTrelloComment,
   hasSupabaseConfig,
 } from '../../../lib/supabaseRest';
@@ -30,6 +31,7 @@ export default async function handler(req, res) {
         if (!report) return res.status(404).json({ error: 'Fant ikke saken' });
         const timeline = report.trello_card_id ? await getCaseTimeline(report.trello_card_id) : [];
         const attachments = await listCaseAttachments(report.id);
+        const support = await getCaseSupport(report.id);
         const images = Array.isArray(report.image_urls)
           ? report.image_urls
           : (typeof report.image_urls === 'string' ? (() => { try { return JSON.parse(report.image_urls); } catch (_e) { return []; } })() : []);
@@ -40,6 +42,11 @@ export default async function handler(req, res) {
           hasCard: Boolean(report.trello_card_id),
           timeline,
           attachments,
+          support: {
+            count: Number(report.support_count || 0),
+            voices: support.voices,
+            facets: support.facets,
+          },
           case: {
             id: report.id,
             category: report.category || 'Melding',
@@ -48,6 +55,7 @@ export default async function handler(req, res) {
             created_at: report.created_at || null,
             due_date: report.due_date || null,
             assignee_email: report.assignee_email || null,
+            support_count: Number(report.support_count || 0),
             lat: report.lat ?? null,
             lng: report.lng ?? null,
             reporter_type: report.reporter_type || null,
