@@ -45,7 +45,7 @@
 
 .facet {
   align-items: center;
-  background: #e9f3ef;
+  background: var(--color-primary-tint);
   border-radius: var(--radius-pill);
   color: var(--color-primary);
   display: inline-flex;
@@ -392,7 +392,7 @@
 }
 
 .popup-action:hover {
-  background: #e7e0d3;
+  background: var(--color-surface-muted);
 }
 
 .popup-action .popup-glyph {

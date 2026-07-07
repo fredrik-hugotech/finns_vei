@@ -51,7 +51,7 @@ textarea:focus {
 }
 
 .chip input:checked + span {
-  background: #dcefe9;
+  background: var(--color-primary-tint);
   border-color: var(--color-primary);
   color: var(--color-primary);
 }
