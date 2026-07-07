@@ -1,6 +1,7 @@
 import Head from 'next/head';
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import BackofficeHeader from '../../components/BackofficeHeader';
 
 const EMPTY_CLUB = { name: '' };
 
@@ -122,8 +123,8 @@ export default function KonkurranserAdmin() {
   return (
     <>
       <Head><title>Konkurranser – backoffice</title><meta name="robots" content="noindex" /></Head>
+      <BackofficeHeader title="Konkurranser" />
       <main className="page admin-page">
-        <a className="admin-back-link" href="/backoffice">‹ Meny</a>
         <h1>Konkurranser</h1>
 
         {!secret && (

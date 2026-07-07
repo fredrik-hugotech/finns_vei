@@ -1,11 +1,11 @@
 import Head from 'next/head';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { reportStatusMeta } from '../../lib/reportStatusMeta';
 import { REPORT_STATUS } from '../../lib/config';
+import BackofficeHeader from '../../components/BackofficeHeader';
 
-const SECRET_KEY = 'ff-admin-secret';
 const STATUSES = [REPORT_STATUS.NEW, REPORT_STATUS.REGISTERED, REPORT_STATUS.STARTED, REPORT_STATUS.DONE];
 
 function timeAgo(value) {
@@ -17,32 +17,40 @@ function timeAgo(value) {
   if (hours > 0) return `${hours} t siden`;
   return `${Math.max(1, Math.floor(diff / 60000))} min siden`;
 }
+function ownerShort(owner, speed) {
+  const map = { kommune: 'Kommunal', fylke: 'Fylkesvei', stat: 'Riksvei', privat: 'Privat' };
+  const o = map[String(owner || '').toLowerCase()];
+  const s = speed ? `${speed} km/t` : '';
+  return [o, s].filter(Boolean).join(' · ');
+}
 
 export default function Liste() {
   const router = useRouter();
   const [cases, setCases] = useState(null);
   const [error, setError] = useState('');
+  const [q, setQ] = useState('');
   const active = typeof router.query.status === 'string' && STATUSES.includes(router.query.status) ? router.query.status : '';
 
   useEffect(() => {
-    const secret = window.localStorage.getItem(SECRET_KEY);
-    if (!secret) { setError('not-authed'); return; }
-    fetch('/api/backoffice/cases', { headers: { 'x-backoffice-secret': secret } })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('feil'))))
+    fetch('/api/backoffice/cases')
+      .then((r) => (r.status === 403 ? Promise.reject(new Error('not-authed')) : (r.ok ? r.json() : Promise.reject(new Error('feil')))))
       .then((d) => setCases(d.cases || []))
-      .catch(() => setError('Kunne ikke hente saker.'));
+      .catch((e) => setError(e.message === 'not-authed' ? 'not-authed' : 'Kunne ikke hente saker.'));
   }, []);
 
-  const shown = (cases || []).filter((c) => !active || c.status === active);
+  const shown = useMemo(() => {
+    const query = q.trim().toLowerCase();
+    return (cases || [])
+      .filter((c) => !active || c.status === active)
+      .filter((c) => !query || `${c.category} ${c.description || ''} ${ownerShort(c.road_owner, c.speed_limit)}`.toLowerCase().includes(query));
+  }, [cases, active, q]);
 
   return (
     <>
-      <Head><title>Finns Fairway – Saksliste</title><meta name="robots" content="noindex" /><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" /></Head>
+      <Head><title>Saker – Finns Fairway</title><meta name="robots" content="noindex" /><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" /></Head>
+      <BackofficeHeader title="Saker" />
       <main className="page admin-list-page">
-        <div className="admin-list-top">
-          <Link className="admin-back-link" href="/backoffice">‹ Meny</Link>
-          <h1>Saker{active ? ` · ${active}` : ''}</h1>
-        </div>
+        <input className="sak-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Søk i saker …" aria-label="Søk" />
 
         <div className="liste-filters">
           <Link href="/backoffice/liste" className={active ? 'liste-filter' : 'liste-filter liste-filter--on'}>Alle</Link>
@@ -55,10 +63,12 @@ export default function Liste() {
         {error && error !== 'not-authed' && <p className="admin-list-empty">{error}</p>}
         {!error && cases === null && <p className="admin-list-empty">Laster …</p>}
         {!error && cases && shown.length === 0 && <p className="admin-list-empty">Ingen saker her.</p>}
+        {!error && cases && shown.length > 0 && <p className="sak-count">{shown.length} sak{shown.length === 1 ? '' : 'er'}</p>}
 
         <div className="admin-list">
           {shown.map((c) => {
             const meta = reportStatusMeta(c.status);
+            const loc = ownerShort(c.road_owner, c.speed_limit);
             return (
               <Link key={c.id} className="admin-list-item" href={`/backoffice/sak/${encodeURIComponent(c.id)}`}>
                 <div className="admin-list-item__head">
@@ -67,7 +77,7 @@ export default function Liste() {
                 </div>
                 <strong className="admin-list-item__title">{c.category}</strong>
                 {c.description && <span className="admin-list-item__desc">{c.description}</span>}
-                <span className="admin-list-item__open">Åpne sak ›</span>
+                {loc && <span className="admin-list-item__loc">{loc}</span>}
               </Link>
             );
           })}

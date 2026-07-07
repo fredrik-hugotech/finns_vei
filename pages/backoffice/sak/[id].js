@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { reportStatusMeta } from '../../../lib/reportStatusMeta';
 import { REPORT_STATUS } from '../../../lib/config';
+import BackofficeHeader from '../../../components/BackofficeHeader';
 
 const STATUSES = [REPORT_STATUS.NEW, REPORT_STATUS.REGISTERED, REPORT_STATUS.STARTED, REPORT_STATUS.DONE];
 
@@ -108,11 +109,9 @@ export default function SakDetalj() {
   return (
     <>
       <Head><title>{c ? `${c.category} – sak` : 'Sak'}</title><meta name="robots" content="noindex" /></Head>
+      <BackofficeHeader title={c ? c.category : 'Sak'} back="/backoffice/liste" />
       <main className="page sak-page">
-        <div className="sak-top">
-          <Link className="admin-back-link" href="/backoffice/liste">‹ Saker</Link>
-          {flash && <span className="sak-flash">{flash}</span>}
-        </div>
+        {flash && <div className="sak-flashbar">{flash}</div>}
 
         {error && <div className="admin-status">{error}</div>}
         {!c && !error && <p className="admin-list-empty">Laster …</p>}

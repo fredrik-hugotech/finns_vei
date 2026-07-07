@@ -1,6 +1,7 @@
 import Head from 'next/head';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import BackofficeHeader from '../../components/BackofficeHeader';
 
 export default function Brukere() {
   const [users, setUsers] = useState(null);
@@ -43,8 +44,8 @@ export default function Brukere() {
   return (
     <>
       <Head><title>Brukere – backoffice</title><meta name="robots" content="noindex" /></Head>
+      <BackofficeHeader title="Brukere" />
       <main className="page admin-page">
-        <a className="admin-back-link" href="/backoffice">‹ Meny</a>
         <h1>Brukere</h1>
 
         {error === 'not-authed' && <p className="admin-list-empty">Kun superbrukere. <Link href="/backoffice">Til innlogging</Link></p>}
