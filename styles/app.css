@@ -2291,3 +2291,111 @@ select.tkt-prop__ctrl { padding-right: 1.7rem; background-image: url("data:image
   font-weight: 700;
   padding: 0.14rem 0.5rem;
 }
+
+/* ============================================================
+   Backoffice product theme — Linear/Height/Vercel flavour.
+   Scoped to staff tools; the public citizen app is untouched.
+   ============================================================ */
+.dash2, .sak-page, .admin-list-page {
+  --color-text: #14181f;
+  --color-muted: #667085;
+  --color-border: #e7e9ee;
+  --color-border-strong: #d3d7de;
+  --color-surface-2: #f6f7f9;
+}
+.dash2, .admin-list-page { background: #f7f8fa; }
+
+/* Crisp neutral headings (Inter, tight tracking) instead of rounded Poppins */
+.dash2 h1, .dash2 .dash2__h2,
+.sak-page h1, .sak-page h2,
+.admin-list-page h1,
+.bo-header__title {
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+  letter-spacing: -0.015em;
+}
+.dash2__top h1 { font-size: 1.34rem; }
+.sak-hero h1 { letter-spacing: -0.02em; }
+
+/* Section titles → small uppercase micro-labels (the "admin tool" tell) */
+.dash2 .dash2__h2,
+.sak-page .admin-section h2 {
+  color: var(--color-muted);
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.dash2__hint { letter-spacing: 0; text-transform: none; }
+
+/* Tabular figures for all metrics */
+.dash2-pulse strong, .dash2-tile strong, .admin-list-item__support,
+.admin-list-item__time, .tkt-prop__v, .sak-count { font-variant-numeric: tabular-nums; }
+
+/* Pulse: fit all five in one row, flatter */
+@media (max-width: 639px) {
+  .dash2__pulse { grid-auto-flow: row; grid-template-columns: repeat(5, 1fr); gap: 0.4rem; overflow: visible; }
+  .dash2-pulse { padding: 0.55rem 0.45rem; }
+  .dash2-pulse strong { font-size: 1.12rem; }
+  .dash2-pulse span { font-size: 0.6rem; }
+}
+
+/* Status tiles → flat white cards with a status dot + number */
+.dash2-tile {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  gap: 0.12rem;
+  padding: 0.8rem 0.9rem;
+  position: relative;
+}
+.dash2-tile strong { color: var(--color-text); font-size: 1.5rem; }
+.dash2-tile span { color: var(--color-muted); font-weight: 600; }
+.dash2-tile::after {
+  border-radius: 50%;
+  content: '';
+  height: 9px;
+  position: absolute;
+  right: 0.85rem;
+  top: 0.95rem;
+  width: 9px;
+}
+.dash2-tile--ny::after { background: #f4c542; }
+.dash2-tile--registrert::after { background: #f59e0b; }
+.dash2-tile--startet::after { background: #2563eb; }
+.dash2-tile--fullfort::after { background: #16a34a; }
+
+/* Pulse + snarvei cards: crisp flat surfaces */
+.dash2-pulse, .dash2-link { background: var(--color-surface); border-color: var(--color-border); }
+.dash2-link { border-radius: 10px; font-size: 0.95rem; min-height: 52px; }
+
+/* Compact status pills in backoffice */
+.dash2 .status-pill, .admin-list-page .status-pill, .sak-hero .status-pill {
+  border-radius: 6px;
+  font-size: 0.7rem;
+  gap: 0.28rem;
+  padding: 0.16rem 0.46rem;
+}
+.dash2 .status-icon, .admin-list-page .status-icon, .sak-hero .status-icon { width: 12px; height: 12px; }
+
+/* Grouped list rows: tighter, crisper titles; muted location for restraint */
+.admin-list-item__title { font-size: 0.98rem; letter-spacing: -0.01em; }
+.admin-list-page .admin-list-item__loc, .dash2 .admin-list-item__loc { color: var(--color-muted); font-weight: 600; }
+.admin-list-item__assignee {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  color: var(--color-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.05rem 0.35rem;
+}
+
+/* Case workspace: compact controls, techy mono for technical refs */
+.sak-page .big-button { border-radius: 10px; font-size: 0.92rem; min-height: 44px; }
+.sak-page .admin-section { border-radius: 14px; }
+.tkt-prop__v--mono {
+  font-family: var(--font-mono, ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas, monospace);
+  font-size: 0.82rem;
+  letter-spacing: -0.01em;
+}
+.sak-hero { border-radius: 14px; }

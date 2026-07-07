@@ -313,7 +313,7 @@ export default function SakDetalj() {
                 {c.road_reference && (
                   <div className="tkt-prop">
                     <span className="tkt-prop__k">Vegreferanse</span>
-                    <span className="tkt-prop__v">{c.road_reference}</span>
+                    <span className="tkt-prop__v tkt-prop__v--mono">{c.road_reference}</span>
                   </div>
                 )}
               </div>
