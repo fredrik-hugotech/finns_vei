@@ -84,6 +84,7 @@ export default function Backoffice() {
               {me.role === 'superuser' && <Link className="admin-menu__item" href="/backoffice/brukere">Brukere</Link>}
               {boardUrl && <a className="admin-menu__item" href={boardUrl} target="_blank" rel="noopener noreferrer">Åpne Trello</a>}
             </nav>
+            <ChangePassword />
             <button type="button" className="admin-login__logout" onClick={logout}>Logg ut</button>
           </div>
         ) : (
@@ -102,6 +103,35 @@ export default function Backoffice() {
         )}
       </main>
     </>
+  );
+}
+
+function ChangePassword() {
+  const [open, setOpen] = useState(false);
+  const [cur, setCur] = useState('');
+  const [next, setNext] = useState('');
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setBusy(true); setMsg('');
+    try {
+      const r = await fetch('/api/staff/password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ currentPassword: cur, newPassword: next }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { setMsg(d.error || 'Kunne ikke bytte passord.'); return; }
+      setCur(''); setNext(''); setMsg('Passord byttet.');
+    } catch (_e) { setMsg('Noe gikk galt.'); } finally { setBusy(false); }
+  };
+
+  if (!open) return <button type="button" className="admin-login__logout" onClick={() => setOpen(true)}>Bytt passord</button>;
+  return (
+    <form onSubmit={submit} style={{ display: 'grid', gap: '0.5rem' }}>
+      <input type="password" className="admin-login__input" value={cur} onChange={(e) => setCur(e.target.value)} placeholder="Nåværende passord" autoComplete="current-password" />
+      <input type="password" className="admin-login__input" value={next} onChange={(e) => setNext(e.target.value)} placeholder="Nytt passord (minst 8 tegn)" autoComplete="new-password" />
+      {msg && <p className="admin-login__sub">{msg}</p>}
+      <button type="submit" className="big-button big-button--secondary" disabled={busy}>{busy ? 'Bytter …' : 'Lagre nytt passord'}</button>
+    </form>
   );
 }
 
