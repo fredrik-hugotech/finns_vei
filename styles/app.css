@@ -1985,3 +1985,16 @@
 .sak-nav { align-items: center; display: flex; justify-content: space-between; }
 .sak-nav__link { color: var(--color-primary); font-size: 0.9rem; font-weight: 700; text-decoration: none; }
 .sak-nav__pos { color: var(--color-muted); font-size: 0.82rem; }
+
+/* Case list: footer row with location + tags */
+.admin-list-item__foot { align-items: center; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.admin-list-item__tag {
+  background: var(--color-primary-tint);
+  border-radius: var(--radius-pill);
+  color: var(--color-primary);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  padding: 0.14rem 0.5rem;
+  text-transform: uppercase;
+}

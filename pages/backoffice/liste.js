@@ -77,7 +77,10 @@ export default function Liste() {
                 </div>
                 <strong className="admin-list-item__title">{c.category}</strong>
                 {c.description && <span className="admin-list-item__desc">{c.description}</span>}
-                {loc && <span className="admin-list-item__loc">{loc}</span>}
+                <span className="admin-list-item__foot">
+                  {loc && <span className="admin-list-item__loc">{loc}</span>}
+                  {c.bike_route_type && <span className="admin-list-item__tag">{c.bike_route_type === 'skole' ? 'Skolerute' : 'Sykkelrute'}</span>}
+                </span>
               </Link>
             );
           })}

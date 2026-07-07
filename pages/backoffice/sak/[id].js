@@ -80,6 +80,18 @@ export default function SakDetalj() {
   const prevId = idx > 0 ? siblings[idx - 1] : null;
   const nextId = idx >= 0 && siblings && idx < siblings.length - 1 ? siblings[idx + 1] : null;
 
+  // Arrow keys move between cases (unless typing in a field).
+  useEffect(() => {
+    const onKey = (e) => {
+      const t = e.target;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+      if (e.key === 'ArrowLeft' && prevId) router.push(`/backoffice/sak/${prevId}`);
+      if (e.key === 'ArrowRight' && nextId) router.push(`/backoffice/sak/${nextId}`);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [prevId, nextId, router]);
+
   useEffect(() => {
     if (!c || !Number.isFinite(Number(c.lat)) || !Number.isFinite(Number(c.lng))) return undefined;
     let cancelled = false;
@@ -307,7 +319,7 @@ export default function SakDetalj() {
                   <section className="admin-section sak-s5">
                     <h2>Kontakt</h2>
                     {c.contact_name && <p className="sak-kv"><span>Navn</span><b>{c.contact_name}</b></p>}
-                    {c.contact_email && <p className="sak-kv"><span>E-post</span><b><a href={`mailto:${c.contact_email}`}>{c.contact_email}</a></b></p>}
+                    {c.contact_email && <p className="sak-kv"><span>E-post</span><b><a href={`mailto:${c.contact_email}?subject=${encodeURIComponent(`Finns Fairway – ${c.category}`)}`}>{c.contact_email}</a></b></p>}
                     {c.contact_phone && <p className="sak-kv"><span>Telefon</span><b><a href={`tel:${c.contact_phone}`}>{c.contact_phone}</a></b></p>}
                   </section>
                 )}
