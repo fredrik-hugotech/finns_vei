@@ -1,4 +1,4 @@
-import { isBackofficeAuthorized } from '../../../lib/backofficeAuth';
+import { isAdminRequest } from '../../../lib/backofficeAuth';
 import { getCompetitionStats, listCompetitions, hasSupabaseConfig } from '../../../lib/supabaseRest';
 
 // Internal: the density heatmap geojson + leaderboard for a competition.
@@ -8,7 +8,7 @@ export default async function handler(req, res) {
     res.setHeader('Allow', ['GET']);
     return res.status(405).end('Method Not Allowed');
   }
-  if (!isBackofficeAuthorized(req)) {
+  if (!(await isAdminRequest(req))) {
     return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
   }
   if (!hasSupabaseConfig()) {

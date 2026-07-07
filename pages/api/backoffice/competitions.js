@@ -1,4 +1,4 @@
-import { isBackofficeAuthorized } from '../../../lib/backofficeAuth';
+import { isAdminRequest } from '../../../lib/backofficeAuth';
 import {
   listCompetitions,
   createCompetition,
@@ -7,7 +7,7 @@ import {
 } from '../../../lib/supabaseRest';
 
 export default async function handler(req, res) {
-  if (!isBackofficeAuthorized(req)) {
+  if (!(await isAdminRequest(req))) {
     // Safe diagnostic: reveal only whether a secret is configured (boolean),
     // never the value, so we can tell "no secret in Vercel" from "wrong password".
     const secretConfigured = Boolean(process.env.BACKOFFICE_SECRET || process.env.DEBUG_SECRET);

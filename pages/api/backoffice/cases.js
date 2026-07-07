@@ -1,4 +1,4 @@
-import { isBackofficeAuthorized } from '../../../lib/backofficeAuth';
+import { isAdminRequest } from '../../../lib/backofficeAuth';
 import { REPORT_STATUS } from '../../../lib/config';
 import {
   listReportsForBackoffice,
@@ -13,7 +13,7 @@ import { addTrelloCardComment, getTrelloBoardId, hasTrelloConfig } from '../../.
 const STATUSES = Object.values(REPORT_STATUS);
 
 export default async function handler(req, res) {
-  if (!isBackofficeAuthorized(req)) {
+  if (!(await isAdminRequest(req))) {
     return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
   }
   if (!hasSupabaseConfig()) {

@@ -540,6 +540,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
 
   const logoutAdmin = () => {
     try { window.localStorage.removeItem('ff-admin-secret'); } catch (_e) { /* ignore */ }
+    fetch('/api/staff/logout', { method: 'POST' }).catch(() => {});
     setAdminSecret(null);
   };
 
