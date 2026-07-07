@@ -1947,3 +1947,14 @@
 .sak-count { color: var(--color-muted); font-size: 0.82rem; margin: 0; }
 .admin-list-item__loc { color: var(--color-primary); font-size: 0.78rem; font-weight: 650; }
 .sak-flashbar { background: var(--color-primary-tint); border-radius: var(--radius-md); color: var(--color-primary); font-size: 0.86rem; font-weight: 700; padding: 0.5rem 0.8rem; text-align: center; }
+
+/* Case workspace: action-first order on mobile (Melding → Behandling → …) */
+@media (max-width: 779px) {
+  .sak-grid { display: flex; flex-direction: column; }
+  .sak-main, .sak-side { display: contents; }
+  .sak-s1 { order: 1; } .sak-s2 { order: 2; } .sak-s3 { order: 3; }
+  .sak-s4 { order: 4; } .sak-s5 { order: 5; } .sak-s6 { order: 6; }
+}
+@media (min-width: 780px) {
+  .sak-side { position: sticky; top: 4rem; align-self: start; }
+}

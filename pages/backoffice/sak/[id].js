@@ -126,7 +126,7 @@ export default function SakDetalj() {
 
             <div className="sak-grid">
               <div className="sak-main">
-                <section className="admin-section">
+                <section className="admin-section sak-s1">
                   <h2>Melding</h2>
                   <p className="sak-desc">{c.description || 'Ingen beskrivelse.'}</p>
                   {c.images?.length > 0 && (
@@ -136,7 +136,7 @@ export default function SakDetalj() {
                   )}
                 </section>
 
-                <section className="admin-section">
+                <section className="admin-section sak-s3">
                   <div className="sak-att__head">
                     <h2>Vedlegg</h2>
                     <div className="case-admin__notetabs sak-att__vis">
@@ -168,7 +168,7 @@ export default function SakDetalj() {
                   )}
                 </section>
 
-                <section className="admin-section">
+                <section className="admin-section sak-s6">
                   <h2>Tidslinje</h2>
                   <ul className="sak-timeline">
                     {(data.timeline || []).map((t, i) => (
@@ -188,7 +188,7 @@ export default function SakDetalj() {
               </div>
 
               <aside className="sak-side">
-                <section className="admin-section">
+                <section className="admin-section sak-s2">
                   <h2>Behandling</h2>
                   <label className="admin-field"><span>Status</span>
                     <select className="comp-select" value={status} onChange={(e) => changeStatus(e.target.value)}>
@@ -207,7 +207,7 @@ export default function SakDetalj() {
                   </button>
                 </section>
 
-                <section className="admin-section">
+                <section className="admin-section sak-s4">
                   <h2>Sted</h2>
                   {mapThumb && (
                     <Link href={`/?sak=${encodeURIComponent(c.id)}`} className="sak-mapthumb">
@@ -224,7 +224,7 @@ export default function SakDetalj() {
                 </section>
 
                 {(c.contact_name || c.contact_email || c.contact_phone) && (
-                  <section className="admin-section">
+                  <section className="admin-section sak-s5">
                     <h2>Kontakt</h2>
                     {c.contact_name && <p className="sak-kv"><span>Navn</span><b>{c.contact_name}</b></p>}
                     {c.contact_email && <p className="sak-kv"><span>E-post</span><b><a href={`mailto:${c.contact_email}`}>{c.contact_email}</a></b></p>}
