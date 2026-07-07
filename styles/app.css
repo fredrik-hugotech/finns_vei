@@ -2140,6 +2140,52 @@
   .sak-side { position: sticky; top: 4rem; align-self: start; }
 }
 
+/* ----------------------------------------------------------------------
+   Backoffice mobile: native app feel for the list and the dashboard
+   ---------------------------------------------------------------------- */
+@media (max-width: 779px) {
+  /* Saksliste: one continuous sheet. Controls stay inset; the list breaks
+     out to the screen edges and its items become hairline-split rows. */
+  .admin-list-page {
+    background: var(--color-surface);
+    gap: 0.55rem;
+    padding: 0.9rem 1.05rem calc(2rem + env(safe-area-inset-bottom));
+  }
+  .admin-list-page .admin-list {
+    gap: 0;
+    margin-inline: -1.05rem;
+    margin-top: 0.4rem;
+  }
+  .admin-list-page .admin-list-item {
+    background: var(--color-surface);
+    border: 0;
+    border-top: 1px solid var(--color-border);
+    border-radius: 0;
+    padding: 0.85rem 1.05rem;
+  }
+  .admin-list-page .admin-list-item:last-child { border-bottom: 1px solid var(--color-border); }
+  .admin-list-page .admin-list-item:active { background: var(--color-surface-2); transform: none; }
+
+  /* Dashboard: keep the tiles as tappable cards, but collapse each list
+     into one grouped card (iOS-style) instead of separate floating boxes. */
+  .dash2 .admin-list {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    gap: 0;
+    overflow: hidden;
+  }
+  .dash2 .admin-list-item {
+    background: transparent;
+    border: 0;
+    border-top: 1px solid var(--color-border);
+    border-radius: 0;
+    padding: 0.8rem 0.95rem;
+  }
+  .dash2 .admin-list-item:first-child { border-top: 0; }
+  .dash2 .admin-list-item:active { background: var(--color-surface-2); transform: none; }
+}
+
 /* Workspace: upload drop zone, clickable image buttons, lightbox */
 .sak-upload { display: flex; flex-direction: column; gap: 0.1rem; }
 .sak-upload strong { color: var(--color-primary); font-size: 0.95rem; }
