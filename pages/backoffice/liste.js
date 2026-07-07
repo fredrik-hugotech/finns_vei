@@ -60,14 +60,14 @@ export default function Liste() {
           {shown.map((c) => {
             const meta = reportStatusMeta(c.status);
             return (
-              <Link key={c.id} className="admin-list-item" href={`/?sak=${encodeURIComponent(c.id)}`}>
+              <Link key={c.id} className="admin-list-item" href={`/backoffice/sak/${encodeURIComponent(c.id)}`}>
                 <div className="admin-list-item__head">
                   <span className={`status-pill status-pill--${meta.key}`} dangerouslySetInnerHTML={{ __html: `${meta.icon}<span>${meta.label}</span>` }} />
                   <span className="admin-list-item__time">{timeAgo(c.created_at)}</span>
                 </div>
                 <strong className="admin-list-item__title">{c.category}</strong>
                 {c.description && <span className="admin-list-item__desc">{c.description}</span>}
-                <span className="admin-list-item__open">Vis på kart ›</span>
+                <span className="admin-list-item__open">Åpne sak ›</span>
               </Link>
             );
           })}

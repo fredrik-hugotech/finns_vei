@@ -28,12 +28,36 @@ export default async function handler(req, res) {
         const report = await getReportById(req.query.id);
         if (!report) return res.status(404).json({ error: 'Fant ikke saken' });
         const timeline = report.trello_card_id ? await getCaseTimeline(report.trello_card_id) : [];
+        const images = Array.isArray(report.image_urls)
+          ? report.image_urls
+          : (typeof report.image_urls === 'string' ? (() => { try { return JSON.parse(report.image_urls); } catch (_e) { return []; } })() : []);
         return res.status(200).json({
           id: report.id,
           status: report.status || null,
           trelloCardUrl: report.trello_card_id ? `https://trello.com/c/${report.trello_card_id}` : null,
           hasCard: Boolean(report.trello_card_id),
           timeline,
+          case: {
+            id: report.id,
+            category: report.category || 'Melding',
+            description: report.description || '',
+            status: report.status || null,
+            created_at: report.created_at || null,
+            lat: report.lat ?? null,
+            lng: report.lng ?? null,
+            reporter_type: report.reporter_type || null,
+            bike_route_type: report.bike_route_type || null,
+            public_status_note: report.public_status_note || null,
+            images: (images || []).map((im) => (im && im.url) ? im.url : im).filter(Boolean),
+            road_owner: report.road_owner || null,
+            road_authority: report.road_authority || null,
+            road_category: report.road_category || null,
+            speed_limit: report.speed_limit ?? null,
+            road_reference: report.road_reference || null,
+            contact_name: report.contact_name || null,
+            contact_email: report.contact_email || null,
+            contact_phone: report.contact_phone || null,
+          },
         });
       }
       const cases = await listReportsForBackoffice({ limit: 150 });

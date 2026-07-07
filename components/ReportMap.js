@@ -6,7 +6,6 @@ import { REPORT_STATUS_META, REPORT_STATUS_ORDER, reportStatusMeta } from '../li
 import { categoryGlyph } from '../lib/reportCategoryGlyphs';
 import { normalizeImageEntries } from '../lib/reportImages';
 import SupportSheet from './SupportSheet';
-import CaseAdminPanel from './CaseAdminPanel';
 import useSheetDrag from '../hooks/useSheetDrag';
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
@@ -1168,15 +1167,9 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
             <button type="button" className="sheet__handle" aria-label="Lukk" onClick={() => setCaseData(null)} {...caseSheetDrag.dragHandlers} />
             <div className="sheet-scroll case-sheet__scroll" dangerouslySetInnerHTML={{ __html: caseBodyHtml }} />
             {adminSecret && caseFeature ? (
-              <CaseAdminPanel
-                reportId={reportIdFromFeature(caseFeature)}
-                currentStatus={caseFeature.properties?.status}
-                lat={caseFeature.geometry?.coordinates?.[1]}
-                lng={caseFeature.geometry?.coordinates?.[0]}
-                accidents={caseAccidents}
-                radiusM={NEARBY_RADIUS_M}
-                onSaved={handleCaseAdminSaved}
-              />
+              <div className="sheet-footer case-sheet__footer">
+                <a className="big-button big-button--primary" href={`/backoffice/sak/${encodeURIComponent(reportIdFromFeature(caseFeature))}`}>Åpne saksbehandling</a>
+              </div>
             ) : (
               <div className="sheet-footer case-sheet__footer" dangerouslySetInnerHTML={{ __html: caseFooterHtml }} />
             )}
