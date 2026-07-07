@@ -135,7 +135,7 @@ export default function Sykle() {
               <Icon name="bike" size={42} strokeWidth={1.7} />
               <span>Registrer sykkeltur</span>
             </button>
-            <button type="button" className="kid-big kid-big--amber" onClick={openDanger}>
+            <button type="button" className="kid-big kid-big--outline" onClick={openDanger}>
               <Icon name="flag" size={40} strokeWidth={1.8} />
               <span>Meld farlig sted</span>
             </button>
