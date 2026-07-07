@@ -1,6 +1,7 @@
 import Head from 'next/head';
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import BackofficeHeader from '../../components/BackofficeHeader';
 import { clipAndSnapCells, clipPath } from '../../lib/geoPrivacy';
 
 // Real-ish Kristiansand sports venues (routing snaps to the nearest road anyway).
@@ -49,10 +50,9 @@ export default function SeedSpor() {
   }, [router.isReady, router.query.secret]);
 
   const load = useCallback(async () => {
-    if (!secret) return;
     try {
-      const response = await fetch('/api/backoffice/competitions', { headers: { 'x-backoffice-secret': secret } });
-      if (response.status === 403) { setStatus('Feil passord.'); return; }
+      const response = await fetch('/api/backoffice/competitions');
+      if (response.status === 403) { setStatus('Logg inn på /backoffice først.'); return; }
       const data = await response.json();
       const list = (data.competitions || []).filter((c) => c.active);
       setCompetitions(list);
@@ -61,7 +61,7 @@ export default function SeedSpor() {
     } catch (error) {
       setStatus('Kunne ikke hente konkurranser.');
     }
-  }, [secret]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
@@ -129,15 +129,10 @@ export default function SeedSpor() {
   return (
     <>
       <Head><title>Seed spor – backoffice</title><meta name="robots" content="noindex" /></Head>
+      <BackofficeHeader title="Demo-spor" />
       <main className="page admin-page">
         <h1>Generer demo-spor</h1>
         <p className="admin-help">Lager ekte, vei-følgende sykkelruter fra Kristiansand-nabolag til idrettsanlegg (via Mapbox i nettleseren) og legger dem inn som turer på valgt konkurranse. Kjør gjerne på «DEMO – Sykkelspor».</p>
-
-        <label className="admin-field">
-          <span>Backoffice-passord</span>
-          <input type="password" value={secret} onChange={(e) => setSecret(e.target.value)} placeholder="BACKOFFICE_SECRET" />
-        </label>
-        <button type="button" className="big-button big-button--secondary" onClick={load} disabled={!secret}>Hent konkurranser</button>
 
         {competitions.length > 0 && (
           <label className="admin-field">
