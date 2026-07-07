@@ -81,6 +81,28 @@ img {
   -webkit-user-drag: none;
 }
 
+/* Portrait only: when a phone is held landscape, cover the app and ask to
+   rotate. Desktops (tall landscape) are never affected. */
+.rotate-lock { display: none; }
+@media (orientation: landscape) and (max-height: 540px) {
+  .rotate-lock {
+    align-items: center;
+    background: var(--color-bg);
+    color: var(--color-primary);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    inset: 0;
+    justify-content: center;
+    padding: 1.5rem;
+    position: fixed;
+    text-align: center;
+    z-index: 9999;
+  }
+  .rotate-lock strong { font-family: var(--font-heading); font-size: 1.25rem; }
+  .rotate-lock span { color: var(--color-muted); font-size: 0.95rem; }
+}
+
 a {
   color: inherit;
 }
