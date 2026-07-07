@@ -198,6 +198,13 @@
   position: absolute;
 }
 
+/* The case card behaves like a maps-app bottom sheet, NOT a modal: the map
+   above it stays fully interactive (pan + pinch-zoom). Only the card itself
+   captures touches; there is no dimming backdrop over the map. */
+.case-sheet-layer { pointer-events: none; }
+.case-sheet-layer .sheet-backdrop { display: none; }
+.case-sheet-layer .case-sheet { pointer-events: auto; }
+
 .sheet {
   animation: sheet-up 0.26s cubic-bezier(0.2, 0.8, 0.2, 1);
   background: var(--color-surface);

@@ -540,6 +540,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   const [caseThread, setCaseThread] = useState(null);
   const [caseAccidents, setCaseAccidents] = useState(null);
   const [adminSecret, setAdminSecret] = useState(null);
+  const [sporOn, setSporOn] = useState(false);
   const caseSheetDrag = useSheetDrag(() => setCaseData(null));
   const hasMapboxToken = Boolean(process.env.NEXT_PUBLIC_MAPBOX_TOKEN);
 
@@ -770,6 +771,25 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         ? current.filter((type) => type !== layerType)
         : [...current, layerType]
     ));
+  };
+
+  // Admin-only "Sykkelspor" layer: the density left by competition rides.
+  // Reuses the backoffice competition-trips endpoint + the map's density draw.
+  const toggleSpor = async () => {
+    const map = mapRef.current;
+    if (!map) return;
+    const next = !sporOn;
+    setSporOn(next);
+    if (!next) { showCompetitionTrips(map, { type: 'FeatureCollection', features: [] }); return; }
+    try {
+      const list = await fetch('/api/backoffice/competition-trips').then((r) => (r.ok ? r.json() : null));
+      const comps = list?.competitions || [];
+      const pick = comps.find((c) => c.active) || comps[0];
+      if (!pick) { setMessage('Ingen sykkelspor ennå.'); setSporOn(false); return; }
+      const stats = await fetch(`/api/backoffice/competition-trips?id=${encodeURIComponent(pick.id)}`).then((r) => (r.ok ? r.json() : null));
+      if (stats?.geojson?.features?.length) showCompetitionTrips(map, stats.geojson);
+      else { setMessage('Ingen spor logget ennå.'); setSporOn(false); }
+    } catch (_e) { setMessage('Kunne ikke hente sykkelspor.'); setSporOn(false); }
   };
 
   // Open a case sheet straight from a feature (shared-link deep links + clicks).
@@ -1113,7 +1133,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           <span className="map-crosshair__dot" />
         </div>
       )}
-      {enableNvdbLayers && (
+      {(enableNvdbLayers || adminSecret) && (
         <div className="layer-control nvdb-toggle-card" aria-label="Kartlag">
           <strong>Kartlag</strong>
           {NVDB_LAYERS.map((layer) => (
@@ -1126,6 +1146,15 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
               {layer.label}
             </button>
           ))}
+          {adminSecret && (
+            <button
+              type="button"
+              className={sporOn ? 'nvdb-toggle nvdb-toggle--active nvdb-toggle--spor' : 'nvdb-toggle nvdb-toggle--spor'}
+              onClick={toggleSpor}
+            >
+              Sykkelspor
+            </button>
+          )}
         </div>
       )}
       {showReports && (
@@ -1181,7 +1210,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         </div>
       )}
       {caseData && (
-        <div className="sheet-layer case-sheet-layer" role="dialog" aria-modal="true" aria-label="Sak">
+        <div className="sheet-layer case-sheet-layer" role="dialog" aria-modal="false" aria-label="Sak">
           <div className="sheet-backdrop" onClick={() => setCaseData(null)} />
           <section className="sheet case-sheet" ref={caseSheetDrag.sheetRef}>
             <button type="button" className="sheet__handle" aria-label="Lukk" onClick={() => setCaseData(null)} {...caseSheetDrag.dragHandlers} />
