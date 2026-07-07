@@ -285,6 +285,50 @@
   z-index: 3;
 }
 
+/* Location confirmation banner at the top of the report sheet */
+.report-loc {
+  align-items: center;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  display: flex;
+  gap: 0.7rem;
+  padding: 0.5rem 0.6rem;
+}
+.report-loc__map {
+  border-radius: 10px;
+  flex: none;
+  height: 46px;
+  overflow: hidden;
+  width: 58px;
+}
+.report-loc__map img { display: block; height: 100%; object-fit: cover; width: 100%; }
+.report-loc__text { display: grid; gap: 0.1rem; min-width: 0; }
+.report-loc__label { color: var(--color-muted); font-size: 0.72rem; font-weight: 600; }
+.report-loc__place {
+  align-items: center;
+  color: var(--color-primary);
+  display: flex;
+  font-size: 0.95rem;
+  font-weight: 700;
+  gap: 0.3rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.report-loc__place svg { color: var(--color-primary); flex: none; }
+.report-loc__change {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  color: var(--color-primary);
+  flex: none;
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-left: auto;
+  padding: 0.34rem 0.8rem;
+}
+
 /* Filled, soft form fields inside the sheet */
 .sheet input,
 .sheet textarea {

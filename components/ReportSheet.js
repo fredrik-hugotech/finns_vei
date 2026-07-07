@@ -1,7 +1,23 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { REPORT_CATEGORIES, REPORTER_TYPES } from '../lib/config';
 import { categoryGlyph } from '../lib/reportCategoryGlyphs';
 import { REPORT_IMAGE_MAX_BYTES, REPORT_IMAGE_MAX_COUNT } from '../lib/reportImages';
+
+// Coordinates → a human place ("Marviksveien · Lund") so the reporter can
+// confirm they picked the right spot before sending.
+async function reverseGeocode(lat, lng, token) {
+  try {
+    const r = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${token}&language=no&limit=1&types=address,street,neighborhood,locality,place`);
+    if (!r.ok) return null;
+    const d = await r.json();
+    const f = (d.features || [])[0];
+    if (!f) return null;
+    const street = String(f.place_name || f.text || '').split(',')[0].trim();
+    const ctx = (f.context || []).find((x) => /^(neighborhood|locality|place)/.test(x.id || ''));
+    const parts = [street, ctx?.text].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i);
+    return parts.join(' · ') || null;
+  } catch (_e) { return null; }
+}
 
 const INITIAL_FORM = {
   category: REPORT_CATEGORIES[0],
@@ -22,11 +38,24 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
   const [status, setStatus] = useState({ type: 'idle', message: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [place, setPlace] = useState(null);
 
   const sheetRef = useRef(null);
   const drag = useRef({ y: 0, active: false, moved: false });
 
   const isAdult = reporterType === REPORTER_TYPES.ADULT;
+  const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+  const mapThumb = (mapboxToken && point && Number.isFinite(Number(point.lat)))
+    ? `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/pin-s+0b5d4d(${point.lng},${point.lat})/${point.lng},${point.lat},15,0/240x150@2x?access_token=${mapboxToken}`
+    : null;
+
+  useEffect(() => {
+    if (!mapboxToken || !point || !Number.isFinite(Number(point.lat))) return undefined;
+    let cancelled = false;
+    setPlace(null);
+    reverseGeocode(Number(point.lat), Number(point.lng), mapboxToken).then((p) => { if (!cancelled) setPlace(p); });
+    return () => { cancelled = true; };
+  }, [mapboxToken, point]);
 
   const updateField = (event) => {
     const { name, value } = event.target;
@@ -163,12 +192,6 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
           onClick={onHandleClick}
         />
 
-        {!submitted && (
-          <button type="button" className="sheet-change-location" onClick={() => { haptic(6); onChangeLocation?.(); }}>
-            Endre sted
-          </button>
-        )}
-
         {submitted ? (
           <div className="sheet-success">
             <div className="sheet-success__badge" aria-hidden="true">
@@ -191,6 +214,18 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
         ) : (
           <form className="sheet-form" onSubmit={submitReport}>
             <div className="sheet-scroll">
+              <div className="report-loc">
+                {mapThumb && <span className="report-loc__map"><img src={mapThumb} alt="Kart over valgt sted" /></span>}
+                <span className="report-loc__text">
+                  <span className="report-loc__label">Stedet du melder fra</span>
+                  <span className="report-loc__place">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round" /><circle cx="12" cy="10" r="2.4" stroke="currentColor" strokeWidth="1.9" /></svg>
+                    {place || 'Henter sted …'}
+                  </span>
+                </span>
+                <button type="button" className="report-loc__change" onClick={() => { haptic(6); onChangeLocation?.(); }}>Endre</button>
+              </div>
+
               <div className="segmented" role="tablist" aria-label="Hvem melder">
                 <button type="button" role="tab" aria-selected={!isAdult} className={!isAdult ? 'segmented__option segmented__option--active' : 'segmented__option'} onClick={() => selectReporter(REPORTER_TYPES.CHILD)}>Barn</button>
                 <button type="button" role="tab" aria-selected={isAdult} className={isAdult ? 'segmented__option segmented__option--active' : 'segmented__option'} onClick={() => selectReporter(REPORTER_TYPES.ADULT)}>Voksen</button>
