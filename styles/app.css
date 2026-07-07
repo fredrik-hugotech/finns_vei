@@ -1751,3 +1751,64 @@
   .kid-big-number { font-size: 2.6rem; }
   .fab-meld { font-size: 0.96rem; padding: 0 1.3rem; }
 }
+
+/* ----------------------------------------------------------------------
+   Staff dashboard (/backoffice when logged in)
+   ---------------------------------------------------------------------- */
+.dash2 { gap: 1.4rem; }
+.dash2__top { align-items: flex-start; display: flex; gap: 1rem; justify-content: space-between; }
+.dash2__top h1 { font-family: var(--font-heading); font-size: 1.5rem; margin: 0; }
+.dash2__sub { color: var(--color-muted); font-size: 0.9rem; margin: 0.2rem 0 0; }
+.dash2__logout { background: none; border: none; color: var(--color-muted); font-size: 0.9rem; padding: 0.3rem 0; text-decoration: underline; white-space: nowrap; }
+.dash2__pw { justify-self: start; }
+.dash2 section { display: grid; gap: 0.6rem; }
+.dash2__h2 { align-items: baseline; color: var(--color-text); display: flex; font-family: var(--font-heading); font-size: 1.05rem; gap: 0.5rem; margin: 0; }
+.dash2__hint { color: var(--color-muted); font-family: var(--font-body); font-size: 0.8rem; font-weight: 400; }
+
+.dash2__tiles { display: grid; gap: 0.6rem; grid-template-columns: repeat(2, 1fr); }
+@media (min-width: 560px) { .dash2__tiles { grid-template-columns: repeat(4, 1fr); } }
+.dash2-tile {
+  align-items: flex-start;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: 0.05rem;
+  padding: 0.75rem 0.85rem;
+  text-decoration: none;
+}
+.dash2-tile strong { font-family: var(--font-heading); font-size: 1.7rem; line-height: 1; }
+.dash2-tile span { font-size: 0.82rem; font-weight: 600; }
+.dash2-tile--ny { background: #f6ecda; color: #a9600d; }
+.dash2-tile--registrert { background: #efe6cf; color: #8a5a12; }
+.dash2-tile--startet { background: #e2e9fb; color: #1d4ed8; }
+.dash2-tile--fullfort { background: #dcefe2; color: #15803d; }
+
+.dash2__grid { display: grid; gap: 0.6rem; grid-template-columns: repeat(2, 1fr); }
+@media (min-width: 560px) { .dash2__grid { grid-template-columns: repeat(3, 1fr); } }
+.dash2-link {
+  align-items: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  display: flex;
+  font-weight: 650;
+  justify-content: center;
+  min-height: 56px;
+  text-decoration: none;
+}
+.dash2-link:active { transform: scale(0.99); }
+
+/* Saksliste status filter chips */
+.liste-filters { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.liste-filter {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  color: var(--color-muted);
+  font-size: 0.82rem;
+  font-weight: 650;
+  padding: 0.34rem 0.7rem;
+  text-decoration: none;
+}
+.liste-filter--on { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }

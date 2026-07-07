@@ -2,19 +2,25 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import Logo from '../../components/Logo';
+import { reportStatusMeta } from '../../lib/reportStatusMeta';
+import { REPORT_STATUS } from '../../lib/config';
 
 const FLAG = 'ff-admin-secret'; // client "logged in" flag; real auth is the httpOnly cookie
+const STATUSES = [REPORT_STATUS.NEW, REPORT_STATUS.REGISTERED, REPORT_STATUS.STARTED, REPORT_STATUS.DONE];
 
-const GREETINGS = [
-  'Velkommen tilbake. Hver sak du følger opp gjør veien litt tryggere for et barn.',
-  'Godt å se deg. Sammen bygger vi en tryggere og mer aktiv oppvekst.',
-  'Takk for innsatsen. Det dere gjør her teller – ett trygt veikryss om gangen.',
-  'Hei, og velkommen. Bak hver melding står et barn som fortjener en trygg skolevei.',
-  'Godt å ha deg på laget. Trygge veier skapes av folk som bryr seg.',
-];
-function pickGreeting() {
-  const d = new Date();
-  return GREETINGS[Math.abs(d.getMinutes() + d.getSeconds()) % GREETINGS.length];
+function greetingFor(name) {
+  const h = new Date().getHours();
+  const part = h < 10 ? 'God morgen' : h < 18 ? 'God dag' : 'God kveld';
+  return `${part}, ${name || 'Fairway'}`;
+}
+function timeAgo(value) {
+  if (!value) return '';
+  const diff = Date.now() - new Date(value).getTime();
+  const d = Math.floor(diff / 86400000);
+  if (d > 0) return `${d} d`;
+  const h = Math.floor(diff / 3600000);
+  if (h > 0) return `${h} t`;
+  return `${Math.max(1, Math.floor(diff / 60000))} min`;
 }
 
 export default function Backoffice() {
@@ -24,19 +30,14 @@ export default function Backoffice() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [boardUrl, setBoardUrl] = useState('');
-  const [greeting, setGreeting] = useState('');
   const [setupOpen, setSetupOpen] = useState(false);
 
   const loadSession = useCallback(async () => {
     try {
       const r = await fetch('/api/staff/me');
       if (r.ok) {
-        const d = await r.json();
-        setMe(d);
+        setMe(await r.json());
         try { window.localStorage.setItem(FLAG, 'session'); } catch (_e) { /* ignore */ }
-        setGreeting(pickGreeting());
-        fetch('/api/backoffice/session').then((s) => (s.ok ? s.json() : null)).then((s) => { if (s) setBoardUrl(s.trelloBoardUrl || ''); }).catch(() => {});
       } else {
         setMe(null);
         try { window.localStorage.removeItem(FLAG); } catch (_e) { /* ignore */ }
@@ -64,29 +65,15 @@ export default function Backoffice() {
     setMe(null);
   };
 
+  if (checked && me) return <Dashboard me={me} onLogout={logout} />;
+
   return (
     <>
       <Head><title>Finns Fairway – Innlogging</title><meta name="robots" content="noindex" /><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" /></Head>
       <main className="admin-login">
         <div className="admin-login__brand"><Logo size="md" /></div>
-
         {!checked ? (
           <div className="admin-login__card"><p className="admin-login__sub">Laster …</p></div>
-        ) : me ? (
-          <div className="admin-login__card">
-            <p className="admin-login__greeting">{greeting}</p>
-            <p className="admin-login__sub">Innlogget som {me.name || me.email}{me.role === 'superuser' ? ' · superbruker' : ''}</p>
-            <nav className="admin-menu">
-              <Link className="admin-menu__item" href="/">Se kart</Link>
-              <Link className="admin-menu__item" href="/backoffice/liste">Se liste</Link>
-              <Link className="admin-menu__item" href="/backoffice/tetthet">Sykkelspor</Link>
-              <Link className="admin-menu__item" href="/backoffice/konkurranser">Konkurranser</Link>
-              {me.role === 'superuser' && <Link className="admin-menu__item" href="/backoffice/brukere">Brukere</Link>}
-              {boardUrl && <a className="admin-menu__item" href={boardUrl} target="_blank" rel="noopener noreferrer">Åpne Trello</a>}
-            </nav>
-            <ChangePassword />
-            <button type="button" className="admin-login__logout" onClick={logout}>Logg ut</button>
-          </div>
         ) : (
           <>
             <form className="admin-login__card" onSubmit={login}>
@@ -101,6 +88,90 @@ export default function Backoffice() {
             {setupOpen && <FirstSetup onDone={loadSession} />}
           </>
         )}
+      </main>
+    </>
+  );
+}
+
+function Dashboard({ me, onLogout }) {
+  const [cases, setCases] = useState(null);
+  const [boardUrl, setBoardUrl] = useState('');
+
+  useEffect(() => {
+    fetch('/api/backoffice/cases').then((r) => (r.ok ? r.json() : null)).then((d) => {
+      if (d) { setCases(d.cases || []); setBoardUrl(d.trelloBoardUrl || ''); }
+    }).catch(() => setCases([]));
+  }, []);
+
+  const counts = STATUSES.reduce((acc, s) => { acc[s] = 0; return acc; }, {});
+  (cases || []).forEach((c) => { if (counts[c.status] !== undefined) counts[c.status] += 1; else counts[c.status] = (counts[c.status] || 0) + 1; });
+  const minDag = (cases || [])
+    .filter((c) => c.status === REPORT_STATUS.NEW)
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+    .slice(0, 6);
+
+  return (
+    <>
+      <Head><title>Dashbord – Finns Fairway</title><meta name="robots" content="noindex" /></Head>
+      <main className="page admin-page dash2">
+        <header className="dash2__top">
+          <div>
+            <h1>{greetingFor(me.name)}</h1>
+            <p className="dash2__sub">Innlogget som {me.email}{me.role === 'superuser' ? ' · superbruker' : ''}</p>
+          </div>
+          <button type="button" className="dash2__logout" onClick={onLogout}>Logg ut</button>
+        </header>
+
+        <section>
+          <h2 className="dash2__h2">Status</h2>
+          <div className="dash2__tiles">
+            {STATUSES.map((s) => {
+              const meta = reportStatusMeta(s);
+              return (
+                <Link key={s} href={`/backoffice/liste?status=${encodeURIComponent(s)}`} className={`dash2-tile dash2-tile--${meta.key}`}>
+                  <strong>{cases === null ? '–' : (counts[s] || 0)}</strong>
+                  <span>{s}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+
+        <section>
+          <h2 className="dash2__h2">Min dag <span className="dash2__hint">nye saker som venter</span></h2>
+          {cases === null && <p className="comp-muted">Laster …</p>}
+          {cases && minDag.length === 0 && <p className="comp-muted">Ingen nye saker akkurat nå. Fint jobbet.</p>}
+          <div className="admin-list">
+            {minDag.map((c) => {
+              const meta = reportStatusMeta(c.status);
+              return (
+                <Link key={c.id} href={`/?sak=${encodeURIComponent(c.id)}`} className="admin-list-item">
+                  <div className="admin-list-item__head">
+                    <span className={`status-pill status-pill--${meta.key}`} dangerouslySetInnerHTML={{ __html: `${meta.icon}<span>${meta.label}</span>` }} />
+                    <span className="admin-list-item__time">{timeAgo(c.created_at)} siden</span>
+                  </div>
+                  <strong className="admin-list-item__title">{c.category}</strong>
+                  {c.description && <span className="admin-list-item__desc">{c.description}</span>}
+                  <span className="admin-list-item__open">Åpne på kart ›</span>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+
+        <section>
+          <h2 className="dash2__h2">Snarveier</h2>
+          <div className="dash2__grid">
+            <Link className="dash2-link" href="/">Kart</Link>
+            <Link className="dash2-link" href="/backoffice/liste">Alle saker</Link>
+            <Link className="dash2-link" href="/backoffice/tetthet">Sykkelspor</Link>
+            <Link className="dash2-link" href="/backoffice/konkurranser">Konkurranser</Link>
+            {me.role === 'superuser' && <Link className="dash2-link" href="/backoffice/brukere">Brukere</Link>}
+            {boardUrl && <a className="dash2-link" href={boardUrl} target="_blank" rel="noopener noreferrer">Trello ↗</a>}
+          </div>
+        </section>
+
+        <ChangePassword />
       </main>
     </>
   );
@@ -124,9 +195,9 @@ function ChangePassword() {
     } catch (_e) { setMsg('Noe gikk galt.'); } finally { setBusy(false); }
   };
 
-  if (!open) return <button type="button" className="admin-login__logout" onClick={() => setOpen(true)}>Bytt passord</button>;
+  if (!open) return <button type="button" className="dash2__logout dash2__pw" onClick={() => setOpen(true)}>Bytt passord</button>;
   return (
-    <form onSubmit={submit} style={{ display: 'grid', gap: '0.5rem' }}>
+    <form onSubmit={submit} className="admin-section" style={{ display: 'grid', gap: '0.55rem', maxWidth: 360 }}>
       <input type="password" className="admin-login__input" value={cur} onChange={(e) => setCur(e.target.value)} placeholder="Nåværende passord" autoComplete="current-password" />
       <input type="password" className="admin-login__input" value={next} onChange={(e) => setNext(e.target.value)} placeholder="Nytt passord (minst 8 tegn)" autoComplete="new-password" />
       {msg && <p className="admin-login__sub">{msg}</p>}
