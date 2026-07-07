@@ -1956,8 +1956,15 @@
 .sak-hero__topline { align-items: center; display: flex; gap: 0.7rem; justify-content: space-between; }
 .sak-hero__when { color: var(--color-muted); font-size: 0.78rem; white-space: nowrap; }
 .sak-hero h1 { font-family: var(--font-heading); font-size: 1.5rem; line-height: 1.15; margin: 0; }
-.sak-hero__meta { color: var(--color-muted); font-size: 0.86rem; margin: 0; }
-.sak-hero__facts { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.2rem; }
+.sak-hero__place { align-items: center; color: var(--color-primary); display: flex; font-size: 0.98rem; font-weight: 700; gap: 0.35rem; margin: 0.1rem 0 0; }
+.sak-hero__pin { color: var(--color-primary); flex: none; }
+.sak-hero__meta { color: var(--color-muted); font-size: 0.84rem; margin: 0; }
+.sak-hero__report { border-top: 1px solid var(--color-border); margin-top: 0.15rem; padding-top: 0.55rem; }
+.sak-hero__desc { color: var(--color-text); font-size: 0.96rem; line-height: 1.5; margin: 0; white-space: pre-wrap; }
+.sak-hero__desc--clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; }
+.sak-hero__more { background: none; border: none; color: var(--color-primary); font-size: 0.82rem; font-weight: 700; margin-top: 0.3rem; padding: 0; text-decoration: underline; }
+.sak-hero__images { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); margin-top: 0.1rem; }
+.sak-hero__facts { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.3rem; }
 .sak-fact {
   background: var(--color-surface-2);
   border: 1px solid var(--color-border);

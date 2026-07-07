@@ -22,6 +22,23 @@ function distMeters(lng1, lat1, lng2, lat2) {
   const h = Math.sin(dLa / 2) ** 2 + Math.cos(tr(lat1)) * Math.cos(tr(lat2)) * Math.sin(dLo / 2) ** 2;
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
 }
+// Turn coordinates into a human place ("Østerveien · Lund") so the case says
+// where it was reported, not just its category.
+async function reverseGeocode(lat, lng, token) {
+  try {
+    const r = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${token}&language=no&limit=1&types=address,street,neighborhood,locality,place`);
+    if (!r.ok) return null;
+    const d = await r.json();
+    const f = (d.features || [])[0];
+    if (!f) return null;
+    const street = String(f.place_name || f.text || '').split(',')[0].trim();
+    const ctx = (f.context || []).find((x) => /^(neighborhood|locality|place)/.test(x.id || ''));
+    const area = ctx?.text;
+    const parts = [street, area].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i);
+    return parts.join(' · ') || null;
+  } catch (_e) { return null; }
+}
+
 async function fetchAccidents(lat, lng, radiusM = 50) {
   const dLat = (radiusM * 3) / 111320;
   const dLng = (radiusM * 3) / (111320 * Math.cos((lat * Math.PI) / 180));
@@ -57,6 +74,8 @@ export default function SakDetalj() {
   const [lightbox, setLightbox] = useState(null);
   const [dragOver, setDragOver] = useState(false);
   const [siblings, setSiblings] = useState(null);
+  const [place, setPlace] = useState(null);
+  const [descOpen, setDescOpen] = useState(false);
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
   const load = useCallback(async () => {
@@ -120,6 +139,13 @@ export default function SakDetalj() {
       .catch(() => { if (!cancelled) setAccidents('error'); });
     return () => { cancelled = true; };
   }, [c]);
+
+  useEffect(() => {
+    if (!c || !mapboxToken || !Number.isFinite(Number(c.lat)) || !Number.isFinite(Number(c.lng))) return undefined;
+    let cancelled = false;
+    reverseGeocode(Number(c.lat), Number(c.lng), mapboxToken).then((p) => { if (!cancelled) setPlace(p); });
+    return () => { cancelled = true; };
+  }, [c, mapboxToken]);
 
   const changeStatus = async (next) => {
     setStatus(next);
@@ -216,7 +242,27 @@ export default function SakDetalj() {
                 <span className="sak-hero__when">Meldt {fmtDate(c.created_at)}</span>
               </div>
               <h1>{c.category}</h1>
+              <p className="sak-hero__place">
+                <svg className="sak-hero__pin" width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+                  <circle cx="12" cy="10" r="2.4" stroke="currentColor" strokeWidth="1.8" />
+                </svg>
+                <span>{place || (Number.isFinite(Number(c.lat)) ? 'Henter sted …' : 'Sted ukjent')}</span>
+              </p>
               <p className="sak-hero__meta">{c.reporter_type === 'voksen' ? 'Meldt av voksen' : 'Meldt av barn'}{c.bike_route_type ? ` · ${c.bike_route_type === 'skole' ? 'skolerute' : 'fritidsrute'}` : ''}</p>
+              {c.description && (
+                <div className="sak-hero__report">
+                  <p className={descOpen ? 'sak-hero__desc' : 'sak-hero__desc sak-hero__desc--clamp'}>{c.description}</p>
+                  {c.description.length > 150 && (
+                    <button type="button" className="sak-hero__more" onClick={() => setDescOpen((v) => !v)}>{descOpen ? 'Vis mindre' : 'Vis mer'}</button>
+                  )}
+                </div>
+              )}
+              {c.images?.length > 0 && (
+                <div className="sak-images sak-hero__images">
+                  {c.images.map((src, i) => <button type="button" key={i} onClick={() => setLightbox(src)}><img src={src} alt="" /></button>)}
+                </div>
+              )}
               <div className="sak-hero__facts">
                 {(ownerLabel(c.road_owner) || c.speed_limit) && (
                   <span className="sak-fact">{[ownerLabel(c.road_owner), c.speed_limit ? `${c.speed_limit} km/t` : null].filter(Boolean).join(' · ')}</span>
@@ -229,16 +275,6 @@ export default function SakDetalj() {
 
             <div className="sak-grid">
               <div className="sak-main">
-                <section className="admin-section sak-s1">
-                  <h2>Melding</h2>
-                  <p className="sak-desc">{c.description || 'Ingen beskrivelse.'}</p>
-                  {c.images?.length > 0 && (
-                    <div className="sak-images">
-                      {c.images.map((src, i) => <button type="button" key={i} onClick={() => setLightbox(src)}><img src={src} alt="" /></button>)}
-                    </div>
-                  )}
-                </section>
-
                 <section className="admin-section sak-support">
                   <div className="sak-support__head">
                     <h2>Innbyggerstemmer</h2>
