@@ -1139,9 +1139,9 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     <div className="map-wrap">
       <div ref={containerRef} className={className} />
       {showReports && adminSecret && (
-        <div className="admin-mode-badge">
+        <div className="admin-mode-badge" aria-label="Admin">
           <span className="admin-mode-badge__dot" aria-hidden="true" />
-          <span>Innlogget som admin</span>
+          <a className="admin-mode-badge__link" href="/backoffice">Dashbord</a>
           <button type="button" className="admin-mode-badge__logout" onClick={logoutAdmin}>Logg ut</button>
         </div>
       )}
