@@ -8,49 +8,40 @@ const ReportMap = dynamic(() => import('../../components/ReportMap'), {
   loading: () => <div className="map-missing">Laster kart …</div>,
 });
 
-const SECRET_KEY = 'ff-admin-secret';
 
 // Internal-only admin map: the tracks (density) left by competition rides.
 export default function Sykkelspor() {
   const [mapApi, setMapApi] = useState(null);
-  const [secret, setSecret] = useState('');
   const [competitions, setCompetitions] = useState([]);
   const [competitionId, setCompetitionId] = useState('');
   const [stats, setStats] = useState(null);
   const [status, setStatus] = useState('');
 
-  useEffect(() => {
-    const stored = typeof window !== 'undefined' ? window.localStorage.getItem(SECRET_KEY) : '';
-    if (stored) setSecret(stored);
-    else setStatus('not-authed');
-  }, []);
-
   const load = useCallback(async (id) => {
-    if (!id || !secret) return;
+    if (!id) return;
     setStatus('Henter …');
     try {
-      const r = await fetch(`/api/backoffice/competition-trips?id=${encodeURIComponent(id)}`, { headers: { 'x-backoffice-secret': secret } });
+      const r = await fetch(`/api/backoffice/competition-trips?id=${encodeURIComponent(id)}`);
+      if (r.status === 403) { setStatus('not-authed'); return; }
       if (!r.ok) { setStatus('Kunne ikke hente data.'); return; }
       const d = await r.json();
       setStats(d);
       setStatus('');
     } catch (_e) { setStatus('Kunne ikke hente data.'); }
-  }, [secret]);
+  }, []);
 
-  // Load the competition list once we have a password.
+  // Cookie session authorises admin requests — load the competition list on mount.
   useEffect(() => {
-    if (!secret) return;
-    fetch('/api/backoffice/competition-trips', { headers: { 'x-backoffice-secret': secret } })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('feil'))))
+    fetch('/api/backoffice/competition-trips')
+      .then((r) => (r.status === 403 ? Promise.reject(new Error('not-authed')) : (r.ok ? r.json() : Promise.reject(new Error('feil')))))
       .then((d) => {
         const list = d.competitions || [];
         setCompetitions(list);
-        // Prefer a competition that actually has tracks (DEMO often does).
         const first = (list.find((c) => c.active) || list[0])?.id || '';
         if (first) { setCompetitionId(first); load(first); }
       })
-      .catch(() => setStatus('Feil passord eller utilgjengelig.'));
-  }, [secret, load]);
+      .catch((e) => setStatus(e.message === 'not-authed' ? 'not-authed' : 'Utilgjengelig.'));
+  }, [load]);
 
   // Draw whenever BOTH the map and the data are ready (order-independent).
   useEffect(() => {

@@ -31,20 +31,16 @@ export default function KonkurranserAdmin() {
     } catch (_e) { /* ignore */ }
   }, [router.isReady, router.query.secret]);
 
-  const authHeaders = useCallback(() => ({
-    'Content-Type': 'application/json',
-    'x-backoffice-secret': secret,
-  }), [secret]);
+  // Cookie session authorises admin requests; no manual password needed.
+  const authHeaders = useCallback(() => ({ 'Content-Type': 'application/json' }), []);
 
   const load = useCallback(async () => {
-    if (!secret) return;
     setLoading(true);
     setStatus('');
     try {
       const response = await fetch('/api/backoffice/competitions', { headers: authHeaders() });
       if (response.status === 403) {
-        const payload = await response.json().catch(() => ({}));
-        setStatus(payload.error || 'Feil passord.');
+        setStatus('Logg inn på /backoffice først.');
         setCompetitions([]);
         return;
       }
@@ -126,18 +122,6 @@ export default function KonkurranserAdmin() {
       <BackofficeHeader title="Konkurranser" />
       <main className="page admin-page">
         <h1>Konkurranser</h1>
-
-        {!secret && (
-          <>
-            <label className="admin-field">
-              <span>Passord</span>
-              <input type="password" value={secret} onChange={(event) => setSecret(event.target.value)} placeholder="Passord" />
-            </label>
-            <button type="button" className="big-button big-button--secondary" onClick={load} disabled={!secret || loading}>
-              {loading ? 'Laster …' : 'Hent konkurranser'}
-            </button>
-          </>
-        )}
 
         {status && <div className="admin-status">{status}</div>}
 
