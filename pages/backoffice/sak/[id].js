@@ -93,6 +93,7 @@ export default function SakDetalj() {
 
   const c = data?.case;
   const support = data?.support || { count: 0, voices: [], facets: [] };
+  const todayStr = new Date().toISOString().slice(0, 10);
   const meta = useMemo(() => reportStatusMeta(status || c?.status), [status, c]);
   const idx = siblings ? siblings.indexOf(String(id)) : -1;
   const prevId = idx > 0 ? siblings[idx - 1] : null;
@@ -209,10 +210,21 @@ export default function SakDetalj() {
 
         {c && (
           <>
-            <header className="sak-head">
-              <span className={`status-pill status-pill--${meta.key}`} dangerouslySetInnerHTML={{ __html: `${meta.icon}<span>${meta.label}</span>` }} />
+            <header className="sak-hero">
+              <div className="sak-hero__topline">
+                <span className={`status-pill status-pill--${meta.key}`} dangerouslySetInnerHTML={{ __html: `${meta.icon}<span>${meta.label}</span>` }} />
+                <span className="sak-hero__when">Meldt {fmtDate(c.created_at)}</span>
+              </div>
               <h1>{c.category}</h1>
-              <p className="sak-head__meta">Meldt {fmtDate(c.created_at)} · {c.reporter_type === 'voksen' ? 'voksen' : 'barn'}{c.bike_route_type ? ` · ${c.bike_route_type === 'skole' ? 'skolerute' : 'fritidsrute'}` : ''}</p>
+              <p className="sak-hero__meta">{c.reporter_type === 'voksen' ? 'Meldt av voksen' : 'Meldt av barn'}{c.bike_route_type ? ` · ${c.bike_route_type === 'skole' ? 'skolerute' : 'fritidsrute'}` : ''}</p>
+              <div className="sak-hero__facts">
+                {(ownerLabel(c.road_owner) || c.speed_limit) && (
+                  <span className="sak-fact">{[ownerLabel(c.road_owner), c.speed_limit ? `${c.speed_limit} km/t` : null].filter(Boolean).join(' · ')}</span>
+                )}
+                <span className={support.count > 0 ? 'sak-fact sak-fact--support' : 'sak-fact'}>♥ {support.count} støtte{support.count === 1 ? '' : 'r'}</span>
+                {dueDate && <span className={String(dueDate) < todayStr && status !== REPORT_STATUS.DONE ? 'sak-fact sak-fact--over' : 'sak-fact'}>Frist {new Date(dueDate).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })}</span>}
+                <span className="sak-fact">{assignee ? `Ansvarlig: ${assignee.split('@')[0]}` : 'Uten ansvarlig'}</span>
+              </div>
             </header>
 
             <div className="sak-grid">
@@ -388,13 +400,14 @@ export default function SakDetalj() {
                   </section>
                 )}
 
-                {data.trelloCardUrl && (
-                  <section className="admin-section">
-                    <a className="big-button big-button--secondary" href={data.trelloCardUrl} target="_blank" rel="noopener noreferrer">Åpne i Trello ↗</a>
-                  </section>
-                )}
               </aside>
             </div>
+
+            {data.trelloCardUrl && (
+              <footer className="sak-footer">
+                <a href={data.trelloCardUrl} target="_blank" rel="noopener noreferrer">Åpne kortet i Trello ↗</a>
+              </footer>
+            )}
           </>
         )}
       </main>
