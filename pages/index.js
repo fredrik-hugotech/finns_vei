@@ -95,9 +95,9 @@ export default function Home() {
     return token;
   };
 
-  const startTrip = ({ competition, club, helmet, routeType }) => {
+  const startTrip = ({ competition, club, helmet, routeType, mode }) => {
     haptic(12);
-    setTripContext({ competition, club, helmet, routeType: routeType || 'fritid' });
+    setTripContext({ competition, club, helmet, routeType: routeType || 'fritid', mode: mode || 'sykkel' });
     setShowCompetitions(false);
     mapApiRef.current?.clearCompetitionTrips?.();
     setMode('trip-track');
@@ -116,6 +116,7 @@ export default function Home() {
           club,
           helmet,
           routeType,
+          mode: tripContext.mode || 'sykkel',
           distanceM,
           durationS,
           cells,

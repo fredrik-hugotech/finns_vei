@@ -541,6 +541,9 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   const [caseAccidents, setCaseAccidents] = useState(null);
   const [adminSecret, setAdminSecret] = useState(null);
   const [sporOn, setSporOn] = useState(false);
+  const [sporComps, setSporComps] = useState([]);
+  const [sporCompId, setSporCompId] = useState('');
+  const [sporMode, setSporMode] = useState('samlet'); // samlet | sykkel | gange
   const caseSheetDrag = useSheetDrag(() => setCaseData(null));
   const hasMapboxToken = Boolean(process.env.NEXT_PUBLIC_MAPBOX_TOKEN);
 
@@ -775,6 +778,18 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
 
   // Admin-only "Sykkelspor" layer: the density left by competition rides.
   // Reuses the backoffice competition-trips endpoint + the map's density draw.
+  // Admins pick which competition and whether to show all / cycling / walking.
+  const drawSpor = async (id, mode) => {
+    const map = mapRef.current;
+    if (!map || !id) return;
+    const q = mode && mode !== 'samlet' ? `&mode=${encodeURIComponent(mode)}` : '';
+    try {
+      const stats = await fetch(`/api/backoffice/competition-trips?id=${encodeURIComponent(id)}${q}`).then((r) => (r.ok ? r.json() : null));
+      showCompetitionTrips(map, stats?.geojson || { type: 'FeatureCollection', features: [] });
+      if (!stats?.geojson?.features?.length) setMessage(mode === 'gange' ? 'Ingen gå-turer logget ennå.' : (mode === 'sykkel' ? 'Ingen sykkelturer logget ennå.' : 'Ingen spor logget ennå.'));
+    } catch (_e) { setMessage('Kunne ikke hente sykkelspor.'); }
+  };
+
   const toggleSpor = async () => {
     const map = mapRef.current;
     if (!map) return;
@@ -782,15 +797,21 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     setSporOn(next);
     if (!next) { showCompetitionTrips(map, { type: 'FeatureCollection', features: [] }); return; }
     try {
-      const list = await fetch('/api/backoffice/competition-trips').then((r) => (r.ok ? r.json() : null));
-      const comps = list?.competitions || [];
-      const pick = comps.find((c) => c.active) || comps[0];
-      if (!pick) { setMessage('Ingen sykkelspor ennå.'); setSporOn(false); return; }
-      const stats = await fetch(`/api/backoffice/competition-trips?id=${encodeURIComponent(pick.id)}`).then((r) => (r.ok ? r.json() : null));
-      if (stats?.geojson?.features?.length) showCompetitionTrips(map, stats.geojson);
-      else { setMessage('Ingen spor logget ennå.'); setSporOn(false); }
+      let comps = sporComps;
+      if (!comps.length) {
+        const list = await fetch('/api/backoffice/competition-trips').then((r) => (r.ok ? r.json() : null));
+        comps = list?.competitions || [];
+        setSporComps(comps);
+      }
+      if (!comps.length) { setMessage('Ingen konkurranser ennå.'); setSporOn(false); return; }
+      const pick = comps.find((c) => c.id === sporCompId) || comps.find((c) => c.active) || comps[0];
+      setSporCompId(pick.id);
+      await drawSpor(pick.id, sporMode);
     } catch (_e) { setMessage('Kunne ikke hente sykkelspor.'); setSporOn(false); }
   };
+
+  const changeSporComp = (id) => { setSporCompId(id); drawSpor(id, sporMode); };
+  const changeSporMode = (m) => { setSporMode(m); if (sporCompId) drawSpor(sporCompId, m); };
 
   // Open a case sheet straight from a feature (shared-link deep links + clicks).
   const openReportCase = useCallback((feature) => {
@@ -1154,6 +1175,25 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
             >
               Sykkelspor
             </button>
+          )}
+          {adminSecret && sporOn && sporComps.length > 0 && (
+            <>
+              <select className="spor-select" value={sporCompId} onChange={(e) => changeSporComp(e.target.value)} aria-label="Velg konkurranse">
+                {sporComps.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+              <div className="spor-modes" role="group" aria-label="Transportmåte">
+                {[['samlet', 'Samlet'], ['sykkel', 'Sykle'], ['gange', 'Gå']].map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={sporMode === value ? 'spor-mode spor-mode--on' : 'spor-mode'}
+                    onClick={() => changeSporMode(value)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </>
           )}
         </div>
       )}

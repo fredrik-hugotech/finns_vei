@@ -22,7 +22,8 @@ export default async function handler(req, res) {
       const competitions = await listCompetitions({ activeOnly: false });
       return res.status(200).json({ competitions });
     }
-    const stats = await getCompetitionStats(id);
+    const mode = typeof req.query.mode === 'string' ? req.query.mode : null;
+    const stats = await getCompetitionStats(id, { mode });
     if (!stats) return res.status(404).json({ error: 'Fant ikke konkurransen' });
     return res.status(200).json(stats);
   } catch (error) {

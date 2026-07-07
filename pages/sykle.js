@@ -28,6 +28,7 @@ export default function Sykle() {
   const [view, setView] = useState('hub'); // hub | setup | tracking | done | danger | danger-done
   const [competition, setCompetition] = useState(null);
   const [routeType, setRouteType] = useState('fritid');
+  const [mode, setMode] = useState('sykkel'); // sykkel | gange
   const [club, setClub] = useState('');
   const [helmet, setHelmet] = useState(true);
   const [result, setResult] = useState(null);
@@ -67,7 +68,7 @@ export default function Sykle() {
         await fetch('/api/bike-trips', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ competitionId: competition.id, club, helmet, routeType, distanceM, durationS, cells, path, tripToken: tripToken() }),
+          body: JSON.stringify({ competitionId: competition.id, club, helmet, routeType, mode, distanceM, durationS, cells, path, tripToken: tripToken() }),
         });
       }
     } catch (_e) { /* best-effort */ }
@@ -77,7 +78,7 @@ export default function Sykle() {
   };
 
   const resetToHub = () => {
-    setView('hub'); setResult(null); setClub(competition?.clubs?.length === 1 ? competition.clubs[0].name : ''); setRouteType('fritid'); setHelmet(true);
+    setView('hub'); setResult(null); setClub(competition?.clubs?.length === 1 ? competition.clubs[0].name : ''); setRouteType('fritid'); setMode('sykkel'); setHelmet(true);
   };
 
   // --- Danger reporting (kids) ---
@@ -145,7 +146,12 @@ export default function Sykle() {
         {view === 'setup' && (
           <section className="kid-screen">
             <button type="button" className="kid-back" onClick={() => setView('hub')}>‹ Tilbake</button>
-            <h1 className="kid-title">Klar til å sykle?</h1>
+            <h1 className="kid-title">Klar for tur?</h1>
+
+            <div className="kid-choice">
+              <button type="button" className={mode === 'sykkel' ? 'kid-pick kid-pick--on' : 'kid-pick'} onClick={() => { haptic(6); setMode('sykkel'); }}><Icon name="bike" size={26} /><span>Sykle</span></button>
+              <button type="button" className={mode === 'gange' ? 'kid-pick kid-pick--on' : 'kid-pick'} onClick={() => { haptic(6); setMode('gange'); }}><Icon name="activity" size={26} /><span>Gå</span></button>
+            </div>
 
             <div className="kid-choice">
               <button type="button" className={routeType === 'fritid' ? 'kid-pick kid-pick--on' : 'kid-pick'} onClick={() => { haptic(6); setRouteType('fritid'); }}><Icon name="activity" size={26} /><span>Fritid</span></button>
