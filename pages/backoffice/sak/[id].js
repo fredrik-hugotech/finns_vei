@@ -7,6 +7,7 @@ import { REPORT_STATUS } from '../../../lib/config';
 import BackofficeHeader from '../../../components/BackofficeHeader';
 
 const STATUSES = [REPORT_STATUS.NEW, REPORT_STATUS.REGISTERED, REPORT_STATUS.STARTED, REPORT_STATUS.DONE];
+const ACT_LABEL = { created: 'Sak opprettet', voice: 'Innbyggerstemme', public: 'Offentlig oppdatering', internal: 'Internt notat' };
 
 function fmtDate(value) {
   if (!value) return '';
@@ -114,6 +115,16 @@ export default function SakDetalj() {
   const support = data?.support || { count: 0, voices: [], facets: [] };
   const todayStr = new Date().toISOString().slice(0, 10);
   const meta = useMemo(() => reportStatusMeta(status || c?.status), [status, c]);
+
+  // One chronological activity feed — the way ticket tools show a case:
+  // creation, citizen voices, public updates and internal notes together.
+  const activity = useMemo(() => {
+    if (!c) return [];
+    const items = [{ type: 'created', at: c.created_at }];
+    for (const v of (support.voices || [])) items.push({ type: 'voice', at: v.created_at, text: v.note, tag: v.category });
+    for (const t of (data?.timeline || [])) items.push({ type: t.source === 'internal' ? 'internal' : 'public', at: t.created_at, text: t.note });
+    return items.sort((a, b) => new Date(a.at || 0) - new Date(b.at || 0));
+  }, [c, support.voices, data?.timeline]);
   const idx = siblings ? siblings.indexOf(String(id)) : -1;
   const prevId = idx > 0 ? siblings[idx - 1] : null;
   const nextId = idx >= 0 && siblings && idx < siblings.length - 1 ? siblings[idx + 1] : null;
@@ -263,181 +274,158 @@ export default function SakDetalj() {
                   {c.images.map((src, i) => <button type="button" key={i} onClick={() => setLightbox(src)}><img src={src} alt="" /></button>)}
                 </div>
               )}
-              <div className="sak-hero__facts">
-                {(ownerLabel(c.road_owner) || c.speed_limit) && (
-                  <span className="sak-fact">{[ownerLabel(c.road_owner), c.speed_limit ? `${c.speed_limit} km/t` : null].filter(Boolean).join(' · ')}</span>
-                )}
-                <span className={support.count > 0 ? 'sak-fact sak-fact--support' : 'sak-fact'}>♥ {support.count} støtte{support.count === 1 ? '' : 'r'}</span>
-                {dueDate && <span className={String(dueDate) < todayStr && status !== REPORT_STATUS.DONE ? 'sak-fact sak-fact--over' : 'sak-fact'}>Frist {new Date(dueDate).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })}</span>}
-                <span className="sak-fact">{assignee ? `Ansvarlig: ${assignee.split('@')[0]}` : 'Uten ansvarlig'}</span>
-              </div>
             </header>
 
-            <div className="sak-grid">
-              <div className="sak-main">
-                <section className="admin-section sak-support">
-                  <div className="sak-support__head">
-                    <h2>Innbyggerstemmer</h2>
-                    <span className="sak-support__count" title="Antall som støtter saken">
-                      {support.count} støtte{support.count === 1 ? '' : 'r'}
-                    </span>
+            <section className="admin-section tkt-detail">
+              <h2>Detaljer</h2>
+              <div className="tkt-props">
+                <label className="tkt-prop">
+                  <span className="tkt-prop__k">Status</span>
+                  <select className="tkt-prop__ctrl" value={status} onChange={(e) => changeStatus(e.target.value)}>
+                    {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </label>
+                <label className="tkt-prop">
+                  <span className="tkt-prop__k">Ansvarlig</span>
+                  <select className="tkt-prop__ctrl" value={assignee || ''} onChange={(e) => changeAssignee(e.target.value)}>
+                    <option value="">Ingen</option>
+                    {staffList.map((s) => <option key={s.email} value={s.email}>{s.name || s.email}</option>)}
+                  </select>
+                </label>
+                <label className="tkt-prop">
+                  <span className="tkt-prop__k">Frist</span>
+                  <input type="date" className={dueDate && String(dueDate) < todayStr && status !== REPORT_STATUS.DONE ? 'tkt-prop__ctrl tkt-prop__ctrl--over' : 'tkt-prop__ctrl'} value={dueDate} onChange={(e) => changeDue(e.target.value)} />
+                </label>
+                <div className="tkt-prop">
+                  <span className="tkt-prop__k">Støtte</span>
+                  <span className="tkt-prop__v tkt-prop__v--support">♥ {support.count} innbygger{support.count === 1 ? '' : 'e'}</span>
+                </div>
+                <div className="tkt-prop">
+                  <span className="tkt-prop__k">Melder</span>
+                  <span className="tkt-prop__v">{c.reporter_type === 'voksen' ? 'Voksen' : 'Barn'}{c.bike_route_type ? ` · ${c.bike_route_type === 'skole' ? 'skolerute' : 'fritidsrute'}` : ''}</span>
+                </div>
+                {(ownerLabel(c.road_owner) || c.speed_limit) && (
+                  <div className="tkt-prop">
+                    <span className="tkt-prop__k">Vei</span>
+                    <span className="tkt-prop__v">{[ownerLabel(c.road_owner), c.speed_limit ? `${c.speed_limit} km/t` : null].filter(Boolean).join(' · ')}</span>
                   </div>
-                  {support.facets.length > 0 && (
-                    <div className="sak-support__facets">
-                      {support.facets.map((f) => (
-                        <span key={f.category} className="sak-support__facet">{f.category}<b>{f.count}</b></span>
-                      ))}
-                    </div>
-                  )}
-                  {support.voices.length > 0 ? (
-                    <ul className="sak-voices">
-                      {support.voices.map((v, i) => (
-                        <li key={i} className="sak-voice">
-                          <p className="sak-voice__text">«{v.note}»</p>
-                          <div className="sak-voice__meta">
-                            {v.category && <span className="sak-voice__cat">{v.category}</span>}
-                            {v.created_at && <span className="sak-voice__time">{fmtDate(v.created_at)}</span>}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="sak-support__empty">
-                      {support.count > 0
-                        ? `${support.count} innbygger${support.count === 1 ? '' : 'e'} har støttet saken, men ingen har skrevet en kommentar ennå.`
-                        : 'Ingen innbyggere har støttet denne saken ennå.'}
-                    </p>
-                  )}
-                </section>
-
-                <section className="admin-section sak-s3">
-                  <div className="sak-att__head">
-                    <h2>Vedlegg</h2>
-                    <div className="case-admin__notetabs sak-att__vis">
-                      <button type="button" className={uploadVis === 'internal' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setUploadVis('internal')}>Internt</button>
-                      <button type="button" className={uploadVis === 'public' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setUploadVis('public')}>Offentlig</button>
-                    </div>
-                  </div>
-                  <label
-                    className={dragOver ? 'sak-upload sak-upload--drag' : 'sak-upload'}
-                    onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                    onDragLeave={() => setDragOver(false)}
-                    onDrop={(e) => { e.preventDefault(); setDragOver(false); doUpload(e.dataTransfer.files); }}
-                  >
-                    <input type="file" accept="image/*,application/pdf" multiple onChange={(e) => doUpload(e.target.files)} disabled={uploading} hidden />
-                    <strong>{uploading ? 'Laster opp …' : `+ Legg til ${uploadVis === 'public' ? 'offentlig' : 'internt'} vedlegg`}</strong>
-                    <span className="sak-upload__hint">Dra hit, eller lim inn bilde (Ctrl/Cmd + V)</span>
-                  </label>
-                  {(data.attachments || []).length > 0 && (
-                    <div className="sak-att__grid">
-                      {data.attachments.map((a) => (
-                        <div key={a.id} className={a.visibility === 'public' ? 'sak-att sak-att--public' : 'sak-att'}>
-                          {isImage(a)
-                            ? <button type="button" className="sak-att__thumb" onClick={() => setLightbox(a.url)}><img src={a.url} alt={a.filename || ''} /></button>
-                            : <a href={a.url} target="_blank" rel="noopener noreferrer" className="sak-att__thumb"><span className="sak-att__file">PDF</span></a>}
-                          <div className="sak-att__meta">
-                            <span className={a.visibility === 'public' ? 'sak-att__badge sak-att__badge--public' : 'sak-att__badge'}>{a.visibility === 'public' ? 'Offentlig' : 'Internt'}</span>
-                            <div className="sak-att__row">
-                              <button type="button" onClick={() => toggleAtt(a)}>{a.visibility === 'public' ? 'Gjør intern' : 'Gjør offentlig'}</button>
-                              <button type="button" onClick={() => deleteAtt(a)}>Slett</button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </section>
-
-                <section className="admin-section sak-s6">
-                  <h2>Tidslinje</h2>
-                  <ul className="sak-timeline">
-                    {(data.timeline || []).map((t, i) => (
-                      <li key={i} className={t.source === 'internal' ? 'sak-tl sak-tl--internal' : 'sak-tl'}>
-                        <div className="sak-tl__row">
-                          <span className="sak-tl__tag">{t.source === 'internal' ? 'Internt notat' : 'Offentlig oppdatering'}</span>
-                          <span className="sak-tl__time">{fmtDate(t.created_at)}</span>
-                        </div>
-                        <p className="sak-tl__text">{t.note}</p>
-                      </li>
-                    ))}
-                    <li className="sak-tl sak-tl--start">
-                      <div className="sak-tl__row"><span className="sak-tl__tag">Sak opprettet</span><span className="sak-tl__time">{fmtDate(c.created_at)}</span></div>
-                    </li>
-                  </ul>
-                </section>
-              </div>
-
-              <aside className="sak-side">
-                <section className="admin-section sak-s2">
-                  <h2>Behandling</h2>
-                  <label className="admin-field"><span>Status</span>
-                    <select className="comp-select" value={status} onChange={(e) => changeStatus(e.target.value)}>
-                      {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </label>
-                  <div className="sak-fields2">
-                    <label className="admin-field"><span>Frist</span>
-                      <input type="date" className="comp-select" value={dueDate} onChange={(e) => changeDue(e.target.value)} />
-                    </label>
-                    <label className="admin-field"><span>Ansvarlig</span>
-                      <select className="comp-select" value={assignee || ''} onChange={(e) => changeAssignee(e.target.value)}>
-                        <option value="">Ingen</option>
-                        {staffList.map((s) => <option key={s.email} value={s.email}>{s.name || s.email}</option>)}
-                      </select>
-                    </label>
-                  </div>
-
-                  <div className="case-admin__notetabs">
-                    <button type="button" className={noteMode === 'public' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setNoteMode('public')}>Offentlig</button>
-                    <button type="button" className={noteMode === 'internal' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setNoteMode('internal')}>Internt notat</button>
-                  </div>
-                  <textarea className="sak-note" rows={noteMode === 'internal' ? 5 : 3} value={note} onChange={(e) => setNote(e.target.value)}
-                    placeholder={noteMode === 'internal' ? 'Lim inn e-post fra kommunen, eller skriv et internt notat. Kun for ansatte.' : 'Oppdatering som vises for innbygger.'} />
-                  <button type="button" className="big-button big-button--primary" onClick={addNote} disabled={busy || note.trim().length < 2}>
-                    {busy ? 'Lagrer …' : (noteMode === 'internal' ? 'Legg til notat' : 'Publiser oppdatering')}
-                  </button>
-                </section>
-
-                <section className="admin-section sak-s4">
-                  <h2>Sted</h2>
-                  {mapThumb && (
-                    <Link href={`/?sak=${encodeURIComponent(c.id)}`} className="sak-mapthumb">
-                      <img src={mapThumb} alt="Kart over stedet" />
-                    </Link>
-                  )}
-                  {ownerLabel(c.road_owner) && <p className="sak-kv"><span>Veieier</span><b>{ownerLabel(c.road_owner)}</b></p>}
-                  {c.speed_limit && <p className="sak-kv"><span>Fartsgrense</span><b>{c.speed_limit} km/t</b></p>}
-                  {c.road_reference && <p className="sak-kv"><span>Vegreferanse</span><b>{c.road_reference}</b></p>}
-                  {Array.isArray(accidents) && (
-                    <div className="case-admin__accidents">
-                      <button type="button" className="case-admin__accidents-toggle" onClick={() => setShowAcc((v) => !v)} disabled={accidents.length === 0}>
-                        <span>Ulykker innen 50 m</span>
-                        <span className="case-admin__accidents-count">{accidents.length}{accidents.length > 0 ? (showAcc ? ' · skjul' : ' · vis') : ''}</span>
-                      </button>
-                      {showAcc && accidents.length > 0 && (
-                        <ul className="case-admin__accidents-list">
-                          {accidents.slice(0, 12).map((a, i) => <li key={i}>{[a.year, a.type || 'Ulykke', a.severity].filter(Boolean).join(' · ')}</li>)}
-                        </ul>
-                      )}
-                    </div>
-                  )}
-                  <div className="sak-side__actions">
-                    <Link className="big-button big-button--secondary" href={`/?sak=${encodeURIComponent(c.id)}`}>Vis på kart</Link>
-                    {Number.isFinite(Number(c.lat)) && <a className="big-button big-button--secondary" href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${c.lat},${c.lng}`} target="_blank" rel="noopener noreferrer">Street View</a>}
-                  </div>
-                </section>
-
-                {(c.contact_name || c.contact_email || c.contact_phone) && (
-                  <section className="admin-section sak-s5">
-                    <h2>Kontakt</h2>
-                    {c.contact_name && <p className="sak-kv"><span>Navn</span><b>{c.contact_name}</b></p>}
-                    {c.contact_email && <p className="sak-kv"><span>E-post</span><b><a href={`mailto:${c.contact_email}?subject=${encodeURIComponent(`Finns Fairway – ${c.category}`)}`}>{c.contact_email}</a></b></p>}
-                    {c.contact_phone && <p className="sak-kv"><span>Telefon</span><b><a href={`tel:${c.contact_phone}`}>{c.contact_phone}</a></b></p>}
-                  </section>
                 )}
+                {c.road_reference && (
+                  <div className="tkt-prop">
+                    <span className="tkt-prop__k">Vegreferanse</span>
+                    <span className="tkt-prop__v">{c.road_reference}</span>
+                  </div>
+                )}
+              </div>
+            </section>
 
-              </aside>
-            </div>
+            <section className="admin-section tkt-activity-card">
+              <div className="tkt-activity-head">
+                <h2>Aktivitet</h2>
+                {support.facets.length > 0 && (
+                  <div className="sak-support__facets">
+                    {support.facets.map((f) => <span key={f.category} className="sak-support__facet">{f.category}<b>{f.count}</b></span>)}
+                  </div>
+                )}
+              </div>
+              <ul className="tkt-activity">
+                {activity.map((a, i) => (
+                  <li key={i} className={`tkt-act tkt-act--${a.type}`}>
+                    <span className="tkt-act__dot" />
+                    <div className="tkt-act__head">
+                      <span className="tkt-act__who">{ACT_LABEL[a.type]}{a.tag ? ` · ${a.tag}` : ''}</span>
+                      <span className="tkt-act__time">{fmtDate(a.at)}</span>
+                    </div>
+                    {a.text && <p className="tkt-act__text">{a.type === 'voice' ? `«${a.text}»` : a.text}</p>}
+                  </li>
+                ))}
+              </ul>
+
+              <div className="tkt-composer">
+                <div className="case-admin__notetabs">
+                  <button type="button" className={noteMode === 'public' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setNoteMode('public')}>Svar til innbygger</button>
+                  <button type="button" className={noteMode === 'internal' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setNoteMode('internal')}>Internt notat</button>
+                </div>
+                <textarea className="sak-note" rows={3} value={note} onChange={(e) => setNote(e.target.value)}
+                  placeholder={noteMode === 'internal' ? 'Lim inn e-post fra kommunen, eller skriv et internt notat. Kun for ansatte.' : 'Skriv en oppdatering som vises for innbyggeren.'} />
+                <button type="button" className="big-button big-button--primary" onClick={addNote} disabled={busy || note.trim().length < 2}>
+                  {busy ? 'Lagrer …' : (noteMode === 'internal' ? 'Legg til notat' : 'Publiser oppdatering')}
+                </button>
+              </div>
+            </section>
+
+            <section className="admin-section">
+              <h2>Sted</h2>
+              {mapThumb && (
+                <Link href={`/?sak=${encodeURIComponent(c.id)}`} className="tkt-map">
+                  <img src={mapThumb} alt="Kart over stedet" />
+                </Link>
+              )}
+              {Array.isArray(accidents) && (
+                <div className="case-admin__accidents">
+                  <button type="button" className="case-admin__accidents-toggle" onClick={() => setShowAcc((v) => !v)} disabled={accidents.length === 0}>
+                    <span>Ulykker innen 50 m</span>
+                    <span className="case-admin__accidents-count">{accidents.length}{accidents.length > 0 ? (showAcc ? ' · skjul' : ' · vis') : ''}</span>
+                  </button>
+                  {showAcc && accidents.length > 0 && (
+                    <ul className="case-admin__accidents-list">
+                      {accidents.slice(0, 12).map((a, i) => <li key={i}>{[a.year, a.type || 'Ulykke', a.severity].filter(Boolean).join(' · ')}</li>)}
+                    </ul>
+                  )}
+                </div>
+              )}
+              <div className="sak-side__actions">
+                <Link className="big-button big-button--secondary" href={`/?sak=${encodeURIComponent(c.id)}`}>Vis på kart</Link>
+                {Number.isFinite(Number(c.lat)) && <a className="big-button big-button--secondary" href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${c.lat},${c.lng}`} target="_blank" rel="noopener noreferrer">Street View</a>}
+              </div>
+            </section>
+
+            <section className="admin-section">
+              <div className="sak-att__head">
+                <h2>Vedlegg</h2>
+                <div className="case-admin__notetabs sak-att__vis">
+                  <button type="button" className={uploadVis === 'internal' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setUploadVis('internal')}>Internt</button>
+                  <button type="button" className={uploadVis === 'public' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setUploadVis('public')}>Offentlig</button>
+                </div>
+              </div>
+              <label
+                className={dragOver ? 'sak-upload sak-upload--drag' : 'sak-upload'}
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={(e) => { e.preventDefault(); setDragOver(false); doUpload(e.dataTransfer.files); }}
+              >
+                <input type="file" accept="image/*,application/pdf" multiple onChange={(e) => doUpload(e.target.files)} disabled={uploading} hidden />
+                <strong>{uploading ? 'Laster opp …' : `+ Legg til ${uploadVis === 'public' ? 'offentlig' : 'internt'} vedlegg`}</strong>
+                <span className="sak-upload__hint">Dra hit, eller lim inn bilde (Ctrl/Cmd + V)</span>
+              </label>
+              {(data.attachments || []).length > 0 && (
+                <div className="sak-att__grid">
+                  {data.attachments.map((a) => (
+                    <div key={a.id} className={a.visibility === 'public' ? 'sak-att sak-att--public' : 'sak-att'}>
+                      {isImage(a)
+                        ? <button type="button" className="sak-att__thumb" onClick={() => setLightbox(a.url)}><img src={a.url} alt={a.filename || ''} /></button>
+                        : <a href={a.url} target="_blank" rel="noopener noreferrer" className="sak-att__thumb"><span className="sak-att__file">PDF</span></a>}
+                      <div className="sak-att__meta">
+                        <span className={a.visibility === 'public' ? 'sak-att__badge sak-att__badge--public' : 'sak-att__badge'}>{a.visibility === 'public' ? 'Offentlig' : 'Internt'}</span>
+                        <div className="sak-att__row">
+                          <button type="button" onClick={() => toggleAtt(a)}>{a.visibility === 'public' ? 'Gjør intern' : 'Gjør offentlig'}</button>
+                          <button type="button" onClick={() => deleteAtt(a)}>Slett</button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {(c.contact_name || c.contact_email || c.contact_phone) && (
+              <section className="admin-section">
+                <h2>Kontakt</h2>
+                {c.contact_name && <p className="sak-kv"><span>Navn</span><b>{c.contact_name}</b></p>}
+                {c.contact_email && <p className="sak-kv"><span>E-post</span><b><a href={`mailto:${c.contact_email}?subject=${encodeURIComponent(`Finns Fairway – ${c.category}`)}`}>{c.contact_email}</a></b></p>}
+                {c.contact_phone && <p className="sak-kv"><span>Telefon</span><b><a href={`tel:${c.contact_phone}`}>{c.contact_phone}</a></b></p>}
+              </section>
+            )}
 
             {data.trelloCardUrl && (
               <footer className="sak-footer">

@@ -1939,7 +1939,59 @@
 /* ----------------------------------------------------------------------
    Case workspace (/backoffice/sak/[id]) — the case card you work in
    ---------------------------------------------------------------------- */
-.sak-page { align-content: start; display: grid; gap: 0.85rem; justify-items: stretch; margin: 0 auto; max-width: 940px; padding: 0.9rem 1.1rem calc(2.5rem + env(safe-area-inset-bottom)); width: 100%; }
+.sak-page { align-content: start; display: grid; gap: 0.85rem; justify-items: stretch; margin: 0 auto; max-width: 760px; padding: 0.9rem 1.1rem calc(2.5rem + env(safe-area-inset-bottom)); width: 100%; }
+
+/* Ticket-style properties panel (Linear/Zendesk): compact label → value rows,
+   with the editable ones as small pill controls. */
+.tkt-props { display: grid; }
+.tkt-prop { align-items: center; border-top: 1px solid var(--color-border); display: grid; gap: 0.6rem; grid-template-columns: 108px 1fr; min-height: 46px; padding: 0.35rem 0; }
+.tkt-prop:first-child { border-top: 0; }
+.tkt-prop__k { color: var(--color-muted); font-size: 0.82rem; font-weight: 650; }
+.tkt-prop__v { color: var(--color-text); font-size: 0.9rem; font-weight: 650; justify-self: end; text-align: right; }
+.tkt-prop__v--support { color: #c2410c; }
+.tkt-prop__ctrl {
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 650;
+  justify-self: end;
+  max-width: 100%;
+  padding: 0.34rem 0.7rem;
+  text-align: right;
+}
+select.tkt-prop__ctrl { padding-right: 1.7rem; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7a72' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.6rem center; }
+.tkt-prop__ctrl:focus-visible { border-color: var(--color-primary); outline: none; box-shadow: 0 0 0 3px rgba(11,93,77,0.14); }
+.tkt-prop__ctrl--over { border-color: #e2a29a; color: var(--color-danger); }
+
+/* Activity thread — one chronological feed with a composer beneath it */
+.tkt-activity-head { align-items: baseline; display: flex; flex-wrap: wrap; gap: 0.5rem 0.8rem; justify-content: space-between; }
+.tkt-activity-head h2 { margin: 0; }
+.tkt-activity { display: grid; list-style: none; margin: 0.2rem 0 0; padding: 0; }
+.tkt-act { border-left: 2px solid var(--color-border); margin-left: 5px; padding: 0 0 0.85rem 0.9rem; position: relative; }
+.tkt-act:last-child { padding-bottom: 0.1rem; }
+.tkt-act__dot { background: var(--color-muted); border: 2px solid var(--color-surface); border-radius: 50%; height: 11px; left: -6.5px; position: absolute; top: 1px; width: 11px; }
+.tkt-act--public .tkt-act__dot { background: var(--color-primary); }
+.tkt-act--internal .tkt-act__dot { background: #cf8a24; }
+.tkt-act--voice .tkt-act__dot { background: #c2410c; }
+.tkt-act__head { align-items: baseline; display: flex; gap: 0.5rem; justify-content: space-between; }
+.tkt-act__who { color: var(--color-text); font-size: 0.78rem; font-weight: 750; }
+.tkt-act--public .tkt-act__who { color: var(--color-primary); }
+.tkt-act--internal .tkt-act__who { color: #a9741c; }
+.tkt-act--voice .tkt-act__who { color: #c2410c; }
+.tkt-act--created .tkt-act__who { color: var(--color-muted); }
+.tkt-act__time { color: var(--color-muted); font-size: 0.72rem; white-space: nowrap; }
+.tkt-act__text { color: var(--color-text); font-size: 0.9rem; line-height: 1.45; margin: 0.2rem 0 0; white-space: pre-wrap; }
+.tkt-act--internal .tkt-act__text { background: #fbf4e8; border-radius: var(--radius-sm); padding: 0.4rem 0.55rem; }
+.tkt-composer { border-top: 1px solid var(--color-border); display: grid; gap: 0.55rem; margin-top: 0.9rem; padding-top: 0.9rem; }
+
+/* Location map: fixed height so it can never open a blank gap */
+.tkt-map { border-radius: var(--radius-md); display: block; overflow: hidden; }
+.tkt-map img { display: block; height: 168px; object-fit: cover; width: 100%; }
 .sak-top { align-items: center; display: flex; gap: 0.8rem; justify-content: space-between; }
 .sak-flash { background: var(--color-primary-tint); border-radius: var(--radius-pill); color: var(--color-primary); font-size: 0.8rem; font-weight: 700; padding: 0.24rem 0.7rem; }
 
@@ -2106,23 +2158,10 @@
 .admin-list-item__loc { color: var(--color-primary); font-size: 0.78rem; font-weight: 650; }
 .sak-flashbar { background: var(--color-primary-tint); border-radius: var(--radius-md); color: var(--color-primary); font-size: 0.86rem; font-weight: 700; padding: 0.5rem 0.8rem; text-align: center; }
 
-/* Case workspace mobile order:
-   Melding → Innbyggerstemmer → Behandling → Sted → Vedlegg → Kontakt → Tidslinje.
-   Every section gets an explicit order so nothing floats to the top. */
+/* Case workspace on mobile: one continuous edge-to-edge sheet, not floating
+   cards. The page becomes the surface; sections are full-bleed blocks split
+   by a hairline instead of margins + shadows on a visible canvas. */
 @media (max-width: 779px) {
-  .sak-grid { display: flex; flex-direction: column; gap: 0; }
-  .sak-main, .sak-side { display: contents; }
-  .sak-s1 { order: 1; }      /* Melding */
-  .sak-support { order: 2; } /* Innbyggerstemmer */
-  .sak-s2 { order: 3; }      /* Behandling */
-  .sak-s4 { order: 4; }      /* Sted */
-  .sak-s3 { order: 5; }      /* Vedlegg */
-  .sak-s5 { order: 6; }      /* Kontakt */
-  .sak-s6 { order: 7; }      /* Tidslinje */
-
-  /* Native app feel: one continuous edge-to-edge sheet, not floating cards.
-     The page becomes the surface; sections are full-bleed blocks split by
-     a hairline instead of margins + shadows on a visible canvas. */
   .sak-page {
     background: var(--color-surface);
     gap: 0;
@@ -2142,9 +2181,6 @@
   .sak-nav { padding: 0.7rem 1.15rem 0.3rem; }
   .sak-flashbar { border-radius: 0; margin: 0; }
   .sak-footer { padding: 1.1rem; }
-}
-@media (min-width: 780px) {
-  .sak-side { position: sticky; top: 4rem; align-self: start; }
 }
 
 /* ----------------------------------------------------------------------
