@@ -5,6 +5,7 @@ import {
   getReportById,
   updateReport,
   addCaseStatusUpdate,
+  getCaseTimeline,
   setPublicStatusFromTrelloComment,
   hasSupabaseConfig,
 } from '../../../lib/supabaseRest';
@@ -26,10 +27,13 @@ export default async function handler(req, res) {
       if (typeof req.query.id === 'string' && req.query.id) {
         const report = await getReportById(req.query.id);
         if (!report) return res.status(404).json({ error: 'Fant ikke saken' });
+        const timeline = report.trello_card_id ? await getCaseTimeline(report.trello_card_id) : [];
         return res.status(200).json({
           id: report.id,
           status: report.status || null,
           trelloCardUrl: report.trello_card_id ? `https://trello.com/c/${report.trello_card_id}` : null,
+          hasCard: Boolean(report.trello_card_id),
+          timeline,
         });
       }
       const cases = await listReportsForBackoffice({ limit: 150 });
@@ -67,6 +71,15 @@ export default async function handler(req, res) {
         if (hasTrelloConfig()) {
           await addTrelloCardComment(report.trello_card_id, `Offentlig oppdatering (dashbord): ${note}`).catch(() => {});
         }
+        return res.status(200).json({ ok: true });
+      }
+
+      if (action === 'add-internal') {
+        const note = String(text || '').trim();
+        if (note.length < 2) return res.status(400).json({ error: 'Skriv et internt notat' });
+        if (!report.trello_card_id) return res.status(400).json({ error: 'Saken mangler kort-id, kan ikke lagre notat' });
+        // Internal note: stored but filtered out of every public view (source=internal).
+        await addCaseStatusUpdate({ trelloCardId: report.trello_card_id, note, source: 'internal' });
         return res.status(200).json({ ok: true });
       }
 

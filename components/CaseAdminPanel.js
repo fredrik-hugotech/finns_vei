@@ -14,18 +14,22 @@ export default function CaseAdminPanel({ reportId, currentStatus, lat, lng, acci
   const [msg, setMsg] = useState('');
   const [trelloUrl, setTrelloUrl] = useState(null);
   const [showAccidents, setShowAccidents] = useState(false);
+  const [noteMode, setNoteMode] = useState('public'); // public | internal
+  const [timeline, setTimeline] = useState([]);
+  const [showTimeline, setShowTimeline] = useState(false);
 
   const secret = () => (typeof window !== 'undefined' ? window.localStorage.getItem(SECRET_KEY) : '');
 
   useEffect(() => { setStatus(currentStatus || REPORT_STATUS.NEW); }, [currentStatus]);
 
-  useEffect(() => {
+  const loadCase = () => {
     if (!reportId) return;
     fetch(`/api/backoffice/cases?id=${encodeURIComponent(reportId)}`, { headers: { 'x-backoffice-secret': secret() } })
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (d) setTrelloUrl(d.trelloCardUrl); })
+      .then((d) => { if (d) { setTrelloUrl(d.trelloCardUrl); setTimeline(Array.isArray(d.timeline) ? d.timeline : []); } })
       .catch(() => {});
-  }, [reportId]);
+  };
+  useEffect(loadCase, [reportId]);
 
   const save = async () => {
     setBusy(true); setMsg('');
@@ -37,12 +41,14 @@ export default function CaseAdminPanel({ reportId, currentStatus, lat, lng, acci
       }
       const text = note.trim();
       if (text) {
-        const r = await fetch('/api/backoffice/cases', { method: 'POST', headers, body: JSON.stringify({ action: 'add-update', id: reportId, text }) });
+        const action = noteMode === 'internal' ? 'add-internal' : 'add-update';
+        const r = await fetch('/api/backoffice/cases', { method: 'POST', headers, body: JSON.stringify({ action, id: reportId, text }) });
         const d = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(d.error || 'oppdatering');
       }
       setNote('');
-      setMsg('Lagret. Logget i Trello.');
+      setMsg(noteMode === 'internal' ? 'Internt notat lagret.' : 'Lagret og publisert.');
+      loadCase();
       onSaved?.();
     } catch (e) {
       setMsg(e.message === 'status' ? 'Kunne ikke endre status.' : (e.message || 'Kunne ikke lagre.'));
@@ -109,20 +115,42 @@ export default function CaseAdminPanel({ reportId, currentStatus, lat, lng, acci
         </select>
       </label>
 
-      <label className="case-admin__field">
-        <span>Offentlig oppdatering</span>
-        <textarea
-          className="case-admin__note"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder="Skriv hva som skjer med saken. Vises for innbygger og logges i Trello."
-          rows={2}
-        />
-      </label>
+      <div className="case-admin__notetabs">
+        <button type="button" className={noteMode === 'public' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setNoteMode('public')}>Offentlig oppdatering</button>
+        <button type="button" className={noteMode === 'internal' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setNoteMode('internal')}>Internt notat</button>
+      </div>
+      <textarea
+        className="case-admin__note"
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        placeholder={noteMode === 'internal'
+          ? 'Lim inn e-post fra kommunen, eller skriv et internt notat. Vises kun for ansatte.'
+          : 'Skriv hva som skjer med saken. Vises for innbygger.'}
+        rows={noteMode === 'internal' ? 4 : 2}
+      />
+
+      {timeline.length > 0 && (
+        <div className="case-admin__accidents">
+          <button type="button" className="case-admin__accidents-toggle" onClick={() => setShowTimeline((v) => !v)} aria-expanded={showTimeline}>
+            <span>Historikk</span>
+            <span className="case-admin__accidents-count">{timeline.length}{showTimeline ? ' · skjul' : ' · vis'}</span>
+          </button>
+          {showTimeline && (
+            <ul className="case-admin__timeline">
+              {timeline.map((t, i) => (
+                <li key={i} className={t.source === 'internal' ? 'case-admin__tl case-admin__tl--internal' : 'case-admin__tl'}>
+                  <span className="case-admin__tl-tag">{t.source === 'internal' ? 'Internt' : 'Offentlig'}</span>
+                  <span className="case-admin__tl-text">{t.note}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {msg && <p className="case-admin__msg">{msg}</p>}
       <button type="button" className="big-button big-button--primary case-admin__save" onClick={save} disabled={busy || !dirty}>
-        {busy ? 'Lagrer …' : 'Lagre'}
+        {busy ? 'Lagrer …' : (noteMode === 'internal' && note.trim() ? 'Lagre internt notat' : 'Lagre')}
       </button>
     </div>
   );
