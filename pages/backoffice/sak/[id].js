@@ -86,12 +86,15 @@ export default function SakDetalj() {
     } catch (_e) { setFlash('Opplasting feilet'); } finally { setUploading(false); }
   };
   const toggleAtt = async (att) => {
-    await fetch('/api/backoffice/attachment', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: att.id, visibility: att.visibility === 'public' ? 'internal' : 'public' }) }).catch(() => {});
-    load();
+    const nextVis = att.visibility === 'public' ? 'internal' : 'public';
+    setData((d) => (d ? { ...d, attachments: (d.attachments || []).map((a) => (a.id === att.id ? { ...a, visibility: nextVis } : a)) } : d));
+    try { await fetch('/api/backoffice/attachment', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: att.id, visibility: nextVis }) }); }
+    catch (_e) { load(); }
   };
   const deleteAtt = async (att) => {
-    await fetch('/api/backoffice/attachment', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: att.id }) }).catch(() => {});
-    load();
+    setData((d) => (d ? { ...d, attachments: (d.attachments || []).filter((a) => a.id !== att.id) } : d));
+    try { await fetch('/api/backoffice/attachment', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: att.id }) }); }
+    catch (_e) { load(); }
   };
   const isImage = (a) => String(a.content_type || '').startsWith('image/');
   const mapThumb = (c && mapboxToken && Number.isFinite(Number(c.lat)))

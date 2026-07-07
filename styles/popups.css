@@ -455,3 +455,11 @@
     max-width: min(300px, calc(100vw - 28px)) !important;
   }
 }
+
+/* Public attachments in the case card (compact, bounded height) */
+.popup-attach { display: grid; flex: none; gap: 0.3rem; }
+.popup-attach__label { color: var(--color-muted); font-size: 0.72rem; font-weight: 700; }
+.popup-attach__row { display: grid; gap: 0.32rem; grid-template-columns: repeat(auto-fill, minmax(62px, 1fr)); }
+.popup-attach__item { align-items: center; aspect-ratio: 1; background: var(--color-surface-muted); border: 1px solid var(--color-border); border-radius: var(--radius-sm); display: flex; justify-content: center; overflow: hidden; }
+.popup-attach__item img { height: 100%; object-fit: cover; width: 100%; }
+.popup-attach__file { color: var(--color-muted); font-size: 0.72rem; font-weight: 800; }

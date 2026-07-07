@@ -114,6 +114,7 @@ function threadToProps(data, base = {}) {
     facets_json: JSON.stringify(data.facets || []),
     voices_json: JSON.stringify(data.voices || []),
     updates_json: JSON.stringify(data.updates || []),
+    attachments_json: JSON.stringify(data.attachments || []),
   };
 }
 
@@ -164,6 +165,23 @@ function reportImagesHtml(properties = {}) {
       `).join('')}
     </div>
   `;
+}
+
+// Public case attachments (staff-added, marked public) — compact thumbnail row
+// so the card stays bounded on mobile as a case accumulates content.
+function attachmentsHtml(properties = {}) {
+  let list = [];
+  try { list = JSON.parse(properties.attachments_json || '[]'); } catch (_e) { list = []; }
+  if (!Array.isArray(list) || !list.length) return '';
+  const items = list.slice(0, 6).map((a) => {
+    const url = escapeHtml(a.url || '');
+    const isImage = String(a.content_type || '').startsWith('image/') || /\.(jpe?g|png|webp|gif)$/i.test(a.url || '');
+    const inner = isImage
+      ? `<img src="${url}" alt="Vedlegg" loading="lazy" />`
+      : '<span class="popup-attach__file">PDF</span>';
+    return `<a href="${url}" target="_blank" rel="noreferrer" class="popup-attach__item">${inner}</a>`;
+  }).join('');
+  return `<div class="popup-attach"><span class="popup-attach__label">Vedlegg fra Finns Fairway</span><div class="popup-attach__row">${items}</div></div>`;
 }
 
 function formatDate(value) {
@@ -288,6 +306,8 @@ function popupHtml(featureOrProperties = {}, context = { nearbyCount: 1, radiusM
         </article>
         ${replies ? `<div class="popup-replies">${replies}</div>` : ''}
       </div>
+
+      ${attachmentsHtml(properties)}
 
       ${popupStatsHtml(properties, context)}
     </article>
