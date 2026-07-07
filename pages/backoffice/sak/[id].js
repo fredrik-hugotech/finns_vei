@@ -43,6 +43,9 @@ export default function SakDetalj() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const [assignee, setAssignee] = useState('');
+  const [staffList, setStaffList] = useState([]);
   const [noteMode, setNoteMode] = useState('public');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
@@ -65,6 +68,8 @@ export default function SakDetalj() {
       const d = await r.json();
       setData(d);
       setStatus(d.case?.status || '');
+      setDueDate(d.case?.due_date ? String(d.case.due_date).slice(0, 10) : '');
+      setAssignee(d.case?.assignee_email || '');
     } catch (_e) { setError('Noe gikk galt.'); }
   }, [id]);
 
@@ -72,7 +77,19 @@ export default function SakDetalj() {
 
   useEffect(() => {
     fetch('/api/backoffice/cases').then((r) => (r.ok ? r.json() : null)).then((d) => { if (d) setSiblings((d.cases || []).map((x) => String(x.id))); }).catch(() => {});
+    fetch('/api/staff/list').then((r) => (r.ok ? r.json() : null)).then((d) => { if (d) setStaffList(d.staff || []); }).catch(() => {});
   }, []);
+
+  const changeDue = async (v) => {
+    setDueDate(v);
+    try { await fetch('/api/backoffice/cases', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'set-due', id, due_date: v || null }) }); setFlash('Frist oppdatert'); setTimeout(() => setFlash(''), 1500); }
+    catch (_e) { setFlash('Kunne ikke lagre frist'); }
+  };
+  const changeAssignee = async (v) => {
+    setAssignee(v);
+    try { await fetch('/api/backoffice/cases', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'set-assignee', id, assignee_email: v || null }) }); setFlash('Tildeling oppdatert'); setTimeout(() => setFlash(''), 1500); }
+    catch (_e) { setFlash('Kunne ikke lagre tildeling'); }
+  };
 
   const c = data?.case;
   const meta = useMemo(() => reportStatusMeta(status || c?.status), [status, c]);
@@ -274,6 +291,17 @@ export default function SakDetalj() {
                       {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </label>
+                  <div className="sak-fields2">
+                    <label className="admin-field"><span>Frist</span>
+                      <input type="date" className="comp-select" value={dueDate} onChange={(e) => changeDue(e.target.value)} />
+                    </label>
+                    <label className="admin-field"><span>Ansvarlig</span>
+                      <select className="comp-select" value={assignee || ''} onChange={(e) => changeAssignee(e.target.value)}>
+                        <option value="">Ingen</option>
+                        {staffList.map((s) => <option key={s.email} value={s.email}>{s.name || s.email}</option>)}
+                      </select>
+                    </label>
+                  </div>
 
                   <div className="case-admin__notetabs">
                     <button type="button" className={noteMode === 'public' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setNoteMode('public')}>Offentlig</button>

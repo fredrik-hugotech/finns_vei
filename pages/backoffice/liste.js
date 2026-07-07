@@ -80,6 +80,11 @@ export default function Liste() {
                 <span className="admin-list-item__foot">
                   {loc && <span className="admin-list-item__loc">{loc}</span>}
                   {c.bike_route_type && <span className="admin-list-item__tag">{c.bike_route_type === 'skole' ? 'Skolerute' : 'Sykkelrute'}</span>}
+                  {c.due_date && (() => {
+                    const over = String(c.due_date).slice(0, 10) < new Date().toISOString().slice(0, 10) && c.status !== REPORT_STATUS.DONE;
+                    return <span className={over ? 'sak-due sak-due--over' : 'sak-due'}>{over ? 'Forfalt' : 'Frist'} {new Date(c.due_date).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })}</span>;
+                  })()}
+                  {c.assignee_email && <span className="admin-list-item__assignee">{c.assignee_email.split('@')[0]}</span>}
                 </span>
               </Link>
             );

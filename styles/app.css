@@ -2001,3 +2001,23 @@
 
 .dash2__h2row { align-items: baseline; display: flex; gap: 0.8rem; justify-content: space-between; }
 .dash2__seeall { color: var(--color-primary); font-size: 0.85rem; font-weight: 700; text-decoration: none; white-space: nowrap; }
+
+/* Frist / tildeling badges */
+.sak-fields2 { display: grid; gap: 0.6rem; grid-template-columns: 1fr 1fr; }
+.sak-due {
+  background: var(--color-surface-muted);
+  border-radius: var(--radius-pill);
+  color: var(--color-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.14rem 0.5rem;
+}
+.sak-due--over { background: #fbe3e0; color: var(--color-danger); }
+.admin-list-item__assignee {
+  background: var(--color-primary-tint);
+  border-radius: var(--radius-pill);
+  color: var(--color-primary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.14rem 0.5rem;
+}

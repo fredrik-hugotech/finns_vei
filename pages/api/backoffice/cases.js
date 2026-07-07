@@ -46,6 +46,8 @@ export default async function handler(req, res) {
             description: report.description || '',
             status: report.status || null,
             created_at: report.created_at || null,
+            due_date: report.due_date || null,
+            assignee_email: report.assignee_email || null,
             lat: report.lat ?? null,
             lng: report.lng ?? null,
             reporter_type: report.reporter_type || null,
@@ -99,6 +101,18 @@ export default async function handler(req, res) {
           await addTrelloCardComment(report.trello_card_id, `Offentlig oppdatering (dashbord): ${note}`).catch(() => {});
         }
         return res.status(200).json({ ok: true });
+      }
+
+      if (action === 'set-due') {
+        const due = req.body.due_date ? String(req.body.due_date).slice(0, 10) : null;
+        await updateReport(id, { due_date: due });
+        return res.status(200).json({ ok: true, due_date: due });
+      }
+
+      if (action === 'set-assignee') {
+        const email = req.body.assignee_email ? String(req.body.assignee_email).trim().toLowerCase() : null;
+        await updateReport(id, { assignee_email: email });
+        return res.status(200).json({ ok: true, assignee_email: email });
       }
 
       if (action === 'add-internal') {

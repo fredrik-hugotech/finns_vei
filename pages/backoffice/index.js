@@ -22,6 +22,10 @@ function timeAgo(value) {
   if (h > 0) return `${h} t`;
   return `${Math.max(1, Math.floor(diff / 60000))} min`;
 }
+function fmtShort(d) {
+  if (!d) return '';
+  try { return new Date(d).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' }); } catch (_e) { return d; }
+}
 
 export default function Backoffice() {
   const [me, setMe] = useState(null);
@@ -109,6 +113,31 @@ function Dashboard({ me, onLogout }) {
     .filter((c) => c.status === REPORT_STATUS.NEW)
     .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
     .slice(0, 6);
+  const myEmail = String(me.email || '').toLowerCase();
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const mine = (cases || [])
+    .filter((c) => String(c.assignee_email || '').toLowerCase() === myEmail && c.status !== REPORT_STATUS.DONE)
+    .sort((a, b) => (a.due_date || '9999-12-31').localeCompare(b.due_date || '9999-12-31'));
+
+  const dueBadge = (c) => {
+    if (!c.due_date) return null;
+    const overdue = String(c.due_date).slice(0, 10) < todayStr && c.status !== REPORT_STATUS.DONE;
+    return <span className={overdue ? 'sak-due sak-due--over' : 'sak-due'}>{overdue ? 'Forfalt' : 'Frist'} {fmtShort(c.due_date)}</span>;
+  };
+  const renderCase = (c) => {
+    const meta = reportStatusMeta(c.status);
+    return (
+      <Link key={c.id} href={`/backoffice/sak/${encodeURIComponent(c.id)}`} className="admin-list-item">
+        <div className="admin-list-item__head">
+          <span className={`status-pill status-pill--${meta.key}`} dangerouslySetInnerHTML={{ __html: `${meta.icon}<span>${meta.label}</span>` }} />
+          <span className="admin-list-item__time">{timeAgo(c.created_at)} siden</span>
+        </div>
+        <strong className="admin-list-item__title">{c.category}</strong>
+        {c.description && <span className="admin-list-item__desc">{c.description}</span>}
+        {(dueBadge(c)) && <span className="admin-list-item__foot">{dueBadge(c)}</span>}
+      </Link>
+    );
+  };
 
   return (
     <>
@@ -137,6 +166,13 @@ function Dashboard({ me, onLogout }) {
           </div>
         </section>
 
+        {mine.length > 0 && (
+          <section>
+            <h2 className="dash2__h2">Mine saker <span className="dash2__hint">tildelt deg</span></h2>
+            <div className="admin-list">{mine.slice(0, 8).map(renderCase)}</div>
+          </section>
+        )}
+
         <section>
           <div className="dash2__h2row">
             <h2 className="dash2__h2">Min dag <span className="dash2__hint">nye saker som venter</span></h2>
@@ -144,22 +180,7 @@ function Dashboard({ me, onLogout }) {
           </div>
           {cases === null && <p className="comp-muted">Laster …</p>}
           {cases && minDag.length === 0 && <p className="comp-muted">Ingen nye saker akkurat nå. Fint jobbet.</p>}
-          <div className="admin-list">
-            {minDag.map((c) => {
-              const meta = reportStatusMeta(c.status);
-              return (
-                <Link key={c.id} href={`/backoffice/sak/${encodeURIComponent(c.id)}`} className="admin-list-item">
-                  <div className="admin-list-item__head">
-                    <span className={`status-pill status-pill--${meta.key}`} dangerouslySetInnerHTML={{ __html: `${meta.icon}<span>${meta.label}</span>` }} />
-                    <span className="admin-list-item__time">{timeAgo(c.created_at)} siden</span>
-                  </div>
-                  <strong className="admin-list-item__title">{c.category}</strong>
-                  {c.description && <span className="admin-list-item__desc">{c.description}</span>}
-                  <span className="admin-list-item__open">Åpne sak ›</span>
-                </Link>
-              );
-            })}
-          </div>
+          <div className="admin-list">{minDag.map(renderCase)}</div>
         </section>
 
         <section>
