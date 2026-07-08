@@ -540,6 +540,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   const [caseThread, setCaseThread] = useState(null);
   const [caseAccidents, setCaseAccidents] = useState(null);
   const [adminSecret, setAdminSecret] = useState(null);
+  const [concernHeatmapOn, setConcernHeatmapOn] = useState(false);
   const [sporOn, setSporOn] = useState(false);
   const [sporComps, setSporComps] = useState([]);
   const [sporCompId, setSporCompId] = useState('');
@@ -776,6 +777,37 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     ));
   };
 
+  // Optional public "Bekymringsgrad" overview layer. Reuses the reports
+  // GeoJSON already loaded for the pins (no extra fetch), in its own
+  // uncustered source so the heatmap density isn't skewed by clustering.
+  // Inserted below the pin layers (beforeId) so pins always stay on top.
+  const ensureConcernHeatmapLayer = useCallback((map) => {
+    if (map.getSource('reports-heat')) return;
+    map.addSource('reports-heat', { type: 'geojson', data: reportsDataRef.current, cluster: false });
+    map.addLayer({
+      id: 'reports-heatmap',
+      type: 'heatmap',
+      source: 'reports-heat',
+      paint: MAP_STYLE.reportConcernHeatmapPaint,
+    }, map.getLayer('reports-clusters') ? 'reports-clusters' : undefined);
+  }, []);
+
+  const toggleConcernHeatmap = () => {
+    const map = mapRef.current;
+    setConcernHeatmapOn((current) => {
+      const next = !current;
+      if (map) {
+        if (next) {
+          ensureConcernHeatmapLayer(map);
+          if (map.getLayer('reports-heatmap')) map.setLayoutProperty('reports-heatmap', 'visibility', 'visible');
+        } else if (map.getLayer('reports-heatmap')) {
+          map.setLayoutProperty('reports-heatmap', 'visibility', 'none');
+        }
+      }
+      return next;
+    });
+  };
+
   // Admin-only "Sykkelspor" layer: the density left by competition rides.
   // Reuses the backoffice competition-trips endpoint + the map's density draw.
   // Admins pick which competition and whether to show all / cycling / walking.
@@ -843,6 +875,9 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     const geojson = await response.json();
 
     reportsDataRef.current = geojson;
+
+    const heatSource = map.getSource('reports-heat');
+    if (heatSource) heatSource.setData(geojson);
 
     const source = map.getSource('reports');
     if (source) {
@@ -1167,6 +1202,15 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
               {layer.label}
             </button>
           ))}
+          {showReports && (
+            <button
+              type="button"
+              className={concernHeatmapOn ? 'nvdb-toggle nvdb-toggle--active' : 'nvdb-toggle'}
+              onClick={toggleConcernHeatmap}
+            >
+              Bekymringsgrad
+            </button>
+          )}
           {adminSecret && (
             <button
               type="button"
