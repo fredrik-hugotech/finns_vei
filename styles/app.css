@@ -481,6 +481,36 @@
   width: 1px;
 }
 
+/* Quick-tap suggestion chips above the description textarea */
+.suggestion-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.15rem;
+}
+
+.suggestion-chip {
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  color: var(--color-text);
+  font-size: 0.78rem;
+  font-weight: 600;
+  min-height: 34px;
+  padding: 0.36rem 0.68rem;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.suggestion-chip:active {
+  transform: scale(0.97);
+}
+
+.suggestion-chip--active {
+  background: var(--color-primary-tint);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
 /* Image picker */
 .image-row {
   display: grid;
