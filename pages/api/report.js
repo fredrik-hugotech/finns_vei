@@ -25,9 +25,22 @@ function parseCoordinate(value, name) {
   return number;
 }
 
+// Hard ceiling on the raw request body: enough for the max number of images at
+// max size each, plus a fixed overhead for form fields/multipart boundaries.
+const REQUEST_BODY_MAX_BYTES = REPORT_IMAGE_MAX_BYTES * REPORT_IMAGE_MAX_COUNT + 2 * 1024 * 1024;
+
 async function readRequestBuffer(req) {
   const chunks = [];
-  for await (const chunk of req) chunks.push(Buffer.from(chunk));
+  let total = 0;
+  for await (const chunk of req) {
+    total += chunk.length;
+    if (total > REQUEST_BODY_MAX_BYTES) {
+      const error = new Error('Forespørselen er for stor');
+      error.status = 413;
+      throw error;
+    }
+    chunks.push(Buffer.from(chunk));
+  }
   return Buffer.concat(chunks);
 }
 
@@ -216,6 +229,6 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error(JSON.stringify({ scope: 'api/report', event: 'request_failed', error: error?.message }));
-    return res.status(400).json({ error: error.message || 'Kunne ikke lagre meldingen' });
+    return res.status(error?.status || 400).json({ error: error.message || 'Kunne ikke lagre meldingen' });
   }
 }
