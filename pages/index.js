@@ -166,6 +166,7 @@ export default function Home() {
 
         <div className="app-topbar">
           <span className="app-brand"><Logo size="sm" /></span>
+          <a className="app-staff-link" href="/statistikk">Statistikk</a>
           <a className="app-staff-link" href="/backoffice">Admin</a>
         </div>
 
