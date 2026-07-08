@@ -134,12 +134,13 @@ export default function SakDetalj() {
     const onKey = (e) => {
       const t = e.target;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+      if (lightbox) return;
       if (e.key === 'ArrowLeft' && prevId) router.push(`/backoffice/sak/${prevId}`);
       if (e.key === 'ArrowRight' && nextId) router.push(`/backoffice/sak/${nextId}`);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [prevId, nextId, router]);
+  }, [prevId, nextId, router, lightbox]);
 
   useEffect(() => {
     if (!c || !Number.isFinite(Number(c.lat)) || !Number.isFinite(Number(c.lng))) return undefined;
@@ -183,6 +184,7 @@ export default function SakDetalj() {
     const files = Array.from(fileList || []);
     if (!files.length) return;
     setUploading(true); setFlash('');
+    let failed = false;
     try {
       for (const file of files) {
         const fd = new FormData();
@@ -190,9 +192,9 @@ export default function SakDetalj() {
         fd.append('visibility', uploadVis);
         fd.append('file', file);
         const r = await fetch('/api/backoffice/attachment', { method: 'POST', body: fd });
-        if (!r.ok) { const d = await r.json().catch(() => ({})); setFlash(d.error || 'Opplasting feilet'); break; }
+        if (!r.ok) { const d = await r.json().catch(() => ({})); setFlash(d.error || 'Opplasting feilet'); failed = true; break; }
       }
-      setFlash('Vedlegg lagt til');
+      if (!failed) setFlash('Vedlegg lagt til');
       load();
     } catch (_e) { setFlash('Opplasting feilet'); } finally { setUploading(false); }
   };

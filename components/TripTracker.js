@@ -34,14 +34,24 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mapApi
   const wakeLockRef = useRef(null);
 
   useEffect(() => {
+    document.body.classList.add('trip-tracking');
     if (!navigator.geolocation) {
       setStatus('error');
       setErrorMsg('Enheten støtter ikke posisjon.');
-      return undefined;
+      return () => { document.body.classList.remove('trip-tracking'); };
     }
-    if (navigator.wakeLock?.request) {
-      navigator.wakeLock.request('screen').then((lock) => { wakeLockRef.current = lock; }).catch(() => {});
-    }
+    const requestWakeLock = () => {
+      if (!navigator.wakeLock?.request) return;
+      navigator.wakeLock.request('screen').then((lock) => {
+        wakeLockRef.current = lock;
+        lock.addEventListener('release', () => { wakeLockRef.current = null; });
+      }).catch(() => {});
+    };
+    requestWakeLock();
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && !wakeLockRef.current) requestWakeLock();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
     startedAtRef.current = Date.now();
     const timer = setInterval(() => setElapsed((Date.now() - startedAtRef.current) / 1000), 1000);
 
@@ -73,6 +83,8 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mapApi
     );
 
     return () => {
+      document.body.classList.remove('trip-tracking');
+      document.removeEventListener('visibilitychange', onVisibilityChange);
       clearInterval(timer);
       if (watchIdRef.current != null) navigator.geolocation.clearWatch(watchIdRef.current);
       if (wakeLockRef.current) { wakeLockRef.current.release?.(); wakeLockRef.current = null; }
