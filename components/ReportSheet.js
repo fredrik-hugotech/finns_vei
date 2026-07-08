@@ -25,6 +25,10 @@ const INITIAL_FORM = {
   contact_name: '',
   contact_email: '',
   contact_phone: '',
+  // Honeypot anti-bot field. Real people never see or fill this (it's
+  // positioned off-screen in the markup below); scripts that auto-fill
+  // every form field tend to fill it anyway, which flags them server-side.
+  nettside: '',
 };
 
 function haptic(ms = 8) {
@@ -157,6 +161,7 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
     body.set('contact_name', isAdult ? form.contact_name : '');
     body.set('contact_email', isAdult ? form.contact_email : '');
     body.set('contact_phone', isAdult ? form.contact_phone : '');
+    body.set('nettside', form.nettside);
     images.forEach((image) => body.append('images', image.file));
 
     try {
@@ -243,6 +248,23 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
                   ))}
                 </div>
               </fieldset>
+
+              {/* Honeypot anti-bot field: kept off-screen (not display:none)
+                  so it stays reachable like a normal field to autofill/bots,
+                  but the label tells any real keyboard/screen-reader user to
+                  leave it blank. */}
+              <div className="hp-field">
+                <label htmlFor="report-nettside">La dette feltet stå tomt</label>
+                <input
+                  id="report-nettside"
+                  type="text"
+                  name="nettside"
+                  value={form.nettside}
+                  onChange={updateField}
+                  autoComplete="off"
+                  tabIndex={-1}
+                />
+              </div>
 
               <label className="sheet-field">
                 <span className="sheet-field__label">Fortell kort</span>
