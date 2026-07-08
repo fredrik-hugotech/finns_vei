@@ -4,7 +4,7 @@ import Logo from '../../components/Logo';
 import { reportStatusMeta } from '../../lib/reportStatusMeta';
 import { getPublicReportById, hasSupabaseConfig } from '../../lib/supabaseRest';
 
-export default function SakPage({ report, shareUrl }) {
+export default function SakPage({ report, shareUrl, ogImageUrl }) {
   const meta = reportStatusMeta(report.status);
   const title = `Finns Fairway – ${report.category}`;
   const description = report.description
@@ -21,11 +21,14 @@ export default function SakPage({ report, shareUrl }) {
         <meta property="og:title" content={title} />
         <meta property="og:description" content={description} />
         <meta property="og:url" content={shareUrl} />
-        {report.image_url && <meta property="og:image" content={report.image_url} />}
-        <meta name="twitter:card" content={report.image_url ? 'summary_large_image' : 'summary'} />
+        <meta property="og:image" content={ogImageUrl} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:type" content="image/png" />
+        <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={title} />
         <meta name="twitter:description" content={description} />
-        {report.image_url && <meta name="twitter:image" content={report.image_url} />}
+        <meta name="twitter:image" content={ogImageUrl} />
       </Head>
       <main className="page">
         <section className="hero-card share-card">
@@ -77,7 +80,9 @@ export async function getServerSideProps({ params, req }) {
 
   const proto = String(req.headers['x-forwarded-proto'] || 'https').split(',')[0];
   const host = req.headers.host;
-  const shareUrl = `${proto}://${host}/sak/${safe.id}`;
+  const origin = `${proto}://${host}`;
+  const shareUrl = `${origin}/sak/${safe.id}`;
+  const ogImageUrl = `${origin}/api/og/sak/${encodeURIComponent(safe.id)}`;
 
-  return { props: { report: safe, shareUrl } };
+  return { props: { report: safe, shareUrl, ogImageUrl } };
 }
