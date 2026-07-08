@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
-import { DEFAULT_CENTER, REPORT_STATUS } from '../lib/config';
+import { DEFAULT_CENTER, NEARBY_REPORT_RADIUS_M, REPORT_STATUS } from '../lib/config';
 import { MAP_COLORS, MAP_STYLE } from '../lib/mapStyleConfig';
 import { REPORT_STATUS_META, REPORT_STATUS_ORDER, reportStatusMeta } from '../lib/reportStatusMeta';
 import { categoryGlyph } from '../lib/reportCategoryGlyphs';
@@ -37,7 +37,7 @@ function supportButtonInner(alreadySupported) {
     : `${ICON.support}<span>Støtt denne saken</span>`;
 }
 
-const NEARBY_RADIUS_M = 20;
+const NEARBY_RADIUS_M = NEARBY_REPORT_RADIUS_M;
 
 function distanceMeters([lng1, lat1], [lng2, lat2]) {
   const R = 6371000;
@@ -62,6 +62,31 @@ function countNearbyReports(data, center, radiusM) {
     if (Array.isArray(coords) && distanceMeters(center, coords) <= radiusM) count += 1;
   }
   return count;
+}
+
+// Sibling of countNearbyReports: same radius/logic, but returns the actual
+// nearest features (nearest-first, capped) instead of just a count. Used by
+// the pick-mode "N meldinger allerede nær dette punktet" awareness notice so
+// the reporter can jump straight to the closest existing case.
+function findNearbyReportFeatures(data, center, radiusM, limit = 5) {
+  const features = data?.features || [];
+  const nearby = [];
+  for (const feature of features) {
+    const coords = feature.geometry?.coordinates;
+    if (!Array.isArray(coords)) continue;
+    const dist = distanceMeters(center, coords);
+    if (dist <= radiusM) nearby.push({ feature, dist });
+  }
+  nearby.sort((a, b) => a.dist - b.dist);
+  return nearby.slice(0, limit).map(({ feature, dist }) => {
+    const properties = feature.properties || {};
+    return {
+      id: reportIdFromFeature(feature),
+      category: properties.category || 'Melding',
+      support_count: Number(properties.support_count || 0),
+      distance_m: Math.round(dist),
+    };
+  });
 }
 
 async function fetchAccidentsNear(center, radiusM) {
@@ -523,13 +548,15 @@ function fitToGeoJson(map, geojson) {
   }
 }
 
-export default function ReportMap({ selectable = false, point, onPointChange, className = 'map-canvas', showReports = true, enableNvdbLayers = false, pickMode = false, pinnedPoint = null, onMapReady }) {
+export default function ReportMap({ selectable = false, point, onPointChange, className = 'map-canvas', showReports = true, enableNvdbLayers = false, pickMode = false, pinnedPoint = null, onMapReady, onPickCenterChange }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const markerRef = useRef(null);
   const pinnedMarkerRef = useRef(null);
   const onMapReadyRef = useRef(onMapReady);
   const pointRef = useRef(point);
+  const pickModeRef = useRef(pickMode);
+  const onPickCenterChangeRef = useRef(onPickCenterChange);
   const activeNvdbLayersRef = useRef([]);
   const reportsDataRef = useRef({ type: 'FeatureCollection', features: [] });
   const [message, setMessage] = useState('');
@@ -574,6 +601,14 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   useEffect(() => {
     onMapReadyRef.current = onMapReady;
   }, [onMapReady]);
+
+  useEffect(() => {
+    pickModeRef.current = pickMode;
+  }, [pickMode]);
+
+  useEffect(() => {
+    onPickCenterChangeRef.current = onPickCenterChange;
+  }, [onPickCenterChange]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -1066,6 +1101,10 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         },
         flyTo: ({ lng, lat }) => map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 16), duration: 700 }),
         refreshReports: () => loadReports().catch((error) => console.error(error)),
+        findNearbyReports: (centerPoint, radiusMeters = NEARBY_RADIUS_M) => (
+          findNearbyReportFeatures(reportsDataRef.current, [centerPoint.lng, centerPoint.lat], radiusMeters)
+        ),
+        openCaseById: (id) => openCaseById(id),
         showCompetitionTrips: (geojson) => showCompetitionTrips(map, geojson),
         clearCompetitionTrips: () => showCompetitionTrips(map, { type: 'FeatureCollection', features: [] }),
         showLivePath: (geojson) => showLivePath(map, geojson),
@@ -1091,6 +1130,15 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         console.error(error);
         setMessage('Lag kunne ikke hentes.');
       });
+      // While picking a location, let the parent know the crosshair settled
+      // on a new point so it can refresh the "meldinger nær dette punktet"
+      // notice. moveend only fires once movement stops (drag release, or a
+      // flyTo/easeTo animation finishing), so this is naturally debounced —
+      // no per-frame work during the drag itself.
+      if (pickModeRef.current) {
+        const center = map.getCenter();
+        onPickCenterChangeRef.current?.({ lng: center.lng, lat: center.lat });
+      }
     });
 
     if (selectable) {

@@ -5,6 +5,7 @@ import Logo from '../components/Logo';
 import ReportSheet from '../components/ReportSheet';
 import CompetitionSheet from '../components/CompetitionSheet';
 import TripTracker from '../components/TripTracker';
+import { NEARBY_REPORT_RADIUS_M } from '../lib/config';
 
 const ReportMap = dynamic(() => import('../components/ReportMap'), {
   ssr: false,
@@ -16,6 +17,7 @@ export default function Home() {
   const [mode, setMode] = useState('browse'); // browse | pick | form | trip-pick
   const [pickedPoint, setPickedPoint] = useState(null);
   const [geoStatus, setGeoStatus] = useState('');
+  const [nearbyNotice, setNearbyNotice] = useState(null); // { count, nearestId } | null
   const [showCompetitions, setShowCompetitions] = useState(false);
   const [competitionFocusId, setCompetitionFocusId] = useState(null);
   const [tripContext, setTripContext] = useState(null);
@@ -29,10 +31,25 @@ export default function Home() {
     if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(ms);
   };
 
+  // Nearby-report awareness during pick mode: reuses the map's already-loaded
+  // report data (same CASE_GROUP-adjacent radius as the case popup's "Saker
+  // innen X m" stat) so a reporter dragging the crosshair over a spot that
+  // already has open reports gets a chance to support that case instead of
+  // filing a near-duplicate. Non-blocking — "Velg dette stedet" always works.
+  const updateNearbyNotice = useCallback((center) => {
+    if (!center) {
+      setNearbyNotice(null);
+      return;
+    }
+    const nearby = mapApiRef.current?.findNearbyReports?.(center, NEARBY_REPORT_RADIUS_M) || [];
+    setNearbyNotice(nearby.length ? { count: nearby.length, nearestId: nearby[0].id } : null);
+  }, []);
+
   const startPick = () => {
     haptic(10);
     setGeoStatus('');
     setMode('pick');
+    updateNearbyNotice(mapApiRef.current?.getCenter());
   };
 
   const confirmLocation = () => {
@@ -40,6 +57,7 @@ export default function Home() {
     if (!center) return;
     haptic(10);
     setPickedPoint(center);
+    setNearbyNotice(null);
     setMode('form');
   };
 
@@ -62,10 +80,25 @@ export default function Home() {
   const closeSheet = () => {
     setMode('browse');
     setPickedPoint(null);
+    setNearbyNotice(null);
   };
 
   const changeLocation = () => {
     setMode('pick');
+    updateNearbyNotice(mapApiRef.current?.getCenter());
+  };
+
+  // "Se og støtt i stedet" — abandon the pick flow and open the nearest
+  // existing case's popup so the citizen can support it instead of filing a
+  // near-duplicate report.
+  const viewNearestExisting = () => {
+    if (!nearbyNotice?.nearestId) return;
+    haptic(10);
+    const opened = mapApiRef.current?.openCaseById?.(nearbyNotice.nearestId);
+    if (opened) {
+      setNearbyNotice(null);
+      setMode('browse');
+    }
   };
 
   const handleSubmitted = () => {
@@ -162,6 +195,7 @@ export default function Home() {
           pickMode={mode === 'pick'}
           pinnedPoint={mode === 'form' ? pickedPoint : null}
           onMapReady={handleMapReady}
+          onPickCenterChange={updateNearbyNotice}
         />
 
         <div className="app-topbar">
@@ -188,6 +222,16 @@ export default function Home() {
           <>
             <div className="pick-hint">Dra kartet til stedet det gjelder</div>
             <div className="pick-bar">
+              {nearbyNotice && (
+                <div className="pick-nearby-notice">
+                  <p className="pick-nearby-notice__text">
+                    {nearbyNotice.count === 1
+                      ? 'Én melding allerede nær dette punktet'
+                      : `${nearbyNotice.count} meldinger allerede nær dette punktet`}
+                  </p>
+                  <button type="button" className="pick-nearby-notice__action" onClick={viewNearestExisting}>Se og støtt i stedet</button>
+                </div>
+              )}
               <button type="button" className="big-button big-button--primary pick-bar__confirm" onClick={confirmLocation}>Velg dette stedet</button>
               <div className="pick-bar__row">
                 <button type="button" className="big-button big-button--secondary" onClick={closeSheet}>Avbryt</button>

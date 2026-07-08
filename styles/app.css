@@ -185,6 +185,40 @@
   text-align: center;
 }
 
+/* Non-blocking "N meldinger allerede nær dette punktet" awareness notice —
+   still lets the reporter proceed with "Velg dette stedet" regardless. */
+.pick-nearby-notice {
+  align-items: center;
+  background: rgba(11, 93, 77, 0.08);
+  border: 1px solid rgba(11, 93, 77, 0.18);
+  border-radius: var(--radius-md, 10px);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.6rem;
+  justify-content: space-between;
+  padding: 0.5rem 0.7rem;
+}
+
+.pick-nearby-notice__text {
+  color: var(--color-text);
+  flex: 1 1 auto;
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.pick-nearby-notice__action {
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  cursor: pointer;
+  flex: 0 0 auto;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.1rem 0;
+  text-decoration: underline;
+}
+
 /* Bottom sheet */
 .sheet-layer {
   inset: 0;
