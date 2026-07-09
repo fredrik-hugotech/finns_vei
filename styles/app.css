@@ -226,6 +226,38 @@
   text-decoration: underline;
 }
 
+/* Non-blocking "N ulykker registrert nær dette punktet" awareness hint —
+   purely informational context to help the reporter pick a more accurate
+   category later (e.g. Utrygt kryss / Høy fart); never blocks "Velg dette
+   stedet" and never pre-selects a category. Styled in the warning palette
+   (amber) rather than the green used by .pick-nearby-notice above so the two
+   notices read as distinct concerns even when both are showing at once. */
+.pick-accident-notice {
+  align-items: flex-start;
+  background: #fffbeb;
+  border: 1px solid rgba(169, 96, 13, 0.28);
+  border-radius: var(--radius-md, 10px);
+  display: flex;
+  gap: 0.45rem;
+  padding: 0.5rem 0.7rem;
+}
+
+.pick-accident-notice__icon {
+  color: var(--color-warning);
+  flex: 0 0 auto;
+  height: 1.05rem;
+  margin-top: 0.05rem;
+  width: 1.05rem;
+}
+
+.pick-accident-notice__text {
+  color: var(--color-warning);
+  flex: 1 1 auto;
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin: 0;
+}
+
 /* Bottom sheet */
 .sheet-layer {
   inset: 0;

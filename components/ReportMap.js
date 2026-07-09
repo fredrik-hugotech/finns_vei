@@ -563,6 +563,10 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   const onPickCenterChangeRef = useRef(onPickCenterChange);
   const activeNvdbLayersRef = useRef([]);
   const reportsDataRef = useRef({ type: 'FeatureCollection', features: [] });
+  // Bumped on every checkAccidentsNear() call so an in-flight NVDB fetch that
+  // resolves after a newer one (out-of-order network response) can detect
+  // it's stale and be ignored instead of overwriting the latest result.
+  const accidentCheckIdRef = useRef(0);
   const [message, setMessage] = useState('');
   useEffect(() => {
     if (!message) return undefined;
@@ -1154,6 +1158,20 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         findNearbyReports: (centerPoint, radiusMeters = NEARBY_RADIUS_M) => (
           findNearbyReportFeatures(reportsDataRef.current, [centerPoint.lng, centerPoint.lat], radiusMeters)
         ),
+        // Async NVDB accident lookup for the pick-mode "N ulykker registrert
+        // nær dette punktet" hint. Can be called on every debounced moveend,
+        // so requests are stamped with an incrementing id — a response is
+        // only applied (resolved with a real array) if it's still the latest
+        // one issued; a stale response resolves with null so the caller can
+        // simply ignore it instead of clobbering a newer result. Network/API
+        // failures resolve to an empty array (never reject) so callers never
+        // need error-state handling.
+        checkAccidentsNear: (centerPoint, radiusMeters = NEARBY_RADIUS_M) => {
+          const requestId = (accidentCheckIdRef.current += 1);
+          return fetchAccidentsNear([centerPoint.lng, centerPoint.lat], radiusMeters)
+            .then((accidents) => (requestId === accidentCheckIdRef.current ? accidents : null))
+            .catch(() => (requestId === accidentCheckIdRef.current ? [] : null));
+        },
         openCaseById: (id) => openCaseById(id),
         showCompetitionTrips: (geojson) => showCompetitionTrips(map, geojson),
         clearCompetitionTrips: () => showCompetitionTrips(map, { type: 'FeatureCollection', features: [] }),

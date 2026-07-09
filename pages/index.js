@@ -18,6 +18,7 @@ export default function Home() {
   const [pickedPoint, setPickedPoint] = useState(null);
   const [geoStatus, setGeoStatus] = useState('');
   const [nearbyNotice, setNearbyNotice] = useState(null); // { count, nearestId } | null
+  const [accidentNotice, setAccidentNotice] = useState(null); // { count } | null
   const [showCompetitions, setShowCompetitions] = useState(false);
   const [competitionFocusId, setCompetitionFocusId] = useState(null);
   const [tripContext, setTripContext] = useState(null);
@@ -50,11 +51,39 @@ export default function Home() {
     setNearbyNotice(nearby.length ? { count: nearby.length, nearestId: nearby[0].id } : null);
   }, []);
 
+  // Accident-context hint during pick mode: an async NVDB lookup (same radius
+  // as the case popup's accident list, for consistency) so a reporter
+  // dragging the crosshair near a spot with a history of registered
+  // accidents gets a heads-up before they reach the category step — useful
+  // context for picking e.g. "Utrygt kryss" or "Høy fart" over "Annet".
+  // Purely informational: never auto-selects a category and never blocks
+  // "Velg dette stedet". checkAccidentsNear() itself never rejects and
+  // resolves `null` for stale (out-of-order) responses, so a slow or failed
+  // NVDB fetch just leaves the hint as-is/empty — no error state here.
+  const updateAccidentHint = useCallback((center) => {
+    if (!center) {
+      setAccidentNotice(null);
+      return;
+    }
+    mapApiRef.current?.checkAccidentsNear?.(center, NEARBY_REPORT_RADIUS_M)?.then((accidents) => {
+      if (accidents === null) return; // stale response — a newer request already decided
+      setAccidentNotice(accidents.length ? { count: accidents.length } : null);
+    });
+  }, []);
+
+  // Wired to the map's single onPickCenterChange callback so both the
+  // nearby-duplicate notice and the accident hint refresh together whenever
+  // the pick-mode crosshair settles on a new point.
+  const handlePickCenterChange = useCallback((center) => {
+    updateNearbyNotice(center);
+    updateAccidentHint(center);
+  }, [updateNearbyNotice, updateAccidentHint]);
+
   const startPick = () => {
     haptic(10);
     setGeoStatus('');
     setMode('pick');
-    updateNearbyNotice(mapApiRef.current?.getCenter());
+    handlePickCenterChange(mapApiRef.current?.getCenter());
   };
 
   const confirmLocation = () => {
@@ -63,6 +92,7 @@ export default function Home() {
     haptic(10);
     setPickedPoint(center);
     setNearbyNotice(null);
+    setAccidentNotice(null);
     setMode('form');
   };
 
@@ -86,11 +116,12 @@ export default function Home() {
     setMode('browse');
     setPickedPoint(null);
     setNearbyNotice(null);
+    setAccidentNotice(null);
   };
 
   const changeLocation = () => {
     setMode('pick');
-    updateNearbyNotice(mapApiRef.current?.getCenter());
+    handlePickCenterChange(mapApiRef.current?.getCenter());
   };
 
   // "Se og støtt i stedet" — abandon the pick flow and open the nearest
@@ -200,7 +231,7 @@ export default function Home() {
           pickMode={mode === 'pick'}
           pinnedPoint={mode === 'form' ? pickedPoint : null}
           onMapReady={handleMapReady}
-          onPickCenterChange={updateNearbyNotice}
+          onPickCenterChange={handlePickCenterChange}
         />
 
         <div className="app-topbar">
@@ -239,6 +270,18 @@ export default function Home() {
                       : `${nearbyNotice.count} meldinger allerede nær dette punktet`}
                   </p>
                   <button type="button" className="pick-nearby-notice__action" onClick={viewNearestExisting}>Se og støtt i stedet</button>
+                </div>
+              )}
+              {accidentNotice && (
+                <div className="pick-accident-notice">
+                  <svg className="pick-accident-notice__icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+                  </svg>
+                  <p className="pick-accident-notice__text">
+                    {accidentNotice.count === 1
+                      ? 'Én ulykke registrert nær dette punktet siste årene'
+                      : `${accidentNotice.count} ulykker registrert nær dette punktet siste årene`}
+                  </p>
                 </div>
               )}
               <button type="button" className="big-button big-button--primary pick-bar__confirm" onClick={confirmLocation}>Velg dette stedet</button>
