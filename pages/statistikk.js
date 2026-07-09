@@ -22,6 +22,21 @@ function lastMonths(n) {
   return out;
 }
 
+// "Mørketid" road hazards (ice, snow-narrowed shoulders, dark mornings, poor
+// visibility) cluster in the meteorological winter half of the year. We keep
+// the full November–March window rather than trimming the edges: in most of
+// Norway early November already brings the first ice/dark-morning reports,
+// and March keeps producing freeze-thaw black ice right up to month's end —
+// so both edge months carry real signal.
+const WINTER_MONTHS = new Set([10, 11, 0, 1, 2]); // nov, des, jan, feb, mar (0-indexed)
+
+function isWinterReport(feature) {
+  const createdAt = feature.properties?.created_at;
+  if (!createdAt) return false;
+  const d = new Date(createdAt);
+  return !Number.isNaN(d.getTime()) && WINTER_MONTHS.has(d.getMonth());
+}
+
 // All aggregation happens client-side over the already-public GeoJSON from
 // /api/reports — no new server logic, just counting what's already exposed.
 function buildStats(features) {
@@ -85,6 +100,7 @@ function Bar({ label, count, max, color }) {
 
 export default function StatistikkPage() {
   const [state, setState] = useState({ status: 'loading', features: [] });
+  const [season, setSeason] = useState('all'); // 'all' | 'winter'
 
   useEffect(() => {
     let cancelled = false;
@@ -106,7 +122,18 @@ export default function StatistikkPage() {
     return () => { cancelled = true; };
   }, []);
 
-  const stats = useMemo(() => (state.status === 'ready' ? buildStats(state.features) : null), [state]);
+  // Slice the already-fetched features by season before handing them to
+  // buildStats — the aggregation logic itself stays untouched, so every
+  // section (overview, category/status bars, trend) recomputes for free.
+  const filteredFeatures = useMemo(() => {
+    if (state.status !== 'ready') return state.features;
+    return season === 'winter' ? state.features.filter(isWinterReport) : state.features;
+  }, [state, season]);
+
+  const stats = useMemo(
+    () => (state.status === 'ready' ? buildStats(filteredFeatures) : null),
+    [state.status, filteredFeatures],
+  );
 
   const maxCategory = stats ? Math.max(...stats.categories.map((c) => c.count), 1) : 1;
   const maxStatus = stats ? Math.max(...stats.statuses.map((s) => s.count), 1) : 1;
@@ -150,6 +177,34 @@ export default function StatistikkPage() {
 
         {stats && (
           <>
+            <div className="segmented stats-page__season-toggle" role="tablist" aria-label="Vis meldinger for">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={season === 'all'}
+                className={season === 'all' ? 'segmented__option segmented__option--active' : 'segmented__option'}
+                onClick={() => setSeason('all')}
+              >
+                Alle
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={season === 'winter'}
+                className={season === 'winter' ? 'segmented__option segmented__option--active' : 'segmented__option'}
+                onClick={() => setSeason('winter')}
+              >
+                Vintermeldinger (nov–mar)
+              </button>
+            </div>
+
+            {season === 'winter' && (
+              <p className="stats-page__note">
+                Viser kun meldinger registrert i vinterhalvåret (november–mars), når is, snø, smale skuldre og mørke
+                morgener øker risikoen i trafikken.
+              </p>
+            )}
+
             <section className="stats-overview">
               <div className="stats-stat">
                 <strong>{stats.total}</strong>
