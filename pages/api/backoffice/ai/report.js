@@ -1,4 +1,4 @@
-import { backofficeEnvStatus, isBackofficeAuthorized } from '../../../../lib/backofficeAuth';
+import { backofficeEnvStatus, isAdminRequest } from '../../../../lib/backofficeAuth';
 import { getReportById, hasSupabaseConfig, sanitizeReportForBackofficeAi } from '../../../../lib/supabaseRest';
 
 export default async function handler(req, res) {
@@ -6,7 +6,7 @@ export default async function handler(req, res) {
     res.setHeader('Allow', ['GET']);
     return res.status(405).end('Method Not Allowed');
   }
-  if (!isBackofficeAuthorized(req)) return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
+  if (!(await isAdminRequest(req))) return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
   if (!hasSupabaseConfig()) return res.status(503).json({ error: 'Supabase is not configured', code: 'missing_supabase_config', env: backofficeEnvStatus() });
 
   const id = typeof req.query.id === 'string' ? req.query.id : '';

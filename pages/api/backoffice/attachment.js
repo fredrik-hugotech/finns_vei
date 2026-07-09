@@ -15,22 +15,22 @@ export default async function handler(req, res) {
   if (!(await isAdminRequest(req))) return res.status(403).json({ error: 'Forbidden' });
   if (!hasSupabaseConfig()) return res.status(503).json({ error: 'Supabase er ikke konfigurert' });
 
-  // JSON actions: change visibility / delete
-  if (req.method === 'PATCH' || req.method === 'DELETE') {
-    const { fields } = await parseMultipartRequest(req);
-    if (req.method === 'PATCH') {
+  try {
+    // JSON actions: change visibility / delete
+    if (req.method === 'PATCH' || req.method === 'DELETE') {
+      const { fields } = await parseMultipartRequest(req);
+      if (req.method === 'PATCH') {
+        if (!fields.id) return res.status(400).json({ error: 'Mangler id' });
+        await setCaseAttachmentVisibility(fields.id, fields.visibility);
+        return res.status(200).json({ ok: true });
+      }
       if (!fields.id) return res.status(400).json({ error: 'Mangler id' });
-      await setCaseAttachmentVisibility(fields.id, fields.visibility);
+      await deleteCaseAttachment(fields.id);
       return res.status(200).json({ ok: true });
     }
-    if (!fields.id) return res.status(400).json({ error: 'Mangler id' });
-    await deleteCaseAttachment(fields.id);
-    return res.status(200).json({ ok: true });
-  }
 
-  if (req.method !== 'POST') { res.setHeader('Allow', ['POST', 'PATCH', 'DELETE']); return res.status(405).end('Method Not Allowed'); }
+    if (req.method !== 'POST') { res.setHeader('Allow', ['POST', 'PATCH', 'DELETE']); return res.status(405).end('Method Not Allowed'); }
 
-  try {
     const { fields, files } = await parseMultipartRequest(req);
     const reportId = fields.reportId || fields.report_id;
     const visibility = fields.visibility === 'public' ? 'public' : 'internal';
@@ -54,6 +54,6 @@ export default async function handler(req, res) {
     return res.status(201).json({ attachments: created });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ error: error?.message || 'Kunne ikke laste opp.' });
+    return res.status(error?.status || 500).json({ error: error?.message || 'Kunne ikke laste opp.' });
   }
 }

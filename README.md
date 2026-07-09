@@ -216,6 +216,7 @@ Set these in Vercel Project Settings and locally in `.env.local` when developing
 | `NEXT_PUBLIC_MAPBOX_TOKEN` | Browser | Yes | Mapbox GL JS token for map display and location selection. |
 | `TRELLO_API_KEY` | Server secret | Optional | Trello API key. |
 | `TRELLO_API_TOKEN` | Server secret | Optional | Trello API token. |
+| `TRELLO_API_SECRET` | Server secret | Optional (`TRELLO_WEBHOOK_SECRET` also accepted) | Trello application secret used to verify the `X-Trello-Webhook` HMAC signature on incoming webhook POSTs. If unset, signature verification is skipped (logged once) so existing deploys keep working; set it to reject forged webhook requests. |
 | `TRELLO_LIST_ID_NY_MELDING` | Server | Optional | Trello list ID for new reports. Falls back to `TRELLO_LIST_ID` if present. |
 | `NVDB_X_CLIENT` | Server secret | Yes for production | Header value for NVDB API Les V4 identification. The server always sends an `X-Client` header and falls back to `finns-vei-vercel` locally. |
 | `NVDB_BASE_URL` | Server | Optional | Primary NVDB API Les V4 base URL. Defaults to `https://nvdbapiles.atlas.vegvesen.no`. |
@@ -290,6 +291,7 @@ Trello webhook setup:
 - Trello verifies the callback with `HEAD /api/trello/webhook`, which returns `200`.
 - `POST /api/trello/webhook` handles card moves between `Ny melding`, `Registrert`, `Startet`, and `Fullført` by updating `reports.status` and `status_updated_at` by `trello_card_id`.
 - Normal Trello comments remain internal. Only comments starting with `#public` update `public_status_note`.
+- Set `TRELLO_API_SECRET` (the Trello app secret paired with `TRELLO_API_KEY`, not the token) to verify the `X-Trello-Webhook` signature on each POST; without it, verification is skipped and a warning is logged once.
 
 Backoffice AI endpoints:
 
