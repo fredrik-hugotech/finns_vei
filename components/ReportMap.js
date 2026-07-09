@@ -1,10 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import { DEFAULT_CENTER, NEARBY_REPORT_RADIUS_M, REPORT_STATUS } from '../lib/config';
-import { MAP_COLORS, MAP_STYLE } from '../lib/mapStyleConfig';
+import {
+  MAP_COLORS,
+  MAP_STYLE,
+  buildConcernHeatmapWeightExpression,
+  CONCERN_HEATMAP_CATEGORIES,
+  CONCERN_HEATMAP_DEFAULT_WEIGHTS,
+  CONCERN_HEATMAP_DEFAULT_OTHER_WEIGHT,
+  CONCERN_HEATMAP_DEFAULT_SUPPORT_BOOST_FACTOR,
+} from '../lib/mapStyleConfig';
 import { REPORT_STATUS_META, REPORT_STATUS_ORDER, reportStatusMeta } from '../lib/reportStatusMeta';
 import { categoryGlyph } from '../lib/reportCategoryGlyphs';
 import { normalizeImageEntries } from '../lib/reportImages';
+import { getSavedHeatmapWeightPrefs, saveHeatmapWeightPrefs, clearHeatmapWeightPrefs } from '../lib/heatmapWeightPrefs';
 import SupportSheet from './SupportSheet';
 import useSheetDrag from '../hooks/useSheetDrag';
 
@@ -577,6 +586,16 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   const [caseAccidents, setCaseAccidents] = useState(null);
   const [adminSecret, setAdminSecret] = useState(null);
   const [concernHeatmapOn, setConcernHeatmapOn] = useState(false);
+  // "Bekymringsgrad-vekting": a staff-only, per-device preview of the
+  // heatmap's category weights + support_count boost. State always starts
+  // from the hardcoded defaults in lib/mapStyleConfig.js — a saved
+  // localStorage override is only ever loaded once we have a server-verified
+  // admin session (see the effect below), so a public visitor's state here
+  // never differs from the default paint baked into reportConcernHeatmapPaint.
+  const [heatmapWeights, setHeatmapWeights] = useState(() => ({ ...CONCERN_HEATMAP_DEFAULT_WEIGHTS }));
+  const [heatmapOtherWeight, setHeatmapOtherWeight] = useState(CONCERN_HEATMAP_DEFAULT_OTHER_WEIGHT);
+  const [heatmapSupportBoost, setHeatmapSupportBoost] = useState(CONCERN_HEATMAP_DEFAULT_SUPPORT_BOOST_FACTOR);
+  const [weightPanelOpen, setWeightPanelOpen] = useState(false);
   const [sporOn, setSporOn] = useState(false);
   const [sporComps, setSporComps] = useState([]);
   const [sporCompId, setSporCompId] = useState('');
@@ -597,6 +616,30 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       .catch(() => { if (!cancelled) setAdminSecret(null); });
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    // Once (and only once) we know this is a real staff session, pull in any
+    // weight tuning this staff member saved on this device previously. Runs
+    // once per verified session — later edits are applied via the change
+    // handlers below, not by re-reading localStorage.
+    if (!adminSecret) return;
+    const saved = getSavedHeatmapWeightPrefs();
+    if (!saved) return;
+    if (saved.categoryWeights && typeof saved.categoryWeights === 'object') {
+      setHeatmapWeights((current) => {
+        const merged = { ...current };
+        CONCERN_HEATMAP_CATEGORIES.forEach((category) => {
+          const value = Number(saved.categoryWeights[category]);
+          if (Number.isFinite(value)) merged[category] = value;
+        });
+        return merged;
+      });
+    }
+    const savedOther = Number(saved.otherWeight);
+    if (Number.isFinite(savedOther)) setHeatmapOtherWeight(savedOther);
+    const savedBoost = Number(saved.supportBoostFactor);
+    if (Number.isFinite(savedBoost)) setHeatmapSupportBoost(savedBoost);
+  }, [adminSecret]);
 
   const logoutAdmin = () => {
     try { window.localStorage.removeItem('ff-admin-secret'); } catch (_e) { /* ignore */ }
@@ -836,6 +879,17 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     }, map.getLayer('reports-clusters') ? 'reports-clusters' : undefined);
   }, []);
 
+  // Admin-only "Bekymringsgrad-vekting" preview: rebuilds the heatmap-weight
+  // expression from the current slider values and swaps it into the already
+  // -running layer with map.setPaintProperty — no re-add, no reload needed.
+  // Nothing outside the staff-only panel below ever calls this, so public
+  // visitors always see exactly the default paint from mapStyleConfig.js.
+  const applyWeightsToMap = useCallback((weights, otherWeight, supportBoost) => {
+    const map = mapRef.current;
+    if (!map || !map.getLayer('reports-heatmap')) return;
+    map.setPaintProperty('reports-heatmap', 'heatmap-weight', buildConcernHeatmapWeightExpression(weights, otherWeight, supportBoost));
+  }, []);
+
   const toggleConcernHeatmap = () => {
     const map = mapRef.current;
     setConcernHeatmapOn((current) => {
@@ -844,12 +898,58 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         if (next) {
           ensureConcernHeatmapLayer(map);
           if (map.getLayer('reports-heatmap')) map.setLayoutProperty('reports-heatmap', 'visibility', 'visible');
+          // Re-apply this staff member's saved tuning (if any) whenever they
+          // turn the layer back on, including in a later browser session. For
+          // the public, and for staff who never touched the panel,
+          // heatmapWeights/heatmapOtherWeight/heatmapSupportBoost still hold
+          // the untouched defaults, so this is a same-value no-op visually.
+          if (adminSecret) applyWeightsToMap(heatmapWeights, heatmapOtherWeight, heatmapSupportBoost);
         } else if (map.getLayer('reports-heatmap')) {
           map.setLayoutProperty('reports-heatmap', 'visibility', 'none');
         }
       }
       return next;
     });
+  };
+
+  // Slider/number-input handlers for the tuning panel: update local state,
+  // push the rebuilt expression straight to the live layer, and persist to
+  // this device's localStorage so the tuning survives a reload. Guarded by
+  // the adminSecret-gated UI above these are wired from — see the panel JSX.
+  const changeCategoryWeight = (category, rawValue) => {
+    const value = Number(rawValue);
+    if (!Number.isFinite(value)) return;
+    const nextWeights = { ...heatmapWeights, [category]: value };
+    setHeatmapWeights(nextWeights);
+    applyWeightsToMap(nextWeights, heatmapOtherWeight, heatmapSupportBoost);
+    saveHeatmapWeightPrefs({ categoryWeights: nextWeights, otherWeight: heatmapOtherWeight, supportBoostFactor: heatmapSupportBoost });
+  };
+
+  const changeOtherWeight = (rawValue) => {
+    const value = Number(rawValue);
+    if (!Number.isFinite(value)) return;
+    setHeatmapOtherWeight(value);
+    applyWeightsToMap(heatmapWeights, value, heatmapSupportBoost);
+    saveHeatmapWeightPrefs({ categoryWeights: heatmapWeights, otherWeight: value, supportBoostFactor: heatmapSupportBoost });
+  };
+
+  const changeSupportBoost = (rawValue) => {
+    const value = Number(rawValue);
+    if (!Number.isFinite(value)) return;
+    setHeatmapSupportBoost(value);
+    applyWeightsToMap(heatmapWeights, heatmapOtherWeight, value);
+    saveHeatmapWeightPrefs({ categoryWeights: heatmapWeights, otherWeight: heatmapOtherWeight, supportBoostFactor: value });
+  };
+
+  // "Tilbakestill": restores the exact hardcoded defaults from
+  // lib/mapStyleConfig.js and forgets the saved per-device override.
+  const resetHeatmapWeights = () => {
+    const defaults = { ...CONCERN_HEATMAP_DEFAULT_WEIGHTS };
+    setHeatmapWeights(defaults);
+    setHeatmapOtherWeight(CONCERN_HEATMAP_DEFAULT_OTHER_WEIGHT);
+    setHeatmapSupportBoost(CONCERN_HEATMAP_DEFAULT_SUPPORT_BOOST_FACTOR);
+    applyWeightsToMap(defaults, CONCERN_HEATMAP_DEFAULT_OTHER_WEIGHT, CONCERN_HEATMAP_DEFAULT_SUPPORT_BOOST_FACTOR);
+    clearHeatmapWeightPrefs();
   };
 
   // Admin-only "Sykkelspor" layer: the density left by competition rides.
@@ -1301,6 +1401,67 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
                 ))}
               </div>
             </>
+          )}
+        </div>
+      )}
+      {adminSecret && showReports && concernHeatmapOn && (
+        <div className="weight-tuning-card" aria-label="Bekymringsgrad-vekting">
+          <button
+            type="button"
+            className="weight-tuning-card__header"
+            aria-expanded={weightPanelOpen}
+            onClick={() => setWeightPanelOpen((open) => !open)}
+          >
+            <span>Bekymringsgrad-vekting</span>
+            <span className="weight-tuning-card__chevron" aria-hidden="true">{weightPanelOpen ? '▾' : '▸'}</span>
+          </button>
+          {weightPanelOpen && (
+            <div className="weight-tuning-card__body">
+              <p className="weight-tuning-card__hint">
+                Kun synlig for deg. Justeringene lagres på denne enheten og påvirker ikke andre.
+              </p>
+              {CONCERN_HEATMAP_CATEGORIES.map((category) => (
+                <label key={category} className="weight-tuning-row">
+                  <span className="weight-tuning-row__label">{category}</span>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="3"
+                    step="0.05"
+                    value={heatmapWeights[category]}
+                    onChange={(e) => changeCategoryWeight(category, e.target.value)}
+                  />
+                  <span className="weight-tuning-row__value">{Number(heatmapWeights[category]).toFixed(2)}</span>
+                </label>
+              ))}
+              <label className="weight-tuning-row">
+                <span className="weight-tuning-row__label">Andre kategorier</span>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="3"
+                  step="0.05"
+                  value={heatmapOtherWeight}
+                  onChange={(e) => changeOtherWeight(e.target.value)}
+                />
+                <span className="weight-tuning-row__value">{Number(heatmapOtherWeight).toFixed(2)}</span>
+              </label>
+              <label className="weight-tuning-row">
+                <span className="weight-tuning-row__label">Støtte-boost (per støtte, maks 10)</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="0.5"
+                  step="0.01"
+                  value={heatmapSupportBoost}
+                  onChange={(e) => changeSupportBoost(e.target.value)}
+                />
+                <span className="weight-tuning-row__value">{Number(heatmapSupportBoost).toFixed(2)}</span>
+              </label>
+              <button type="button" className="weight-tuning-card__reset" onClick={resetHeatmapWeights}>
+                Tilbakestill
+              </button>
+            </div>
           )}
         </div>
       )}
