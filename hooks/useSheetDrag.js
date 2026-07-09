@@ -38,5 +38,14 @@ export default function useSheetDrag(onClose, { threshold = 120 } = {}) {
     translate(0);
   };
 
-  return { sheetRef, dragHandlers: { onTouchStart, onTouchMove, onTouchEnd } };
+  const onTouchCancel = () => {
+    if (!active.current) return;
+    active.current = false;
+    startY.current = null;
+    const el = sheetRef.current;
+    if (el) el.style.transition = '';
+    translate(0);
+  };
+
+  return { sheetRef, dragHandlers: { onTouchStart, onTouchMove, onTouchEnd, onTouchCancel } };
 }

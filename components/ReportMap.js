@@ -135,7 +135,11 @@ function compactText(value = '', maxLength = 140) {
 
 function browserHasSupported(reportId) {
   if (typeof window === 'undefined' || !reportId) return false;
-  return window.localStorage.getItem(`finns-vei-supported-${reportId}`) === '1';
+  try {
+    return window.localStorage.getItem(`finns-vei-supported-${reportId}`) === '1';
+  } catch (_e) {
+    return false;
+  }
 }
 
 function reportIdFromFeature(featureOrProperties = {}) {
@@ -533,6 +537,11 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   const activeNvdbLayersRef = useRef([]);
   const reportsDataRef = useRef({ type: 'FeatureCollection', features: [] });
   const [message, setMessage] = useState('');
+  useEffect(() => {
+    if (!message) return undefined;
+    const timer = setTimeout(() => setMessage(''), 4000);
+    return () => clearTimeout(timer);
+  }, [message]);
   const [activeNvdbLayers, setActiveNvdbLayers] = useState([]);
   const [legendOpen, setLegendOpen] = useState(() => (typeof window !== 'undefined' ? window.innerWidth > 720 : false));
   const [supportTarget, setSupportTarget] = useState(null);
@@ -918,12 +927,16 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
 
   const getSupportToken = useCallback(() => {
     const storageKey = 'finns-vei-support-token';
-    let token = window.localStorage.getItem(storageKey);
-    if (!token) {
-      token = (window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`);
-      window.localStorage.setItem(storageKey, token);
+    try {
+      let token = window.localStorage.getItem(storageKey);
+      if (!token) {
+        token = (window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`);
+        window.localStorage.setItem(storageKey, token);
+      }
+      return token;
+    } catch (_e) {
+      return (window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`);
     }
-    return token;
   }, []);
 
   useEffect(() => {
@@ -934,7 +947,9 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       if (!button) return;
       const reportId = button.getAttribute('data-report-id');
       if (!reportId) return;
-      if (window.localStorage.getItem(`finns-vei-supported-${reportId}`)) {
+      let alreadySupported = false;
+      try { alreadySupported = Boolean(window.localStorage.getItem(`finns-vei-supported-${reportId}`)); } catch (_e) { alreadySupported = false; }
+      if (alreadySupported) {
         setMessage('Du har allerede støttet denne saken fra denne nettleseren.');
         return;
       }
@@ -946,7 +961,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   }, [showReports]);
 
   const handleSupportDone = useCallback((payload, reportId) => {
-    if (reportId) window.localStorage.setItem(`finns-vei-supported-${reportId}`, '1');
+    if (reportId) { try { window.localStorage.setItem(`finns-vei-supported-${reportId}`, '1'); } catch (_e) { /* best effort */ } }
     setSupportTarget(null);
     setMessage(payload?.alreadySupported ? 'Du har allerede støttet denne saken.' : 'Takk for støtten!');
     loadReports().catch((error) => console.error(error));
@@ -1274,7 +1289,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           onDone={(payload) => handleSupportDone(payload, supportTarget.reportId)}
         />
       )}
-      {message && <div className="accident-status map-message">{message}</div>}
+      {message && <div className="accident-status map-message" onClick={() => setMessage('')}>{message}</div>}
     </div>
   );
 }

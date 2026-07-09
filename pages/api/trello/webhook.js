@@ -231,7 +231,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, actionType, ...result });
     }
 
-    if (actionType === 'commentCard' || extractTrelloCommentText(action)) {
+    if (actionType === 'commentCard') {
       const result = await handleComment(action);
       return res.status(200).json({ ok: true, actionType, ...result });
     }

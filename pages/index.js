@@ -1,6 +1,6 @@
 import Head from 'next/head';
 import dynamic from 'next/dynamic';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Logo from '../components/Logo';
 import ReportSheet from '../components/ReportSheet';
 import CompetitionSheet from '../components/CompetitionSheet';
@@ -20,6 +20,11 @@ export default function Home() {
   const [competitionFocusId, setCompetitionFocusId] = useState(null);
   const [tripContext, setTripContext] = useState(null);
   const [message, setMessage] = useState('');
+  useEffect(() => {
+    if (!message) return undefined;
+    const timer = setTimeout(() => setMessage(''), 4000);
+    return () => clearTimeout(timer);
+  }, [message]);
 
   const handleMapReady = useCallback((api) => {
     mapApiRef.current = api;
