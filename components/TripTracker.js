@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { distanceMeters, pathDistanceMeters, clipAndSnapCells, clipPath } from '../lib/geoPrivacy';
+import { distanceMeters, pathDistanceMeters, clipAndSnapCells, clipPath, snapToGrid, CLIP_METERS } from '../lib/geoPrivacy';
 import Icon from './Icon';
 
 function haptic(pattern = 8) {
@@ -84,6 +84,14 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mapApi
   const markUnsafe = async () => {
     const fix = lastFixRef.current;
     if (!fix) { setFlash('Venter på posisjon …'); return; }
+    // Same privacy rule as the rest of the trip: protect the ~150m zone around
+    // the start (likely home) by snapping it to the coarse grid instead of
+    // sending the exact fix. Points further along the ride stay at full
+    // precision since they're genuinely useful hazard locations.
+    const start = pointsRef.current[0] || fix;
+    const nearStart = distanceMeters(fix, start) <= CLIP_METERS;
+    const point = nearStart ? snapToGrid(fix.lat, fix.lng) : fix;
+    if (!point) { setFlash('Venter på posisjon …'); return; }
     haptic([20, 30, 20]);
     setUnsafeCount((n) => n + 1);
     setFlash('Utrygt punkt lagret');
@@ -96,8 +104,8 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mapApi
           reporter_type: 'barn',
           category: 'Farlig for sykkel',
           description: `Utrygt punkt markert under sykkelregistrering (${routeType === 'skole' ? 'skolerute' : 'fritidsrute'}).`,
-          lat: fix.lat,
-          lng: fix.lng,
+          lat: point.lat,
+          lng: point.lng,
           bike_route_type: routeType,
         }),
       });
