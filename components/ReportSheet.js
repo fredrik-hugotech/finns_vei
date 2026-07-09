@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { REPORT_CATEGORIES, REPORTER_TYPES } from '../lib/config';
 import { categoryGlyph } from '../lib/reportCategoryGlyphs';
+import { descriptionSuggestions } from '../lib/reportDescriptionSuggestions';
 import { REPORT_IMAGE_MAX_BYTES, REPORT_IMAGE_MAX_COUNT } from '../lib/reportImages';
 
 // Coordinates → a human place ("Marviksveien · Lund") so the reporter can
@@ -69,6 +70,29 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
   const selectCategory = (event) => {
     haptic(6);
     updateField(event);
+  };
+
+  // Tapping a suggestion chip appends the phrase to the free-text description
+  // (or removes it again if it's already there verbatim), joining sentences
+  // in a way that reads naturally in Norwegian.
+  const toggleSuggestion = (phrase) => {
+    haptic(6);
+    setForm((current) => {
+      const desc = current.description;
+      const idx = desc.indexOf(phrase);
+      if (idx !== -1) {
+        const before = desc.slice(0, idx);
+        const after = desc.slice(idx + phrase.length);
+        const merged = before.trim()
+          ? before.replace(/[.,]?\s*$/, '') + after
+          : after.replace(/^[.,]?\s*/, '');
+        return { ...current, description: merged.trim() };
+      }
+      if (!desc.trim()) return { ...current, description: phrase };
+      const trimmed = desc.replace(/\s+$/, '');
+      const joiner = /[.!?,]$/.test(trimmed) ? ' ' : '. ';
+      return { ...current, description: `${trimmed}${joiner}${phrase}` };
+    });
   };
 
   const selectReporter = (type) => {
@@ -266,10 +290,28 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
                 />
               </div>
 
-              <label className="sheet-field">
-                <span className="sheet-field__label">Fortell kort</span>
-                <textarea name="description" value={form.description} onChange={updateField} required minLength={3} maxLength={1200} placeholder="Hva gjør stedet utrygt?" />
-              </label>
+              <div className="sheet-field">
+                <label htmlFor="report-description" className="sheet-field__label">Fortell kort</label>
+                {form.category && (
+                  <div className="suggestion-chips" role="group" aria-label="Forslag til beskrivelse">
+                    {descriptionSuggestions(form.category).map((phrase) => {
+                      const active = form.description.includes(phrase);
+                      return (
+                        <button
+                          key={phrase}
+                          type="button"
+                          className={active ? 'suggestion-chip suggestion-chip--active' : 'suggestion-chip'}
+                          aria-pressed={active}
+                          onClick={() => toggleSuggestion(phrase)}
+                        >
+                          {phrase}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                <textarea id="report-description" name="description" value={form.description} onChange={updateField} required minLength={3} maxLength={1200} placeholder="Hva gjør stedet utrygt?" />
+              </div>
 
               <div className="sheet-field">
                 <div className="image-row">
