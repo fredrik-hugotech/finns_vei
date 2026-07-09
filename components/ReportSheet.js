@@ -3,6 +3,7 @@ import { REPORT_CATEGORIES, REPORTER_TYPES } from '../lib/config';
 import { categoryGlyph } from '../lib/reportCategoryGlyphs';
 import { descriptionSuggestions } from '../lib/reportDescriptionSuggestions';
 import { REPORT_IMAGE_MAX_BYTES, REPORT_IMAGE_MAX_COUNT } from '../lib/reportImages';
+import { addMyReport } from '../lib/myReports';
 
 // Coordinates → a human place ("Marviksveien · Lund") so the reporter can
 // confirm they picked the right spot before sending.
@@ -198,6 +199,7 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
       setSubmitted(true);
       haptic([10, 40, 14]);
       setStatus({ type: payload.warning ? 'warning' : 'success', message: payload.warning || '' });
+      try { addMyReport({ id: payload.id, category: form.category }); } catch (_e) { /* best effort */ }
       onSubmitted?.();
     } catch (error) {
       setStatus({ type: 'error', message: error.message || 'Noe gikk galt.' });

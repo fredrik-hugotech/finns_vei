@@ -16,6 +16,13 @@
   z-index: 14;
 }
 
+/* Wraps the small links (Mine meldinger, Admin) on the right of the brand */
+.app-topbar__links {
+  align-items: center;
+  display: flex;
+  gap: 0.4rem;
+}
+
 /* Discreet staff entry next to the brand */
 .app-staff-link {
   background: rgba(255, 255, 255, 0.88);
@@ -698,6 +705,99 @@
 .share-card .big-button {
   margin-top: 0.3rem;
   width: 100%;
+}
+
+/* Anonymous "Mine meldinger" tracker (/mine-meldinger) */
+.my-reports-card {
+  gap: 0.6rem;
+  justify-items: start;
+  max-width: 440px;
+  text-align: left;
+}
+
+.my-reports-card h1 {
+  font-size: 1.4rem;
+  margin: 0.1rem 0 0;
+}
+
+.my-reports-empty {
+  color: var(--color-text);
+  line-height: 1.5;
+  margin: 0.2rem 0 0.4rem;
+}
+
+.my-reports-card > .big-button,
+.my-reports-card > .back-link {
+  width: 100%;
+}
+
+.my-reports-list {
+  display: grid;
+  gap: 0.6rem;
+  list-style: none;
+  margin: 0.2rem 0 0.2rem;
+  padding: 0;
+  width: 100%;
+}
+
+.my-reports-item {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.7rem 0.8rem;
+}
+
+.my-reports-item__head {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: space-between;
+}
+
+.my-reports-item__note {
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.my-reports-item__date {
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.my-reports-item__title {
+  font-size: 1rem;
+}
+
+.my-reports-item__actions {
+  align-items: center;
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.2rem;
+}
+
+.my-reports-item__open {
+  min-height: 38px;
+  padding: 0.4rem 0.8rem;
+  width: auto;
+}
+
+.my-reports-item__remove {
+  background: none;
+  border: none;
+  color: var(--color-muted);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 650;
+  padding: 0.3rem 0.2rem;
+  text-decoration: underline;
+}
+
+.my-reports-item__remove:hover {
+  color: var(--color-danger);
 }
 
 /* Support sheet intro */
