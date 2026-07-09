@@ -2,12 +2,25 @@ import { REPORT_CATEGORIES, REPORT_STATUS, REPORTER_TYPES } from '../../lib/conf
 import { runReportWorkflowBestEffort } from '../../lib/reportWorkflow';
 import { createReport, hasSupabaseConfig, updateReportImages, uploadReportImage } from '../../lib/supabaseRest';
 import { isAllowedReportImageType, REPORT_IMAGE_MAX_BYTES, REPORT_IMAGE_MAX_COUNT, sanitizeImageFilename } from '../../lib/reportImages';
+import { checkRequestRateLimit } from '../../lib/rateLimit';
 
 export const config = {
   api: {
     bodyParser: false,
   },
 };
+
+// ~8 reports per 10 minutes per IP hash - generous enough for one household
+// or school class reporting several spots in a row from shared wifi/NAT,
+// tight enough to blunt a script hammering the endpoint.
+const RATE_LIMIT = 8;
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+
+// Honeypot field name used in components/ReportSheet.js. Real users never
+// see or fill it (visually hidden, not display:none, so it still behaves
+// like a real field to bots/autofill); if it arrives non-empty we silently
+// reject the submission as if it were bad input.
+const HONEYPOT_FIELD = 'nettside';
 
 function logApi(event, details = {}) {
   console.log(JSON.stringify({ scope: 'api/report', event, ...details }));
@@ -175,12 +188,28 @@ export default async function handler(req, res) {
     return res.status(405).end('Method Not Allowed');
   }
 
+  const rateLimit = checkRequestRateLimit(req, 'report', RATE_LIMIT, RATE_LIMIT_WINDOW_MS);
+  if (!rateLimit.allowed) {
+    logApi('rate_limited', { retryAfterMs: rateLimit.retryAfterMs });
+    res.setHeader('Retry-After', Math.ceil(rateLimit.retryAfterMs / 1000));
+    return res.status(429).json({ error: 'For mange forsøk. Prøv igjen om litt.' });
+  }
+
   if (!hasSupabaseConfig()) {
     return res.status(503).json({ error: 'Supabase er ikke konfigurert' });
   }
 
   try {
     const { fields, files } = await parseRequest(req);
+
+    // Honeypot: real users never see/fill this field, so a non-empty value
+    // means a bot filled the form. Reject with the same generic 400 shape as
+    // other bad input so the mechanism isn't revealed.
+    if (String(fields?.[HONEYPOT_FIELD] || '').trim()) {
+      logApi('honeypot_triggered', { field: HONEYPOT_FIELD });
+      throw new Error('Ugyldig innsending');
+    }
+
     const reportInput = validatePayload(fields);
     const imageFiles = validateImages(files);
     const insertedReport = await createReport(reportInput);

@@ -1,7 +1,12 @@
-import crypto from 'crypto';
 import { createReportSupport, hasSupabaseConfig } from '../../lib/supabaseRest';
+import { checkRequestRateLimit, clientIp, hashValue } from '../../lib/rateLimit';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+// ~20 support "+1"s per 10 minutes per IP hash - generous enough for a busy
+// classroom/household on shared wifi, tight enough to slow down a script.
+const RATE_LIMIT = 20;
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 
 function logSupportApi(event, details = {}) {
   console.log(JSON.stringify({ scope: 'api/report-support', event, ...details }));
@@ -26,18 +31,6 @@ function cleanCategory(value) {
   if (typeof value !== 'string') return null;
   const text = value.trim().slice(0, 80);
   return text || null;
-}
-
-function hashValue(value) {
-  if (!value) return null;
-  const salt = process.env.SUPPORT_HASH_SALT || process.env.SUPABASE_SERVICE_ROLE_KEY || 'finns-vei-support';
-  return crypto.createHash('sha256').update(`${salt}:${value}`).digest('hex');
-}
-
-function clientIp(req) {
-  const forwarded = req.headers['x-forwarded-for'];
-  if (typeof forwarded === 'string' && forwarded.trim()) return forwarded.split(',')[0].trim();
-  return req.socket?.remoteAddress || '';
 }
 
 function errorPayload(error, code, alreadySupported = false) {
@@ -66,6 +59,13 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
     return res.status(405).end('Method Not Allowed');
+  }
+
+  const rateLimit = checkRequestRateLimit(req, 'report-support', RATE_LIMIT, RATE_LIMIT_WINDOW_MS);
+  if (!rateLimit.allowed) {
+    logSupportApi('rate_limited', { retryAfterMs: rateLimit.retryAfterMs });
+    res.setHeader('Retry-After', Math.ceil(rateLimit.retryAfterMs / 1000));
+    return res.status(429).json(errorPayload('For mange forsøk. Prøv igjen om litt.', 'rate_limited'));
   }
 
   const reportId = cleanReportId(req.body?.reportId);

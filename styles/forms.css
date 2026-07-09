@@ -56,6 +56,18 @@ textarea:focus {
   color: var(--color-primary);
 }
 
+/* Honeypot anti-bot field (components/ReportSheet.js): moved off-screen
+   rather than display:none/visibility:hidden so it still behaves like a
+   normal input to autofill/bots, but real people never see or reach it. */
+.hp-field {
+  height: 1px;
+  left: -9999px;
+  overflow: hidden;
+  position: absolute;
+  top: -9999px;
+  width: 1px;
+}
+
 .optional-contact {
   border-top: 1px solid var(--color-border);
   display: grid;
