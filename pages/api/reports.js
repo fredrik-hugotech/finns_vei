@@ -38,6 +38,10 @@ export default async function handler(req, res) {
     const features = geojson.features || [];
     const featuresWithReportId = features.filter((feature) => feature.id && feature.properties?.id && feature.properties?.report_id).length;
     const featuresWithSupportCount = features.filter((feature) => feature.properties && Object.prototype.hasOwnProperty.call(feature.properties, 'support_count')).length;
+    // Most-requested endpoint (every map view). Short CDN cache absorbs
+    // bursts of concurrent map loads while still surfacing a user's own
+    // just-submitted report on the map almost immediately.
+    res.setHeader('Cache-Control', 's-maxage=8, stale-while-revalidate=60');
     return res.status(200).json({
       ...geojson,
       meta: {

@@ -29,9 +29,13 @@ export default async function handler(req, res) {
       if (typeof req.query.id === 'string' && req.query.id) {
         const report = await getReportById(req.query.id);
         if (!report) return res.status(404).json({ error: 'Fant ikke saken' });
-        const timeline = report.trello_card_id ? await getCaseTimeline(report.trello_card_id) : [];
-        const attachments = await listCaseAttachments(report.id);
-        const support = await getCaseSupport(report.id);
+        // These three lookups don't depend on each other's results, so run
+        // them concurrently instead of sequentially.
+        const [timeline, attachments, support] = await Promise.all([
+          report.trello_card_id ? getCaseTimeline(report.trello_card_id) : Promise.resolve([]),
+          listCaseAttachments(report.id),
+          getCaseSupport(report.id),
+        ]);
         const images = Array.isArray(report.image_urls)
           ? report.image_urls
           : (typeof report.image_urls === 'string' ? (() => { try { return JSON.parse(report.image_urls); } catch (_e) { return []; } })() : []);

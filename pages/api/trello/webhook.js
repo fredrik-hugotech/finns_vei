@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { REPORT_STATUS } from '../../../lib/config';
 import { addCaseStatusUpdate, hasSupabaseConfig, setPublicStatusFromTrelloComment, setReportStatusFromTrello } from '../../../lib/supabaseRest';
 import { siteBaseUrl } from '../../../lib/reportWorkflow';
+import { getNewReportListName } from '../../../lib/trello';
 
 // Signature verification requires the exact raw request bytes, so the default
 // Next.js JSON body parser is disabled here and the body is read + parsed manually.
@@ -11,12 +12,18 @@ export const config = {
   },
 };
 
-const TRELLO_LIST_STATUS_MAP = {
-  'Ny melding': REPORT_STATUS.NEW,
-  Registrert: REPORT_STATUS.REGISTERED,
-  Startet: REPORT_STATUS.STARTED,
-  'Fullført': REPORT_STATUS.DONE,
-};
+// The "new report" list name is read via getNewReportListName() (configurable
+// through TRELLO_LIST_NAME_NY_MELDING, same source lib/trello.js uses when
+// creating cards) rather than hardcoded, so non-default Trello board setups
+// don't silently break status sync.
+function trelloListStatusMap() {
+  return {
+    [getNewReportListName()]: REPORT_STATUS.NEW,
+    Registrert: REPORT_STATUS.REGISTERED,
+    Startet: REPORT_STATUS.STARTED,
+    'Fullført': REPORT_STATUS.DONE,
+  };
+}
 
 let warnedMissingWebhookSecret = false;
 
@@ -162,7 +169,7 @@ async function handleListMove(action) {
   const cardId = cardIdFromAction(action);
   const listBefore = action?.data?.listBefore?.name || null;
   const listAfter = action?.data?.listAfter?.name || null;
-  const resolvedStatus = TRELLO_LIST_STATUS_MAP[listAfter] || null;
+  const resolvedStatus = trelloListStatusMap()[listAfter] || null;
 
   logWebhook('list_move_seen', { actionType: action?.type, cardId, listBefore, listAfter, resolvedStatus });
   if (!cardId || !resolvedStatus) return { handled: false, reason: 'unmapped_list_or_missing_card' };

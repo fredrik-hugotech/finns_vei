@@ -3,6 +3,7 @@ import { runReportWorkflowBestEffort } from '../../lib/reportWorkflow';
 import { createReport, hasSupabaseConfig, updateReportImages, uploadReportImage } from '../../lib/supabaseRest';
 import { isAllowedReportImageType, REPORT_IMAGE_MAX_BYTES, REPORT_IMAGE_MAX_COUNT, sanitizeImageFilename } from '../../lib/reportImages';
 import { checkRequestRateLimit } from '../../lib/rateLimit';
+import { parseMultipartRequest } from '../../lib/multipart';
 
 export const config = {
   api: {
@@ -36,86 +37,6 @@ function parseCoordinate(value, name) {
   const number = Number(value);
   if (!Number.isFinite(number)) throw new Error(`${name} mangler`);
   return number;
-}
-
-// Hard ceiling on the raw request body: enough for the max number of images at
-// max size each, plus a fixed overhead for form fields/multipart boundaries.
-const REQUEST_BODY_MAX_BYTES = REPORT_IMAGE_MAX_BYTES * REPORT_IMAGE_MAX_COUNT + 2 * 1024 * 1024;
-
-async function readRequestBuffer(req) {
-  const chunks = [];
-  let total = 0;
-  for await (const chunk of req) {
-    total += chunk.length;
-    if (total > REQUEST_BODY_MAX_BYTES) {
-      const error = new Error('Forespørselen er for stor');
-      error.status = 413;
-      throw error;
-    }
-    chunks.push(Buffer.from(chunk));
-  }
-  return Buffer.concat(chunks);
-}
-
-function parseContentDisposition(value = '') {
-  const result = {};
-  String(value).split(';').forEach((part) => {
-    const [rawKey, ...rest] = part.trim().split('=');
-    if (!rawKey || !rest.length) return;
-    result[rawKey.toLowerCase()] = rest.join('=').trim().replace(/^"|"$/g, '');
-  });
-  return result;
-}
-
-function parseMultipart(buffer, contentType = '') {
-  const match = contentType.match(/boundary=(?:(?:"([^"]+)")|([^;]+))/i);
-  if (!match) throw new Error('Ugyldig bildeopplasting');
-  const boundary = `--${match[1] || match[2]}`;
-  const body = buffer.toString('latin1');
-  const fields = {};
-  const files = [];
-
-  body.split(boundary).forEach((part) => {
-    if (!part || part === '--\r\n' || part === '--') return;
-    const normalized = part.replace(/^\r\n/, '').replace(/\r\n--$/, '');
-    const separator = normalized.indexOf('\r\n\r\n');
-    if (separator === -1) return;
-    const rawHeaders = normalized.slice(0, separator);
-    let rawContent = normalized.slice(separator + 4);
-    if (rawContent.endsWith('\r\n')) rawContent = rawContent.slice(0, -2);
-
-    const headers = Object.fromEntries(rawHeaders.split('\r\n').map((line) => {
-      const index = line.indexOf(':');
-      if (index === -1) return null;
-      return [line.slice(0, index).trim().toLowerCase(), line.slice(index + 1).trim()];
-    }).filter(Boolean));
-    const disposition = parseContentDisposition(headers['content-disposition']);
-    const name = disposition.name;
-    if (!name) return;
-
-    if (disposition.filename) {
-      files.push({
-        fieldName: name,
-        filename: disposition.filename,
-        contentType: headers['content-type'] || 'application/octet-stream',
-        buffer: Buffer.from(rawContent, 'latin1'),
-      });
-    } else {
-      fields[name] = Buffer.from(rawContent, 'latin1').toString('utf8');
-    }
-  });
-
-  return { fields, files };
-}
-
-async function parseRequest(req) {
-  const contentType = req.headers['content-type'] || '';
-  const buffer = await readRequestBuffer(req);
-  if (contentType.includes('multipart/form-data')) return parseMultipart(buffer, contentType);
-  if (contentType.includes('application/json')) {
-    return { fields: JSON.parse(buffer.toString('utf8') || '{}'), files: [] };
-  }
-  return { fields: {}, files: [] };
 }
 
 function validatePayload(body = {}) {
@@ -200,7 +121,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { fields, files } = await parseRequest(req);
+    const { fields, files } = await parseMultipartRequest(req);
 
     // Honeypot: real users never see/fill this field, so a non-empty value
     // means a bot filled the form. Reject with the same generic 400 shape as
