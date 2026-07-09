@@ -2492,3 +2492,170 @@ select.tkt-prop__ctrl { padding-right: 1.7rem; background-image: url("data:image
   letter-spacing: -0.01em;
 }
 .sak-hero { border-radius: 14px; }
+
+/* ----------------------------------------------------------------------
+   Public transparency dashboard (/statistikk)
+   ---------------------------------------------------------------------- */
+.stats-page {
+  align-content: start;
+  display: grid;
+  gap: 1rem;
+  justify-items: stretch;
+  margin: 0 auto;
+  max-width: 640px;
+  padding: 1.4rem 1.1rem calc(2rem + env(safe-area-inset-bottom));
+  width: 100%;
+}
+
+.stats-page__head {
+  align-items: center;
+  display: flex;
+  gap: 0.6rem;
+  justify-content: space-between;
+}
+
+.stats-page__back {
+  color: var(--color-muted);
+  font-size: 0.86rem;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.stats-page h1 {
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  margin: 0;
+}
+
+.stats-page__h2 {
+  color: var(--color-text);
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+  margin: 0 0 0.6rem;
+}
+
+.stats-page__foot {
+  margin: 0;
+}
+
+.stats-empty {
+  display: grid;
+  gap: 0.4rem;
+}
+
+/* Overview stat row: three flat tiles, same visual language as dash2-pulse */
+.stats-overview {
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.stats-stat {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.75rem 0.7rem;
+}
+
+.stats-stat strong {
+  font-family: var(--font-heading);
+  font-size: 1.55rem;
+  line-height: 1;
+}
+
+.stats-stat span {
+  color: var(--color-muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* Category / status bar lists: label + track + numeric value, so the info
+   never depends on colour alone. */
+.stats-barlist {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.stats-barrow {
+  align-items: center;
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: 8.5rem 1fr 2.2rem;
+}
+
+.stats-barrow__label {
+  color: var(--color-text);
+  font-size: 0.82rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stats-barrow__track {
+  background: var(--color-surface-muted);
+  border-radius: var(--radius-pill);
+  height: 10px;
+  overflow: hidden;
+}
+
+.stats-barrow__fill {
+  background: var(--color-primary);
+  border-radius: var(--radius-pill);
+  height: 100%;
+  transition: width 200ms ease;
+}
+
+.stats-barrow__value {
+  color: var(--color-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-align: right;
+}
+
+/* Trend: compact sparkline-style bars, one per month */
+.stats-trend {
+  align-items: end;
+  display: grid;
+  gap: 0.5rem;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  height: 7.5rem;
+}
+
+.stats-trend__col {
+  display: grid;
+  gap: 0.2rem;
+  grid-template-rows: auto 1fr auto;
+  height: 100%;
+  justify-items: center;
+  text-align: center;
+}
+
+.stats-trend__count {
+  color: var(--color-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.stats-trend__bar {
+  background: var(--color-primary);
+  border-radius: 4px 4px 0 0;
+  min-height: 2px;
+  transition: height 200ms ease;
+  width: 100%;
+}
+
+.stats-trend__label {
+  color: var(--color-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .stats-barrow { grid-template-columns: 6.2rem 1fr 2rem; }
+  .stats-barrow__label { font-size: 0.78rem; }
+}
