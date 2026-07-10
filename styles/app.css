@@ -2687,6 +2687,19 @@ select.tkt-prop__ctrl { padding-right: 1.7rem; background-image: url("data:image
   margin: 0;
 }
 
+/* Alle / Vintermeldinger toggle — reuses the shared .segmented control, just
+   with wider second column since "Vintermeldinger (nov–mar)" is longer. */
+.stats-page__season-toggle {
+  grid-template-columns: 1fr 1.6fr;
+}
+
+.stats-page__note {
+  color: var(--color-muted);
+  font-size: 0.86rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
 .stats-empty {
   display: grid;
   gap: 0.4rem;
