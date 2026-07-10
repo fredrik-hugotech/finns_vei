@@ -2732,6 +2732,20 @@ select.tkt-prop__ctrl { padding-right: 1.7rem; background-image: url("data:image
   margin: 0;
 }
 
+/* "Last ned data" CSV/GeoJSON buttons, side by side on wide viewports and
+   stacked once they no longer fit — same shared .ui-button look as the rest
+   of the app, just laid out as a row instead of a full-width stack. */
+.stats-page__downloads {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+}
+
+.stats-page__downloads .ui-button {
+  flex: 1 1 160px;
+}
+
 .stats-empty {
   display: grid;
   gap: 0.4rem;
