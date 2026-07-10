@@ -9,6 +9,7 @@
 .app-topbar {
   align-items: center;
   display: flex;
+  flex-wrap: wrap;
   gap: 0.4rem;
   left: max(0.6rem, env(safe-area-inset-left));
   position: absolute;
@@ -35,6 +36,30 @@
   font-weight: 700;
   padding: 0.26rem 0.6rem;
   text-decoration: none;
+}
+
+/* Small, unobtrusive pill next to the brand mark: shown only while at least
+   one report is queued on this device waiting for connectivity (see
+   lib/offlineReportQueue.js). Links to "Mine meldinger" so a curious user can
+   go look; disappears on its own once everything sends. */
+.offline-queue-badge {
+  align-items: center;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: var(--radius-pill);
+  color: #1d4ed8;
+  display: inline-flex;
+  gap: 0.3rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 0.26rem 0.6rem 0.26rem 0.5rem;
+  text-decoration: none;
+}
+
+.offline-queue-badge svg {
+  flex: none;
+  height: 13px;
+  width: 13px;
 }
 
 .app-brand {
@@ -684,6 +709,14 @@
 .sheet-success__badge svg {
   height: 30px;
   width: 30px;
+}
+
+/* Distinct (blue/info, not green) badge for a report that was queued on the
+   device rather than actually sent yet — see submitReport()'s offline path
+   in ReportSheet.js. */
+.sheet-success__badge--queued {
+  background: #eff6ff;
+  color: #1d4ed8;
 }
 
 .sheet-success h2 {
