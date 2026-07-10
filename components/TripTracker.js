@@ -105,11 +105,8 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mapApi
     const point = nearStart ? snapToGrid(fix.lat, fix.lng) : fix;
     if (!point) { setFlash('Venter på posisjon …'); return; }
     haptic([20, 30, 20]);
-    setUnsafeCount((n) => n + 1);
-    setFlash('Utrygt punkt lagret');
-    setTimeout(() => setFlash(''), 2200);
     try {
-      await fetch('/api/report', {
+      const response = await fetch('/api/report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -121,9 +118,14 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mapApi
           bike_route_type: routeType,
         }),
       });
+      if (!response.ok) throw new Error('Kunne ikke lagre punktet');
+
+      setUnsafeCount((n) => n + 1);
+      setFlash('Utrygt punkt lagret');
     } catch (_error) {
-      // best-effort: the point is already acknowledged to the rider
+      setFlash('Kunne ikke lagre punktet');
     }
+    setTimeout(() => setFlash(''), 2200);
   };
 
   const stopAndSave = async () => {

@@ -232,7 +232,7 @@ export default function SakDetalj() {
 
   return (
     <>
-      <Head><title>{c ? `${c.category} – sak` : 'Sak'}</title><meta name="robots" content="noindex" /></Head>
+      <Head><title>{c ? `${c.category} – sak` : 'Sak'}</title><meta name="robots" content="noindex" /><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" /></Head>
       <BackofficeHeader title={c ? c.category : 'Sak'} back="/backoffice/liste" />
       <main className="page sak-page">
         {flash && <div className="sak-flashbar">{flash}</div>}

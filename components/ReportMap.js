@@ -576,6 +576,10 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   // resolves after a newer one (out-of-order network response) can detect
   // it's stale and be ignored instead of overwriting the latest result.
   const accidentCheckIdRef = useRef(0);
+  // Same pattern for refreshNvdbLayers(): bumped on every call so a slower,
+  // older response (e.g. from rapid panning) can't overwrite the map with
+  // stale/wrong-viewport data after a newer response already rendered.
+  const nvdbRefreshIdRef = useRef(0);
   const [message, setMessage] = useState('');
   useEffect(() => {
     if (!message) return undefined;
@@ -728,6 +732,8 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     const activeLayers = activeNvdbLayersRef.current;
     if (!map || !enableNvdbLayers || activeLayers.length === 0) return;
 
+    const requestId = (nvdbRefreshIdRef.current += 1);
+
     if (activeLayers.includes('accidents') && map.getZoom() < MIN_ACCIDENT_FETCH_ZOOM) {
       setMessage('Zoom inn');
       const source = map.getSource('accident-source');
@@ -747,6 +753,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       const response = await fetch(`/api/nvdb/layer?type=${encodeURIComponent(layerType)}&bbox=${encodeURIComponent(bbox)}&zoom=${map.getZoom().toFixed(2)}`);
       if (!response.ok) throw new Error(`Kunne ikke hente ${layerConfig.label}`);
       const geojson = await response.json();
+      if (requestId !== nvdbRefreshIdRef.current) return; // stale response, a newer refresh has since started
       const featureCount = geojson.meta?.featureCount ?? geojson.features?.length ?? 0;
       const rawObjectCount = Number(geojson.meta?.rawObjectCount ?? 0);
       const pointFeatureCount = Number(geojson.meta?.pointFeatureCount ?? featureCount);

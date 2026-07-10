@@ -6,6 +6,13 @@ import { checkRequestRateLimit } from '../../lib/rateLimit';
 const RATE_LIMIT = 15;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 
+// Plausibility bounds for a single logged trip, so one fabricated submission
+// can't dominate a `metric: 'distance'` leaderboard. Generous enough for a
+// real e-bike/downhill ride, but rules out obviously implausible numbers.
+const MAX_TRIP_DISTANCE_M = 150000; // 150 km
+const MAX_TRIP_DURATION_S = 43200; // 12 h
+const MAX_TRIP_SPEED_MPS = 20; // ~72 km/h
+
 function logApi(event, details = {}) {
   console.log(JSON.stringify({ scope: 'api/bike-trips', event, ...details }));
 }
@@ -30,6 +37,18 @@ export default async function handler(req, res) {
   const { competitionId, club, helmet, distanceM, durationS, cells, path, routeType, mode, tripToken } = req.body || {};
 
   if (!competitionId) return res.status(400).json({ error: 'Mangler konkurranse' });
+
+  const distanceNum = Number(distanceM);
+  const durationNum = Number(durationS);
+  if (Number.isFinite(distanceNum) && (distanceNum < 0 || distanceNum > MAX_TRIP_DISTANCE_M)) {
+    return res.status(400).json({ error: 'Ugyldig distanse' });
+  }
+  if (Number.isFinite(durationNum) && (durationNum < 0 || durationNum > MAX_TRIP_DURATION_S)) {
+    return res.status(400).json({ error: 'Ugyldig varighet' });
+  }
+  if (Number.isFinite(distanceNum) && Number.isFinite(durationNum) && durationNum > 0 && (distanceNum / durationNum) > MAX_TRIP_SPEED_MPS) {
+    return res.status(400).json({ error: 'Ugyldig fart' });
+  }
 
   try {
     const competition = await getCompetition(competitionId);
