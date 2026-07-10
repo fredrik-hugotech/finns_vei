@@ -24,6 +24,22 @@ function ownerShort(owner, speed) {
   return [o, s].filter(Boolean).join(' · ');
 }
 
+function isOverdueCase(c, today) {
+  return Boolean(c.due_date) && c.status !== REPORT_STATUS.DONE && String(c.due_date).slice(0, 10) < today;
+}
+// "Stale" = open case with no status change in 30+ days (status_updated_at,
+// falling back to created_at for cases that never had a status change).
+// Cases already flagged overdue are excluded here so the two summary counts
+// stay mutually exclusive — an overdue-and-stale case only shows up as
+// "forfalt", not double-counted into "uten oppfølging" too.
+function isStaleCase(c, today) {
+  if (c.status === REPORT_STATUS.DONE || isOverdueCase(c, today)) return false;
+  const lastTouch = c.status_updated_at || c.created_at;
+  if (!lastTouch) return false;
+  const days = Math.floor((Date.now() - new Date(lastTouch).getTime()) / 86400000);
+  return days > 30;
+}
+
 const SORTS = [
   { key: 'new', label: 'Nyeste' },
   { key: 'support', label: 'Mest støtte' },
@@ -37,6 +53,7 @@ export default function Liste() {
   const [error, setError] = useState('');
   const [q, setQ] = useState('');
   const [sort, setSort] = useState('new');
+  const [agingFilter, setAgingFilter] = useState('');
   const active = typeof router.query.status === 'string' && STATUSES.includes(router.query.status) ? router.query.status : '';
 
   useEffect(() => {
@@ -48,9 +65,15 @@ export default function Liste() {
 
   const shown = useMemo(() => {
     const query = q.trim().toLowerCase();
+    const today = new Date().toISOString().slice(0, 10);
     const list = (cases || [])
       .filter((c) => !active || c.status === active)
-      .filter((c) => !query || `${c.category} ${c.description || ''} ${ownerShort(c.road_owner, c.speed_limit)}`.toLowerCase().includes(query));
+      .filter((c) => !query || `${c.category} ${c.description || ''} ${ownerShort(c.road_owner, c.speed_limit)}`.toLowerCase().includes(query))
+      .filter((c) => {
+        if (agingFilter === 'over') return isOverdueCase(c, today);
+        if (agingFilter === 'stale') return isStaleCase(c, today);
+        return true;
+      });
     const byNew = (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0);
     const sorters = {
       new: byNew,
@@ -64,9 +87,22 @@ export default function Liste() {
       },
     };
     return list.sort(sorters[sort] || byNew);
-  }, [cases, active, q, sort]);
+  }, [cases, active, q, sort, agingFilter]);
 
   const totalSupport = useMemo(() => (cases || []).reduce((n, c) => n + Number(c.support_count || 0), 0), [cases]);
+
+  // Aggregate aging counts for the summary strip: computed off the full case
+  // set (not the currently filtered `shown` list), same as totalSupport above,
+  // so staff always see the true overdue/stale totals regardless of which
+  // status filter or search they currently have applied.
+  const aging = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const list = cases || [];
+    return {
+      over: list.filter((c) => isOverdueCase(c, today)).length,
+      stale: list.filter((c) => isStaleCase(c, today)).length,
+    };
+  }, [cases]);
 
   return (
     <>
@@ -88,6 +124,27 @@ export default function Liste() {
             <button key={s.key} type="button" className={sort === s.key ? 'liste-sort__btn liste-sort__btn--on' : 'liste-sort__btn'} onClick={() => setSort(s.key)}>{s.label}</button>
           ))}
         </div>
+
+        {!error && cases && cases.length > 0 && (
+          <div className="liste-summary">
+            <button
+              type="button"
+              disabled={aging.over === 0}
+              className={agingFilter === 'over' ? 'liste-summary__chip liste-summary__chip--over liste-summary__chip--on' : 'liste-summary__chip liste-summary__chip--over'}
+              onClick={() => setAgingFilter((f) => (f === 'over' ? '' : 'over'))}
+            >
+              {aging.over} forfalt
+            </button>
+            <button
+              type="button"
+              disabled={aging.stale === 0}
+              className={agingFilter === 'stale' ? 'liste-summary__chip liste-summary__chip--stale liste-summary__chip--on' : 'liste-summary__chip liste-summary__chip--stale'}
+              onClick={() => setAgingFilter((f) => (f === 'stale' ? '' : 'stale'))}
+            >
+              {aging.stale} uten oppfølging &gt;30 dager
+            </button>
+          </div>
+        )}
 
         {error === 'not-authed' && <p className="admin-list-empty">Logg inn først. <Link href="/backoffice">Til innlogging</Link></p>}
         {error && error !== 'not-authed' && <p className="admin-list-empty">{error}</p>}
@@ -114,7 +171,7 @@ export default function Liste() {
                   {loc && <span className="admin-list-item__loc">{loc}</span>}
                   {c.bike_route_type && <span className="admin-list-item__tag">{c.bike_route_type === 'skole' ? 'Skolerute' : 'Sykkelrute'}</span>}
                   {c.due_date && (() => {
-                    const over = String(c.due_date).slice(0, 10) < new Date().toISOString().slice(0, 10) && c.status !== REPORT_STATUS.DONE;
+                    const over = isOverdueCase(c, new Date().toISOString().slice(0, 10));
                     return <span className={over ? 'sak-due sak-due--over' : 'sak-due'}>{over ? 'Forfalt' : 'Frist'} {new Date(c.due_date).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })}</span>;
                   })()}
                   {c.assignee_email && <span className="admin-list-item__assignee">{c.assignee_email.split('@')[0]}</span>}

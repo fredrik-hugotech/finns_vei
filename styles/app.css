@@ -2127,6 +2127,21 @@
 }
 .liste-sort__btn--on { background: var(--color-primary-tint); border-color: var(--color-primary); color: var(--color-primary); }
 
+/* Saksliste aging summary: overdue/stale counts as clickable quick-filters */
+.liste-summary { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.liste-summary__chip {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.3rem 0.65rem;
+}
+.liste-summary__chip:disabled { opacity: 0.45; }
+.liste-summary__chip--over.liste-summary__chip--on { background: #fbe3e0; border-color: var(--color-danger); color: var(--color-danger); }
+.liste-summary__chip--stale.liste-summary__chip--on { background: var(--color-primary-tint); border-color: var(--color-primary); color: var(--color-primary); }
+
 /* Support heart badge on list/dashboard cards */
 .admin-list-item__headright { align-items: center; display: flex; gap: 0.55rem; }
 .admin-list-item__support { color: #c2410c; font-size: 0.8rem; font-weight: 800; white-space: nowrap; }
