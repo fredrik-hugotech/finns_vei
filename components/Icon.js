@@ -73,6 +73,14 @@ const ICONS = {
     </>
   ),
   check: <polyline points="20 6 9 17 4 12" />,
+  share: (
+    <>
+      <circle cx="18" cy="5" r="2.6" />
+      <circle cx="6" cy="12" r="2.6" />
+      <circle cx="18" cy="19" r="2.6" />
+      <path d="M8.3 10.8l7.4-4.4M8.3 13.2l7.4 4.4" />
+    </>
+  ),
   pin: (
     <>
       <path d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11Z" />
