@@ -341,6 +341,30 @@ Required Supabase setup for the MVP:
 
 Images are stored under `reports/<report-id>/...` and `reports.image_urls` stores objects with `url`, `path`, `content_type`, and `size`. Trello card descriptions include image links, and the app best-effort attaches each public image URL to the Trello card. Report creation still succeeds if image upload or Trello attachment fails.
 
+## Before/after resolution photo proof
+
+When a case is fixed, staff can attach a resolution ("after") photo so the public case page shows a **Før / Etter** comparison next to the citizen's original ("before") photo — the core promise of the product made visible, not just a status label change.
+
+Add the column with:
+
+```sql
+ALTER TABLE public.reports
+ADD COLUMN IF NOT EXISTS resolution_image_urls jsonb DEFAULT '[]'::jsonb;
+```
+
+This follows the same `jsonb` array convention as `image_urls`, with an empty-array default (matching `bike_trips.path_cells` and `competitions.clubs` above), stored under `reports/<report-id>/resolution/...` in the same `report-images` bucket, as objects with `url`, `path`, `content_type`, and `size`.
+
+- `POST /api/backoffice/resolution-image` (staff-only, same auth as other `/api/backoffice/*` endpoints) accepts a multipart upload of 1-3 images for a `reportId` and **appends** them to `reports.resolution_image_urls`, keeping at most `RESOLUTION_IMAGE_MAX_COUNT` (default: same as `REPORT_IMAGE_MAX_COUNT`, i.e. 3) most-recent photos.
+- The backoffice case page (`/backoffice/sak/[id]`) has a "Legg til bilde av utbedring" upload control that calls this endpoint.
+- The public case page (`/sak/[id]`) shows the Før/Etter section only when at least one resolution photo exists; existing cases without one render exactly as before — no empty section, no layout change.
+- **Resilient by design, like `report_supports.note`/`category` above:** if `resolution_image_urls` hasn't been migrated onto a given Supabase deployment yet, the upload still succeeds (the photo is stored in the bucket) and the endpoint returns `200` with `db_saved: false` and a Norwegian `warning` explaining the migration is needed — it never 500s, and every existing request/response shape for reports without a resolution photo is unchanged.
+
+New optional environment variable:
+
+| Variable | Scope | Default | Purpose |
+| --- | --- | --- | --- |
+| `RESOLUTION_IMAGE_MAX_COUNT` | Server | Same as `REPORT_IMAGE_MAX_COUNT` (3) | Max resolution photos kept per report; older ones are dropped once the cap is hit. |
+
 ## Brand assets
 
 The Finns Fairway brand mark (three dots) used for the favicon lives at `public/brand/finns-fairway-mark.svg`, and the in-app logo (mark + stacked “Finns Fairway” wordmark) is rendered by `components/Logo.js`. Brand colours and fonts are centralised in `styles/theme.css` (`--color-primary` deep green, cream background) and `pages/_app.js` (Poppins headings via `next/font`).

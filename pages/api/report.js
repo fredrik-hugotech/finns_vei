@@ -1,7 +1,7 @@
 import { REPORT_CATEGORIES, REPORT_STATUS, REPORTER_TYPES } from '../../lib/config';
 import { runReportWorkflowBestEffort } from '../../lib/reportWorkflow';
 import { createReport, hasSupabaseConfig, updateReportImages, uploadReportImage } from '../../lib/supabaseRest';
-import { isAllowedReportImageType, REPORT_IMAGE_MAX_BYTES, REPORT_IMAGE_MAX_COUNT, sanitizeImageFilename } from '../../lib/reportImages';
+import { buildReportImagePath, validateReportImageFiles } from '../../lib/reportImages';
 import { checkRequestRateLimit } from '../../lib/rateLimit';
 import { parseMultipartRequest } from '../../lib/multipart';
 
@@ -74,20 +74,13 @@ function validatePayload(body = {}) {
 }
 
 function validateImages(files = []) {
-  const images = files.filter((file) => file.fieldName === 'images' && file.buffer?.length > 0);
-  if (images.length > REPORT_IMAGE_MAX_COUNT) throw new Error(`Du kan legge ved maks ${REPORT_IMAGE_MAX_COUNT} bilder.`);
-  images.forEach((file) => {
-    if (!isAllowedReportImageType(file.contentType, file.filename)) throw new Error('Du kan bare laste opp bildefiler.');
-    if (file.buffer.length > REPORT_IMAGE_MAX_BYTES) throw new Error('Et bilde er for stort. Maks 8 MB per bilde.');
-  });
-  return images;
+  return validateReportImageFiles(files, { fieldName: 'images' });
 }
 
 async function uploadImagesBestEffort(reportId, files = []) {
   const uploaded = [];
   for (const [index, file] of files.entries()) {
-    const safeName = sanitizeImageFilename(file.filename || `bilde-${index + 1}`);
-    const path = `reports/${reportId}/${Date.now()}-${index + 1}-${safeName}`;
+    const path = buildReportImagePath({ reportId, index, filename: file.filename });
     try {
       const result = await uploadReportImage({ path, buffer: file.buffer, contentType: file.contentType });
       uploaded.push({

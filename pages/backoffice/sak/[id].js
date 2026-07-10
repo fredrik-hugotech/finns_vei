@@ -70,6 +70,7 @@ export default function SakDetalj() {
   const [flash, setFlash] = useState('');
   const [uploadVis, setUploadVis] = useState('internal');
   const [uploading, setUploading] = useState(false);
+  const [resolutionUploading, setResolutionUploading] = useState(false);
   const [accidents, setAccidents] = useState(null);
   const [showAcc, setShowAcc] = useState(false);
   const [lightbox, setLightbox] = useState(null);
@@ -197,6 +198,24 @@ export default function SakDetalj() {
       if (!failed) setFlash('Vedlegg lagt til');
       load();
     } catch (_e) { setFlash('Opplasting feilet'); } finally { setUploading(false); }
+  };
+
+  // Before/after proof: upload a photo showing the hazard is fixed. Shown on
+  // the public case page next to the citizen's original "before" photo.
+  const doUploadResolution = async (fileList) => {
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+    setResolutionUploading(true); setFlash('');
+    try {
+      const fd = new FormData();
+      fd.append('reportId', String(id));
+      files.forEach((file) => fd.append('images', file));
+      const r = await fetch('/api/backoffice/resolution-image', { method: 'POST', body: fd });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { setFlash(d.error || 'Opplasting feilet'); return; }
+      setFlash(d.warning || 'Bilde av utbedring lagt til');
+      load();
+    } catch (_e) { setFlash('Opplasting feilet'); } finally { setResolutionUploading(false); }
   };
   const toggleAtt = async (att) => {
     const nextVis = att.visibility === 'public' ? 'internal' : 'public';
@@ -380,6 +399,22 @@ export default function SakDetalj() {
                 <Link className="big-button big-button--secondary" href={`/?sak=${encodeURIComponent(c.id)}`}>Vis på kart</Link>
                 {Number.isFinite(Number(c.lat)) && <a className="big-button big-button--secondary" href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${c.lat},${c.lng}`} target="_blank" rel="noopener noreferrer">Street View</a>}
               </div>
+            </section>
+
+            <section className="admin-section">
+              <h2>Bilde av utbedring</h2>
+              <p className="sak-resolution__hint">Last opp et bilde som viser at problemet er utbedret. Vises som «Etter»-bilde ved siden av innbyggerens opprinnelige bilde på den offentlige sak-siden.</p>
+              <label className="sak-upload">
+                <input type="file" accept="image/*" multiple onChange={(e) => doUploadResolution(e.target.files)} disabled={resolutionUploading} hidden />
+                <strong>{resolutionUploading ? 'Laster opp …' : '+ Legg til bilde av utbedring'}</strong>
+              </label>
+              {(c.resolution_images || []).length > 0 && (
+                <div className="sak-images">
+                  {c.resolution_images.map((src, i) => (
+                    <button type="button" key={i} onClick={() => setLightbox(src)}><img src={src} alt="Bilde av utbedring" /></button>
+                  ))}
+                </div>
+              )}
             </section>
 
             <section className="admin-section">

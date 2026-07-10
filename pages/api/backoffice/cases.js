@@ -12,6 +12,7 @@ import {
   hasSupabaseConfig,
 } from '../../../lib/supabaseRest';
 import { addTrelloCardComment, getTrelloBoardId, hasTrelloConfig } from '../../../lib/trello';
+import { normalizeImageEntries } from '../../../lib/reportImages';
 
 const STATUSES = Object.values(REPORT_STATUS);
 
@@ -36,9 +37,8 @@ export default async function handler(req, res) {
           listCaseAttachments(report.id),
           getCaseSupport(report.id),
         ]);
-        const images = Array.isArray(report.image_urls)
-          ? report.image_urls
-          : (typeof report.image_urls === 'string' ? (() => { try { return JSON.parse(report.image_urls); } catch (_e) { return []; } })() : []);
+        const images = normalizeImageEntries(report.image_urls);
+        const resolutionImages = normalizeImageEntries(report.resolution_image_urls);
         return res.status(200).json({
           id: report.id,
           status: report.status || null,
@@ -65,7 +65,8 @@ export default async function handler(req, res) {
             reporter_type: report.reporter_type || null,
             bike_route_type: report.bike_route_type || null,
             public_status_note: report.public_status_note || null,
-            images: (images || []).map((im) => (im && im.url) ? im.url : im).filter(Boolean),
+            images: images.map((im) => im.url).filter(Boolean),
+            resolution_images: resolutionImages.map((im) => im.url).filter(Boolean),
             road_owner: report.road_owner || null,
             road_authority: report.road_authority || null,
             road_category: report.road_category || null,

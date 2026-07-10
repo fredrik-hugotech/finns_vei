@@ -3,6 +3,7 @@ import Link from 'next/link';
 import Logo from '../../components/Logo';
 import { reportStatusMeta } from '../../lib/reportStatusMeta';
 import { getPublicReportById, hasSupabaseConfig } from '../../lib/supabaseRest';
+import { normalizeImageEntries } from '../../lib/reportImages';
 
 export default function SakPage({ report, shareUrl, ogImageUrl }) {
   const meta = reportStatusMeta(report.status);
@@ -10,6 +11,11 @@ export default function SakPage({ report, shareUrl, ogImageUrl }) {
   const description = report.description
     ? report.description.slice(0, 180)
     : 'Meld fra om utrygge steder i trafikken, eller se kart over meldinger.';
+  // Before/after proof: once staff have added a resolution photo, replace the
+  // single hero image with a Før/Etter comparison instead of showing the
+  // "before" photo twice. Cases without a resolution photo render exactly as
+  // before (no empty section, no layout change).
+  const hasResolution = report.resolution_image_urls.length > 0;
 
   return (
     <>
@@ -38,7 +44,21 @@ export default function SakPage({ report, shareUrl, ogImageUrl }) {
             dangerouslySetInnerHTML={{ __html: `${meta.icon}<span>${meta.label}</span>` }}
           />
           <h1>{report.category}</h1>
-          {report.image_url && <img className="share-card__image" src={report.image_url} alt="" />}
+          {report.image_url && !hasResolution && <img className="share-card__image" src={report.image_url} alt="" />}
+          {hasResolution && (
+            <div className="share-card__beforeafter">
+              <div className="share-card__ba-col">
+                <span className="share-card__ba-label">Før</span>
+                {report.image_url
+                  ? <img className="share-card__ba-img" src={report.image_url} alt="Bilde ved melding" />
+                  : <div className="share-card__ba-placeholder">Ingen bilde ved melding</div>}
+              </div>
+              <div className="share-card__ba-col">
+                <span className="share-card__ba-label">Etter</span>
+                <img className="share-card__ba-img" src={report.resolution_image_urls[0]} alt="Bilde etter utbedring" />
+              </div>
+            </div>
+          )}
           {report.description && <p className="share-card__text">{report.description}</p>}
           {report.public_status_note && (
             <div className="share-card__update">
@@ -65,17 +85,20 @@ export async function getServerSideProps({ params, req }) {
   }
   if (!report) return { notFound: true };
 
-  const firstImage = Array.isArray(report.image_urls)
-    ? report.image_urls.find((image) => image && image.url)
-    : null;
+  const images = normalizeImageEntries(report.image_urls);
+  // resolution_image_urls may be undefined on Supabase deployments that
+  // haven't run the migration yet (see README) — normalizeImageEntries
+  // treats that the same as "no resolution photos" instead of throwing.
+  const resolutionImages = normalizeImageEntries(report.resolution_image_urls);
 
   const safe = {
     id: report.id || id,
     category: report.category || 'Sak',
     description: report.description || '',
     status: report.status || 'Ny',
-    image_url: firstImage ? firstImage.url : null,
+    image_url: images[0]?.url || null,
     public_status_note: report.public_status_note || null,
+    resolution_image_urls: resolutionImages.map((img) => img.url).filter(Boolean),
   };
 
   const proto = String(req.headers['x-forwarded-proto'] || 'https').split(',')[0];
