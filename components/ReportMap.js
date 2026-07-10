@@ -1370,7 +1370,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           <span className="map-crosshair__dot" />
         </div>
       )}
-      {(enableNvdbLayers || adminSecret) && (
+      {adminSecret && (
         <div className="layer-control nvdb-toggle-card" aria-label="Kartlag">
           <strong>Kartlag</strong>
           {NVDB_LAYERS.map((layer) => (
@@ -1518,7 +1518,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
                 })}
               </ul>
               <p className="map-legend__note">Større markør = flere har støttet saken.</p>
-              {enableNvdbLayers && (
+              {adminSecret && (
                 <ul className="map-legend__list">
                   <li>
                     <span
