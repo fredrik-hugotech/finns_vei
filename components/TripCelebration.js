@@ -1,26 +1,10 @@
-import Link from 'next/link';
-import { useState } from 'react';
 import Icon from './Icon';
-import { KID_COMMANDMENTS } from '../lib/safetyCommandments';
-
-// Rotate through the five child commandments so a kid meets a new one after
-// each trip (persisted per device). Runs once, on the client, in useState init.
-function pickRotatingKidBud() {
-  let idx = 0;
-  if (typeof window !== 'undefined') {
-    try {
-      idx = parseInt(window.localStorage.getItem('ff-bud-idx') || '0', 10) || 0;
-      window.localStorage.setItem('ff-bud-idx', String((idx + 1) % KID_COMMANDMENTS.length));
-    } catch (_e) { /* ignore */ }
-  }
-  return KID_COMMANDMENTS[idx % KID_COMMANDMENTS.length];
-}
+import BudTip from './BudTip';
 
 // Shown to a child right after they log a trip. Praises the effort, shows how
 // far they went, calls out the weather bonus, and teaches one of Finns 10 bud
 // — instead of dropping them into the competition standings.
 export default function TripCelebration({ km, mode = 'sykkel', weatherKind = null, onDone }) {
-  const [bud] = useState(pickRotatingKidBud);
   const verb = mode === 'gange' ? 'gikk' : 'syklet';
   const isPrecip = weatherKind === 'rain' || weatherKind === 'sleet' || weatherKind === 'snow';
   const weatherWord = weatherKind === 'snow' ? 'snøen' : 'regnet';
@@ -39,16 +23,9 @@ export default function TripCelebration({ km, mode = 'sykkel', weatherKind = nul
         </div>
       )}
 
-      {bud && (
-        <div className="trip-cheer__bud">
-          <span className="trip-cheer__bud-label">Finns bud {bud.n}</span>
-          <strong>{bud.title}</strong>
-          <p>{bud.text}</p>
-        </div>
-      )}
+      <BudTip audience="barn" />
 
       <button type="button" className="kid-big kid-big--green kid-big--cta" onClick={onDone}><span>Ferdig</span></button>
-      <Link href="/bud" className="trip-cheer__budlink">Se alle 10 bud ›</Link>
     </section>
   );
 }

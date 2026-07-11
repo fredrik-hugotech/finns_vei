@@ -4,6 +4,7 @@ import { categoryGlyph } from '../lib/reportCategoryGlyphs';
 import { descriptionSuggestions } from '../lib/reportDescriptionSuggestions';
 import { REPORT_IMAGE_MAX_BYTES, REPORT_IMAGE_MAX_COUNT } from '../lib/reportImages';
 import { addMyReport } from '../lib/myReports';
+import BudTip from './BudTip';
 import { addPendingReport } from '../lib/offlineReportQueue';
 
 // Coordinates → a human place ("Marviksveien · Lund") so the reporter can
@@ -295,6 +296,7 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
             <h2>{status.type === 'queued' ? 'Lagret på enheten' : 'Takk for at du sier fra!'}</h2>
             <p>{status.type === 'queued' ? 'Ingen nett akkurat nå — meldingen sendes automatisk så snart enheten får dekning igjen.' : 'Meldingen er mottatt. Vi ser på saken så godt vi klarer.'}</p>
             {status.type !== 'queued' && status.message && <div className={`notice notice--${status.type}`} role="status">{status.message}</div>}
+            {status.type !== 'queued' && <BudTip audience={isAdult ? 'voksen' : 'barn'} />}
             <div className="sheet-success__actions">
               {status.type !== 'queued' && submittedId ? (
                 <button type="button" className="big-button big-button--primary" onClick={() => onViewCase?.(submittedId)}>Se saken på kartet</button>
