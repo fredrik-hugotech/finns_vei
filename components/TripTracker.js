@@ -14,7 +14,7 @@ function formatKm(meters) {
 // Live GPS tracker. Records the raw path ON THE DEVICE only — to draw the live
 // route and compute distance — then hands back distance, duration and the
 // clipped+snapped cells/path. Also lets the rider drop "unsafe point" reports.
-export default function TripTracker({ club, helmet, routeType = 'fritid', mapApi, onDone, onCancel }) {
+export default function TripTracker({ club, helmet, routeType = 'fritid', mode = 'sykkel', mapApi, onDone, onCancel }) {
   const [status, setStatus] = useState('starting'); // starting | tracking | error
   const [distanceM, setDistanceM] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
@@ -113,13 +113,18 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mapApi
     if (!point) { setFlash('Venter på posisjon …'); return; }
     haptic([20, 30, 20]);
     try {
+      // There's no walking-specific category in REPORT_CATEGORIES (lib/config.js)
+      // yet, so a point marked while walking falls back to 'Annet' rather than
+      // being mistagged as a cycling hazard.
+      const category = mode === 'gange' ? 'Annet' : 'Farlig for sykkel';
+      const modeLabel = mode === 'gange' ? 'gåregistrering' : 'sykkelregistrering';
       const response = await fetch('/api/report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           reporter_type: 'barn',
-          category: 'Farlig for sykkel',
-          description: `Utrygt punkt markert under sykkelregistrering (${routeType === 'skole' ? 'skolerute' : 'fritidsrute'}).`,
+          category,
+          description: `Utrygt punkt markert under ${modeLabel} (${routeType === 'skole' ? 'skolerute' : 'fritidsrute'}).`,
           lat: point.lat,
           lng: point.lng,
           bike_route_type: routeType,

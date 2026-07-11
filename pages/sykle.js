@@ -36,6 +36,7 @@ export default function Sykle() {
   const [result, setResult] = useState(null);
   const [dangerStatus, setDangerStatus] = useState('');
   const [busy, setBusy] = useState(false);
+  const [tripError, setTripError] = useState('');
 
   useEffect(() => {
     fetch('/api/competitions')
@@ -67,20 +68,28 @@ export default function Sykle() {
     setBusy(true);
     try {
       if (competition) {
-        await fetch('/api/bike-trips', {
+        const response = await fetch('/api/bike-trips', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ competitionId: competition.id, club, helmet, routeType, mode, weather, distanceM, durationS, cells, path, tripToken: tripToken() }),
         });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload.error || 'Kunne ikke lagre turen');
+        }
       }
-    } catch (_e) { /* best-effort */ }
-    setResult({ km: (distanceM / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 2 }), weatherKind: weather?.kind || null });
-    setBusy(false);
-    setView('done');
+      setResult({ km: (distanceM / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 2 }), weatherKind: weather?.kind || null });
+      setBusy(false);
+      setView('done');
+    } catch (error) {
+      setBusy(false);
+      setTripError(error.message || 'Noe gikk galt. Prøv igjen.');
+      setView('trip-error');
+    }
   };
 
   const resetToHub = () => {
-    setView('hub'); setResult(null); setClub(competition?.clubs?.length === 1 ? competition.clubs[0].name : ''); setRouteType('fritid'); setMode('sykkel'); setHelmet(true);
+    setView('hub'); setResult(null); setTripError(''); setClub(competition?.clubs?.length === 1 ? competition.clubs[0].name : ''); setRouteType('fritid'); setMode('sykkel'); setHelmet(true);
   };
 
   // --- Danger reporting (kids) ---
@@ -124,7 +133,7 @@ export default function Sykle() {
     <>
       <Head>
         <title>Finns Fairway – Sykle</title>
-        <meta name="description" content="Registrer sykkelturen din og meld fra om farlige steder." />
+        <meta name="description" content="Registrer turen din og meld fra om farlige steder." />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
       </Head>
       <main className="kid-app">
@@ -136,7 +145,7 @@ export default function Sykle() {
             <h1 className="kid-title">Hva vil du gjøre?</h1>
             <button type="button" className="kid-big kid-big--green" onClick={() => { haptic(10); setView('setup'); }}>
               <Icon name="bike" size={42} strokeWidth={1.7} />
-              <span>Registrer sykkeltur</span>
+              <span>Registrer tur</span>
             </button>
             <button type="button" className="kid-big kid-big--outline" onClick={openDanger}>
               <Icon name="flag" size={40} strokeWidth={1.8} />
@@ -181,11 +190,20 @@ export default function Sykle() {
         )}
 
         {view === 'tracking' && (
-          <TripTracker club={club} helmet={helmet} routeType={routeType} mapApi={mapApiRef.current} onDone={finishTrip} onCancel={resetToHub} />
+          <TripTracker club={club} helmet={helmet} routeType={routeType} mode={mode} mapApi={mapApiRef.current} onDone={finishTrip} onCancel={resetToHub} />
         )}
 
         {view === 'done' && (
           <TripCelebration km={result?.km} mode={mode} weatherKind={result?.weatherKind} onDone={resetToHub} />
+        )}
+
+        {view === 'trip-error' && (
+          <section className="kid-screen kid-done">
+            <div className="kid-done__badge kid-done__badge--amber"><Icon name="flag" size={50} strokeWidth={2} /></div>
+            <h1 className="kid-title">Oisann!</h1>
+            <p className="kid-sub">{tripError || 'Vi klarte ikke å lagre turen. Prøv igjen.'}</p>
+            <button type="button" className="kid-big kid-big--green kid-big--cta" onClick={resetToHub}><span>Ferdig</span></button>
+          </section>
         )}
 
         {view === 'danger' && (
@@ -208,7 +226,7 @@ export default function Sykle() {
             <div className="kid-done__badge kid-done__badge--amber"><Icon name="flag" size={50} strokeWidth={2} /></div>
             <h1 className="kid-title">Takk!</h1>
             <p className="kid-sub">Vi sjekker stedet du meldte fra om.</p>
-            <button type="button" className="kid-big kid-big--green" onClick={resetToHub}><span>Ferdig</span></button>
+            <button type="button" className="kid-big kid-big--green kid-big--cta" onClick={resetToHub}><span>Ferdig</span></button>
           </section>
         )}
       </main>

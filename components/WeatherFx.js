@@ -1,4 +1,4 @@
-import { WEATHER_LABEL, weatherPraise } from '../lib/weather';
+import { WEATHER_LABEL, weatherPraise, isPrecipKind } from '../lib/weather';
 
 // Ambient weather overlay shown while a trip is being timed.
 //  - sun/fair: a bold, celebratory full-screen wash + rays.
@@ -16,7 +16,7 @@ const PARTICLES = Array.from({ length: 16 }, (_, i) => ({
 
 export default function WeatherFx({ kind, tempC }) {
   if (!kind) return null;
-  const isPrecip = kind === 'rain' || kind === 'sleet' || kind === 'snow';
+  const isPrecip = isPrecipKind(kind);
   const label = WEATHER_LABEL[kind] || '';
   const praise = weatherPraise(kind);
   const temp = Number.isFinite(Number(tempC)) ? `${Math.round(Number(tempC))}°` : '';

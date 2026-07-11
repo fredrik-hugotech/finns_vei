@@ -354,6 +354,7 @@ export default function Home() {
             club={tripContext.club}
             helmet={tripContext.helmet}
             routeType={tripContext.routeType}
+            mode={tripContext.mode}
             mapApi={mapApiRef.current}
             onDone={finishTrip}
             onCancel={cancelTrip}

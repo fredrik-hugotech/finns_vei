@@ -1,4 +1,5 @@
 import { classifyWeather } from '../../lib/weather';
+import { checkRequestRateLimit } from '../../lib/rateLimit';
 
 // Proxy MET Norway (Yr) so the browser doesn't need to set a User-Agent
 // (which it can't) and we avoid CORS. Free, no API key. We read the
@@ -7,7 +8,19 @@ import { classifyWeather } from '../../lib/weather';
 // MET terms require an identifying User-Agent with contact info.
 const MET_UA = 'FinnsFairway/1.0 (https://finns-vei.vercel.app; fredrik@hugo.as)';
 
+// ~30 lookups per 10 minutes per IP hash - this is only fetched once per trip
+// by TripTracker, so this is generous for real usage but blunts a script
+// hammering the endpoint (and, by extension, MET Norway's API on our behalf).
+const RATE_LIMIT = 30;
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+
 export default async function handler(req, res) {
+  const rateLimit = checkRequestRateLimit(req, 'weather', RATE_LIMIT, RATE_LIMIT_WINDOW_MS);
+  if (!rateLimit.allowed) {
+    res.setHeader('Retry-After', Math.ceil(rateLimit.retryAfterMs / 1000));
+    return res.status(429).json({ error: 'For mange forsøk. Prøv igjen om litt.' });
+  }
+
   const lat = Number(req.query.lat);
   const lon = Number(req.query.lon);
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) {

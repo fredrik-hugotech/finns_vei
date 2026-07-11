@@ -3024,6 +3024,16 @@ select.tkt-prop__ctrl { padding-right: 1.7rem; background-image: url("data:image
 .wfx-chip__label { font-size: 0.8rem; font-weight: 800; letter-spacing: 0.01em; }
 .wfx-chip__praise { font-size: 0.78rem; font-weight: 600; }
 
+@media (prefers-reduced-motion: reduce) {
+  .wfx-sunwash,
+  .wfx-sun,
+  .wfx-sun__core,
+  .wfx-drop,
+  .wfx-flake {
+    animation: none;
+  }
+}
+
 /* Trip celebration (kid screen after logging a trip) */
 .trip-cheer__weather {
   align-items: center;
