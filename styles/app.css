@@ -773,6 +773,10 @@
   width: 100%;
 }
 
+.share-card__share {
+  gap: 0.45rem;
+}
+
 /* Anonymous "Mine meldinger" tracker (/mine-meldinger) */
 .my-reports-card {
   gap: 0.6rem;

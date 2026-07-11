@@ -1,5 +1,7 @@
 import Head from 'next/head';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import Icon from '../../components/Icon';
 import Logo from '../../components/Logo';
 import { reportStatusMeta } from '../../lib/reportStatusMeta';
 import { getPublicReportById, hasSupabaseConfig } from '../../lib/supabaseRest';
@@ -10,6 +12,41 @@ export default function SakPage({ report, shareUrl, ogImageUrl }) {
   const description = report.description
     ? report.description.slice(0, 180)
     : 'Meld fra om utrygge steder i trafikken, eller se kart over meldinger.';
+
+  // Feature-detected client-side so the button never renders as a dead no-op
+  // on browsers without navigator.share or navigator.clipboard, and so the
+  // server-rendered markup (no `navigator` on the server) matches the first
+  // client render before hydration flips this on.
+  const [canShare, setCanShare] = useState(false);
+  const [toast, setToast] = useState('');
+
+  useEffect(() => {
+    setCanShare(typeof navigator !== 'undefined' && Boolean(navigator.share || navigator.clipboard?.writeText));
+  }, []);
+
+  useEffect(() => {
+    if (!toast) return undefined;
+    const timer = setTimeout(() => setToast(''), 2500);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  const handleShare = async () => {
+    const shareData = {
+      title,
+      text: `${report.category} – status: ${meta.label}`,
+      url: shareUrl,
+    };
+    try {
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        await navigator.share(shareData);
+      } else if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+        setToast('Lenke kopiert!');
+      }
+    } catch (error) {
+      // Share sheet cancelled by the user (or clipboard write blocked) — nothing to do.
+    }
+  };
 
   return (
     <>
@@ -47,8 +84,14 @@ export default function SakPage({ report, shareUrl, ogImageUrl }) {
             </div>
           )}
           <Link className="big-button big-button--primary" href={`/?sak=${encodeURIComponent(report.id)}`}>Åpne og støtt saken</Link>
+          {canShare && (
+            <button type="button" className="big-button big-button--secondary share-card__share" onClick={handleShare}>
+              <Icon name="share" size={18} /> Del saken
+            </button>
+          )}
         </section>
       </main>
+      {toast && <div className="app-toast" role="status" onClick={() => setToast('')}>{toast}</div>}
     </>
   );
 }
