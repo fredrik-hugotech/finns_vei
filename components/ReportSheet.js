@@ -4,6 +4,7 @@ import { categoryGlyph } from '../lib/reportCategoryGlyphs';
 import { descriptionSuggestions } from '../lib/reportDescriptionSuggestions';
 import { REPORT_IMAGE_MAX_BYTES, REPORT_IMAGE_MAX_COUNT } from '../lib/reportImages';
 import { addMyReport } from '../lib/myReports';
+import { addPendingReport } from '../lib/offlineReportQueue';
 
 // Coordinates → a human place ("Marviksveien · Lund") so the reporter can
 // confirm they picked the right spot before sending.
@@ -171,26 +172,77 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
     });
   };
 
+  // JSON-serializable fields only — this is both what we POST as JSON when
+  // online, and (for image-free reports) exactly what gets parked in the
+  // offline queue if the request can't reach the server.
+  const buildQueuePayload = () => ({
+    reporter_type: reporterType,
+    category: form.category,
+    description: form.description,
+    lat: point.lat,
+    lng: point.lng,
+    contact_name: isAdult ? form.contact_name : '',
+    contact_email: isAdult ? form.contact_email : '',
+    contact_phone: isAdult ? form.contact_phone : '',
+    nettside: form.nettside,
+  });
+
+  // A genuine connectivity failure (fetch() itself threw, or we already know
+  // we're offline). Images can't be queued safely (see lib/offlineReportQueue.js),
+  // so those reports are left in the open form for a manual retry instead of
+  // being silently queued or lost.
+  const handleOfflineSubmit = (queuePayload) => {
+    if (images.length) {
+      setStatus({ type: 'error', message: 'Ingen nettforbindelse akkurat nå. Meldinger med bilde kan ikke lagres for senere sending — bildene dine ligger fortsatt klare her, prøv igjen når du har dekning.' });
+      return;
+    }
+    addPendingReport(queuePayload);
+    setSubmitted(true);
+    haptic([10, 40, 14]);
+    setStatus({ type: 'queued', message: 'Lagret på enheten – sendes automatisk når du får dekning igjen.' });
+  };
+
   const submitReport = async (event) => {
     event.preventDefault();
     haptic(12);
+
+    const queuePayload = buildQueuePayload();
+
+    // Already known to be offline (e.g. flight mode, or the browser already
+    // detected the connection is down) — no point racing a doomed fetch.
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      handleOfflineSubmit(queuePayload);
+      return;
+    }
+
     setIsSubmitting(true);
     setStatus({ type: 'idle', message: images.length ? 'Laster opp bilde …' : 'Sender meldingen …' });
 
     const body = new FormData();
-    body.set('reporter_type', reporterType);
-    body.set('category', form.category);
-    body.set('description', form.description);
-    body.set('lat', String(point.lat));
-    body.set('lng', String(point.lng));
-    body.set('contact_name', isAdult ? form.contact_name : '');
-    body.set('contact_email', isAdult ? form.contact_email : '');
-    body.set('contact_phone', isAdult ? form.contact_phone : '');
-    body.set('nettside', form.nettside);
+    body.set('reporter_type', queuePayload.reporter_type);
+    body.set('category', queuePayload.category);
+    body.set('description', queuePayload.description);
+    body.set('lat', String(queuePayload.lat));
+    body.set('lng', String(queuePayload.lng));
+    body.set('contact_name', queuePayload.contact_name);
+    body.set('contact_email', queuePayload.contact_email);
+    body.set('contact_phone', queuePayload.contact_phone);
+    body.set('nettside', queuePayload.nettside);
     images.forEach((image) => body.append('images', image.file));
 
+    let response;
     try {
-      const response = await fetch('/api/report', { method: 'POST', body });
+      response = await fetch('/api/report', { method: 'POST', body });
+    } catch (networkError) {
+      // fetch() never got a response at all — a real connectivity failure,
+      // not a server-side rejection. Safe to queue (retrying the exact same
+      // payload later is the right move) rather than surface as an error.
+      setIsSubmitting(false);
+      handleOfflineSubmit(queuePayload);
+      return;
+    }
+
+    try {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || 'Kunne ikke sende meldingen');
 
@@ -202,6 +254,10 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
       try { addMyReport({ id: payload.id, category: form.category }); } catch (_e) { /* best effort */ }
       onSubmitted?.();
     } catch (error) {
+      // The server actually answered (or answered with a broken body) — a
+      // real outcome, not a dropped connection. Retrying the identical
+      // payload would just fail the same way, so this surfaces like before
+      // instead of being queued.
       setStatus({ type: 'error', message: error.message || 'Noe gikk galt.' });
     } finally {
       setIsSubmitting(false);
@@ -225,12 +281,18 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
 
         {submitted ? (
           <div className="sheet-success">
-            <div className="sheet-success__badge" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M5 12.5l4 4 10-11" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
-            </div>
-            <h2>Takk for at du sier fra!</h2>
-            <p>Meldingen er sendt til Finns Fairway.</p>
-            {status.message && <div className={`notice notice--${status.type}`} role="status">{status.message}</div>}
+            {status.type === 'queued' ? (
+              <div className="sheet-success__badge sheet-success__badge--queued" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2.2" /><path d="M12 7v6l4 2" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </div>
+            ) : (
+              <div className="sheet-success__badge" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M5 12.5l4 4 10-11" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </div>
+            )}
+            <h2>{status.type === 'queued' ? 'Lagret på enheten' : 'Takk for at du sier fra!'}</h2>
+            <p>{status.type === 'queued' ? 'Ingen nett akkurat nå — meldingen sendes automatisk så snart enheten får dekning igjen.' : 'Meldingen er sendt til Finns Fairway.'}</p>
+            {status.type !== 'queued' && status.message && <div className={`notice notice--${status.type}`} role="status">{status.message}</div>}
             <div className="sheet-success__actions">
               <button type="button" className="big-button big-button--primary" onClick={resetAndClose}>Se på kartet</button>
               <button

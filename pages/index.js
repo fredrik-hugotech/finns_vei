@@ -6,6 +6,7 @@ import ReportSheet from '../components/ReportSheet';
 import CompetitionSheet from '../components/CompetitionSheet';
 import TripTracker from '../components/TripTracker';
 import { NEARBY_REPORT_RADIUS_M } from '../lib/config';
+import { QUEUE_CHANGED_EVENT, flushQueue, getPendingCount } from '../lib/offlineReportQueue';
 
 const ReportMap = dynamic(() => import('../components/ReportMap'), {
   ssr: false,
@@ -23,11 +24,35 @@ export default function Home() {
   const [competitionFocusId, setCompetitionFocusId] = useState(null);
   const [tripContext, setTripContext] = useState(null);
   const [message, setMessage] = useState('');
+  const [pendingQueueCount, setPendingQueueCount] = useState(0);
   useEffect(() => {
     if (!message) return undefined;
     const timer = setTimeout(() => setMessage(''), 4000);
     return () => clearTimeout(timer);
   }, [message]);
+
+  // Offline report queue: try to resend anything left over from a dead-zone
+  // submission as soon as the app loads (if we're already online) and again
+  // whenever the browser regains connectivity. No service worker background
+  // sync in this first version — just best-effort on load/online, which
+  // covers the common case of reopening the app once back in coverage.
+  useEffect(() => {
+    const refreshPendingCount = () => setPendingQueueCount(getPendingCount());
+    refreshPendingCount();
+
+    const tryFlush = () => {
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+      flushQueue().then(refreshPendingCount).catch(refreshPendingCount);
+    };
+
+    tryFlush();
+    window.addEventListener('online', tryFlush);
+    window.addEventListener(QUEUE_CHANGED_EVENT, refreshPendingCount);
+    return () => {
+      window.removeEventListener('online', tryFlush);
+      window.removeEventListener(QUEUE_CHANGED_EVENT, refreshPendingCount);
+    };
+  }, []);
 
   const handleMapReady = useCallback((api) => {
     mapApiRef.current = api;
@@ -236,6 +261,17 @@ export default function Home() {
 
         <div className="app-topbar">
           <span className="app-brand"><Logo size="sm" /></span>
+          {pendingQueueCount > 0 && (
+            <a
+              className="offline-queue-badge"
+              href="/mine-meldinger"
+              role="status"
+              title="Meldinger lagret på denne enheten som ikke er sendt ennå"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v6l4 2" /></svg>
+              {pendingQueueCount === 1 ? '1 venter på å bli sendt' : `${pendingQueueCount} venter på å bli sendt`}
+            </a>
+          )}
           <div className="app-topbar__links">
             <a className="app-staff-link" href="/statistikk">Statistikk</a>
             <a className="app-staff-link" href="/mine-meldinger">Mine meldinger</a>
