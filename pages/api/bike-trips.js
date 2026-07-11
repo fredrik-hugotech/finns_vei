@@ -34,7 +34,7 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: 'Ikke konfigurert' });
   }
 
-  const { competitionId, club, helmet, distanceM, durationS, cells, path, routeType, mode, tripToken } = req.body || {};
+  const { competitionId, club, helmet, distanceM, durationS, cells, path, routeType, mode, weather, tripToken } = req.body || {};
 
   if (!competitionId) return res.status(400).json({ error: 'Mangler konkurranse' });
 
@@ -72,6 +72,7 @@ export default async function handler(req, res) {
       path: Array.isArray(path) ? path : [],
       routeType: routeType || null,
       mode: mode === 'gange' ? 'gange' : 'sykkel',
+      weather: weather && typeof weather === 'object' ? weather : null,
       tripToken: tripToken || null,
     });
 

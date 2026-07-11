@@ -1057,6 +1057,19 @@
   gap: 0.5rem;
   grid-template-columns: repeat(3, 1fr);
 }
+.comp-weather-note {
+  align-items: center;
+  background: var(--color-primary-tint);
+  border-radius: var(--radius-md);
+  color: var(--color-primary);
+  display: flex;
+  font-size: 0.84rem;
+  font-weight: 650;
+  gap: 0.45rem;
+  margin: 0.55rem 0 0;
+  padding: 0.5rem 0.7rem;
+}
+.comp-weather-note svg { flex: none; }
 
 .comp-totals > div {
   background: var(--color-surface-muted);
@@ -1363,6 +1376,7 @@
   gap: 0.5rem;
   grid-template-columns: repeat(3, 1fr);
 }
+.trip-tracker__stats--two { grid-template-columns: repeat(2, 1fr); }
 
 .trip-tracker__stats > div {
   background: var(--color-surface-muted);
@@ -2904,3 +2918,89 @@ select.tkt-prop__ctrl { padding-right: 1.7rem; background-image: url("data:image
   .stats-barrow { grid-template-columns: 6.2rem 1fr 2rem; }
   .stats-barrow__label { font-size: 0.78rem; }
 }
+
+/* ============================================================
+   Weather FX — ambient overlay while a trip is timed.
+   Sun = bold celebration; rain/snow = subtle + a praise chip.
+   ============================================================ */
+.wfx { inset: 0; overflow: hidden; pointer-events: none; position: fixed; z-index: 30; }
+
+/* Sun: a warm wash that bursts in then settles, plus a rayed sun. */
+.wfx-sunwash {
+  animation: wfx-wash 3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgba(255, 214, 102, 0.85) 0%, rgba(255, 224, 130, 0.35) 38%, rgba(255, 224, 130, 0) 68%),
+    radial-gradient(90% 60% at 80% 8%, rgba(255, 183, 77, 0.5) 0%, rgba(255, 183, 77, 0) 60%);
+  inset: 0;
+  position: absolute;
+}
+@keyframes wfx-wash { 0% { opacity: 0; } 16% { opacity: 1; } 100% { opacity: 0.32; } }
+.wfx-sun { height: 128px; left: 50%; position: absolute; top: 46px; transform: translateX(-50%); width: 128px; }
+.wfx-sun__core {
+  animation: wfx-pulse 3.2s ease-in-out infinite;
+  background: radial-gradient(circle, #ffd24d 0%, #ffb733 70%);
+  border-radius: 50%;
+  box-shadow: 0 0 44px 12px rgba(255, 196, 77, 0.65);
+  inset: 34px;
+  position: absolute;
+}
+.wfx-sun__ray {
+  background: linear-gradient(#ffd24d, rgba(255, 210, 77, 0));
+  border-radius: 3px;
+  height: 26px;
+  left: 50%;
+  margin-left: -2px;
+  position: absolute;
+  top: -2px;
+  transform-origin: 2px 66px;
+  width: 4px;
+}
+.wfx-sun { animation: wfx-spin 22s linear infinite; }
+@keyframes wfx-spin { to { transform: translateX(-50%) rotate(360deg); } }
+@keyframes wfx-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+
+/* Precipitation particles: light and unobtrusive. */
+.wfx-field { inset: 0; opacity: 0.6; position: absolute; }
+.wfx-drop {
+  animation: wfx-fall linear infinite;
+  background: linear-gradient(rgba(120, 170, 210, 0), rgba(120, 170, 210, 0.9));
+  border-radius: 2px;
+  height: 16px;
+  position: absolute;
+  top: -20px;
+  width: 2px;
+}
+@keyframes wfx-fall { from { transform: translateY(-10vh); } to { transform: translateY(112vh); } }
+.wfx-flake {
+  animation: wfx-snow linear infinite;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 14px;
+  position: absolute;
+  text-shadow: 0 1px 3px rgba(80, 110, 140, 0.4);
+  top: -24px;
+}
+@keyframes wfx-snow {
+  from { transform: translateY(-10vh) translateX(0) rotate(0deg); }
+  to { transform: translateY(112vh) translateX(var(--drift, 0)) rotate(220deg); }
+}
+.wfx--sleet .wfx-drop { background: linear-gradient(rgba(180, 200, 220, 0), rgba(200, 215, 230, 0.95)); }
+
+/* Praise / label chip */
+.wfx-chip {
+  animation: wfx-chip-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  border-radius: var(--radius-pill);
+  display: grid;
+  gap: 0.05rem;
+  justify-items: center;
+  left: 50%;
+  padding: 0.4rem 0.9rem;
+  position: absolute;
+  text-align: center;
+  top: max(0.8rem, calc(env(safe-area-inset-top) + 0.5rem));
+  transform: translateX(-50%);
+}
+@keyframes wfx-chip-in { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.wfx-chip--nice { background: rgba(255, 176, 32, 0.95); box-shadow: 0 8px 22px -10px rgba(180, 120, 0, 0.7); color: #4a2c00; }
+.wfx-chip--precip { background: rgba(11, 93, 77, 0.95); box-shadow: 0 8px 22px -10px rgba(11, 93, 77, 0.7); color: #fff; }
+.wfx-chip__label { font-size: 0.8rem; font-weight: 800; letter-spacing: 0.01em; }
+.wfx-chip__praise { font-size: 0.78rem; font-weight: 600; }

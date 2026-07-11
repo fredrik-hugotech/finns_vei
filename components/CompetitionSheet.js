@@ -150,10 +150,16 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
               </div>
 
               <div className="comp-totals">
-                <div><strong>{stats.totals.trips}</strong><span>sykkelturer</span></div>
+                <div><strong>{stats.totals.trips}</strong><span>turer</span></div>
                 <div><strong>{formatKm(stats.totals.distanceM)}</strong><span>km totalt</span></div>
                 <div><strong>{stats.totals.trips ? Math.round((stats.totals.helmetTrips / stats.totals.trips) * 100) : 0}%</strong><span>med hjelm</span></div>
               </div>
+              {stats.totals.weatherBonusTrips > 0 && (
+                <p className="comp-weather-note">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 14a5 5 0 0 1 1.4-9.8A6 6 0 0 1 17 6a4 4 0 0 1 1 7.9" /><path d="M8 19l-1 2M12 19l-1 2M16 19l-1 2" /></svg>
+                  {stats.totals.weatherBonusTrips} tur{stats.totals.weatherBonusTrips === 1 ? '' : 'er'} i regn eller snø – teller dobbelt!
+                </p>
+              )}
 
               <div className="comp-board">
                 <div className="comp-board__head">
@@ -183,7 +189,7 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
             <>
               <button type="button" className="comp-back" onClick={() => setView('detail')}>‹ Tilbake</button>
               <div className="support-intro">
-                <h2>Logg sykkeltur</h2>
+                <h2>Logg tur</h2>
               </div>
 
               <fieldset className="sheet-field">
@@ -233,14 +239,14 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
         {view === 'detail' && stats && (
           <div className="sheet-footer">
             <button className="big-button big-button--primary comp-action" type="button" onClick={startLog} disabled={loadingDetail}>
-              <Icon name="bike" size={18} /> Logg sykkeltur
+              <Icon name="bike" size={18} /> Logg tur
             </button>
           </div>
         )}
         {view === 'log' && stats && (
           <div className="sheet-footer">
             <button className="big-button big-button--primary comp-action" type="button" onClick={goPickStart}>
-              <Icon name="bike" size={18} /> Start sykkeltur
+              <Icon name="bike" size={18} /> Start tur
             </button>
           </div>
         )}

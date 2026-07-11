@@ -1,16 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { distanceMeters, pathDistanceMeters, clipAndSnapCells, clipPath, snapToGrid, CLIP_METERS } from '../lib/geoPrivacy';
 import Icon from './Icon';
+import WeatherFx from './WeatherFx';
 
 function haptic(pattern = 8) {
   if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(pattern);
 }
 
-function formatDuration(seconds) {
-  const s = Math.max(0, Math.round(seconds));
-  const m = Math.floor(s / 60);
-  return `${m}:${String(s % 60).padStart(2, '0')}`;
-}
 function formatKm(meters) {
   return (meters / 1000).toLocaleString('nb-NO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
@@ -21,17 +17,29 @@ function formatKm(meters) {
 export default function TripTracker({ club, helmet, routeType = 'fritid', mapApi, onDone, onCancel }) {
   const [status, setStatus] = useState('starting'); // starting | tracking | error
   const [distanceM, setDistanceM] = useState(0);
-  const [elapsed, setElapsed] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
   const [saving, setSaving] = useState(false);
   const [unsafeCount, setUnsafeCount] = useState(0);
   const [flash, setFlash] = useState('');
+  const [weather, setWeather] = useState(null);
 
   const pointsRef = useRef([]);
   const lastFixRef = useRef(null);
   const startedAtRef = useRef(null);
   const watchIdRef = useRef(null);
   const wakeLockRef = useRef(null);
+  const weatherFetchedRef = useRef(false);
+
+  // Fetch the weather once, at the first GPS fix — so we can celebrate sun and
+  // give a little praise (and the bonus) for heading out in rain/snow.
+  const fetchWeatherOnce = (lat, lng) => {
+    if (weatherFetchedRef.current) return;
+    weatherFetchedRef.current = true;
+    fetch(`/api/weather?lat=${lat.toFixed(4)}&lon=${lng.toFixed(4)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((w) => { if (w && w.ok) setWeather(w); })
+      .catch(() => {});
+  };
 
   useEffect(() => {
     document.body.classList.add('trip-tracking');
@@ -53,7 +61,6 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mapApi
     };
     document.addEventListener('visibilitychange', onVisibilityChange);
     startedAtRef.current = Date.now();
-    const timer = setInterval(() => setElapsed((Date.now() - startedAtRef.current) / 1000), 1000);
 
     watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
@@ -61,6 +68,7 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mapApi
         if (Number.isFinite(accuracy) && accuracy > 60) return;
         const point = { lat: latitude, lng: longitude };
         lastFixRef.current = point;
+        fetchWeatherOnce(latitude, longitude);
         const points = pointsRef.current;
         const last = points[points.length - 1];
         if (last && distanceMeters(last, point) < 5) { setStatus('tracking'); return; }
@@ -85,7 +93,6 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mapApi
     return () => {
       document.body.classList.remove('trip-tracking');
       document.removeEventListener('visibilitychange', onVisibilityChange);
-      clearInterval(timer);
       if (watchIdRef.current != null) navigator.geolocation.clearWatch(watchIdRef.current);
       if (wakeLockRef.current) { wakeLockRef.current.release?.(); wakeLockRef.current = null; }
       mapApi?.clearLivePath?.();
@@ -136,12 +143,17 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mapApi
     const finalDistance = pathDistanceMeters(points);
     const cells = clipAndSnapCells(points);
     const path = clipPath(points);
-    await onDone?.({ club, helmet, routeType, distanceM: finalDistance, durationS, cells, path });
+    const weatherPayload = weather
+      ? { symbol: weather.symbolCode || null, precipMm: weather.precipMm ?? null, tempC: weather.tempC ?? null, bonus: Boolean(weather.isPrecip), kind: weather.kind || null }
+      : null;
+    await onDone?.({ club, helmet, routeType, distanceM: finalDistance, durationS, cells, path, weather: weatherPayload });
   };
 
   const acquiring = status === 'starting';
 
   return (
+    <>
+    {weather && <WeatherFx kind={weather.kind} tempC={weather.tempC} />}
     <div className="trip-tracker" role="dialog" aria-modal="true" aria-label="Sykkeltur pågår">
       <div className="trip-tracker__head">
         <span className="trip-tracker__pill"><Icon name={routeType === 'skole' ? 'school' : 'activity'} size={15} />{routeType === 'skole' ? 'Skolerute' : 'Fritidsrute'}</span>
@@ -153,9 +165,8 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mapApi
         <div className="bike-track__bike"><Icon name="bike" size={34} strokeWidth={1.7} /></div>
       </div>
 
-      <div className="trip-tracker__stats">
+      <div className="trip-tracker__stats trip-tracker__stats--two">
         <div><strong>{formatKm(distanceM)}</strong><span>km</span></div>
-        <div><strong>{formatDuration(elapsed)}</strong><span>tid</span></div>
         <div><strong>{unsafeCount}</strong><span>utrygge</span></div>
       </div>
 
@@ -174,5 +185,6 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mapApi
         </button>
       </div>
     </div>
+    </>
   );
 }

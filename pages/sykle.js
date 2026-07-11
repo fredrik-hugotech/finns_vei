@@ -61,14 +61,14 @@ export default function Sykle() {
     setView('tracking');
   };
 
-  const finishTrip = async ({ distanceM, durationS, cells, path }) => {
+  const finishTrip = async ({ distanceM, durationS, cells, path, weather }) => {
     setBusy(true);
     try {
       if (competition) {
         await fetch('/api/bike-trips', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ competitionId: competition.id, club, helmet, routeType, mode, distanceM, durationS, cells, path, tripToken: tripToken() }),
+          body: JSON.stringify({ competitionId: competition.id, club, helmet, routeType, mode, weather, distanceM, durationS, cells, path, tripToken: tripToken() }),
         });
       }
     } catch (_e) { /* best-effort */ }
