@@ -154,10 +154,10 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
                 <div><strong>{formatKm(stats.totals.distanceM)}</strong><span>km totalt</span></div>
                 <div><strong>{stats.totals.trips ? Math.round((stats.totals.helmetTrips / stats.totals.trips) * 100) : 0}%</strong><span>med hjelm</span></div>
               </div>
-              {stats.totals.weatherBonusTrips > 0 && (
+              {stats.weatherHero && (
                 <p className="comp-weather-note">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 14a5 5 0 0 1 1.4-9.8A6 6 0 0 1 17 6a4 4 0 0 1 1 7.9" /><path d="M8 19l-1 2M12 19l-1 2M16 19l-1 2" /></svg>
-                  {stats.totals.weatherBonusTrips} tur{stats.totals.weatherBonusTrips === 1 ? '' : 'er'} i regn eller snø – teller dobbelt!
+                  <span><b>Værhelt:</b> {stats.weatherHero.club} – flest turer i regn og snø. Avgjør ved likt antall.</span>
                 </p>
               )}
 
@@ -171,7 +171,15 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
                   {stats.leaderboard.map((row, index) => (
                     <li key={row.club} className={index === 0 && row.trips > 0 ? 'comp-row comp-row--lead' : 'comp-row'}>
                       <span className={`comp-row__rank ${row.trips > 0 ? (RANK_CLASS[index] || '') : ''}`}>{index + 1}</span>
-                      <span className="comp-row__club">{row.club}</span>
+                      <span className="comp-row__club">
+                        {row.club}
+                        {stats.weatherHero?.club === row.club && (
+                          <span className="comp-row__hero" title={`Værhelt – ${row.bonusTrips} tur${row.bonusTrips === 1 ? '' : 'er'} i regn eller snø`}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 14a5 5 0 0 1 1.4-9.8A6 6 0 0 1 17 6a4 4 0 0 1 1 7.9" /><path d="M8 19l-1 2M12 19l-1 2M16 19l-1 2" /></svg>
+                            Værhelt
+                          </span>
+                        )}
+                      </span>
                       <span className="comp-row__stats">
                         <span className="comp-row__helmet" title="Andel med hjelm"><Icon name="helmet" size={14} /> {row.helmetPct}%</span>
                         <span className={stats.metric === 'distance' ? 'comp-row__count comp-row__count--muted' : 'comp-row__count'}>{row.trips} turer</span>

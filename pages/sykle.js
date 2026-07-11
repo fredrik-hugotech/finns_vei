@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Logo from '../components/Logo';
 import Icon from '../components/Icon';
 import TripTracker from '../components/TripTracker';
+import TripCelebration from '../components/TripCelebration';
 
 const ReportMap = dynamic(() => import('../components/ReportMap'), {
   ssr: false,
@@ -72,7 +73,7 @@ export default function Sykle() {
         });
       }
     } catch (_e) { /* best-effort */ }
-    setResult({ km: (distanceM / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 2 }) });
+    setResult({ km: (distanceM / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 2 }), weatherKind: weather?.kind || null });
     setBusy(false);
     setView('done');
   };
@@ -182,13 +183,7 @@ export default function Sykle() {
         )}
 
         {view === 'done' && (
-          <section className="kid-screen kid-done">
-            <div className="kid-done__badge"><Icon name="check" size={56} strokeWidth={2.2} /></div>
-            <h1 className="kid-title">Bra jobba!</h1>
-            <p className="kid-big-number">{result?.km} km</p>
-            <p className="kid-sub">Turen er registrert.</p>
-            <button type="button" className="kid-big kid-big--green" onClick={resetToHub}><span>Ferdig</span></button>
-          </section>
+          <TripCelebration km={result?.km} mode={mode} weatherKind={result?.weatherKind} onDone={resetToHub} />
         )}
 
         {view === 'danger' && (

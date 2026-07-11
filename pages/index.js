@@ -5,6 +5,7 @@ import Logo from '../components/Logo';
 import ReportSheet from '../components/ReportSheet';
 import CompetitionSheet from '../components/CompetitionSheet';
 import TripTracker from '../components/TripTracker';
+import TripCelebration from '../components/TripCelebration';
 import { NEARBY_REPORT_RADIUS_M } from '../lib/config';
 import { QUEUE_CHANGED_EVENT, flushQueue, getPendingCount } from '../lib/offlineReportQueue';
 
@@ -23,6 +24,7 @@ export default function Home() {
   const [showCompetitions, setShowCompetitions] = useState(false);
   const [competitionFocusId, setCompetitionFocusId] = useState(null);
   const [tripContext, setTripContext] = useState(null);
+  const [tripResult, setTripResult] = useState(null); // { km, mode, weatherKind }
   const [message, setMessage] = useState('');
   const [pendingQueueCount, setPendingQueueCount] = useState(0);
   useEffect(() => {
@@ -224,14 +226,12 @@ export default function Home() {
         throw new Error(payload.error || 'Kunne ikke lagre sykkelturen');
       }
       haptic([10, 40, 14]);
-      const focusId = tripContext.competition.id;
       const km = (distanceM / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 2 });
+      // Celebrate with the child instead of dropping them into the standings.
+      setTripResult({ km, mode: tripContext.mode || 'sykkel', weatherKind: weather?.kind || null });
       setTripContext(null);
-      setMode('browse');
-      setMessage(`Takk! ${km} km registrert.`);
+      setMode('trip-done');
       mapApiRef.current?.refreshReports?.();
-      setCompetitionFocusId(focusId);
-      setShowCompetitions(true);
     } catch (error) {
       setMessage(error.message || 'Noe gikk galt.');
       setTripContext(null);
@@ -339,6 +339,15 @@ export default function Home() {
             mapApi={mapApiRef.current}
             onDone={finishTrip}
             onCancel={cancelTrip}
+          />
+        )}
+
+        {mode === 'trip-done' && tripResult && (
+          <TripCelebration
+            km={tripResult.km}
+            mode={tripResult.mode}
+            weatherKind={tripResult.weatherKind}
+            onDone={() => { setTripResult(null); setMode('browse'); }}
           />
         )}
 
