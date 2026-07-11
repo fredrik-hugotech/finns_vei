@@ -47,7 +47,7 @@ export default function TripCelebration({ km, mode = 'sykkel', weatherKind = nul
         </div>
       )}
 
-      <button type="button" className="kid-big kid-big--green" onClick={onDone}><span>Ferdig</span></button>
+      <button type="button" className="kid-big kid-big--green kid-big--cta" onClick={onDone}><span>Ferdig</span></button>
       <Link href="/bud" className="trip-cheer__budlink">Se alle 10 bud ›</Link>
     </section>
   );

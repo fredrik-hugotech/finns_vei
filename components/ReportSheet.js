@@ -38,13 +38,14 @@ function haptic(ms = 8) {
   if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(ms);
 }
 
-export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocation }) {
+export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocation, onViewCase }) {
   const [reporterType, setReporterType] = useState(REPORTER_TYPES.ADULT);
   const [form, setForm] = useState(INITIAL_FORM);
   const [images, setImages] = useState([]);
   const [status, setStatus] = useState({ type: 'idle', message: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submittedId, setSubmittedId] = useState(null);
   const [place, setPlace] = useState(null);
 
   const sheetRef = useRef(null);
@@ -251,6 +252,7 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
       setSubmitted(true);
       haptic([10, 40, 14]);
       setStatus({ type: payload.warning ? 'warning' : 'success', message: payload.warning || '' });
+      setSubmittedId(payload.id || null);
       try { addMyReport({ id: payload.id, category: form.category }); } catch (_e) { /* best effort */ }
       onSubmitted?.();
     } catch (error) {
@@ -291,14 +293,18 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
               </div>
             )}
             <h2>{status.type === 'queued' ? 'Lagret på enheten' : 'Takk for at du sier fra!'}</h2>
-            <p>{status.type === 'queued' ? 'Ingen nett akkurat nå — meldingen sendes automatisk så snart enheten får dekning igjen.' : 'Meldingen er sendt til Finns Fairway.'}</p>
+            <p>{status.type === 'queued' ? 'Ingen nett akkurat nå — meldingen sendes automatisk så snart enheten får dekning igjen.' : 'Meldingen er mottatt. Vi ser på saken så godt vi klarer.'}</p>
             {status.type !== 'queued' && status.message && <div className={`notice notice--${status.type}`} role="status">{status.message}</div>}
             <div className="sheet-success__actions">
-              <button type="button" className="big-button big-button--primary" onClick={resetAndClose}>Se på kartet</button>
+              {status.type !== 'queued' && submittedId ? (
+                <button type="button" className="big-button big-button--primary" onClick={() => onViewCase?.(submittedId)}>Se saken på kartet</button>
+              ) : (
+                <button type="button" className="big-button big-button--primary" onClick={resetAndClose}>Se på kartet</button>
+              )}
               <button
                 type="button"
                 className="big-button big-button--secondary"
-                onClick={() => { setSubmitted(false); setForm(INITIAL_FORM); setStatus({ type: 'idle', message: '' }); onChangeLocation?.(); }}
+                onClick={() => { setSubmitted(false); setSubmittedId(null); setForm(INITIAL_FORM); setStatus({ type: 'idle', message: '' }); onChangeLocation?.(); }}
               >
                 Meld en til
               </button>

@@ -168,6 +168,24 @@ export default function Home() {
     mapApiRef.current?.refreshReports?.();
   };
 
+  // After sending: close the form, refresh so the new pin exists, then fly to
+  // it and open its case card so the reporter sees exactly how it looks.
+  const handleViewCase = async (id) => {
+    setMode('browse');
+    setPickedPoint(null);
+    setNearbyNotice(null);
+    setAccidentNotice(null);
+    if (!id) return;
+    const tryOpen = () => mapApiRef.current?.openCaseById?.(id);
+    try { await mapApiRef.current?.refreshReports?.(); } catch (_e) { /* ignore */ }
+    if (tryOpen()) return;
+    // The just-inserted report may not be in the freshly-read set yet — retry once.
+    setTimeout(async () => {
+      try { await mapApiRef.current?.refreshReports?.(); } catch (_e) { /* ignore */ }
+      tryOpen();
+    }, 800);
+  };
+
   // --- Competitions (public: standings only — the density map is internal) ---
   const openCompetitions = () => {
     haptic(10);
@@ -357,6 +375,7 @@ export default function Home() {
             onClose={closeSheet}
             onSubmitted={handleSubmitted}
             onChangeLocation={changeLocation}
+            onViewCase={handleViewCase}
           />
         )}
 

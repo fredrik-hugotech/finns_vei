@@ -1678,6 +1678,8 @@
 .kid-big--amber { background: #e8820c; box-shadow: 0 12px 30px -10px rgba(232,130,12,0.55); }
 .kid-big--outline { background: var(--color-surface); border: 1.5px solid var(--color-border-strong); color: var(--color-text); }
 .kid-start { min-height: 5rem; flex-direction: row; }
+/* Compact primary CTA (e.g. "Ferdig") — not a tall icon+label hub button. */
+.kid-big--cta { font-size: 1.15rem; min-height: 3.4rem; padding: 0.85rem 1.2rem; }
 
 .kid-choice { display: grid; gap: 0.7rem; grid-template-columns: 1fr 1fr; }
 .kid-pick {
