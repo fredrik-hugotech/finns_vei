@@ -2023,6 +2023,7 @@
 .case-admin__actions .big-button { min-height: 46px; font-size: 0.95rem; }
 .case-admin__trello[aria-disabled="true"] { opacity: 0.5; pointer-events: none; }
 .case-admin__actions:has(.case-admin__trello:only-child) { grid-template-columns: 1fr; }
+.case-admin__skilt { grid-column: 1 / -1; }
 
 /* Compact accidents in the admin card (collapsible, never dominates) */
 .case-admin__accidents { display: grid; gap: 0.3rem; }
