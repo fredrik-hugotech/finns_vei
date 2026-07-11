@@ -37,6 +37,121 @@ function isWinterReport(feature) {
   return !Number.isNaN(d.getTime()) && WINTER_MONTHS.has(d.getMonth());
 }
 
+// ---------------------------------------------------------------------------
+// "Last ned data" export: CSV + GeoJSON download of the exact feature set
+// currently on screen (i.e. already filtered by the season toggle above). The
+// GeoJSON from /api/reports is already the public, contact-info-stripped
+// dataset (see report_public_geojson / lib/supabaseRest.js's
+// stripPrivateProperties), so re-exporting it client-side adds no new
+// privacy exposure — it's the same numbers, just downloadable instead of
+// only chart-shaped.
+
+// Columns kept in the CSV: straightforward, already-public scalar fields.
+// The *_json convenience blobs (facets_json, voices_json, updates_json,
+// image_urls_json) are UI-support data for the map popup, not stats fields,
+// so they're left out of this flat table on purpose (image_urls itself is
+// still included, semicolon-joined).
+const CSV_COLUMNS = [
+  'id',
+  'category',
+  'status',
+  'description',
+  'created_at',
+  'support_count',
+  'lat',
+  'lng',
+  'road_reference',
+  'road_owner',
+  'road_category',
+  'speed_limit',
+  'public_status_note',
+  'public_status_updated_at',
+  'image_urls',
+];
+
+// RFC 4180-ish escaping: quote a field if it contains a comma, quote, or
+// newline, doubling any internal quotes. Never naively comma-join, since
+// descriptions/notes are free text that can contain any of those.
+function csvEscape(value) {
+  const str = value === null || value === undefined ? '' : String(value);
+  if (/[",\r\n]/.test(str)) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+function featureToCsvRecord(feature) {
+  const p = feature.properties || {};
+  const coords = feature.geometry?.type === 'Point' ? feature.geometry.coordinates : [];
+  const [lng, lat] = Array.isArray(coords) ? coords : [];
+  return {
+    id: p.id ?? p.report_id ?? feature.id ?? '',
+    category: p.category ?? '',
+    status: p.status ?? '',
+    description: p.description ?? '',
+    created_at: p.created_at ?? '',
+    support_count: p.support_count ?? '',
+    lat: lat ?? '',
+    lng: lng ?? '',
+    road_reference: p.road_reference ?? '',
+    road_owner: p.road_owner ?? '',
+    road_category: p.road_category ?? '',
+    speed_limit: p.speed_limit ?? '',
+    public_status_note: p.public_status_note ?? '',
+    public_status_updated_at: p.public_status_updated_at ?? '',
+    image_urls: Array.isArray(p.image_urls) ? p.image_urls.join('; ') : '',
+  };
+}
+
+function featuresToCsv(features) {
+  const header = CSV_COLUMNS.join(',');
+  const rows = features.map((feature) => {
+    const record = featureToCsvRecord(feature);
+    return CSV_COLUMNS.map((col) => csvEscape(record[col])).join(',');
+  });
+  return [header, ...rows].join('\r\n');
+}
+
+function seasonFileTag(season) {
+  return season === 'winter' ? 'vinter' : 'alle';
+}
+
+function todayStamp() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function triggerDownload(parts, filename, mimeType) {
+  const blob = new Blob(parts, { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+function downloadCsv(features, season) {
+  const csv = featuresToCsv(features);
+  // Leading BOM helps Excel (common among municipal staff) detect UTF-8 so
+  // æøå in descriptions/notes render correctly instead of as mojibake.
+  triggerDownload(
+    ['﻿', csv],
+    `finns-vei-meldinger-${seasonFileTag(season)}-${todayStamp()}.csv`,
+    'text/csv;charset=utf-8;',
+  );
+}
+
+function downloadGeoJson(features, season) {
+  const collection = { type: 'FeatureCollection', features };
+  triggerDownload(
+    [JSON.stringify(collection, null, 2)],
+    `finns-vei-meldinger-${seasonFileTag(season)}-${todayStamp()}.geojson`,
+    'application/geo+json',
+  );
+}
+
 // All aggregation happens client-side over the already-public GeoJSON from
 // /api/reports — no new server logic, just counting what's already exposed.
 function buildStats(features) {
@@ -263,6 +378,30 @@ export default function StatistikkPage() {
                     <span className="stats-trend__label">{t.label}</span>
                   </div>
                 ))}
+              </div>
+            </section>
+
+            <section>
+              <h2 className="stats-page__h2">Last ned data</h2>
+              <p className="stats-page__note">
+                Last ned meldingene som ligger til grunn for tallene over ({stats.total} stk, filtrert som visningen
+                over). Ingen kontaktinfo følger med – dette er samme åpne datasett som vises på kartet.
+              </p>
+              <div className="stats-page__downloads">
+                <button
+                  type="button"
+                  className="ui-button ui-button-secondary"
+                  onClick={() => downloadCsv(filteredFeatures, season)}
+                >
+                  Last ned CSV
+                </button>
+                <button
+                  type="button"
+                  className="ui-button ui-button-secondary"
+                  onClick={() => downloadGeoJson(filteredFeatures, season)}
+                >
+                  Last ned GeoJSON
+                </button>
               </div>
             </section>
 
