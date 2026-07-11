@@ -2,25 +2,10 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import Logo from '../components/Logo';
-import { REPORT_STATUS, STATUS_COLORS } from '../lib/config';
-import { REPORT_STATUS_ORDER, reportStatusMeta } from '../lib/reportStatusMeta';
-
-const MONTH_LABEL = ['jan', 'feb', 'mar', 'apr', 'mai', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'des'];
-
-function monthKey(date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-}
-
-// Last `n` calendar months, oldest first, including the current month.
-function lastMonths(n) {
-  const out = [];
-  const now = new Date();
-  for (let i = n - 1; i >= 0; i -= 1) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    out.push({ key: monthKey(d), label: MONTH_LABEL[d.getMonth()] });
-  }
-  return out;
-}
+import { STATUS_COLORS } from '../lib/config';
+import { reportStatusMeta } from '../lib/reportStatusMeta';
+import { buildReportStats } from '../lib/reportStats';
+import BadgeEmbedPanel from '../components/BadgeEmbedPanel';
 
 // "Mørketid" road hazards (ice, snow-narrowed shoulders, dark mornings, poor
 // visibility) cluster in the meteorological winter half of the year. We keep
@@ -152,53 +137,6 @@ function downloadGeoJson(features, season) {
   );
 }
 
-// All aggregation happens client-side over the already-public GeoJSON from
-// /api/reports — no new server logic, just counting what's already exposed.
-function buildStats(features) {
-  const total = features.length;
-  const byCategory = new Map();
-  const byStatus = new Map();
-  let totalSupport = 0;
-  const months = lastMonths(6);
-  const monthCounts = new Map(months.map((m) => [m.key, 0]));
-
-  features.forEach((feature) => {
-    const p = feature.properties || {};
-    const category = p.category || 'Annet';
-    byCategory.set(category, (byCategory.get(category) || 0) + 1);
-
-    const status = p.status || REPORT_STATUS.NEW;
-    byStatus.set(status, (byStatus.get(status) || 0) + 1);
-
-    totalSupport += Number(p.support_count) || 0;
-
-    if (p.created_at) {
-      const d = new Date(p.created_at);
-      if (!Number.isNaN(d.getTime())) {
-        const key = monthKey(d);
-        if (monthCounts.has(key)) monthCounts.set(key, monthCounts.get(key) + 1);
-      }
-    }
-  });
-
-  const doneCount = byStatus.get(REPORT_STATUS.DONE) || 0;
-  const resolvedShare = total > 0 ? Math.round((doneCount / total) * 100) : 0;
-
-  const categories = [...byCategory.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .map(([category, count]) => ({ category, count }));
-
-  const knownStatuses = REPORT_STATUS_ORDER.map((status) => ({ status, count: byStatus.get(status) || 0 }));
-  const otherStatuses = [...byStatus.keys()]
-    .filter((status) => !REPORT_STATUS_ORDER.includes(status))
-    .map((status) => ({ status, count: byStatus.get(status) || 0 }));
-  const statuses = [...knownStatuses, ...otherStatuses];
-
-  const trend = months.map((m) => ({ ...m, count: monthCounts.get(m.key) || 0 }));
-
-  return { total, totalSupport, resolvedShare, categories, statuses, trend };
-}
-
 function Bar({ label, count, max, color }) {
   const pct = max > 0 ? Math.round((count / max) * 100) : 0;
   const width = count > 0 ? Math.max(4, pct) : 0;
@@ -246,7 +184,7 @@ export default function StatistikkPage() {
   }, [state, season]);
 
   const stats = useMemo(
-    () => (state.status === 'ready' ? buildStats(filteredFeatures) : null),
+    () => (state.status === 'ready' ? buildReportStats(filteredFeatures) : null),
     [state.status, filteredFeatures],
   );
 
@@ -404,6 +342,8 @@ export default function StatistikkPage() {
                 </button>
               </div>
             </section>
+
+            <BadgeEmbedPanel />
 
             <p className="stats-page__foot comp-muted">
               Tallene er hentet fra offentlig tilgjengelige innmeldinger og oppdateres når du laster siden på nytt.

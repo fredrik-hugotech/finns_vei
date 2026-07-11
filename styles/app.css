@@ -2821,6 +2821,70 @@ select.tkt-prop__ctrl { padding-right: 1.7rem; background-image: url("data:image
   gap: 0.4rem;
 }
 
+/* "Bygg embed-kode" — Trygghetsbadge preview + copyable <img>/<iframe>
+   snippet (components/BadgeEmbedPanel.js). Same flat-tile look as the rest of
+   the stats page, just with a scrollable code box so a long absolute URL
+   never forces the page itself to scroll horizontally. */
+.stats-badge {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.9rem 0.85rem;
+}
+
+.stats-badge__preview {
+  align-items: center;
+  background: var(--color-surface-muted);
+  border-radius: var(--radius-sm, 8px);
+  display: flex;
+  min-height: 2.6rem;
+  overflow-x: auto;
+  padding: 0.6rem;
+}
+
+.stats-badge__preview img {
+  display: block;
+  height: 20px;
+  max-width: none;
+}
+
+.stats-badge__snippet,
+.stats-badge__iframe {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.stats-badge__snippet label {
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.stats-badge__code {
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm, 8px);
+  color: var(--color-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  padding: 0.55rem 0.6rem;
+  resize: vertical;
+  width: 100%;
+}
+
+.stats-badge__iframe summary {
+  color: var(--color-muted);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.stats-badge__iframe .stats-badge__code {
+  margin-top: 0.5rem;
+}
+
 /* Overview stat row: three flat tiles, same visual language as dash2-pulse */
 .stats-overview {
   display: grid;
