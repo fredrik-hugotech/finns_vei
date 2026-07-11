@@ -1,19 +1,29 @@
+import Link from 'next/link';
+import { useState } from 'react';
 import Icon from './Icon';
+import { KID_COMMANDMENTS } from '../lib/safetyCommandments';
 
-// Shown to a child right after they log a trip. Praises the effort, ties it to
-// traffic safety, and shows how far they went — instead of dropping them into
-// the competition standings (which mean nothing to a kid).
-const SAFETY_LINES = [
-  'Hver tur gjør skoleveien litt tryggere for alle barn.',
-  'Jo flere som sykler og går, jo roligere kjører bilene.',
-  'Du viser vei for andre – bra for hele nabolaget!',
-];
+// Rotate through the five child commandments so a kid meets a new one after
+// each trip (persisted per device). Runs once, on the client, in useState init.
+function pickRotatingKidBud() {
+  let idx = 0;
+  if (typeof window !== 'undefined') {
+    try {
+      idx = parseInt(window.localStorage.getItem('ff-bud-idx') || '0', 10) || 0;
+      window.localStorage.setItem('ff-bud-idx', String((idx + 1) % KID_COMMANDMENTS.length));
+    } catch (_e) { /* ignore */ }
+  }
+  return KID_COMMANDMENTS[idx % KID_COMMANDMENTS.length];
+}
 
+// Shown to a child right after they log a trip. Praises the effort, shows how
+// far they went, calls out the weather bonus, and teaches one of Finns 10 bud
+// — instead of dropping them into the competition standings.
 export default function TripCelebration({ km, mode = 'sykkel', weatherKind = null, onDone }) {
+  const [bud] = useState(pickRotatingKidBud);
   const verb = mode === 'gange' ? 'gikk' : 'syklet';
   const isPrecip = weatherKind === 'rain' || weatherKind === 'sleet' || weatherKind === 'snow';
   const weatherWord = weatherKind === 'snow' ? 'snøen' : 'regnet';
-  const safety = SAFETY_LINES[String(km || '').length % SAFETY_LINES.length];
 
   return (
     <section className="kid-screen kid-done trip-cheer">
@@ -29,9 +39,16 @@ export default function TripCelebration({ km, mode = 'sykkel', weatherKind = nul
         </div>
       )}
 
-      <p className="trip-cheer__safety">{safety} Takk for at du logget turen!</p>
+      {bud && (
+        <div className="trip-cheer__bud">
+          <span className="trip-cheer__bud-label">Finns bud {bud.n}</span>
+          <strong>{bud.title}</strong>
+          <p>{bud.text}</p>
+        </div>
+      )}
 
       <button type="button" className="kid-big kid-big--green" onClick={onDone}><span>Ferdig</span></button>
+      <Link href="/bud" className="trip-cheer__budlink">Se alle 10 bud ›</Link>
     </section>
   );
 }

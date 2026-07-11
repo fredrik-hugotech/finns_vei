@@ -1,4 +1,5 @@
 import Head from 'next/head';
+import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Logo from '../components/Logo';
@@ -141,6 +142,7 @@ export default function Sykle() {
               <Icon name="flag" size={40} strokeWidth={1.8} />
               <span>Meld farlig sted</span>
             </button>
+            <Link href="/bud" className="kid-budlink">Finns 10 bud for trygg ferdsel ›</Link>
           </section>
         )}
 

@@ -3043,3 +3043,36 @@ select.tkt-prop__ctrl { padding-right: 1.7rem; background-image: url("data:image
   max-width: 22rem;
   text-align: center;
 }
+
+/* Finns 10 bud — celebration tip card + link + the /bud page */
+.trip-cheer__bud {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg, 16px);
+  box-shadow: var(--shadow-control);
+  display: grid;
+  gap: 0.15rem;
+  max-width: 22rem;
+  padding: 0.8rem 0.95rem;
+  text-align: left;
+  width: 100%;
+}
+.trip-cheer__bud-label { color: var(--color-primary); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; }
+.trip-cheer__bud strong { font-size: 1.02rem; }
+.trip-cheer__bud p { color: var(--color-text); font-size: 0.92rem; line-height: 1.45; margin: 0.1rem 0 0; }
+.trip-cheer__budlink { color: var(--color-muted); font-size: 0.86rem; font-weight: 650; margin-top: -0.2rem; text-decoration: underline; }
+.kid-budlink { color: var(--color-primary); font-size: 0.98rem; font-weight: 700; margin-top: 0.4rem; text-decoration: none; }
+
+.bud-page { align-content: start; display: grid; gap: 0.9rem; justify-items: stretch; margin: 0 auto; max-width: 640px; padding: 0.9rem 1.1rem calc(2.5rem + env(safe-area-inset-bottom)); width: 100%; }
+.bud-back { background: none; border: none; color: var(--color-primary); font-size: 0.95rem; font-weight: 700; justify-self: start; padding: 0.2rem 0; }
+.bud-hero { display: grid; gap: 0.2rem; justify-items: center; padding: 0.2rem 0 0.3rem; text-align: center; }
+.bud-hero__brand { margin-bottom: 0.35rem; }
+.bud-hero h1 { font-family: var(--font-heading); font-size: 1.7rem; margin: 0; }
+.bud-hero p { color: var(--color-muted); margin: 0; }
+.bud-group { display: grid; gap: 0.55rem; }
+.bud-group__title { color: var(--color-muted); font-size: 0.74rem; font-weight: 800; letter-spacing: 0.04em; margin: 0.5rem 0 0; text-transform: uppercase; }
+.bud-list { display: grid; gap: 0.55rem; list-style: none; margin: 0; padding: 0; }
+.bud { align-items: start; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); display: grid; gap: 0.75rem; grid-template-columns: auto 1fr; padding: 0.8rem 0.9rem; }
+.bud__n { align-items: center; background: var(--color-primary-tint); border-radius: 50%; color: var(--color-primary); display: flex; flex: none; font-family: var(--font-heading); font-size: 1rem; font-weight: 800; height: 34px; justify-content: center; width: 34px; }
+.bud__body strong { display: block; font-size: 1.02rem; }
+.bud__body p { color: var(--color-text); font-size: 0.92rem; line-height: 1.45; margin: 0.15rem 0 0; }
