@@ -283,6 +283,40 @@
   margin: 0;
 }
 
+/* Non-blocking "Føre var" weather-context hint during pick mode: flags icy /
+   heavy rain-or-snow / dark conditions at the crosshair's location+time so a
+   reporter has that context — never auto-selects a category and never
+   blocks "Velg dette stedet". Styled in the cool --color-info blue (distinct
+   from the green .pick-nearby-notice and the amber .pick-accident-notice,
+   with its own icon) so all three read as separate concerns and — since
+   .pick-bar is a `display: grid` stack with a fixed gap — simply stack
+   cleanly, without overlap, when more than one is showing at once. */
+.pick-weather-notice {
+  align-items: flex-start;
+  background: #eef4ff;
+  border: 1px solid rgba(29, 78, 216, 0.28);
+  border-radius: var(--radius-md, 10px);
+  display: flex;
+  gap: 0.45rem;
+  padding: 0.5rem 0.7rem;
+}
+
+.pick-weather-notice__icon {
+  color: var(--color-info);
+  flex: 0 0 auto;
+  height: 1.05rem;
+  margin-top: 0.05rem;
+  width: 1.05rem;
+}
+
+.pick-weather-notice__text {
+  color: var(--color-info);
+  flex: 1 1 auto;
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin: 0;
+}
+
 /* Bottom sheet */
 .sheet-layer {
   inset: 0;
