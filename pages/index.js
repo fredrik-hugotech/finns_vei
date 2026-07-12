@@ -292,7 +292,6 @@ export default function Home() {
             </a>
           )}
           <div className="app-topbar__links">
-            <a className="app-staff-link" href="/statistikk">Statistikk</a>
             <a className="app-staff-link" href="/mine-meldinger">Mine meldinger</a>
             <a className="app-staff-link" href="/backoffice">Admin</a>
           </div>
