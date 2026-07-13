@@ -12,6 +12,10 @@ const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 const MAX_TRIP_DISTANCE_M = 150000; // 150 km
 const MAX_TRIP_DURATION_S = 43200; // 12 h
 const MAX_TRIP_SPEED_MPS = 20; // ~72 km/h
+// A trip longer than this needs a real (positive) duration, so the speed
+// check below can't be bypassed by sending a large distanceM with
+// durationS: 0 or omitted entirely.
+const MIN_DISTANCE_FOR_DURATION_CHECK_M = 300;
 
 function logApi(event, details = {}) {
   console.log(JSON.stringify({ scope: 'api/bike-trips', event, ...details }));
@@ -45,6 +49,9 @@ export default async function handler(req, res) {
   }
   if (Number.isFinite(durationNum) && (durationNum < 0 || durationNum > MAX_TRIP_DURATION_S)) {
     return res.status(400).json({ error: 'Ugyldig varighet' });
+  }
+  if (Number.isFinite(distanceNum) && distanceNum > MIN_DISTANCE_FOR_DURATION_CHECK_M && !(Number.isFinite(durationNum) && durationNum > 0)) {
+    return res.status(400).json({ error: 'Ugyldig fart' });
   }
   if (Number.isFinite(distanceNum) && Number.isFinite(durationNum) && durationNum > 0 && (distanceNum / durationNum) > MAX_TRIP_SPEED_MPS) {
     return res.status(400).json({ error: 'Ugyldig fart' });

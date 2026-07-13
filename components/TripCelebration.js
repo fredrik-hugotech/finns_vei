@@ -1,13 +1,14 @@
 import Icon from './Icon';
 import BudTip from './BudTip';
+import { isPrecipKind } from '../lib/weather';
 
 // Shown to a child right after they log a trip. Praises the effort, shows how
 // far they went, calls out the weather bonus, and teaches one of Finns 10 bud
 // — instead of dropping them into the competition standings.
 export default function TripCelebration({ km, mode = 'sykkel', weatherKind = null, onDone }) {
   const verb = mode === 'gange' ? 'gikk' : 'syklet';
-  const isPrecip = weatherKind === 'rain' || weatherKind === 'sleet' || weatherKind === 'snow';
-  const weatherWord = weatherKind === 'snow' ? 'snøen' : 'regnet';
+  const isPrecip = isPrecipKind(weatherKind);
+  const weatherWord = weatherKind === 'snow' ? 'snøen' : weatherKind === 'sleet' ? 'sluddet' : 'regnet';
 
   return (
     <section className="kid-screen kid-done trip-cheer">
