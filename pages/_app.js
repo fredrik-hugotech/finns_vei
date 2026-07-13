@@ -30,7 +30,11 @@ export default function MyApp({ Component, pageProps }) {
   return (
     <div className={`${inter.variable} ${poppins.variable}`}>
       <Head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
+        {/* Permissive by default: pinch-zoom stays enabled everywhere except the
+            Mapbox map pages, which set their own restrictive viewport meta
+            (see pages/index.js, pages/sykle.js, pages/backoffice/tetthet.js)
+            to keep pinch gestures from fighting the map's own pan/zoom. */}
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
       </Head>
       <Component {...pageProps} />
       <div className="rotate-lock" role="alertdialog" aria-label="Snu telefonen til stående">

@@ -125,7 +125,9 @@ export default function Sykle() {
       <Head>
         <title>Finns Fairway – Sykle</title>
         <meta name="description" content="Registrer sykkelturen din og meld fra om farlige steder." />
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+        {/* Map page: pinch-zoom disabled so pinch gestures control the Mapbox
+            map instead of the page (overrides the permissive default in _app.js). */}
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
       </Head>
       <main className="kid-app">
         <ReportMap className="map-canvas" showReports={false} onMapReady={handleMapReady} />

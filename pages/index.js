@@ -267,6 +267,9 @@ export default function Home() {
       <Head>
         <title>Finns Fairway</title>
         <meta name="description" content="For en trygg og aktiv oppvekst. Se kart over utrygge steder i trafikken, eller meld fra." />
+        {/* Map page: pinch-zoom disabled so pinch gestures control the Mapbox
+            map instead of the page (overrides the permissive default in _app.js). */}
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
       </Head>
       <main className="app-shell">
         <ReportMap

@@ -59,7 +59,13 @@ export default function Sykkelspor() {
 
   return (
     <>
-      <Head><title>Sykkelspor (internt)</title><meta name="robots" content="noindex" /></Head>
+      <Head>
+        <title>Sykkelspor (internt)</title>
+        <meta name="robots" content="noindex" />
+        {/* Map page: pinch-zoom disabled so pinch gestures control the Mapbox
+            map instead of the page (overrides the permissive default in _app.js). */}
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
+      </Head>
       <main className="app-shell">
         <ReportMap className="map-canvas" showReports={false} onMapReady={setMapApi} />
 
