@@ -1544,11 +1544,10 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       )}
       {caseData && (
         <div className="sheet-layer case-sheet-layer" role="dialog" aria-modal="false" aria-label="Sak">
-          <div className="sheet-backdrop" onClick={() => setCaseData(null)} />
           <section className="sheet case-sheet" ref={caseSheetDrag.sheetRef}>
             <button type="button" className="sheet__handle" aria-label="Lukk" onClick={() => setCaseData(null)} {...caseSheetDrag.dragHandlers} />
             <button type="button" className="case-sheet__close" aria-label="Lukk sak" onClick={() => setCaseData(null)}>
-              <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" /></svg>
+              <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" /></svg>
             </button>
             <div className="sheet-scroll case-sheet__scroll" dangerouslySetInnerHTML={{ __html: caseBodyHtml }} />
             {adminSecret && caseFeature ? (

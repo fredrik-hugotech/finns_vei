@@ -1,7 +1,7 @@
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import Logo from '../components/Logo';
-import { SAFETY_COMMANDMENTS } from '../lib/safetyCommandments';
+import { SAFETY_COMMANDMENTS, ADULT_COMMANDMENTS } from '../lib/safetyCommandments';
 
 function Group({ label, items }) {
   return (
@@ -25,7 +25,7 @@ function Group({ label, items }) {
 export default function Bud() {
   const router = useRouter();
   const barn = SAFETY_COMMANDMENTS.filter((b) => b.audience === 'barn');
-  const voksne = SAFETY_COMMANDMENTS.filter((b) => b.audience === 'voksen');
+  const voksne = ADULT_COMMANDMENTS;
 
   return (
     <>

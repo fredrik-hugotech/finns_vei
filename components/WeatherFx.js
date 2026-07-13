@@ -22,18 +22,18 @@ export default function WeatherFx({ kind, tempC }) {
   const temp = Number.isFinite(Number(tempC)) ? `${Math.round(Number(tempC))}°` : '';
 
   return (
-    <div className={`wfx wfx--${kind}`} aria-hidden="true">
+    <div className={`wfx wfx--${kind}`}>
       {kind === 'sun' && (
-        <>
+        <div aria-hidden="true">
           <div className="wfx-sunwash" />
           <div className="wfx-sun"><span className="wfx-sun__core" />{Array.from({ length: 12 }, (_, i) => (
             <span key={i} className="wfx-sun__ray" style={{ transform: `rotate(${i * 30}deg)` }} />
           ))}</div>
-        </>
+        </div>
       )}
 
       {(kind === 'rain' || kind === 'sleet') && (
-        <div className="wfx-field">
+        <div className="wfx-field" aria-hidden="true">
           {PARTICLES.map((p, i) => (
             <span key={i} className="wfx-drop" style={{ left: `${p.left}%`, animationDelay: `${p.delay}s`, animationDuration: `${p.dur}s` }} />
           ))}
@@ -41,7 +41,7 @@ export default function WeatherFx({ kind, tempC }) {
       )}
 
       {kind === 'snow' && (
-        <div className="wfx-field">
+        <div className="wfx-field" aria-hidden="true">
           {PARTICLES.map((p, i) => (
             <span key={i} className="wfx-flake" style={{ left: `${p.left}%`, animationDelay: `${p.delay}s`, animationDuration: `${(Number(p.dur) * 2.4).toFixed(2)}s`, '--drift': `${p.drift}px` }}>❄</span>
           ))}

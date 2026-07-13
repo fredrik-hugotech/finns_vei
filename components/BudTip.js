@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { useState } from 'react';
-import { SAFETY_COMMANDMENTS, KID_COMMANDMENTS } from '../lib/safetyCommandments';
+import { SAFETY_COMMANDMENTS, KID_COMMANDMENTS, ADULT_COMMANDMENTS } from '../lib/safetyCommandments';
 
 // Rotate through a list per device so a new commandment shows each time.
 function rotate(list, key) {
@@ -21,7 +21,7 @@ export default function BudTip({ audience = 'all' }) {
     const list = audience === 'barn'
       ? KID_COMMANDMENTS
       : audience === 'voksen'
-        ? SAFETY_COMMANDMENTS.filter((b) => b.audience === 'voksen')
+        ? ADULT_COMMANDMENTS
         : SAFETY_COMMANDMENTS;
     return rotate(list, `ff-bud-idx-${audience}`);
   });
