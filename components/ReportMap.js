@@ -14,6 +14,7 @@ import { REPORT_STATUS_META, REPORT_STATUS_ORDER, reportStatusMeta } from '../li
 import { categoryGlyph } from '../lib/reportCategoryGlyphs';
 import { normalizeImageEntries } from '../lib/reportImages';
 import { getSavedHeatmapWeightPrefs, saveHeatmapWeightPrefs, clearHeatmapWeightPrefs } from '../lib/heatmapWeightPrefs';
+import { isWinterHazard } from '../lib/weather';
 import SupportSheet from './SupportSheet';
 import useSheetDrag from '../hooks/useSheetDrag';
 
@@ -114,6 +115,21 @@ async function fetchAccidentsNear(center, radiusM) {
     }))
     .filter((accident) => accident.dist <= radiusM)
     .sort((a, b) => (Number(b.year) || 0) - (Number(a.year) || 0));
+}
+
+// Quick "is it currently near-freezing and/or actively snowing/sleeting
+// here" check for the pick-mode winter-hazard hint, reusing the same
+// MET-Norway-backed /api/weather route TripTracker already calls (no
+// duplicated fetch logic) and the shared isWinterHazard() classification
+// from lib/weather.js. Never rejects — a failed/degraded lookup resolves to
+// `false` so the caller just shows no hint, same graceful-failure shape as
+// fetchAccidentsNear()'s caught errors.
+async function fetchWinterHazardNear([lng, lat]) {
+  const response = await fetch(`/api/weather?lat=${lat.toFixed(4)}&lon=${lng.toFixed(4)}`);
+  if (!response.ok) return false;
+  const data = await response.json();
+  if (!data?.ok) return false;
+  return isWinterHazard(data);
 }
 
 function accidentSummaryHtml(accidents) {
@@ -576,6 +592,8 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   // resolves after a newer one (out-of-order network response) can detect
   // it's stale and be ignored instead of overwriting the latest result.
   const accidentCheckIdRef = useRef(0);
+  // Same request-id race-guard pattern for checkWinterHazardNear() below.
+  const winterHazardCheckIdRef = useRef(0);
   // Same pattern for refreshNvdbLayers(): bumped on every call so a slower,
   // older response (e.g. from rapid panning) can't overwrite the map with
   // stale/wrong-viewport data after a newer response already rendered.
@@ -1278,6 +1296,20 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           return fetchAccidentsNear([centerPoint.lng, centerPoint.lat], radiusMeters)
             .then((accidents) => (requestId === accidentCheckIdRef.current ? accidents : null))
             .catch(() => (requestId === accidentCheckIdRef.current ? [] : null));
+        },
+        // Async winter-hazard lookup for the pick-mode "Kan være glatt/snø
+        // her nå" hint. Same debounced-per-settle usage and increasing
+        // request-id race guard as checkAccidentsNear() above, so a fast pan
+        // across several spots can't have a slow, stale response overwrite a
+        // newer one. Resolves `null` for a stale/superseded response (caller
+        // ignores it) and `false` on any failure (never rejects) so a
+        // degraded/unreachable weather API just means no hint, never an
+        // error shown in the pick-mode bar.
+        checkWinterHazardNear: (centerPoint) => {
+          const requestId = (winterHazardCheckIdRef.current += 1);
+          return fetchWinterHazardNear([centerPoint.lng, centerPoint.lat])
+            .then((hazard) => (requestId === winterHazardCheckIdRef.current ? hazard : null))
+            .catch(() => (requestId === winterHazardCheckIdRef.current ? false : null));
         },
         openCaseById: (id) => openCaseById(id),
         showCompetitionTrips: (geojson) => showCompetitionTrips(map, geojson),

@@ -283,6 +283,41 @@
   margin: 0;
 }
 
+/* Non-blocking "Kan være glatt/snø her nå" winter-hazard hint — live
+   near-freezing/precipitation conditions at the picked point, purely
+   informational context (never blocks "Velg dette stedet", never
+   pre-selects a category). Styled in the info/blue palette so it reads as a
+   third, distinct concern alongside the green .pick-nearby-notice and the
+   amber .pick-accident-notice above when several are visible at once. Both
+   .pick-bar (grid + gap, no fixed row count) and this block reuse the same
+   layout shape as the other pick-mode notices rather than special-casing
+   spacing here, so any combination of the three stacks cleanly. */
+.pick-winter-notice {
+  align-items: flex-start;
+  background: #eff6ff;
+  border: 1px solid rgba(29, 78, 216, 0.28);
+  border-radius: var(--radius-md, 10px);
+  display: flex;
+  gap: 0.45rem;
+  padding: 0.5rem 0.7rem;
+}
+
+.pick-winter-notice__icon {
+  color: var(--color-info);
+  flex: 0 0 auto;
+  height: 1.05rem;
+  margin-top: 0.05rem;
+  width: 1.05rem;
+}
+
+.pick-winter-notice__text {
+  color: var(--color-info);
+  flex: 1 1 auto;
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin: 0;
+}
+
 /* Bottom sheet */
 .sheet-layer {
   inset: 0;

@@ -21,6 +21,7 @@ export default function Home() {
   const [geoStatus, setGeoStatus] = useState('');
   const [nearbyNotice, setNearbyNotice] = useState(null); // { count, nearestId } | null
   const [accidentNotice, setAccidentNotice] = useState(null); // { count } | null
+  const [winterHazardNotice, setWinterHazardNotice] = useState(false); // boolean
   const [showCompetitions, setShowCompetitions] = useState(false);
   const [competitionFocusId, setCompetitionFocusId] = useState(null);
   const [tripContext, setTripContext] = useState(null);
@@ -98,13 +99,38 @@ export default function Home() {
     });
   }, []);
 
-  // Wired to the map's single onPickCenterChange callback so both the
-  // nearby-duplicate notice and the accident hint refresh together whenever
-  // the pick-mode crosshair settles on a new point.
+  // Winter-hazard hint during pick mode: reuses lib/weather.js's shared
+  // classification (via the map's checkWinterHazardNear(), which calls the
+  // same /api/weather route TripTracker already uses for the cycling
+  // competition — no duplicated MET Norway fetch logic) so a reporter
+  // dragging the crosshair over a near-freezing or actively snowing/sleeting
+  // spot gets a heads-up before picking a category. Same
+  // debounced-on-moveend + increasing-request-id race-guard pattern as
+  // updateAccidentHint above (checkWinterHazardNear() resolves `null` for a
+  // stale/superseded request). Purely informational: never auto-selects a
+  // category and never blocks "Velg dette stedet". checkWinterHazardNear()
+  // itself never rejects and resolves `false` on any weather-fetch failure,
+  // so a slow/degraded MET Norway lookup just leaves the hint hidden — no
+  // error state here.
+  const updateWinterHazardHint = useCallback((center) => {
+    if (!center) {
+      setWinterHazardNotice(false);
+      return;
+    }
+    mapApiRef.current?.checkWinterHazardNear?.(center)?.then((hazard) => {
+      if (hazard === null) return; // stale response — a newer request already decided
+      setWinterHazardNotice(Boolean(hazard));
+    });
+  }, []);
+
+  // Wired to the map's single onPickCenterChange callback so the
+  // nearby-duplicate notice, the accident hint and the winter-hazard hint all
+  // refresh together whenever the pick-mode crosshair settles on a new point.
   const handlePickCenterChange = useCallback((center) => {
     updateNearbyNotice(center);
     updateAccidentHint(center);
-  }, [updateNearbyNotice, updateAccidentHint]);
+    updateWinterHazardHint(center);
+  }, [updateNearbyNotice, updateAccidentHint, updateWinterHazardHint]);
 
   const startPick = () => {
     haptic(10);
@@ -120,6 +146,7 @@ export default function Home() {
     setPickedPoint(center);
     setNearbyNotice(null);
     setAccidentNotice(null);
+    setWinterHazardNotice(false);
     setMode('form');
   };
 
@@ -144,6 +171,7 @@ export default function Home() {
     setPickedPoint(null);
     setNearbyNotice(null);
     setAccidentNotice(null);
+    setWinterHazardNotice(false);
   };
 
   const changeLocation = () => {
@@ -175,6 +203,7 @@ export default function Home() {
     setPickedPoint(null);
     setNearbyNotice(null);
     setAccidentNotice(null);
+    setWinterHazardNotice(false);
     if (!id) return;
     const tryOpen = () => mapApiRef.current?.openCaseById?.(id);
     try { await mapApiRef.current?.refreshReports?.(); } catch (_e) { /* ignore */ }
@@ -336,6 +365,14 @@ export default function Home() {
                       ? 'Én ulykke registrert nær dette punktet siste årene'
                       : `${accidentNotice.count} ulykker registrert nær dette punktet siste årene`}
                   </p>
+                </div>
+              )}
+              {winterHazardNotice && (
+                <div className="pick-winter-notice">
+                  <svg className="pick-winter-notice__icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2.5v19M12 2.5l-2.4 2.1M12 2.5l2.4 2.1M12 21.5l-2.4-2.1M12 21.5l2.4-2.1M3.6 7.25l16.8 9.5M3.6 7.25l3.05-.55M3.6 7.25l1.55 2.7M20.4 16.75l-3.05.55M20.4 16.75l-1.55-2.7M20.4 7.25 3.6 16.75M20.4 7.25l-3.05-.55M20.4 7.25l-1.55 2.7M3.6 16.75l3.05.55M3.6 16.75l1.55-2.7" />
+                  </svg>
+                  <p className="pick-winter-notice__text">Kan være glatt/snø her nå</p>
                 </div>
               )}
               <button type="button" className="big-button big-button--primary pick-bar__confirm" onClick={confirmLocation}>Velg dette stedet</button>
