@@ -62,6 +62,17 @@ export default function CaseAdminPanel({ reportId, currentStatus, lat, lng, acci
     window.open(`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`, '_blank', 'noopener');
   };
 
+  // The print-sign page is protected the same way as the rest of /backoffice
+  // (staff cookie session, or the legacy shared secret). A plain link click
+  // can't carry a custom header, so thread the locally stored bootstrap
+  // secret through as a query param when present — the staff cookie (if any)
+  // is sent automatically by the browser regardless.
+  const skiltHref = () => {
+    const s = secret();
+    const path = `/backoffice/skilt/${encodeURIComponent(reportId)}`;
+    return s ? `${path}?secret=${encodeURIComponent(s)}` : path;
+  };
+
   const dirty = (status && status !== currentStatus) || note.trim().length > 0;
 
   return (
@@ -82,6 +93,14 @@ export default function CaseAdminPanel({ reportId, currentStatus, lat, lng, acci
         {Number.isFinite(Number(lat)) && (
           <button type="button" className="big-button big-button--secondary case-admin__sv" onClick={openStreetView}>Street View</button>
         )}
+        <a
+          className="big-button big-button--secondary case-admin__skilt"
+          href={skiltHref()}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Skriv ut skilt
+        </a>
       </div>
 
       {Array.isArray(accidents) && (
