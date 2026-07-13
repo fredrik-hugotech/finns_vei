@@ -6,6 +6,7 @@ import Logo from '../components/Logo';
 import Icon from '../components/Icon';
 import TripTracker from '../components/TripTracker';
 import TripCelebration from '../components/TripCelebration';
+import { getTripStreak, recordTrip } from '../lib/tripStreak';
 
 const ReportMap = dynamic(() => import('../components/ReportMap'), {
   ssr: false,
@@ -36,6 +37,9 @@ export default function Sykle() {
   const [result, setResult] = useState(null);
   const [dangerStatus, setDangerStatus] = useState('');
   const [busy, setBusy] = useState(false);
+  // On-device Turstreak (lib/tripStreak.js): consecutive days with a logged
+  // trip + this week's trip count. Purely local, no login, no server sync.
+  const [streak, setStreak] = useState(null);
 
   useEffect(() => {
     fetch('/api/competitions')
@@ -46,6 +50,7 @@ export default function Sykle() {
         if (first?.clubs?.length === 1) setClub(first.clubs[0].name);
       })
       .catch(() => {});
+    setStreak(getTripStreak());
   }, []);
 
   const handleMapReady = useCallback((api) => { mapApiRef.current = api; }, []);
@@ -74,7 +79,13 @@ export default function Sykle() {
         });
       }
     } catch (_e) { /* best-effort */ }
-    setResult({ km: (distanceM / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 2 }), weatherKind: weather?.kind || null });
+    // Turstreak is a purely local, device-only counter: it reflects that the
+    // child completed a tracked trip in the app, independent of whether the
+    // server POST above succeeded (same spirit as the rest of this screen —
+    // best-effort, never blocking the celebration on network state).
+    const nextStreak = recordTrip();
+    setStreak(nextStreak);
+    setResult({ km: (distanceM / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 2 }), weatherKind: weather?.kind || null, streak: nextStreak });
     setBusy(false);
     setView('done');
   };
@@ -134,6 +145,22 @@ export default function Sykle() {
           <section className="kid-screen kid-hub">
             <div className="kid-brand"><Logo size="md" /></div>
             <h1 className="kid-title">Hva vil du gjøre?</h1>
+
+            {streak?.current > 0 && (
+              <div className="kid-streak">
+                <span className="kid-streak__stat">
+                  <Icon name="flame" size={17} strokeWidth={2} />
+                  {streak.current} {streak.current === 1 ? 'dag' : 'dager'} på rad
+                </span>
+                {streak.weekCount > 0 && (
+                  <span className="kid-streak__week">{streak.weekCount} {streak.weekCount === 1 ? 'tur' : 'turer'} denne uka</span>
+                )}
+                {streak.atRisk && (
+                  <p className="kid-streak__nudge"><Icon name="flame" size={14} strokeWidth={2} />Ikke mist streaken din i dag!</p>
+                )}
+              </div>
+            )}
+
             <button type="button" className="kid-big kid-big--green" onClick={() => { haptic(10); setView('setup'); }}>
               <Icon name="bike" size={42} strokeWidth={1.7} />
               <span>Registrer sykkeltur</span>
@@ -185,7 +212,7 @@ export default function Sykle() {
         )}
 
         {view === 'done' && (
-          <TripCelebration km={result?.km} mode={mode} weatherKind={result?.weatherKind} onDone={resetToHub} />
+          <TripCelebration km={result?.km} mode={mode} weatherKind={result?.weatherKind} streak={result?.streak} onDone={resetToHub} />
         )}
 
         {view === 'danger' && (

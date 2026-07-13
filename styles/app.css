@@ -1642,6 +1642,48 @@
 .kid-hub { align-content: center; }
 .kid-brand { display: flex; justify-content: center; margin-bottom: 0.4rem; }
 
+/* Turstreak — persistent stat on the /sykle hub (lib/tripStreak.js), not
+   just the one-off celebration. Small badge, not a new page. */
+.kid-streak {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  margin: -0.3rem 0 0.2rem;
+  text-align: center;
+}
+.kid-streak__stat {
+  align-items: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  color: var(--color-warning);
+  display: inline-flex;
+  font-size: 0.86rem;
+  font-weight: 750;
+  gap: 0.32rem;
+  padding: 0.32rem 0.8rem;
+}
+.kid-streak__stat svg { flex: none; }
+.kid-streak__week {
+  color: var(--color-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.kid-streak__nudge {
+  align-items: center;
+  color: var(--color-warning);
+  display: flex;
+  font-size: 0.82rem;
+  font-weight: 650;
+  gap: 0.3rem;
+  justify-content: center;
+  margin: 0;
+  width: 100%;
+}
+.kid-streak__nudge svg { flex: none; }
+
 .kid-title {
   color: var(--color-text);
   font-family: var(--font-heading);
@@ -3037,6 +3079,20 @@ select.tkt-prop__ctrl { padding-right: 1.7rem; background-image: url("data:image
   padding: 0.42rem 0.95rem;
 }
 .trip-cheer__weather svg { flex: none; }
+
+/* Turstreak callout on the celebration screen — kept small and secondary so
+   it doesn't compete with the weather badge or the Finns 10 bud card. */
+.trip-cheer__streak {
+  align-items: center;
+  color: var(--color-warning);
+  display: inline-flex;
+  font-size: 0.86rem;
+  font-weight: 700;
+  gap: 0.35rem;
+}
+.trip-cheer__streak--new { color: var(--color-muted); }
+.trip-cheer__streak svg { flex: none; }
+
 .trip-cheer__safety {
   color: var(--color-text);
   font-size: 1rem;
