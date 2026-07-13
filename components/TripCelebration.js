@@ -10,6 +10,20 @@ import { isPrecipKind } from '../lib/weather';
 // a quiz every single time — the tip still teaches a bud the rest of the time.
 const QUIZ_CHANCE = 1 / 3;
 
+// Builds the shareable "turkort" image URL for pages/api/og/tur.js from the
+// values already shown on this screen. `km` arrives pre-formatted for
+// display via toLocaleString('nb-NO', …), which uses a comma decimal
+// separator (e.g. "5,2") — swap it back to a dot so the query param parses
+// as a number on the edge route.
+function buildTurkortUrl(km, mode, weatherKind) {
+  if (typeof window === 'undefined') return '';
+  const params = new URLSearchParams();
+  if (km != null && km !== '') params.set('km', String(km).replace(',', '.'));
+  params.set('mode', mode === 'gange' ? 'gange' : 'sykkel');
+  if (weatherKind) params.set('weather', weatherKind);
+  return `${window.location.origin}/api/og/tur?${params.toString()}`;
+}
+
 // Shown to a child right after they log a trip. Praises the effort, shows how
 // far they went, calls out the weather bonus, and teaches one of Finns 10 bud
 // — instead of dropping them into the competition standings.
@@ -18,6 +32,36 @@ export default function TripCelebration({ km, mode = 'sykkel', weatherKind = nul
   const isPrecip = isPrecipKind(weatherKind);
   const weatherWord = weatherKind === 'snow' ? 'snøen' : weatherKind === 'sleet' ? 'sluddet' : 'regnet';
   const [showQuiz] = useState(() => Math.random() < QUIZ_CHANCE);
+  const [sharing, setSharing] = useState(false);
+
+  // Feature-detected on click rather than cached in state — this screen is
+  // short-lived (mounted once right after a trip) so there is no hydration
+  // mismatch to guard against like on pages/sak/[id].js, just navigator
+  // access that must never run on the server.
+  const handleShare = async () => {
+    if (sharing) return;
+    setSharing(true);
+    try {
+      const imageUrl = buildTurkortUrl(km, mode, weatherKind);
+      if (!imageUrl) return;
+      const shareData = {
+        title: 'Finns Fairway',
+        text: `Jeg ${verb} ${km} km i dag! 🚲`,
+        url: imageUrl,
+      };
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        await navigator.share(shareData);
+      } else if (typeof window !== 'undefined') {
+        // No Web Share API (typically desktop browsers) — open the image
+        // directly so the browser's own "save image" / new-tab flow works.
+        window.open(imageUrl, '_blank', 'noopener,noreferrer');
+      }
+    } catch (_error) {
+      // Share sheet cancelled by the user, or window.open blocked — nothing to do.
+    } finally {
+      setSharing(false);
+    }
+  };
 
   return (
     <section className="kid-screen kid-done trip-cheer">
@@ -35,6 +79,9 @@ export default function TripCelebration({ km, mode = 'sykkel', weatherKind = nul
 
       {showQuiz ? <BudQuiz /> : <BudTip audience="barn" />}
 
+      <button type="button" className="kid-big kid-big--outline kid-big--cta" onClick={handleShare} disabled={sharing}>
+        <Icon name="share" size={22} /><span>Del turen</span>
+      </button>
       <button type="button" className="kid-big kid-big--green kid-big--cta" onClick={onDone}><span>Ferdig</span></button>
     </section>
   );
