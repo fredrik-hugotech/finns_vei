@@ -1,6 +1,14 @@
+import { useState } from 'react';
 import Icon from './Icon';
 import BudTip from './BudTip';
+import BudQuiz from './BudQuiz';
 import { isPrecipKind } from '../lib/weather';
+
+// Roughly one trip in three, swap the passive bud tip for a quick interactive
+// "sant eller usant" mini-quiz (BudQuiz) instead. Kept low-frequency on purpose
+// so the celebration screen stays light and non-naggy rather than turning into
+// a quiz every single time — the tip still teaches a bud the rest of the time.
+const QUIZ_CHANCE = 1 / 3;
 
 // Shown to a child right after they log a trip. Praises the effort, shows how
 // far they went, calls out the weather bonus, and teaches one of Finns 10 bud
@@ -9,6 +17,7 @@ export default function TripCelebration({ km, mode = 'sykkel', weatherKind = nul
   const verb = mode === 'gange' ? 'gikk' : 'syklet';
   const isPrecip = isPrecipKind(weatherKind);
   const weatherWord = weatherKind === 'snow' ? 'snøen' : weatherKind === 'sleet' ? 'sluddet' : 'regnet';
+  const [showQuiz] = useState(() => Math.random() < QUIZ_CHANCE);
 
   return (
     <section className="kid-screen kid-done trip-cheer">
@@ -24,7 +33,7 @@ export default function TripCelebration({ km, mode = 'sykkel', weatherKind = nul
         </div>
       )}
 
-      <BudTip audience="barn" />
+      {showQuiz ? <BudQuiz /> : <BudTip audience="barn" />}
 
       <button type="button" className="kid-big kid-big--green kid-big--cta" onClick={onDone}><span>Ferdig</span></button>
     </section>
