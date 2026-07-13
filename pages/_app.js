@@ -1,4 +1,3 @@
-import 'mapbox-gl/dist/mapbox-gl.css';
 import '../styles/globals.css';
 import Head from 'next/head';
 import { useEffect } from 'react';

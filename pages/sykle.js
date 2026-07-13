@@ -27,6 +27,11 @@ function haptic(pattern = 8) {
 
 export default function Sykle() {
   const mapApiRef = useRef(null);
+  // The map is only needed for the tracking view, so it stays unmounted until
+  // a trip actually starts — flows like "Meld farlig sted" never load it.
+  // Once mounted it's left in place (not tied back to `view`) so it doesn't
+  // unmount while TripTracker's cleanup still calls into it.
+  const [mapMounted, setMapMounted] = useState(false);
   const [view, setView] = useState('hub'); // hub | setup | tracking | done | danger | danger-done
   const [competition, setCompetition] = useState(null);
   const [routeType, setRouteType] = useState('fritid');
@@ -61,6 +66,7 @@ export default function Sykle() {
   const startTrip = () => {
     if (competition?.clubs?.length && !club) { setDangerStatus(''); haptic(20); return; }
     haptic(12);
+    setMapMounted(true);
     setView('tracking');
   };
 
@@ -137,7 +143,7 @@ export default function Sykle() {
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
       </Head>
       <main className="kid-app">
-        <ReportMap className="map-canvas" showReports={false} onMapReady={handleMapReady} />
+        {mapMounted && <ReportMap className="map-canvas" showReports={false} onMapReady={handleMapReady} />}
 
         {view === 'hub' && (
           <section className="kid-screen kid-hub">
@@ -190,7 +196,7 @@ export default function Sykle() {
         )}
 
         {view === 'tracking' && (
-          <TripTracker club={club} helmet={helmet} routeType={routeType} mode={mode} mapApi={mapApiRef.current} onDone={finishTrip} onCancel={resetToHub} />
+          <TripTracker club={club} helmet={helmet} routeType={routeType} mode={mode} mapApiRef={mapApiRef} onDone={finishTrip} onCancel={resetToHub} />
         )}
 
         {view === 'done' && (
