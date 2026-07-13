@@ -982,6 +982,32 @@
   color: var(--color-danger);
 }
 
+/* Anonymous "Mine turer" tracker (/mine-turer) */
+.my-trips-total {
+  align-items: baseline;
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.1rem 0 0.3rem;
+}
+
+.my-trips-total strong {
+  font-size: 1.3rem;
+}
+
+.my-trips-total span {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+
+.my-trips-badge {
+  background: var(--color-surface-muted);
+  border-radius: 999px;
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  font-weight: 650;
+  padding: 0.2rem 0.55rem;
+}
+
 /* Support sheet intro */
 .support-intro {
   display: grid;
