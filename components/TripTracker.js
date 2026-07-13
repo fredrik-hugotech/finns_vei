@@ -22,6 +22,7 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mode =
   const [unsafeCount, setUnsafeCount] = useState(0);
   const [flash, setFlash] = useState('');
   const [weather, setWeather] = useState(null);
+  const [pointCount, setPointCount] = useState(0);
 
   const pointsRef = useRef([]);
   const lastFixRef = useRef(null);
@@ -75,6 +76,7 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mode =
         points.push(point);
         setStatus('tracking');
         setDistanceM(pathDistanceMeters(points));
+        setPointCount(points.length);
         if (mapApi) {
           mapApi.showLivePath?.({
             type: 'FeatureCollection',
@@ -185,7 +187,7 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mode =
 
       <div className="trip-tracker__actions">
         <button type="button" className="big-button big-button--secondary" onClick={onCancel} disabled={saving}>Avbryt</button>
-        <button type="button" className="big-button trip-tracker__stop" onClick={stopAndSave} disabled={saving || status === 'error'}>
+        <button type="button" className="big-button trip-tracker__stop" onClick={stopAndSave} disabled={saving || pointCount === 0}>
           <Icon name="stop" size={18} /> {saving ? 'Lagrer …' : 'Stopp og lagre'}
         </button>
       </div>

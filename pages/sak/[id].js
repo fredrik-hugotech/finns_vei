@@ -79,7 +79,7 @@ export default function SakPage({ report, shareUrl, ogImageUrl }) {
           {report.description && <p className="share-card__text">{report.description}</p>}
           {report.public_status_note && (
             <div className="share-card__update">
-              <strong>Oppdatering fra Finns.Fairway</strong>
+              <strong>Oppdatering fra Finns Fairway</strong>
               <p>{report.public_status_note}</p>
             </div>
           )}
