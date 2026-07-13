@@ -1021,11 +1021,15 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     return true;
   }, [openReportCase]);
 
-  const loadReports = useCallback(async () => {
+  const loadReports = useCallback(async ({ bypassCache = false } = {}) => {
     const map = mapRef.current;
     if (!map || !showReports) return;
 
-    const response = await fetch('/api/reports');
+    // Normal map loads keep the shared CDN cache (see pages/api/reports.js) so
+    // bursts of concurrent map opens don't hammer the DB. The post-submission
+    // "view case" flow needs the just-inserted report right away though, so it
+    // opts out of that cache with a distinguishing query param + no-store.
+    const response = await fetch(bypassCache ? '/api/reports?fresh=1' : '/api/reports', bypassCache ? { cache: 'no-store' } : undefined);
     if (!response.ok) throw new Error('Kunne ikke hente meldinger');
     const geojson = await response.json();
 
@@ -1261,7 +1265,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           return { lng: center.lng, lat: center.lat };
         },
         flyTo: ({ lng, lat }) => map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 16), duration: 700 }),
-        refreshReports: () => loadReports().catch((error) => console.error(error)),
+        refreshReports: (opts) => loadReports(opts).catch((error) => console.error(error)),
         findNearbyReports: (centerPoint, radiusMeters = NEARBY_RADIUS_M) => (
           findNearbyReportFeatures(reportsDataRef.current, [centerPoint.lng, centerPoint.lat], radiusMeters)
         ),

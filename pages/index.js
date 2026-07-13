@@ -177,11 +177,15 @@ export default function Home() {
     setAccidentNotice(null);
     if (!id) return;
     const tryOpen = () => mapApiRef.current?.openCaseById?.(id);
-    try { await mapApiRef.current?.refreshReports?.(); } catch (_e) { /* ignore */ }
+    // Bypass the CDN cache here specifically: a concurrent /api/reports
+    // request from another client in the preceding ~8s can otherwise leave
+    // the CDN serving stale pre-submission data on both attempts below,
+    // silently failing to open the reporter's own just-submitted case.
+    try { await mapApiRef.current?.refreshReports?.({ bypassCache: true }); } catch (_e) { /* ignore */ }
     if (tryOpen()) return;
     // The just-inserted report may not be in the freshly-read set yet — retry once.
     setTimeout(async () => {
-      try { await mapApiRef.current?.refreshReports?.(); } catch (_e) { /* ignore */ }
+      try { await mapApiRef.current?.refreshReports?.({ bypassCache: true }); } catch (_e) { /* ignore */ }
       tryOpen();
     }, 800);
   };

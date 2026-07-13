@@ -1,7 +1,7 @@
 import { REPORT_CATEGORIES, REPORT_STATUS, REPORTER_TYPES } from '../../lib/config';
 import { runReportWorkflowBestEffort } from '../../lib/reportWorkflow';
 import { createReport, hasSupabaseConfig, updateReportImages, uploadReportImage } from '../../lib/supabaseRest';
-import { isAllowedReportImageType, REPORT_IMAGE_MAX_BYTES, REPORT_IMAGE_MAX_COUNT, sanitizeImageFilename } from '../../lib/reportImages';
+import { resolveReportImageContentType, REPORT_IMAGE_MAX_BYTES, REPORT_IMAGE_MAX_COUNT, sanitizeImageFilename } from '../../lib/reportImages';
 import { checkRequestRateLimit } from '../../lib/rateLimit';
 import { parseMultipartRequest } from '../../lib/multipart';
 
@@ -77,7 +77,12 @@ function validateImages(files = []) {
   const images = files.filter((file) => file.fieldName === 'images' && file.buffer?.length > 0);
   if (images.length > REPORT_IMAGE_MAX_COUNT) throw new Error(`Du kan legge ved maks ${REPORT_IMAGE_MAX_COUNT} bilder.`);
   images.forEach((file) => {
-    if (!isAllowedReportImageType(file.contentType, file.filename)) throw new Error('Du kan bare laste opp bildefiler.');
+    const canonicalType = resolveReportImageContentType(file.contentType, file.filename);
+    if (!canonicalType) throw new Error('Du kan bare laste opp bildefiler.');
+    // Normalize to the validated, allowlisted type so the raw client-supplied
+    // contentType (which can be spoofed, e.g. text/html) is never the value
+    // written as the storage object's Content-Type header downstream.
+    file.contentType = canonicalType;
     if (file.buffer.length > REPORT_IMAGE_MAX_BYTES) throw new Error('Et bilde er for stort. Maks 8 MB per bilde.');
   });
   return images;

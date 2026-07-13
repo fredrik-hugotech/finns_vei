@@ -41,7 +41,18 @@ export default async function handler(req, res) {
     // Most-requested endpoint (every map view). Short CDN cache absorbs
     // bursts of concurrent map loads while still surfacing a user's own
     // just-submitted report on the map almost immediately.
-    res.setHeader('Cache-Control', 's-maxage=8, stale-while-revalidate=60');
+    //
+    // `?fresh=1` is a narrow escape hatch for the post-submission "view case"
+    // flow (see handleViewCase in pages/index.js): without it, a concurrent
+    // request from another client in the preceding ~8s can leave the CDN
+    // serving stale pre-submission data on both of that flow's attempts, so
+    // the reporter's own just-submitted pin silently fails to open. Normal
+    // map loads never send this param, so their caching is unchanged.
+    if (!req.query.fresh) {
+      res.setHeader('Cache-Control', 's-maxage=8, stale-while-revalidate=60');
+    } else {
+      res.setHeader('Cache-Control', 'no-store');
+    }
     return res.status(200).json({
       ...geojson,
       meta: {
