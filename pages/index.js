@@ -8,6 +8,7 @@ import TripTracker from '../components/TripTracker';
 import TripCelebration from '../components/TripCelebration';
 import { NEARBY_REPORT_RADIUS_M } from '../lib/config';
 import { QUEUE_CHANGED_EVENT, flushQueue, getPendingCount } from '../lib/offlineReportQueue';
+import { isDarkNow, reportWeatherHint } from '../lib/weather';
 
 const ReportMap = dynamic(() => import('../components/ReportMap'), {
   ssr: false,
@@ -16,11 +17,17 @@ const ReportMap = dynamic(() => import('../components/ReportMap'), {
 
 export default function Home() {
   const mapApiRef = useRef(null);
+  // Bumped on every updateWeatherHint() call so an in-flight /api/weather
+  // lookup that resolves after a newer one (out-of-order network response
+  // during rapid panning) can detect it's stale and be ignored — same
+  // request-id guard pattern as ReportMap's checkAccidentsNear().
+  const weatherCheckIdRef = useRef(0);
   const [mode, setMode] = useState('browse'); // browse | pick | form | trip-pick
   const [pickedPoint, setPickedPoint] = useState(null);
   const [geoStatus, setGeoStatus] = useState('');
   const [nearbyNotice, setNearbyNotice] = useState(null); // { count, nearestId } | null
   const [accidentNotice, setAccidentNotice] = useState(null); // { count } | null
+  const [weatherHint, setWeatherHint] = useState(null); // { text, icy, dark, kind } | null
   const [showCompetitions, setShowCompetitions] = useState(false);
   const [competitionFocusId, setCompetitionFocusId] = useState(null);
   const [tripContext, setTripContext] = useState(null);
@@ -98,13 +105,51 @@ export default function Home() {
     });
   }, []);
 
-  // Wired to the map's single onPickCenterChange callback so both the
-  // nearby-duplicate notice and the accident hint refresh together whenever
-  // the pick-mode crosshair settles on a new point.
+  // "Føre var" weather-context hint during pick mode: looks up current
+  // conditions at the crosshair's location via our MET Norway proxy
+  // (pages/api/weather.js) and flags hazardous conditions — icy (near-/
+  // sub-zero), heavy rain/snow/sleet, or simply dark right now — as a small
+  // informational note. Purely informational: never auto-selects a category
+  // and never blocks "Velg dette stedet". A slow or failed lookup just
+  // leaves the hint as-is/empty — the fetch below never rejects into an
+  // error state, and out-of-order responses are dropped via the same
+  // request-id guard ReportMap's checkAccidentsNear() uses.
+  const updateWeatherHint = useCallback((center) => {
+    if (!center) {
+      setWeatherHint(null);
+      return;
+    }
+    const requestId = (weatherCheckIdRef.current += 1);
+    fetch(`/api/weather?lat=${center.lat.toFixed(4)}&lon=${center.lng.toFixed(4)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((weather) => {
+        if (requestId !== weatherCheckIdRef.current) return; // stale response
+        if (!weather || !weather.ok) {
+          setWeatherHint(null);
+          return;
+        }
+        setWeatherHint(reportWeatherHint({
+          tempC: weather.tempC,
+          precipMm: weather.precipMm,
+          kind: weather.kind,
+          isPrecip: weather.isPrecip,
+          dark: isDarkNow(),
+        }));
+      })
+      .catch(() => {
+        if (requestId === weatherCheckIdRef.current) setWeatherHint(null);
+      });
+  }, []);
+
+  // Wired to the map's single onPickCenterChange callback so the
+  // nearby-duplicate notice, the accident hint and the weather hint all
+  // refresh together whenever the pick-mode crosshair settles on a new
+  // point.
   const handlePickCenterChange = useCallback((center) => {
     updateNearbyNotice(center);
     updateAccidentHint(center);
-  }, [updateNearbyNotice, updateAccidentHint]);
+    updateWeatherHint(center);
+  }, [updateNearbyNotice, updateAccidentHint, updateWeatherHint]);
 
   const startPick = () => {
     haptic(10);
@@ -120,6 +165,7 @@ export default function Home() {
     setPickedPoint(center);
     setNearbyNotice(null);
     setAccidentNotice(null);
+    setWeatherHint(null);
     setMode('form');
   };
 
@@ -144,6 +190,7 @@ export default function Home() {
     setPickedPoint(null);
     setNearbyNotice(null);
     setAccidentNotice(null);
+    setWeatherHint(null);
   };
 
   const changeLocation = () => {
@@ -175,6 +222,7 @@ export default function Home() {
     setPickedPoint(null);
     setNearbyNotice(null);
     setAccidentNotice(null);
+    setWeatherHint(null);
     if (!id) return;
     const tryOpen = () => mapApiRef.current?.openCaseById?.(id);
     try { await mapApiRef.current?.refreshReports?.(); } catch (_e) { /* ignore */ }
@@ -336,6 +384,15 @@ export default function Home() {
                       ? 'Én ulykke registrert nær dette punktet siste årene'
                       : `${accidentNotice.count} ulykker registrert nær dette punktet siste årene`}
                   </p>
+                </div>
+              )}
+              {weatherHint && (
+                <div className="pick-weather-notice">
+                  <svg className="pick-weather-notice__icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17.5 19a4.5 4.5 0 0 0 0-9 6 6 0 0 0-11.4-1.9A4 4 0 0 0 6 16" />
+                    <path d="M8 20.5v.01M12 21.5v.01M16 20.5v.01" />
+                  </svg>
+                  <p className="pick-weather-notice__text">{weatherHint.text}</p>
                 </div>
               )}
               <button type="button" className="big-button big-button--primary pick-bar__confirm" onClick={confirmLocation}>Velg dette stedet</button>
