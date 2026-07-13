@@ -1136,6 +1136,12 @@
   gap: 0.5rem;
   grid-template-columns: repeat(3, 1fr);
 }
+.comp-fact-line {
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  margin: 0.4rem 0 0;
+  text-align: center;
+}
 .comp-weather-note {
   align-items: center;
   background: var(--color-primary-tint);

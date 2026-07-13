@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Icon from './Icon';
 import useSheetDrag from '../hooks/useSheetDrag';
+import { pickDistanceFact } from '../lib/distanceFacts';
 
 function haptic(ms = 8) {
   if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(ms);
@@ -41,6 +42,7 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
   const [mode, setMode] = useState('sykkel'); // sykkel | gange
   const [isAdmin, setIsAdmin] = useState(false);
   const sheetDrag = useSheetDrag(onClose);
+  const distanceFact = stats ? pickDistanceFact(stats.totals?.distanceM) : null;
 
   useEffect(() => {
     try { setIsAdmin(Boolean(window.localStorage.getItem('ff-admin-secret'))); } catch (_e) { /* ignore */ }
@@ -154,6 +156,7 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
                 <div><strong>{formatKm(stats.totals.distanceM)}</strong><span>km totalt</span></div>
                 <div><strong>{stats.totals.trips ? Math.round((stats.totals.helmetTrips / stats.totals.trips) * 100) : 0}%</strong><span>med hjelm</span></div>
               </div>
+              {distanceFact && <p className="comp-fact-line">{distanceFact}</p>}
               {stats.weatherHero && (
                 <p className="comp-weather-note">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 14a5 5 0 0 1 1.4-9.8A6 6 0 0 1 17 6a4 4 0 0 1 1 7.9" /><path d="M8 19l-1 2M12 19l-1 2M16 19l-1 2" /></svg>
