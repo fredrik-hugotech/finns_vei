@@ -3,9 +3,38 @@ import { REPORT_CATEGORIES, REPORTER_TYPES } from '../lib/config';
 import { categoryGlyph } from '../lib/reportCategoryGlyphs';
 import { descriptionSuggestions } from '../lib/reportDescriptionSuggestions';
 import { REPORT_IMAGE_MAX_BYTES, REPORT_IMAGE_MAX_COUNT } from '../lib/reportImages';
+import { compressImage } from '../lib/imageCompress';
 import { addMyReport } from '../lib/myReports';
 import BudTip from './BudTip';
 import { addPendingReport } from '../lib/offlineReportQueue';
+
+// XMLHttpRequest, not fetch(), is used only for this one request — fetch()
+// has no way to observe upload progress, and on the slow mobile networks
+// this app targets (tunnels, fjord roads, forest areas) a stalled-looking
+// "Laster opp bilde …" text with no feedback is worse than the extra code
+// here. Resolves (never rejects) on any HTTP response, same as fetch();
+// rejects only on a genuine network failure so callers can treat it exactly
+// like a failed fetch() for offline-queueing purposes.
+function uploadWithProgress(url, formData, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url);
+    if (xhr.upload && typeof onProgress === 'function') {
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) onProgress(event.loaded / event.total);
+      };
+    }
+    xhr.onerror = () => reject(new Error('Nettverksfeil'));
+    xhr.onload = () => resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, text: xhr.responseText });
+    xhr.send(formData);
+  });
+}
+
+function formatKB(bytes) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '';
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${Math.round(bytes / 1024)} KB`;
+}
 
 // Coordinates → a human place ("Marviksveien · Lund") so the reporter can
 // confirm they picked the right spot before sending.
@@ -43,8 +72,10 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
   const [reporterType, setReporterType] = useState(REPORTER_TYPES.ADULT);
   const [form, setForm] = useState(INITIAL_FORM);
   const [images, setImages] = useState([]);
+  const [compressingCount, setCompressingCount] = useState(0);
   const [status, setStatus] = useState({ type: 'idle', message: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [submittedId, setSubmittedId] = useState(null);
   const [place, setPlace] = useState(null);
@@ -138,14 +169,23 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
     resetAndClose();
   };
 
-  const addImages = (event) => {
+  // Validation (count/type/size limits) is unchanged from before — still
+  // synchronous, still exactly what lib/reportImages.js / the server expect.
+  // The only new step is that each accepted file is run through
+  // lib/imageCompress.js (downscale + re-encode via <canvas>) before it
+  // lands in the pending-upload list, so the preview and the eventual
+  // upload both use the smaller file. Compression always resolves — on any
+  // failure it hands back the original file untouched, so this can never
+  // block adding the photo to the form.
+  const addImages = async (event) => {
     const selected = Array.from(event.target.files || []);
     event.target.value = '';
     if (!selected.length) return;
 
-    const nextImages = [...images];
+    const accepted = [];
+    let remainingSlots = REPORT_IMAGE_MAX_COUNT - images.length;
     for (const file of selected) {
-      if (nextImages.length >= REPORT_IMAGE_MAX_COUNT) {
+      if (remainingSlots <= 0) {
         setStatus({ type: 'error', message: `Du kan legge ved maks ${REPORT_IMAGE_MAX_COUNT} bilder.` });
         break;
       }
@@ -157,13 +197,33 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
         setStatus({ type: 'error', message: 'Et bilde er for stort. Maks 8 MB per bilde.' });
         continue;
       }
-      nextImages.push({
-        id: `${file.name}-${file.lastModified}-${Math.random().toString(16).slice(2)}`,
-        file,
-        previewUrl: URL.createObjectURL(file),
-      });
+      accepted.push(file);
+      remainingSlots -= 1;
     }
-    setImages(nextImages);
+    if (!accepted.length) return;
+
+    setCompressingCount((count) => count + accepted.length);
+    const processed = await Promise.all(accepted.map(async (originalFile) => {
+      let finalFile = originalFile;
+      try {
+        finalFile = await compressImage(originalFile);
+      } catch (_error) {
+        finalFile = originalFile; // belt-and-suspenders: compressImage already falls back internally
+      }
+      return { originalFile, finalFile };
+    }));
+    setCompressingCount((count) => Math.max(0, count - accepted.length));
+
+    setImages((current) => [
+      ...current,
+      ...processed.map(({ originalFile, finalFile }) => ({
+        id: `${originalFile.name}-${originalFile.lastModified}-${Math.random().toString(16).slice(2)}`,
+        file: finalFile,
+        previewUrl: URL.createObjectURL(finalFile),
+        originalSize: originalFile.size,
+        compressedSize: finalFile.size,
+      })),
+    ]);
   };
 
   const removeImage = (id) => {
@@ -218,6 +278,7 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
     }
 
     setIsSubmitting(true);
+    setUploadProgress(0);
     setStatus({ type: 'idle', message: images.length ? 'Laster opp bilde …' : 'Sender meldingen …' });
 
     const body = new FormData();
@@ -232,20 +293,33 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
     body.set('nettside', queuePayload.nettside);
     images.forEach((image) => body.append('images', image.file));
 
+    // Only the image-bearing path switches transport to XMLHttpRequest (the
+    // only way to get real upload-progress events); a plain text report
+    // keeps using fetch() exactly as before — same request, same error
+    // handling, unchanged behavior.
     let response;
     try {
-      response = await fetch('/api/report', { method: 'POST', body });
+      if (images.length) {
+        response = await uploadWithProgress('/api/report', body, (fraction) => {
+          setUploadProgress(fraction);
+          setStatus({ type: 'idle', message: `Laster opp bilde … ${Math.round(fraction * 100)}%` });
+        });
+      } else {
+        const fetchResponse = await fetch('/api/report', { method: 'POST', body });
+        response = { ok: fetchResponse.ok, text: await fetchResponse.text() };
+      }
     } catch (networkError) {
-      // fetch() never got a response at all — a real connectivity failure,
-      // not a server-side rejection. Safe to queue (retrying the exact same
-      // payload later is the right move) rather than surface as an error.
+      // Neither transport got a response at all — a real connectivity
+      // failure, not a server-side rejection. Safe to queue (retrying the
+      // exact same payload later is the right move) rather than surface as
+      // an error.
       setIsSubmitting(false);
       handleOfflineSubmit(queuePayload);
       return;
     }
 
     try {
-      const payload = await response.json();
+      const payload = JSON.parse(response.text || '{}');
       if (!response.ok) throw new Error(payload.error || 'Kunne ikke sende meldingen');
 
       images.forEach((image) => URL.revokeObjectURL(image.previewUrl));
@@ -264,6 +338,7 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
       setStatus({ type: 'error', message: error.message || 'Noe gikk galt.' });
     } finally {
       setIsSubmitting(false);
+      setUploadProgress(0);
     }
   };
 
@@ -391,22 +466,46 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
                   <div className="image-row__actions">
                     <label className="ui-button ui-button-secondary image-pick">
                       Kamera
-                      <input type="file" accept="image/*" capture="environment" onChange={addImages} disabled={isSubmitting || images.length >= REPORT_IMAGE_MAX_COUNT} />
+                      <input type="file" accept="image/*" capture="environment" onChange={addImages} disabled={isSubmitting || compressingCount > 0 || images.length >= REPORT_IMAGE_MAX_COUNT} />
                     </label>
                     <label className="ui-button ui-button-secondary image-pick">
                       Galleri
-                      <input type="file" accept="image/*,.heic,.heif" multiple onChange={addImages} disabled={isSubmitting || images.length >= REPORT_IMAGE_MAX_COUNT} />
+                      <input type="file" accept="image/*,.heic,.heif" multiple onChange={addImages} disabled={isSubmitting || compressingCount > 0 || images.length >= REPORT_IMAGE_MAX_COUNT} />
                     </label>
                   </div>
                 </div>
+                {compressingCount > 0 && (
+                  <p className="image-upload-note" aria-live="polite">
+                    Komprimerer {compressingCount > 1 ? `${compressingCount} bilder` : 'bildet'} …
+                  </p>
+                )}
                 {images.length > 0 && (
                   <div className="image-preview-grid">
-                    {images.map((image, index) => (
-                      <figure className="image-preview" key={image.id}>
-                        <img src={image.previewUrl} alt={`Valgt bilde ${index + 1}`} />
-                        <button type="button" onClick={() => removeImage(image.id)} aria-label="Fjern bilde">×</button>
-                      </figure>
-                    ))}
+                    {images.map((image, index) => {
+                      const shrunk = image.compressedSize && image.originalSize && image.compressedSize < image.originalSize * 0.95;
+                      return (
+                        <figure className="image-preview" key={image.id}>
+                          <img src={image.previewUrl} alt={`Valgt bilde ${index + 1}`} />
+                          <button type="button" onClick={() => removeImage(image.id)} aria-label="Fjern bilde">×</button>
+                          {shrunk && (
+                            <figcaption>{formatKB(image.originalSize)} → {formatKB(image.compressedSize)}</figcaption>
+                          )}
+                        </figure>
+                      );
+                    })}
+                  </div>
+                )}
+                {isSubmitting && images.length > 0 && (
+                  <div
+                    className="upload-progress"
+                    role="progressbar"
+                    aria-label="Fremdrift bildeopplasting"
+                    aria-valuenow={Math.round(uploadProgress * 100)}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                  >
+                    <span className="upload-progress__bar" style={{ '--upload-progress': `${Math.round(uploadProgress * 100)}%` }} />
+                    <span className="upload-progress__label">{Math.round(uploadProgress * 100)}%</span>
                   </div>
                 )}
               </div>

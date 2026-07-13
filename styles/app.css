@@ -677,6 +677,44 @@
   width: 22px;
 }
 
+/* Real upload progress (XHR-driven) shown while submitting a report with
+   attached photos — replaces a static "Laster opp bilde …" text. */
+.upload-progress {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.upload-progress__bar {
+  background: var(--color-surface-muted);
+  border-radius: var(--radius-pill);
+  flex: 1;
+  height: 8px;
+  overflow: hidden;
+  position: relative;
+}
+
+.upload-progress__bar::after {
+  background: var(--color-primary);
+  border-radius: var(--radius-pill);
+  bottom: 0;
+  content: '';
+  left: 0;
+  position: absolute;
+  top: 0;
+  transition: width 0.15s ease-out;
+  width: var(--upload-progress, 0%);
+}
+
+.upload-progress__label {
+  color: var(--color-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  min-width: 2.4em;
+  text-align: right;
+}
+
 .optional-contact {
   gap: 0.4rem;
 }
