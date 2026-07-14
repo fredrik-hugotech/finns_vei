@@ -16,10 +16,11 @@ export const config = {
 const WIDTH = 1200;
 const HEIGHT = 630;
 
-const CREAM = '#f4f6f2';
-const CREAM_MUTED = 'rgba(244, 246, 242, 0.72)';
-const GREEN = '#0b5d4d';
-const GREEN_DARK = '#08463a';
+const CREAM = '#fdf7e6';
+const CREAM_MUTED = 'rgba(253, 247, 230, 0.74)';
+const GREEN = '#276a4a';
+const GREEN_DARK = '#1a4d34';
+const OCHRE = '#e3a13a';
 
 const FALLBACK_TITLE = 'Finns Fairway';
 const FALLBACK_DESCRIPTION = 'Meld fra om utrygge steder i trafikken, eller se kart over meldinger.';
@@ -80,15 +81,28 @@ function renderCard({ category, statusLabel, statusColor, description, footer })
           flexDirection: 'column',
           width: '100%',
           height: '100%',
-          padding: 72,
-          background: `linear-gradient(135deg, ${GREEN} 0%, ${GREEN_DARK} 100%)`,
+          padding: 44,
+          background: GREEN,
           color: CREAM,
           fontFamily: 'Arial, Helvetica, sans-serif',
         }}
       >
+       <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          flex: 1,
+          padding: 52,
+          borderRadius: 34,
+          border: `3px solid ${CREAM_MUTED}`,
+        }}
+       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <BrandMark size={44} />
-          <div style={{ display: 'flex', fontSize: 30, fontWeight: 700, letterSpacing: -0.5 }}>Finns Fairway</div>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <BrandMark size={44} />
+            <div style={{ display: 'flex', fontSize: 32, fontWeight: 700, letterSpacing: -0.5, marginLeft: 18 }}>Finns Fairway</div>
+          </div>
+          <div style={{ display: 'flex', width: 46, height: 12, borderRadius: 999, background: OCHRE }} />
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'center', gap: 24 }}>
@@ -121,6 +135,7 @@ function renderCard({ category, statusLabel, statusColor, description, footer })
         </div>
 
         <div style={{ display: 'flex', fontSize: 24, color: CREAM_MUTED }}>{footer}</div>
+       </div>
       </div>
     ),
     { width: WIDTH, height: HEIGHT },
@@ -158,6 +173,6 @@ export default async function handler(req) {
     statusLabel: meta.label,
     statusColor,
     description: truncate(report.description, 150),
-    footer: `Sak #${id} · finns-fairway.no`,
+    footer: 'finns-fairway.no',
   });
 }

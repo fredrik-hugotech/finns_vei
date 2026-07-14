@@ -69,22 +69,32 @@ export default function InstallHint() {
               <h2>Legg appen på hjemskjermen</h2>
               <p>Da åpner Finns Fairway seg i fullskjerm, som en vanlig app.</p>
               {ios ? (
-                <ol className="install-steps__list">
-                  <li>Trykk <b>Del</b>-knappen
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v13M8 7l4-4 4 4M6 12H5a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5a2 2 0 0 0-2-2h-1" /></svg>
-                    nederst i Safari.</li>
-                  <li>Bla ned og velg <b>Legg til på Hjem-skjerm</b></li>
-                  <li>Trykk <b>Legg til</b> oppe til høyre.</li>
-                </ol>
+                <>
+                  <p className="install-steps__os">På iPhone (Safari)</p>
+                  <ol className="install-steps__list">
+                    <li>Trykk <b>Del</b>-knappen
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v13M8 7l4-4 4 4M6 12H5a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5a2 2 0 0 0-2-2h-1" /></svg>
+                      nederst i Safari.</li>
+                    <li>Bla ned og velg <b>Legg til på Hjem-skjerm</b></li>
+                    <li>Trykk <b>Legg til</b> oppe til høyre.</li>
+                  </ol>
+                </>
               ) : (
-                <ol className="install-steps__list">
-                  <li>Trykk <b>meny</b> (⋮) oppe til høyre i nettleseren.</li>
-                  <li>Velg <b>Installer app</b> eller <b>Legg til på startskjerm</b>.</li>
-                  <li>Bekreft med <b>Installer</b> / <b>Legg til</b>.</li>
-                </ol>
-              )}
-              {deferred && !ios && (
-                <button type="button" className="big-button big-button--primary" onClick={primary}>Installer nå</button>
+                <>
+                  <p className="install-steps__os">På Android (Chrome)</p>
+                  {deferred ? (
+                    <>
+                      <p className="install-steps__lead">Trykk knappen under, og bekreft med <b>Installer</b> i vinduet som spretter opp.</p>
+                      <button type="button" className="big-button big-button--primary" onClick={primary}>Installer app</button>
+                    </>
+                  ) : (
+                    <ol className="install-steps__list">
+                      <li>Trykk <b>meny</b> (⋮) oppe til høyre i Chrome.</li>
+                      <li>Velg <b>Installer app</b> (eller <b>Legg til på startskjerm</b>).</li>
+                      <li>Bekreft med <b>Installer</b> / <b>Legg til</b>.</li>
+                    </ol>
+                  )}
+                </>
               )}
             </div>
           </section>

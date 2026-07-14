@@ -91,7 +91,8 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
 
   const startLog = () => {
     haptic(8);
-    setClub(stats?.competition?.clubs?.[0]?.name || '');
+    const sortedClubs = [...(stats?.competition?.clubs || [])].sort((a, b) => a.name.localeCompare(b.name, 'nb'));
+    setClub(sortedClubs[0]?.name || '');
     setHelmet(true);
     setError('');
     setView('log');
@@ -224,9 +225,11 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
                   <span className="sheet-field__label">Klubben din</span>
                   <select className="comp-select" value={club} onChange={(event) => setClub(event.target.value)}>
                     <option value="">Velg klubb …</option>
-                    {stats.competition.clubs.map((entry) => (
-                      <option key={entry.name} value={entry.name}>{entry.name}</option>
-                    ))}
+                    {[...stats.competition.clubs]
+                      .sort((a, b) => a.name.localeCompare(b.name, 'nb'))
+                      .map((entry) => (
+                        <option key={entry.name} value={entry.name}>{entry.name}</option>
+                      ))}
                   </select>
                 </label>
               )}

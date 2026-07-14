@@ -1,18 +1,23 @@
 import '../styles/globals.css';
 import Head from 'next/head';
 import { useEffect } from 'react';
-import { Inter, Poppins } from 'next/font/google';
+import { Fraunces, Mulish } from 'next/font/google';
 
-const inter = Inter({
+// Bespoke "storybook" pairing — a warm, characterful display serif for
+// headings (Fraunces, optical sizing on) over a friendly humanist sans for
+// text (Mulish). Deliberately not the generic Inter/Poppins default.
+const fraunces = Fraunces({
   subsets: ['latin'],
-  variable: '--font-inter',
+  weight: ['400', '500', '600', '700', '900'],
+  style: ['normal', 'italic'],
+  variable: '--font-display',
   display: 'swap',
 });
 
-const poppins = Poppins({
+const mulish = Mulish({
   subsets: ['latin'],
-  weight: ['600', '700'],
-  variable: '--font-poppins',
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-text',
   display: 'swap',
 });
 
@@ -27,7 +32,7 @@ export default function MyApp({ Component, pageProps }) {
   }, []);
 
   return (
-    <div className={`${inter.variable} ${poppins.variable}`}>
+    <div className={`${fraunces.variable} ${mulish.variable}`}>
       <Head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
       </Head>

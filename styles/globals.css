@@ -27,7 +27,10 @@ body {
 }
 
 body {
-  background: var(--color-bg);
+  background-color: var(--color-bg);
+  /* Faint paper grain — the hand-made tell. Subtle enough to read as texture,
+     never as noise; inline SVG so there's no network/CSP dependency. */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
   color: var(--color-text);
   font-family: var(--font-body);
   font-size: 16px;
@@ -47,8 +50,10 @@ body {
    owned by each layout's gap, so nothing shifts unexpectedly). */
 h1, h2, h3, h4 {
   font-family: var(--font-heading);
-  line-height: 1.15;
-  letter-spacing: -0.01em;
+  font-optical-sizing: auto;
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.004em;
 }
 
 /* Chrome (buttons, links, labels, handles) is not selectable — it feels like a
