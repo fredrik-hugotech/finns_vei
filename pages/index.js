@@ -6,6 +6,7 @@ import ReportSheet from '../components/ReportSheet';
 import CompetitionSheet from '../components/CompetitionSheet';
 import TripTracker from '../components/TripTracker';
 import TripCelebration from '../components/TripCelebration';
+import InstallHint from '../components/InstallHint';
 import { NEARBY_REPORT_RADIUS_M } from '../lib/config';
 import { QUEUE_CHANGED_EVENT, flushQueue, getPendingCount } from '../lib/offlineReportQueue';
 import { isDarkNow, reportWeatherHint } from '../lib/weather';
@@ -344,6 +345,7 @@ export default function Home() {
             </a>
           )}
           <div className="app-topbar__links">
+            <button type="button" className="app-staff-link" onClick={() => { if (typeof window !== 'undefined') window.dispatchEvent(new Event('ff-open-install')); }}>Installer app</button>
             <a className="app-staff-link" href="/mine-meldinger">Mine meldinger</a>
             <a className="app-staff-link" href="/mine-turer">Mine turer</a>
             <a className="app-staff-link" href="/backoffice">Admin</a>
@@ -452,6 +454,8 @@ export default function Home() {
         {message && (
           <div className="app-toast" role="status" onClick={() => setMessage('')}>{message}</div>
         )}
+
+        <InstallHint />
       </main>
     </>
   );

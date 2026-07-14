@@ -9,9 +9,9 @@ export default function Logo({ size = 'md', className = '' }) {
   return (
     <span className={classes}>
       <svg className="logo__mark" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
-        <circle cx="32" cy="16" r="7.4" fill="none" stroke="var(--color-primary)" strokeWidth="4.2" />
-        <circle cx="16" cy="32" r="8" fill="var(--color-primary)" />
-        <circle cx="32" cy="32" r="8" fill="var(--color-primary)" />
+        <circle cx="33.5" cy="14.5" r="5.5" fill="none" stroke="var(--color-primary)" strokeWidth="3" />
+        <circle cx="14.5" cy="33.5" r="7" fill="var(--color-primary)" />
+        <circle cx="33.5" cy="33.5" r="7" fill="var(--color-primary)" />
       </svg>
       <span className="logo__word">
         <span className="logo__word-top">Finns</span>
