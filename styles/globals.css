@@ -26,11 +26,16 @@ body {
   text-size-adjust: 100%;
 }
 
+/* The app wrapper carries the next/font CSS variables, so font-family must be
+   resolved HERE (where --font-text is defined) — body is above the wrapper and
+   never sees the variable. */
+.app-root {
+  font-family: var(--font-body);
+  min-height: 100%;
+}
+
 body {
   background-color: var(--color-bg);
-  /* Faint paper grain — the hand-made tell. Subtle enough to read as texture,
-     never as noise; inline SVG so there's no network/CSP dependency. */
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
   color: var(--color-text);
   font-family: var(--font-body);
   font-size: 16px;
@@ -50,10 +55,21 @@ body {
    owned by each layout's gap, so nothing shifts unexpectedly). */
 h1, h2, h3, h4 {
   font-family: var(--font-heading);
+  font-weight: 700;
+  line-height: 1.14;
+  letter-spacing: -0.014em;
+}
+
+/* The one "extra touch": a characterful display serif on the big public
+   hero titles only — everything else stays a clean grotesk. */
+.kid-title,
+.kid-big-number,
+.bud-hero h1,
+.sak-hero h1 {
+  font-family: var(--font-display), Georgia, serif;
   font-optical-sizing: auto;
   font-weight: 600;
-  line-height: 1.12;
-  letter-spacing: -0.004em;
+  letter-spacing: -0.01em;
 }
 
 /* Chrome (buttons, links, labels, handles) is not selectable — it feels like a

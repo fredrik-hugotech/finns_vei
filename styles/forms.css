@@ -83,7 +83,7 @@ textarea:focus {
 
 .privacy-note {
   background: var(--color-primary-tint);
-  border: 1.5px solid #c4d6bd;
+  border: 1px solid #cfe2d6;
   color: var(--color-primary-dark);
   margin: 0;
 }

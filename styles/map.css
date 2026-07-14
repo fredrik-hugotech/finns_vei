@@ -393,20 +393,20 @@
 .weight-tuning-card,
 .map-message {
   background: var(--color-surface);
-  border: 1.5px solid var(--color-border-strong);
+  border: 1px solid var(--color-border);
   box-shadow: var(--shadow-control);
 }
 
 .map-legend__toggle {
   background: var(--color-surface);
-  border: 1.5px solid var(--color-border-strong);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-pill);
   box-shadow: var(--shadow-control);
 }
 
 .map-legend__panel {
   background: var(--color-surface);
-  border: 1.5px solid var(--color-border-strong);
+  border: 1px solid var(--color-border);
 }
 
 @media (max-width: 640px) {

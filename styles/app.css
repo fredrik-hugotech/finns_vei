@@ -26,17 +26,17 @@
 
 /* Discreet staff entry next to the brand */
 .app-staff-link {
-  background: var(--color-surface);
-  border: 1.5px solid var(--color-border-strong);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-pill);
-  box-shadow: var(--ink-1);
+  box-shadow: var(--shadow-control);
   color: var(--color-muted);
   font-size: 0.74rem;
   font-weight: 700;
   padding: 0.28rem 0.66rem;
   text-decoration: none;
 }
-.app-staff-link:active { box-shadow: none; transform: translateY(2px); }
+.app-staff-link:active { transform: scale(0.97); }
 
 /* Small, unobtrusive pill next to the brand mark: shown only while at least
    one report is queued on this device waiting for connectivity (see
@@ -44,10 +44,10 @@
    go look; disappears on its own once everything sends. */
 .offline-queue-badge {
   align-items: center;
-  background: var(--color-surface);
-  border: 1.5px solid var(--color-border-strong);
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-pill);
-  box-shadow: var(--ink-1);
+  box-shadow: var(--shadow-control);
   color: var(--color-info);
   display: inline-flex;
   gap: 0.3rem;
@@ -65,12 +65,12 @@
 
 .app-brand {
   align-items: center;
-  background: var(--color-surface);
-  border: 1.5px solid var(--color-border-strong);
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-pill);
-  box-shadow: var(--ink-1);
+  box-shadow: var(--shadow-control);
   display: inline-flex;
-  padding: 0.36rem 0.7rem 0.36rem 0.54rem;
+  padding: 0.34rem 0.66rem 0.34rem 0.5rem;
 }
 
 /* Primary floating action: Meld fra */
@@ -78,59 +78,60 @@
   align-items: center;
   animation: fab-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
   background: var(--color-primary);
-  border: 2px solid var(--color-ink);
+  border: none;
   border-radius: var(--radius-pill);
   bottom: max(4.25rem, calc(env(safe-area-inset-bottom) + 3.6rem));
-  box-shadow: 0 4px 0 var(--color-ink);
-  color: #fdf7e6;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.9), 0 10px 22px -8px rgba(13, 107, 82, 0.6);
+  color: #ffffff;
   display: inline-flex;
   font-family: var(--font-heading);
-  font-size: 1.08rem;
+  font-size: 1.02rem;
   font-weight: 700;
   gap: 0.5rem;
   inset-inline: 0;
   margin-inline: auto;
-  min-height: 54px;
-  padding: 0 1.7rem;
+  min-height: 52px;
+  padding: 0 1.6rem;
   position: fixed;
   width: fit-content;
-  transition: transform 90ms ease, box-shadow 90ms ease;
+  transition: transform 110ms ease, background-color 120ms ease;
   z-index: 24;
 }
 
-.fab-meld:active { box-shadow: 0 1px 0 var(--color-ink); transform: translateY(3px); }
+.fab-meld:hover { background: var(--color-primary-dark); }
+.fab-meld:active { transform: scale(0.96); }
 .fab-meld svg { height: 1.2em; width: 1.2em; }
 
 /* Round competition (trophy) launcher, sits above the centred Meld fra button */
 .fab-konk {
   align-items: center;
-  animation: fab-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1), fab-konk-wiggle 4.2s ease-in-out 1.6s infinite;
+  animation: fab-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1), fab-konk-wiggle 4.6s ease-in-out 2s infinite;
   background: var(--color-accent);
-  border: 2px solid var(--color-ink);
+  border: none;
   border-radius: 50%;
   bottom: max(4.25rem, calc(env(safe-area-inset-bottom) + 3.6rem));
-  box-shadow: 0 4px 0 var(--color-ink);
-  color: var(--color-ink);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.9), 0 8px 20px -6px rgba(217, 154, 18, 0.7);
+  color: #3d2c05;
   display: inline-flex;
-  height: 56px;
+  height: 54px;
   justify-content: center;
   position: fixed;
   right: max(0.9rem, env(safe-area-inset-right));
-  transition: transform 90ms ease, box-shadow 90ms ease;
-  width: 56px;
+  transition: transform 110ms ease;
+  width: 54px;
   z-index: 24;
 }
 
-.fab-konk svg { height: 1.5em; position: relative; width: 1.5em; z-index: 1; }
-.fab-konk:active { box-shadow: 0 1px 0 var(--color-ink); transform: translateY(3px); }
+.fab-konk svg { height: 1.45em; position: relative; width: 1.45em; z-index: 1; }
+.fab-konk:active { transform: scale(0.94); }
 
-/* A gentle storybook wiggle so the trophy invites a tap — no gloss/shine. */
+/* A gentle wiggle so the trophy invites a tap. */
 @keyframes fab-konk-wiggle {
-  0%, 66%, 100% { transform: rotate(0); }
-  72% { transform: rotate(-7deg); }
-  80% { transform: rotate(6deg); }
-  88% { transform: rotate(-3deg); }
-  95% { transform: rotate(0); }
+  0%, 70%, 100% { transform: rotate(0); }
+  76% { transform: rotate(-6deg); }
+  84% { transform: rotate(5deg); }
+  91% { transform: rotate(-2deg); }
+  97% { transform: rotate(0); }
 }
 @media (prefers-reduced-motion: reduce) {
   .fab-konk { animation: fab-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1); }
@@ -481,7 +482,7 @@
 .sheet input,
 .sheet textarea {
   background: var(--color-surface-muted);
-  border: 1.5px solid var(--color-border-strong);
+  border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
   font-size: 16px;
   min-height: 48px;
@@ -508,13 +509,13 @@
 
 /* Segmented Barn/Voksen */
 .segmented {
-  background: var(--color-primary-tint);
-  border: 1.5px solid var(--color-border-strong);
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-pill);
   display: grid;
   gap: 0.2rem;
   grid-template-columns: 1fr 1fr;
-  padding: 0.24rem;
+  padding: 0.22rem;
 }
 
 .segmented__option {
@@ -530,11 +531,8 @@
 
 .segmented__option--active {
   background: var(--color-surface);
-  box-shadow: 0 2px 0 var(--color-border-strong);
+  box-shadow: 0 1px 3px rgba(16, 32, 28, 0.14);
   color: var(--color-primary);
-}
-.segmented__option--active {
-  font-family: var(--font-heading);
 }
 
 /* Sheet fields */
@@ -577,7 +575,7 @@
 .category-card {
   align-items: center;
   background: var(--color-surface);
-  border: 1.5px solid var(--color-border-strong);
+  border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
   color: var(--color-text);
   cursor: pointer;
@@ -615,13 +613,13 @@
 
 .category-card--active {
   background: var(--color-primary);
-  border-color: var(--color-ink);
-  box-shadow: 0 3px 0 var(--color-ink);
-  color: #fdf7e6;
+  border-color: var(--color-primary);
+  box-shadow: 0 8px 16px -10px rgba(13, 107, 82, 0.55);
+  color: #ffffff;
 }
 
 .category-card--active .category-card__icon {
-  color: #fdf7e6;
+  color: #ffffff;
 }
 
 .category-card input {
@@ -1528,7 +1526,7 @@
   align-items: center;
   background: var(--color-surface);
   box-shadow: var(--shadow-control);
-  border: 1.5px solid var(--color-border-strong);
+  border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-pill);
   box-shadow: var(--shadow-control);
   display: inline-flex;
@@ -1742,26 +1740,25 @@
 
 .kid-big {
   align-items: center;
-  border: 2px solid var(--color-ink);
-  border-radius: 22px;
-  box-shadow: 0 4px 0 var(--color-ink);
-  color: #fdf7e6;
+  border: none;
+  border-radius: var(--radius-lg);
+  color: #ffffff;
   display: flex;
   flex-direction: column;
   font-family: var(--font-heading);
-  font-size: 1.35rem;
-  font-weight: 700;
+  font-size: 1.3rem;
+  font-weight: 800;
   gap: 0.5rem;
   justify-content: center;
   min-height: 9.5rem;
   padding: 1.2rem;
-  transition: transform 90ms ease, box-shadow 90ms ease;
+  transition: transform 110ms ease, filter 120ms ease;
   width: 100%;
 }
-.kid-big:active { box-shadow: 0 1px 0 var(--color-ink); transform: translateY(3px); }
-.kid-big--green { background: var(--color-primary); }
-.kid-big--amber { background: var(--color-accent); color: var(--color-ink); }
-.kid-big--outline { background: var(--color-surface); color: var(--color-text); }
+.kid-big:active { transform: scale(0.985); }
+.kid-big--green { background: var(--color-primary); box-shadow: 0 12px 24px -14px rgba(13, 107, 82, 0.7); }
+.kid-big--amber { background: var(--color-accent); color: #3d2c05; box-shadow: 0 12px 24px -14px rgba(217, 154, 18, 0.6); }
+.kid-big--outline { background: var(--color-surface); border: 1px solid var(--color-border-strong); color: var(--color-text); }
 .kid-start { min-height: 5rem; flex-direction: row; }
 /* Compact primary CTA (e.g. "Ferdig") — not a tall icon+label hub button. */
 .kid-big--cta { font-size: 1.15rem; min-height: 3.4rem; padding: 0.85rem 1.2rem; }
@@ -1855,7 +1852,7 @@
 /* Internal density map control panel (/backoffice/tetthet) */
 .tetthet-panel {
   background: var(--color-surface);
-  border: 1.5px solid var(--color-border-strong);
+  border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-control);
   display: grid;
@@ -2142,7 +2139,7 @@
 /* Internal sykkelspor map panel (/backoffice/tetthet) */
 .spor-panel {
   background: var(--color-surface);
-  border: 1.5px solid var(--color-border-strong);
+  border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-control);
   display: grid;
@@ -2512,7 +2509,7 @@ select.tkt-prop__ctrl { padding-right: 1.7rem; background-image: url("data:image
 .sak-tl__time { color: var(--color-muted); font-size: 0.74rem; white-space: nowrap; }
 .sak-tl__text { color: var(--color-text); font-size: 0.92rem; line-height: 1.45; margin: 0.25rem 0 0; white-space: pre-wrap; }
 
-.sak-note { background: var(--color-surface); border: 1.5px solid var(--color-border-strong); border-radius: var(--radius-md); font: inherit; font-size: 16px; padding: 0.7rem 0.8rem; width: 100%; }
+.sak-note { background: var(--color-surface); border: 1px solid var(--color-border-strong); border-radius: var(--radius-md); font: inherit; font-size: 16px; padding: 0.7rem 0.8rem; width: 100%; }
 .sak-note:focus-visible { border-color: var(--color-primary); outline: none; box-shadow: 0 0 0 3px rgba(39,106,74,0.14); }
 
 .sak-kv { align-items: baseline; display: flex; gap: 0.6rem; justify-content: space-between; margin: 0; }
@@ -2572,7 +2569,7 @@ select.tkt-prop__ctrl { padding-right: 1.7rem; background-image: url("data:image
 /* Case list: search + location + count */
 .sak-search {
   background: var(--color-surface);
-  border: 1.5px solid var(--color-border-strong);
+  border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
   font-size: 16px;
   min-height: 46px;

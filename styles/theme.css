@@ -1,47 +1,43 @@
 :root {
-  /* ── Finns Fairway "storybook" system ───────────────────────────────────
-     A hand-made picture-book palette: warm chalk paper, ink-brown text, a
-     hand-mixed pine green and a mustard-ochre accent. Surfaces are drawn with
-     ink outlines and hard printed offsets instead of glass/gradients/soft
-     shadows — deliberately bespoke, not the generic SaaS look. */
+  /* ── Finns Fairway — clean & crisp ──────────────────────────────────────
+     Light, sharp, restrained. White surfaces, a vivid pine green, tight
+     radii and subtle soft shadows. One characterful display face (Fraunces)
+     is kept for big hero titles only — everything else is a clean grotesk. */
 
-  /* Warm paper backgrounds + ink text */
-  --color-bg: #f3ead6;           /* warm chalk paper */
-  --color-surface: #fffdf5;      /* cream card */
-  --color-surface-2: #faf3e2;    /* second cream */
-  --color-surface-muted: #efe4cd;/* sunk paper */
-  --color-text: #2b2015;         /* warm ink brown-black */
-  --color-muted: #7a6a52;        /* warm taupe */
+  --color-bg: #f2f5f3;
+  --color-surface: #ffffff;
+  --color-surface-2: #f8faf9;
+  --color-surface-muted: #eef2f0;
+  --color-text: #14201c;
+  --color-muted: #586a61;
 
-  /* Hand-mixed pine green (warmed off the old cold teal) */
-  --color-primary: #276a4a;
-  --color-primary-dark: #1a4d34;
-  --color-primary-tint: #e2ecd9; /* soft sage wash */
+  /* Sharp pine green */
+  --color-primary: #0d6b52;
+  --color-primary-dark: #0a5340;
+  --color-primary-tint: #e5f2ec;
 
-  /* Mustard-ochre accent — the playful spark */
-  --color-accent: #e3a13a;
-  --color-accent-dark: #c9851f;
-  --color-accent-tint: #f7e7c4;
+  /* Bright clean gold — used sparingly (the trophy) */
+  --color-accent: #f0b52e;
+  --color-accent-dark: #d99a12;
+  --color-accent-tint: #fdf1d4;
 
-  --color-beige: #efe4cd;
+  --color-beige: #eef2f0;
 
-  /* Ink outlines: warm, slightly translucent so they read hand-drawn */
-  --color-ink: #2b2015;
-  --color-line: rgba(43, 32, 21, 0.9);
-  --color-border: #e0d2b4;       /* soft paper edge */
-  --color-border-strong: #cdbb95;/* stronger paper edge */
+  --color-ink: #14201c;
+  --color-border: #e2e8e4;
+  --color-border-strong: #d0d9d3;
 
-  /* Status colours kept warm and picture-book, distinct from the accent */
-  --color-success: #3f8f57;
-  --color-warning: #c17d1a;
-  --color-danger: #c14a34;       /* warm terracotta */
-  --color-info: #2f6ea6;
-  --color-map-control: #fffdf5;
+  --color-success: #17915a;
+  --color-warning: #b8770f;
+  --color-danger: #cf4329;
+  --color-info: #2563c9;
+  --color-map-control: #ffffff;
 
-  --font-display: var(--font-display), "Iowan Old Style", Georgia, serif;
-  --font-text: var(--font-text), system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-heading: var(--font-display);
-  --font-body: var(--font-text);
+  /* next/font sets --font-display (Fraunces) and --font-text (Mulish) on the
+     app wrapper. Reference them WITH a fallback here — never redefine them at
+     :root, or you get a circular var() that falls back to Times. */
+  --font-heading: var(--font-text, system-ui), -apple-system, "Segoe UI", sans-serif;
+  --font-body: var(--font-text, system-ui), -apple-system, "Segoe UI", sans-serif;
 
   --space-1: 0.25rem;
   --space-2: 0.5rem;
@@ -50,35 +46,35 @@
   --space-5: 1.25rem;
   --space-6: 1.5rem;
 
-  /* Softer, hand-cut corners */
-  --radius-sm: 12px;
-  --radius-md: 16px;
-  --radius-lg: 22px;
-  --radius-xl: 28px;
+  /* Tighter, cleaner corners */
+  --radius-sm: 9px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
   --radius-pill: 999px;
 
-  /* Printed "sticker" offsets: hard, warm, no blur — the signature shape cue */
-  --ink-1: 0 2px 0 var(--color-line);
-  --ink-2: 0 3px 0 var(--color-line);
-  --ink-3: 0 4px 0 var(--color-line);
-  --shadow-soft: 0 3px 0 rgba(43, 32, 21, 0.16);
-  --shadow-control: 0 2px 0 rgba(43, 32, 21, 0.14);
-  --shadow-popup: 0 5px 0 rgba(43, 32, 21, 0.16);
+  /* Subtle soft shadows */
+  --shadow-soft: 0 1px 2px rgba(16, 32, 28, 0.05), 0 14px 28px -22px rgba(16, 32, 28, 0.4);
+  --shadow-control: 0 1px 3px rgba(16, 32, 28, 0.1);
+  --shadow-popup: 0 2px 6px rgba(16, 32, 28, 0.06), 0 26px 50px -30px rgba(16, 32, 28, 0.45);
+  --ink-1: var(--shadow-control);
+  --ink-2: var(--shadow-control);
+  --ink-3: var(--shadow-control);
 
   --z-map-control: 10;
   --z-popup: 30;
 
-  --marker-report-new: #eab63a;
-  --marker-report-registered: #e08a1e;
-  --marker-report-started: #2f6ea6;
-  --marker-report-done: #3f8f57;
-  --marker-report-hot: #c14a34;
-  --marker-accident: #6d4b8f;
+  --marker-report-new: #f2c33a;
+  --marker-report-registered: #ef9a1e;
+  --marker-report-started: #2563eb;
+  --marker-report-done: #17a05a;
+  --marker-report-hot: #dc2626;
+  --marker-accident: #6d28d9;
 
   /* Backwards-compatible aliases for existing markup. */
   --ff-yellow: var(--color-accent);
   --ff-yellow-soft: var(--color-accent-tint);
-  --ff-yellow-light: #fbf1d8;
+  --ff-yellow-light: #fdf7e6;
   --ff-black: var(--color-ink);
   --ff-ink: var(--color-text);
   --ff-dark-green: var(--color-primary-dark);
