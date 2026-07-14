@@ -235,6 +235,7 @@ function Dashboard({ me, onLogout }) {
           <div className="dash2__grid">
             <Link className="dash2-link" href="/">Kart</Link>
             <Link className="dash2-link" href="/backoffice/liste">Alle saker</Link>
+            <Link className="dash2-link" href="/backoffice/hotteste">Hotteste saker</Link>
             <Link className="dash2-link" href="/backoffice/tetthet">Sykkelspor</Link>
             <Link className="dash2-link" href="/backoffice/konkurranser">Konkurranser</Link>
             {me.role === 'superuser' && <Link className="dash2-link" href="/backoffice/brukere">Brukere</Link>}
