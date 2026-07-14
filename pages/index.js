@@ -9,6 +9,7 @@ import TripCelebration from '../components/TripCelebration';
 import { NEARBY_REPORT_RADIUS_M } from '../lib/config';
 import { QUEUE_CHANGED_EVENT, flushQueue, getPendingCount } from '../lib/offlineReportQueue';
 import { isDarkNow, reportWeatherHint } from '../lib/weather';
+import { addMyTrip } from '../lib/myTrips';
 
 const ReportMap = dynamic(() => import('../components/ReportMap'), {
   ssr: false,
@@ -291,6 +292,9 @@ export default function Home() {
         const payload = await response.json().catch(() => ({}));
         throw new Error(payload.error || 'Kunne ikke lagre sykkelturen');
       }
+      // Local-only record for /mine-turer — no server identity, just a
+      // convenience list on this device.
+      addMyTrip({ distanceM, mode: tripContext.mode || 'sykkel', routeType, weather });
       haptic([10, 40, 14]);
       const km = (distanceM / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 2 });
       // Celebrate with the child instead of dropping them into the standings.
@@ -341,6 +345,7 @@ export default function Home() {
           )}
           <div className="app-topbar__links">
             <a className="app-staff-link" href="/mine-meldinger">Mine meldinger</a>
+            <a className="app-staff-link" href="/mine-turer">Mine turer</a>
             <a className="app-staff-link" href="/backoffice">Admin</a>
           </div>
         </div>

@@ -6,6 +6,7 @@ import Logo from '../components/Logo';
 import Icon from '../components/Icon';
 import TripTracker from '../components/TripTracker';
 import TripCelebration from '../components/TripCelebration';
+import { addMyTrip } from '../lib/myTrips';
 
 const ReportMap = dynamic(() => import('../components/ReportMap'), {
   ssr: false,
@@ -85,6 +86,9 @@ export default function Sykle() {
           throw new Error(payload.error || 'Kunne ikke lagre turen');
         }
       }
+      // Local-only record for /mine-turer — no server identity, just a
+      // convenience list on this device.
+      addMyTrip({ distanceM, mode, routeType, weather });
       setResult({ km: (distanceM / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 2 }), weatherKind: weather?.kind || null });
       setBusy(false);
       setView('done');
@@ -159,6 +163,7 @@ export default function Sykle() {
               <Icon name="flag" size={40} strokeWidth={1.8} />
               <span>Meld farlig sted</span>
             </button>
+            <Link href="/mine-turer" className="kid-budlink">Mine turer ›</Link>
             <Link href="/bud" className="kid-budlink">Finns 10 bud for trygg ferdsel ›</Link>
           </section>
         )}
