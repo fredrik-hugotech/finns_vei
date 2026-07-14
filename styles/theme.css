@@ -33,11 +33,12 @@
   --color-info: #2563c9;
   --color-map-control: #ffffff;
 
-  /* next/font sets --font-display (Fraunces) and --font-text (Mulish) on the
-     app wrapper. Reference them WITH a fallback here — never redefine them at
-     :root, or you get a circular var() that falls back to Times. */
-  --font-heading: var(--font-text, system-ui), -apple-system, "Segoe UI", sans-serif;
-  --font-body: var(--font-text, system-ui), -apple-system, "Segoe UI", sans-serif;
+  /* Plain fallbacks at :root. The real font values (which reference the
+     next/font variables --font-text/--font-display) are set on .app-root in
+     globals.css — that is the element where those variables actually exist, so
+     the nested var() resolves to Mulish/Fraunces there and inherits down. */
+  --font-heading: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-body: system-ui, -apple-system, "Segoe UI", sans-serif;
 
   --space-1: 0.25rem;
   --space-2: 0.5rem;

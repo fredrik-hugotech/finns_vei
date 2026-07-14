@@ -30,6 +30,11 @@ body {
    resolved HERE (where --font-text is defined) — body is above the wrapper and
    never sees the variable. */
 .app-root {
+  /* --font-text (Mulish) and --font-display (Fraunces) exist on THIS element
+     via next/font, so resolve the heading/body tokens here — descendants then
+     inherit the fully-resolved family. */
+  --font-heading: var(--font-text), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-body: var(--font-text), system-ui, -apple-system, "Segoe UI", sans-serif;
   font-family: var(--font-body);
   min-height: 100%;
 }
