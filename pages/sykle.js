@@ -35,6 +35,7 @@ export default function Sykle() {
   const [mapMounted, setMapMounted] = useState(false);
   const [view, setView] = useState('hub'); // hub | setup | tracking | done | danger | danger-done
   const [competition, setCompetition] = useState(null);
+  const [compChecked, setCompChecked] = useState(false);
   const [routeType, setRouteType] = useState('fritid');
   const [mode, setMode] = useState('sykkel'); // sykkel | gange
   const [club, setClub] = useState('');
@@ -51,9 +52,10 @@ export default function Sykle() {
       .then((d) => {
         const first = (d.competitions || [])[0] || null;
         setCompetition(first);
+        setCompChecked(true);
         if (first?.clubs?.length === 1) setClub(first.clubs[0].name);
       })
-      .catch(() => {});
+      .catch(() => { setCompChecked(true); });
   }, []);
 
   const handleMapReady = useCallback((api) => { mapApiRef.current = api; }, []);
@@ -172,6 +174,16 @@ export default function Sykle() {
           <section className="kid-screen">
             <button type="button" className="kid-back" onClick={() => setView('hub')}>‹ Tilbake</button>
             <h1 className="kid-title">Klar for tur?</h1>
+
+            {compChecked && (
+              competition ? (
+                <p className="kid-comp-note kid-comp-note--live">
+                  <Icon name="trophy" size={16} /> Turen teller i <strong>{competition.name}</strong>
+                </p>
+              ) : (
+                <p className="kid-comp-note">Ingen aktiv konkurranse akkurat nå. Turen lagres bare på din enhet under «Mine turer».</p>
+              )
+            )}
 
             <div className="kid-choice">
               <button type="button" className={mode === 'sykkel' ? 'kid-pick kid-pick--on' : 'kid-pick'} onClick={() => { haptic(6); setMode('sykkel'); }}><Icon name="bike" size={26} /><span>Sykle</span></button>

@@ -32,6 +32,10 @@ export default function Home() {
   const [weatherHint, setWeatherHint] = useState(null); // { text, icy, dark, kind } | null
   const [showCompetitions, setShowCompetitions] = useState(false);
   const [competitionFocusId, setCompetitionFocusId] = useState(null);
+  // Whether there's a live competition right now — drives the trophy button:
+  // gold and shining when there is one, muted grey with a "no competition"
+  // caption when there isn't. null while we haven't checked yet.
+  const [activeCompetitions, setActiveCompetitions] = useState(null);
   const [tripContext, setTripContext] = useState(null);
   const [tripResult, setTripResult] = useState(null); // { km, mode, weatherKind }
   const [message, setMessage] = useState('');
@@ -67,6 +71,15 @@ export default function Home() {
 
   const handleMapReady = useCallback((api) => {
     mapApiRef.current = api;
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    fetch('/api/competitions')
+      .then((r) => (r.ok ? r.json() : { competitions: [] }))
+      .then((d) => { if (active) setActiveCompetitions(d.competitions || []); })
+      .catch(() => { if (active) setActiveCompetitions([]); });
+    return () => { active = false; };
   }, []);
 
   const haptic = (ms = 8) => {
@@ -354,12 +367,27 @@ export default function Home() {
 
         {mode === 'browse' && (
           <>
-            <button type="button" className="fab-konk" onClick={openCompetitions} aria-label="Konkurranser">
-              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4Z" />
-                <path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3" />
-              </svg>
-            </button>
+            {(() => {
+              const hasActiveComp = Array.isArray(activeCompetitions) && activeCompetitions.length > 0;
+              return (
+                <div className={hasActiveComp ? 'fab-konk-wrap' : 'fab-konk-wrap fab-konk-wrap--idle'}>
+                  {!hasActiveComp && activeCompetitions !== null && (
+                    <span className="fab-konk__caption">Ingen aktiv konkurranse</span>
+                  )}
+                  <button
+                    type="button"
+                    className={hasActiveComp ? 'fab-konk' : 'fab-konk fab-konk--idle'}
+                    onClick={openCompetitions}
+                    aria-label={hasActiveComp ? 'Konkurranser' : 'Konkurranser – ingen aktiv nå'}
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4Z" />
+                      <path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3" />
+                    </svg>
+                  </button>
+                </div>
+              );
+            })()}
             <button type="button" className="fab-meld" onClick={startPick}>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" /></svg>
               Meld fra

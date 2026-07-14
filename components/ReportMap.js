@@ -598,6 +598,10 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   const [caseThread, setCaseThread] = useState(null);
   const [caseAccidents, setCaseAccidents] = useState(null);
   const [adminSecret, setAdminSecret] = useState(null);
+  // Public aerial-imagery toggle. Switching the base style wipes all custom
+  // sources/layers, so a style.load handler rebuilds them (see the map effect).
+  const [satellite, setSatellite] = useState(false);
+  const satelliteRef = useRef(false);
   // The Kartlag panel is collapsed to a compact pill on phones so it doesn't
   // crowd the topbar; it stays expanded on wider screens where there's room.
   const [layersOpen, setLayersOpen] = useState(() => (typeof window !== 'undefined' ? window.innerWidth > 720 : false));
@@ -1305,6 +1309,18 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       }
     });
 
+    // Switching the base style (map ⇄ aerial) drops every custom source and
+    // layer, so re-add them once the new style is ready. The very first
+    // style.load is the initial style — the load handler above owns that, so we
+    // skip it here and only rebuild on later switches.
+    let initialStyleSeen = false;
+    map.on('style.load', () => {
+      if (!initialStyleSeen) { initialStyleSeen = true; return; }
+      if (pointRef.current) placeMarker(pointRef.current);
+      loadReports().catch((error) => console.error(error));
+      refreshNvdbLayers().catch((error) => console.error(error));
+    });
+
     map.on('moveend', () => {
       refreshNvdbLayers().catch((error) => {
         console.error(error);
@@ -1348,6 +1364,15 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     });
   }, [refreshNvdbLayers]);
 
+  const toggleSatellite = () => {
+    const map = mapRef.current;
+    if (!map) return;
+    const next = !satelliteRef.current;
+    satelliteRef.current = next;
+    setSatellite(next);
+    map.setStyle(next ? 'mapbox://styles/mapbox/satellite-streets-v12' : 'mapbox://styles/mapbox/streets-v12');
+  };
+
   if (!hasMapboxToken) {
     return <div className="map-missing">Mapbox-token mangler.</div>;
   }
@@ -1366,6 +1391,27 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   return (
     <div className="map-wrap">
       <div ref={containerRef} className={className} />
+      {showReports && !pickMode && (
+        <button
+          type="button"
+          className={satellite ? 'map-style-toggle map-style-toggle--sat' : 'map-style-toggle'}
+          onClick={toggleSatellite}
+          aria-pressed={satellite}
+          aria-label={satellite ? 'Vis kart' : 'Vis flyfoto'}
+        >
+          {satellite ? (
+            <>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2V6z" /><path d="M9 4v14M15 6v14" /></svg>
+              Kart
+            </>
+          ) : (
+            <>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" /></svg>
+              Flyfoto
+            </>
+          )}
+        </button>
+      )}
       {showReports && adminSecret && (
         <div className="admin-mode-badge" aria-label="Admin">
           <span className="admin-mode-badge__dot" aria-hidden="true" />

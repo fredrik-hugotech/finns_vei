@@ -252,6 +252,35 @@
   z-index: var(--z-map-control);
 }
 
+/* Public "Flyfoto ⇄ Kart" base-style toggle — bottom-left, raised above the
+   Mapbox logo. */
+.map-style-toggle {
+  align-items: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  bottom: calc(max(0.6rem, env(safe-area-inset-bottom)) + 1.9rem);
+  box-shadow: var(--shadow-control);
+  color: var(--color-text);
+  display: inline-flex;
+  font-size: 0.8rem;
+  font-weight: 700;
+  gap: 0.34rem;
+  left: max(0.6rem, env(safe-area-inset-left));
+  min-height: 36px;
+  padding: 0.34rem 0.72rem 0.34rem 0.58rem;
+  position: absolute;
+  z-index: var(--z-map-control);
+}
+.map-style-toggle svg { color: var(--color-primary); flex: none; }
+.map-style-toggle:active { transform: scale(0.97); }
+.map-style-toggle--sat {
+  background: #16201c;
+  border-color: #16201c;
+  color: #fff;
+}
+.map-style-toggle--sat svg { color: var(--color-accent); }
+
 /* Map legend (status colours + support sizing) */
 .map-legend {
   bottom: max(0.6rem, env(safe-area-inset-bottom));
