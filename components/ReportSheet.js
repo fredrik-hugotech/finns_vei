@@ -24,7 +24,12 @@ async function reverseGeocode(lat, lng, token) {
 }
 
 const INITIAL_FORM = {
-  category: REPORT_CATEGORIES[0],
+  // Several things can feel unsafe about the same spot (e.g. a crossing that
+  // also has poor sight lines and high speed), so the reporter can tick more
+  // than one. The first one picked is the "primary" category we store in the
+  // report's category column — the rest are folded into the description so
+  // nothing downstream (map colouring, backoffice, NVDB) has to change.
+  categories: [],
   description: '',
   contact_name: '',
   contact_email: '',
@@ -71,9 +76,30 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
     setForm((current) => ({ ...current, [name]: value }));
   };
 
-  const selectCategory = (event) => {
+  const toggleCategory = (category) => {
     haptic(6);
-    updateField(event);
+    setForm((current) => {
+      const has = current.categories.includes(category);
+      const categories = has
+        ? current.categories.filter((c) => c !== category)
+        : [...current.categories, category];
+      return { ...current, categories };
+    });
+  };
+
+  // The first category picked drives the stored category column and the
+  // description suggestion chips.
+  const primaryCategory = form.categories[0] || null;
+
+  // What we actually send as the description: when more than one category is
+  // ticked, prepend a short, human-readable line listing all of them so a
+  // caseworker sees every angle without any schema change.
+  const composeDescription = () => {
+    const base = form.description.trim();
+    if (form.categories.length > 1) {
+      return `Gjelder: ${form.categories.join(', ')}.\n${base}`;
+    }
+    return base;
   };
 
   // Tapping a suggestion chip appends the phrase to the free-text description
@@ -179,8 +205,8 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
   // offline queue if the request can't reach the server.
   const buildQueuePayload = () => ({
     reporter_type: reporterType,
-    category: form.category,
-    description: form.description,
+    category: primaryCategory,
+    description: composeDescription(),
     lat: point.lat,
     lng: point.lng,
     contact_name: isAdult ? form.contact_name : '',
@@ -207,6 +233,11 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
   const submitReport = async (event) => {
     event.preventDefault();
     haptic(12);
+
+    if (!form.categories.length) {
+      setStatus({ type: 'error', message: 'Velg minst én ting som føles utrygt.' });
+      return;
+    }
 
     const queuePayload = buildQueuePayload();
 
@@ -254,7 +285,7 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
       haptic([10, 40, 14]);
       setStatus({ type: payload.warning ? 'warning' : 'success', message: payload.warning || '' });
       setSubmittedId(payload.id || null);
-      try { addMyReport({ id: payload.id, category: form.category }); } catch (_e) { /* best effort */ }
+      try { addMyReport({ id: payload.id, category: primaryCategory }); } catch (_e) { /* best effort */ }
       onSubmitted?.();
     } catch (error) {
       // The server actually answered (or answered with a broken body) — a
@@ -333,15 +364,18 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
               </div>
 
               <fieldset className="sheet-field">
-                <legend>Hva føles utrygt?</legend>
+                <legend>Hva føles utrygt? <span className="sheet-field__hint">Velg gjerne flere</span></legend>
                 <div className="category-grid">
-                  {REPORT_CATEGORIES.map((category) => (
-                    <label className={form.category === category ? 'category-card category-card--active' : 'category-card'} key={category}>
-                      <input type="radio" name="category" value={category} checked={form.category === category} onChange={selectCategory} />
-                      <span className="category-card__icon" aria-hidden="true" dangerouslySetInnerHTML={{ __html: categoryGlyph(category) }} />
-                      <span className="category-card__label">{category}</span>
-                    </label>
-                  ))}
+                  {REPORT_CATEGORIES.map((category) => {
+                    const checked = form.categories.includes(category);
+                    return (
+                      <label className={checked ? 'category-card category-card--active' : 'category-card'} key={category}>
+                        <input type="checkbox" name="categories" value={category} checked={checked} onChange={() => toggleCategory(category)} />
+                        <span className="category-card__icon" aria-hidden="true" dangerouslySetInnerHTML={{ __html: categoryGlyph(category) }} />
+                        <span className="category-card__label">{category}</span>
+                      </label>
+                    );
+                  })}
                 </div>
               </fieldset>
 
@@ -364,9 +398,9 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
 
               <div className="sheet-field">
                 <label htmlFor="report-description" className="sheet-field__label">Fortell kort</label>
-                {form.category && (
+                {primaryCategory && (
                   <div className="suggestion-chips" role="group" aria-label="Forslag til beskrivelse">
-                    {descriptionSuggestions(form.category).map((phrase) => {
+                    {descriptionSuggestions(primaryCategory).map((phrase) => {
                       const active = form.description.includes(phrase);
                       return (
                         <button

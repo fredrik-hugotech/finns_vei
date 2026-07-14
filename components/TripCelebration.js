@@ -35,6 +35,11 @@ export default function TripCelebration({ km, mode = 'sykkel', weatherKind = nul
 
       {showQuiz ? <BudQuiz /> : <BudTip audience="barn" />}
 
+      <div className="trip-cheer__off">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.4" /><path d="M10.5 5.5h3" /></svg>
+        Legg telefonen bort nå, og kos deg med vennene dine.
+      </div>
+
       <button type="button" className="kid-big kid-big--green kid-big--cta" onClick={onDone}><span>Ferdig</span></button>
     </section>
   );
