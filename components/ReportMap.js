@@ -268,7 +268,7 @@ function threadMessagesHtml(properties) {
     prevAuthor = message.author;
     const time = message.ts ? `<time>${escapeHtml(formatDate(message.ts))}</time>` : '';
     const author = message.author === 'official'
-      ? `<span class="msg__author">${ICON.info}Finns.Fairway</span>`
+      ? `<span class="msg__author">${ICON.info}Finns Fairway</span>`
       : `<span class="msg__author">Innbygger${message.category ? ` · ${escapeHtml(message.category)}` : ''}</span>`;
     // Group consecutive messages from the same author: only the first shows the
     // author label, the rest just show the date — tighter and less repetitive.
@@ -580,6 +580,10 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   // older response (e.g. from rapid panning) can't overwrite the map with
   // stale/wrong-viewport data after a newer response already rendered.
   const nvdbRefreshIdRef = useRef(0);
+  // Same pattern for refreshCaseThread(): bumped on every call (support
+  // submitted, admin save, or a new case opened) so a slower, older
+  // /api/report-thread response can't clobber the thread with stale data.
+  const caseThreadRequestIdRef = useRef(0);
   const [message, setMessage] = useState('');
   useEffect(() => {
     if (!message) return undefined;
@@ -1141,31 +1145,33 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     return () => window.removeEventListener('click', handleSupportClick);
   }, [showReports]);
 
+  // Re-fetch a case's public+official message thread. Bumps a request id so
+  // an in-flight fetch that resolves after a newer one (a case reopened, or
+  // another refresh already fired) can't overwrite the thread with stale data.
+  const refreshCaseThread = useCallback((reportId) => {
+    if (!reportId) return;
+    const requestId = (caseThreadRequestIdRef.current += 1);
+    fetch(`/api/report-thread?id=${encodeURIComponent(reportId)}`)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => { if (data && requestId === caseThreadRequestIdRef.current) setCaseThread(data); })
+      .catch(() => {});
+  }, []);
+
   const handleSupportDone = useCallback((payload, reportId) => {
     if (reportId) { try { window.localStorage.setItem(`finns-vei-supported-${reportId}`, '1'); } catch (_e) { /* best effort */ } }
     setSupportTarget(null);
     setMessage(payload?.alreadySupported ? 'Du har allerede støttet denne saken.' : 'Takk for støtten!');
     loadReports().catch((error) => console.error(error));
-    if (reportId) {
-      fetch(`/api/report-thread?id=${encodeURIComponent(reportId)}`)
-        .then((response) => (response.ok ? response.json() : null))
-        .then((data) => { if (data) setCaseThread(data); })
-        .catch(() => {});
-    }
-  }, [loadReports]);
+    refreshCaseThread(reportId);
+  }, [loadReports, refreshCaseThread]);
 
   // After an admin saves a status/update on the card, refresh the thread + map.
   const handleCaseAdminSaved = useCallback(() => {
     setMessage('Saken er oppdatert.');
     loadReports().catch((error) => console.error(error));
     const reportId = caseData ? reportIdFromFeature(caseData.feature) : '';
-    if (reportId) {
-      fetch(`/api/report-thread?id=${encodeURIComponent(reportId)}`)
-        .then((response) => (response.ok ? response.json() : null))
-        .then((data) => { if (data) setCaseThread(data); })
-        .catch(() => {});
-    }
-  }, [loadReports, caseData]);
+    refreshCaseThread(reportId);
+  }, [loadReports, caseData, refreshCaseThread]);
 
   useEffect(() => {
     const openStreetView = (button) => {
@@ -1223,12 +1229,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     setCaseThread(null);
     setCaseAccidents(null);
     const reportId = reportIdFromFeature(caseData.feature);
-    if (reportId) {
-      fetch(`/api/report-thread?id=${encodeURIComponent(reportId)}`)
-        .then((response) => (response.ok ? response.json() : null))
-        .then((data) => { if (!cancelled && data) setCaseThread(data); })
-        .catch(() => {});
-    }
+    refreshCaseThread(reportId);
     // Accidents are internal — fetched only for a logged-in admin.
     if (adminSecret) {
       fetchAccidentsNear(caseData.center, NEARBY_RADIUS_M)
@@ -1236,7 +1237,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         .catch(() => { if (!cancelled) setCaseAccidents('error'); });
     }
     return () => { cancelled = true; };
-  }, [caseData, adminSecret]);
+  }, [caseData, adminSecret, refreshCaseThread]);
 
   useEffect(() => {
     if (!containerRef.current || !hasMapboxToken) return undefined;

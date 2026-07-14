@@ -35,6 +35,7 @@ export default function Sykle() {
   const [helmet, setHelmet] = useState(true);
   const [result, setResult] = useState(null);
   const [dangerStatus, setDangerStatus] = useState('');
+  const [dangerError, setDangerError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [tripError, setTripError] = useState('');
 
@@ -95,12 +96,13 @@ export default function Sykle() {
   // --- Danger reporting (kids) ---
   const openDanger = () => {
     haptic(10);
+    setDangerError(false);
     setDangerStatus('Finner hvor du er …');
     setView('danger');
-    if (!navigator.geolocation) { setDangerStatus('Enheten finner ikke posisjon.'); return; }
+    if (!navigator.geolocation) { setDangerStatus('Enheten finner ikke posisjon.'); setDangerError(true); return; }
     navigator.geolocation.getCurrentPosition(
       (pos) => { dangerPosRef.current = { lat: pos.coords.latitude, lng: pos.coords.longitude }; setDangerStatus('ready'); },
-      () => setDangerStatus('Vi trenger posisjon for å melde stedet.'),
+      () => { setDangerStatus('Vi trenger posisjon for å melde stedet.'); setDangerError(true); },
       { enableHighAccuracy: true, timeout: 12000 },
     );
   };
@@ -211,6 +213,7 @@ export default function Sykle() {
             <button type="button" className="kid-back" onClick={resetToHub}>‹ Tilbake</button>
             <h1 className="kid-title">Hva er farlig her?</h1>
             {dangerStatus && dangerStatus !== 'ready' && <p className="kid-hint">{dangerStatus}</p>}
+            {dangerError && <button type="button" className="kid-back" onClick={openDanger}>Prøv igjen</button>}
             <div className="kid-danger-grid">
               {DANGER_CHOICES.map((choice) => (
                 <button type="button" key={choice.category} className="kid-danger" disabled={busy || dangerStatus !== 'ready'} onClick={() => sendDanger(choice)}>
