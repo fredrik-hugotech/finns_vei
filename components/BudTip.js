@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { SAFETY_COMMANDMENTS, KID_COMMANDMENTS } from '../lib/safetyCommandments';
+import ReadAloudButton from './ReadAloudButton';
 
 function listFor(audience) {
   return audience === 'barn'
@@ -54,6 +55,7 @@ export default function BudTip({ audience = 'all' }) {
         <span className="trip-cheer__bud-label">Finns bud {bud.n}</span>
         <strong>{bud.title}</strong>
         <p>{bud.text}</p>
+        <ReadAloudButton text={`Finns bud ${bud.n}. ${bud.title}. ${bud.text}`} />
       </div>
       <Link href="/bud" className="trip-cheer__budlink">Se alle 10 bud ›</Link>
     </>

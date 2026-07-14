@@ -87,6 +87,13 @@ const ICONS = {
       <circle cx="12" cy="10" r="2.5" />
     </>
   ),
+  volume: (
+    <>
+      <path d="M4 9v6h4l5 4V5L8 9H4Z" />
+      <path d="M16.2 8.8a5 5 0 0 1 0 6.4" />
+      <path d="M18.8 6.2a8.8 8.8 0 0 1 0 11.6" />
+    </>
+  ),
 };
 
 export default function Icon({ name, size = 20, strokeWidth = 1.8, className, ...rest }) {
