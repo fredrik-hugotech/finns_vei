@@ -9,6 +9,7 @@ import TripCelebration from '../components/TripCelebration';
 import InstallHint from '../components/InstallHint';
 import { NEARBY_REPORT_RADIUS_M } from '../lib/config';
 import { QUEUE_CHANGED_EVENT, flushQueue, getPendingCount } from '../lib/offlineReportQueue';
+import { TRIP_QUEUE_CHANGED_EVENT, addPendingTrip, flushTripQueue, getPendingTripCount } from '../lib/offlineTripQueue';
 import { isDarkNow, reportWeatherHint } from '../lib/weather';
 import { addMyTrip } from '../lib/myTrips';
 
@@ -40,32 +41,38 @@ export default function Home() {
   const [tripResult, setTripResult] = useState(null); // { km, mode, weatherKind }
   const [message, setMessage] = useState('');
   const [pendingQueueCount, setPendingQueueCount] = useState(0);
+  const [pendingTripQueueCount, setPendingTripQueueCount] = useState(0);
   useEffect(() => {
     if (!message) return undefined;
     const timer = setTimeout(() => setMessage(''), 4000);
     return () => clearTimeout(timer);
   }, [message]);
 
-  // Offline report queue: try to resend anything left over from a dead-zone
-  // submission as soon as the app loads (if we're already online) and again
-  // whenever the browser regains connectivity. No service worker background
-  // sync in this first version — just best-effort on load/online, which
-  // covers the common case of reopening the app once back in coverage.
+  // Offline report + trip queues: try to resend anything left over from a
+  // dead-zone submission as soon as the app loads (if we're already online)
+  // and again whenever the browser regains connectivity. No service worker
+  // background sync in this first version — just best-effort on load/online,
+  // which covers the common case of reopening the app once back in coverage.
   useEffect(() => {
     const refreshPendingCount = () => setPendingQueueCount(getPendingCount());
+    const refreshPendingTripCount = () => setPendingTripQueueCount(getPendingTripCount());
     refreshPendingCount();
+    refreshPendingTripCount();
 
     const tryFlush = () => {
       if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
       flushQueue().then(refreshPendingCount).catch(refreshPendingCount);
+      flushTripQueue().then(refreshPendingTripCount).catch(refreshPendingTripCount);
     };
 
     tryFlush();
     window.addEventListener('online', tryFlush);
     window.addEventListener(QUEUE_CHANGED_EVENT, refreshPendingCount);
+    window.addEventListener(TRIP_QUEUE_CHANGED_EVENT, refreshPendingTripCount);
     return () => {
       window.removeEventListener('online', tryFlush);
       window.removeEventListener(QUEUE_CHANGED_EVENT, refreshPendingCount);
+      window.removeEventListener(TRIP_QUEUE_CHANGED_EVENT, refreshPendingTripCount);
     };
   }, []);
 
@@ -284,23 +291,48 @@ export default function Home() {
   // so here we just persist the anonymous cells, distance and duration.
   const finishTrip = async ({ club, helmet, routeType, distanceM, durationS, cells, path, weather }) => {
     if (!tripContext) return;
+    const tripMode = tripContext.mode || 'sykkel';
+    const km = (distanceM / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 2 });
+    const bikeTripPayload = {
+      competitionId: tripContext.competition.id,
+      club,
+      helmet,
+      routeType,
+      mode: tripMode,
+      weather,
+      distanceM,
+      durationS,
+      cells,
+      path,
+      tripToken: tripToken(),
+    };
+
+    // The trip is already fully computed on-device (GPS tracking + privacy
+    // clipping/snapping are done) by the time we get here — a failed POST
+    // must never throw that away. Unlike a hazard report, there's no "can't
+    // queue this" case (no images/File objects in a trip payload), so any
+    // failure — a dead connection detected up front, or the fetch itself
+    // failing/erroring out mid-tunnel — queues the trip for automatic resend
+    // instead of discarding it. Mirrors lib/offlineReportQueue.js's approach
+    // for the same connectivity dead-zones this app already defends against.
+    const queueOfflineTrip = () => {
+      addPendingTrip(bikeTripPayload);
+      haptic([10, 40, 14]);
+      setTripResult({ km, mode: tripMode, weatherKind: weather?.kind || null, queued: true });
+      setTripContext(null);
+      setMode('trip-done');
+    };
+
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      queueOfflineTrip();
+      return;
+    }
+
     try {
       const response = await fetch('/api/bike-trips', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          competitionId: tripContext.competition.id,
-          club,
-          helmet,
-          routeType,
-          mode: tripContext.mode || 'sykkel',
-          weather,
-          distanceM,
-          durationS,
-          cells,
-          path,
-          tripToken: tripToken(),
-        }),
+        body: JSON.stringify(bikeTripPayload),
       });
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
@@ -308,18 +340,19 @@ export default function Home() {
       }
       // Local-only record for /mine-turer — no server identity, just a
       // convenience list on this device.
-      addMyTrip({ distanceM, mode: tripContext.mode || 'sykkel', routeType, weather });
+      addMyTrip({ distanceM, mode: tripMode, routeType, weather });
       haptic([10, 40, 14]);
-      const km = (distanceM / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 2 });
       // Celebrate with the child instead of dropping them into the standings.
-      setTripResult({ km, mode: tripContext.mode || 'sykkel', weatherKind: weather?.kind || null });
+      setTripResult({ km, mode: tripMode, weatherKind: weather?.kind || null, queued: false });
       setTripContext(null);
       setMode('trip-done');
       mapApiRef.current?.refreshReports?.();
-    } catch (error) {
-      setMessage(error.message || 'Noe gikk galt.');
-      setTripContext(null);
-      setMode('browse');
+    } catch (_error) {
+      // fetch() itself failed (no response at all) or the server rejected
+      // the request — either way, in this app the overwhelmingly likely
+      // cause is the tunnel/fjord/mountain-pass connectivity this app is
+      // built around, and the trip data is too hard-won to drop silently.
+      queueOfflineTrip();
     }
   };
 
@@ -355,6 +388,17 @@ export default function Home() {
             >
               <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v6l4 2" /></svg>
               {pendingQueueCount === 1 ? '1 venter på å bli sendt' : `${pendingQueueCount} venter på å bli sendt`}
+            </a>
+          )}
+          {pendingTripQueueCount > 0 && (
+            <a
+              className="offline-queue-badge"
+              href="/mine-turer"
+              role="status"
+              title="Turer lagret på denne enheten som ikke er sendt ennå"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v6l4 2" /></svg>
+              {pendingTripQueueCount === 1 ? '1 tur venter på å bli sendt' : `${pendingTripQueueCount} turer venter på å bli sendt`}
             </a>
           )}
           <div className="app-topbar__links">
@@ -457,6 +501,7 @@ export default function Home() {
             km={tripResult.km}
             mode={tripResult.mode}
             weatherKind={tripResult.weatherKind}
+            queued={tripResult.queued}
             onDone={() => { setTripResult(null); setMode('browse'); }}
           />
         )}
