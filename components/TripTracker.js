@@ -14,7 +14,7 @@ function formatKm(meters) {
 // Live GPS tracker. Records the raw path ON THE DEVICE only — to draw the live
 // route and compute distance — then hands back distance, duration and the
 // clipped+snapped cells/path. Also lets the rider drop "unsafe point" reports.
-export default function TripTracker({ club, helmet, routeType = 'fritid', mode = 'sykkel', mapApi, onDone, onCancel }) {
+export default function TripTracker({ club, helmet, routeType = 'fritid', mode = 'sykkel', mapApiRef, onDone, onCancel }) {
   const [status, setStatus] = useState('starting'); // starting | tracking | error
   const [distanceM, setDistanceM] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
@@ -77,6 +77,9 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mode =
         setStatus('tracking');
         setDistanceM(pathDistanceMeters(points));
         setPointCount(points.length);
+        // Read via the ref (not a captured prop) so a map that's still loading
+        // when tracking starts is picked up as soon as it becomes ready.
+        const mapApi = mapApiRef?.current;
         if (mapApi) {
           mapApi.showLivePath?.({
             type: 'FeatureCollection',
@@ -97,7 +100,7 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mode =
       document.removeEventListener('visibilitychange', onVisibilityChange);
       if (watchIdRef.current != null) navigator.geolocation.clearWatch(watchIdRef.current);
       if (wakeLockRef.current) { wakeLockRef.current.release?.(); wakeLockRef.current = null; }
-      mapApi?.clearLivePath?.();
+      mapApiRef?.current?.clearLivePath?.();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

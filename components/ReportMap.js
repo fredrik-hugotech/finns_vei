@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 import { DEFAULT_CENTER, NEARBY_REPORT_RADIUS_M, REPORT_STATUS } from '../lib/config';
 import {
   MAP_COLORS,

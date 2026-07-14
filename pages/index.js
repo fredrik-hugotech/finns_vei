@@ -411,7 +411,7 @@ export default function Home() {
             helmet={tripContext.helmet}
             routeType={tripContext.routeType}
             mode={tripContext.mode}
-            mapApi={mapApiRef.current}
+            mapApiRef={mapApiRef}
             onDone={finishTrip}
             onCancel={cancelTrip}
           />
