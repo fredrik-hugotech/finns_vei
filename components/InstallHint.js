@@ -26,7 +26,6 @@ function Mark() {
 }
 
 export default function InstallHint() {
-  const [ribbon, setRibbon] = useState(false);
   const [steps, setSteps] = useState(false);
   const [ios, setIos] = useState(false);
   const [deferred, setDeferred] = useState(null);
@@ -34,35 +33,22 @@ export default function InstallHint() {
   useEffect(() => {
     if (isStandalone()) return undefined;
     setIos(isIOS());
-
     const onBIP = (e) => { e.preventDefault(); setDeferred(e); };
     const openSteps = () => setSteps(true);
     window.addEventListener('beforeinstallprompt', onBIP);
     window.addEventListener('ff-open-install', openSteps);
-
-    let timer;
-    let dismissed = false;
-    try { dismissed = Boolean(window.localStorage.getItem(DISMISS_KEY)); } catch (_e) { /* ignore */ }
-    if (!dismissed) timer = setTimeout(() => setRibbon(true), 1800);
-
     return () => {
       window.removeEventListener('beforeinstallprompt', onBIP);
       window.removeEventListener('ff-open-install', openSteps);
-      if (timer) clearTimeout(timer);
     };
   }, []);
-
-  const dismissRibbon = () => {
-    setRibbon(false);
-    try { window.localStorage.setItem(DISMISS_KEY, '1'); } catch (_e) { /* ignore */ }
-  };
 
   const primary = async () => {
     if (deferred) {
       deferred.prompt();
       try { await deferred.userChoice; } catch (_e) { /* ignore */ }
       setDeferred(null);
-      dismissRibbon();
+      setSteps(false);
     } else {
       setSteps(true);
     }
@@ -70,14 +56,6 @@ export default function InstallHint() {
 
   return (
     <>
-      {ribbon && (
-        <div className="install-hint" role="region" aria-label="Legg til på hjemskjerm">
-          <span className="install-hint__icon" aria-hidden="true"><Mark /></span>
-          <span className="install-hint__text">Legg til på hjemskjermen</span>
-          <button type="button" className="install-hint__cta" onClick={primary}>{deferred ? 'Installer' : 'Slik gjør du'}</button>
-          <button type="button" className="install-hint__x" aria-label="Lukk" onClick={dismissRibbon}>×</button>
-        </div>
-      )}
 
       {steps && (
         <div className="sheet-layer" role="dialog" aria-modal="true" aria-label="Legg til på hjemskjerm">

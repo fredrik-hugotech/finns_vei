@@ -1492,58 +1492,6 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           )}
         </div>
       )}
-      {showReports && (
-        <div className={`map-legend${legendOpen ? ' map-legend--open' : ''}`}>
-          <button
-            type="button"
-            className="map-legend__toggle"
-            aria-expanded={legendOpen}
-            onClick={() => setLegendOpen((open) => !open)}
-          >
-            <span className="map-legend__keys" aria-hidden="true">
-              {REPORT_STATUS_ORDER.map((status) => (
-                <span key={status} className="map-legend__dot" style={{ background: REPORT_STATUS_META[status].marker }} />
-              ))}
-            </span>
-            Tegnforklaring
-          </button>
-          {legendOpen && (
-            <div className="map-legend__panel">
-              <p className="map-legend__heading">Status på melding</p>
-              <ul className="map-legend__list">
-                {REPORT_STATUS_ORDER.map((status) => {
-                  const meta = REPORT_STATUS_META[status];
-                  return (
-                    <li key={status}>
-                      <span
-                        className="legend-icon"
-                        style={{ color: meta.marker }}
-                        aria-hidden="true"
-                        dangerouslySetInnerHTML={{ __html: meta.icon }}
-                      />
-                      {meta.label}
-                    </li>
-                  );
-                })}
-              </ul>
-              <p className="map-legend__note">Større markør = flere har støttet saken.</p>
-              {adminSecret && (
-                <ul className="map-legend__list">
-                  <li>
-                    <span
-                      className="legend-icon legend-icon--accident"
-                      style={{ color: MAP_COLORS.accidentPoint }}
-                      aria-hidden="true"
-                      dangerouslySetInnerHTML={{ __html: ICON.accident }}
-                    />
-                    Ulykke (NVDB)
-                  </li>
-                </ul>
-              )}
-            </div>
-          )}
-        </div>
-      )}
       {caseData && (
         <div className="sheet-layer case-sheet-layer" role="dialog" aria-modal="false" aria-label="Sak">
           <div className="sheet-backdrop" onClick={() => setCaseData(null)} />
