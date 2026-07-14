@@ -32,36 +32,46 @@ function truncate(text, max) {
   return `${clean.slice(0, max).trimEnd()}…`;
 }
 
-function BrandMark({ size = 40 }) {
-  // Redraws the three-circle mark from components/Logo.js with plain divs,
-  // since satori can't take arbitrary SVG path/currentColor markup easily.
-  const ring = Math.round(size * 0.62);
-  const dot = Math.round(size * 0.68);
+function BrandMark({ size = 44 }) {
+  // Faithful redraw of the official three-circle mark (public/brand/
+  // finns-fairway-mark.svg, viewBox 48): a small outline ring top-right with
+  // two filled dots along the bottom — an L / triangle, NOT a horizontal row.
+  const s = size / 48;
+  const ring = 11 * s;
+  const dot = 14 * s;
+  const border = Math.max(2, Math.round(3 * s));
   return (
-    <div style={{ display: 'flex', alignItems: 'center' }}>
+    <div style={{ display: 'flex', position: 'relative', width: size, height: Math.round(42 * s) }}>
       <div
         style={{
           display: 'flex',
+          position: 'absolute',
+          left: Math.round(28 * s),
+          top: Math.round(9 * s),
           width: ring,
           height: ring,
           borderRadius: '50%',
-          border: `${Math.max(3, Math.round(size * 0.14))}px solid ${CREAM}`,
-          marginRight: Math.round(size * 0.18),
+          border: `${border}px solid ${CREAM}`,
         }}
       />
       <div
         style={{
           display: 'flex',
+          position: 'absolute',
+          left: Math.round(7.5 * s),
+          top: Math.round(26.5 * s),
           width: dot,
           height: dot,
           borderRadius: '50%',
           background: CREAM,
-          marginRight: Math.round(size * -0.22),
         }}
       />
       <div
         style={{
           display: 'flex',
+          position: 'absolute',
+          left: Math.round(26.5 * s),
+          top: Math.round(26.5 * s),
           width: dot,
           height: dot,
           borderRadius: '50%',

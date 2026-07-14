@@ -11,7 +11,10 @@ import { addPendingReport } from '../lib/offlineReportQueue';
 // confirm they picked the right spot before sending.
 async function reverseGeocode(lat, lng, token) {
   try {
-    const r = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${token}&language=no&limit=1&types=address,street,neighborhood,locality,place`);
+    // NB: Mapbox geocoding has no "street" type — passing it makes the whole
+    // request 422 and the place label hangs on "Henter sted …". Valid types
+    // only: address, neighborhood, locality, place, …
+    const r = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${token}&language=no&limit=1&types=address,neighborhood,locality,place`);
     if (!r.ok) return null;
     const d = await r.json();
     const f = (d.features || [])[0];
@@ -67,7 +70,10 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
     if (!mapboxToken || !point || !Number.isFinite(Number(point.lat))) return undefined;
     let cancelled = false;
     setPlace(null);
-    reverseGeocode(Number(point.lat), Number(point.lng), mapboxToken).then((p) => { if (!cancelled) setPlace(p); });
+    // Fall back to the coordinates so the label never hangs on "Henter sted …"
+    // if the geocode is empty or fails.
+    const fallback = `${Number(point.lat).toFixed(4)}, ${Number(point.lng).toFixed(4)}`;
+    reverseGeocode(Number(point.lat), Number(point.lng), mapboxToken).then((p) => { if (!cancelled) setPlace(p || fallback); });
     return () => { cancelled = true; };
   }, [mapboxToken, point]);
 
