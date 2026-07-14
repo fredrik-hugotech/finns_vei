@@ -23,6 +23,15 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mode =
   const [flash, setFlash] = useState('');
   const [weather, setWeather] = useState(null);
   const [pointCount, setPointCount] = useState(0);
+  const [phoneAway, setPhoneAway] = useState(true);
+
+  // Reminder at the start of every trip: put the phone away and keep your eyes
+  // on the road (Finns bud 2). Auto-dismisses after a few seconds — by then the
+  // phone should be in the bag or pocket.
+  useEffect(() => {
+    const t = setTimeout(() => setPhoneAway(false), 8000);
+    return () => clearTimeout(t);
+  }, []);
 
   const pointsRef = useRef([]);
   const lastFixRef = useRef(null);
@@ -164,6 +173,21 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mode =
   return (
     <>
     {weather && <WeatherFx kind={weather.kind} tempC={weather.tempC} />}
+
+    {phoneAway && (
+      <div className="phone-away" role="dialog" aria-label="Legg telefonen vekk">
+        <div className="phone-away__card">
+          <span className="phone-away__ic" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="7" y="2.5" width="10" height="19" rx="2.4"/><path d="M10.5 5.5h3"/><path d="M5 12l-2 2 2 2M19 12l2 2-2 2" opacity=".5"/></svg>
+          </span>
+          <strong className="phone-away__title">Legg telefonen i sekken eller lommen</strong>
+          <p className="phone-away__text">Ta den ikke opp før du er framme. Se og hør på trafikken.</p>
+          <span className="phone-away__bud">Finns bud 2 · Vær oppmerksom</span>
+          <button type="button" className="big-button big-button--primary phone-away__ok" onClick={() => setPhoneAway(false)}>Jeg er klar</button>
+        </div>
+      </div>
+    )}
+
     <div className="trip-tracker" role="dialog" aria-modal="true" aria-label="Sykkeltur pågår">
       <div className="trip-tracker__head">
         <span className="trip-tracker__pill"><Icon name={routeType === 'skole' ? 'school' : 'activity'} size={15} />{routeType === 'skole' ? 'Skolerute' : 'Fritidsrute'}</span>

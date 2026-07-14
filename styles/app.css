@@ -3313,3 +3313,27 @@ select.tkt-prop__ctrl { padding-right: 1.7rem; background-image: url("data:image
 .install-steps__list b { font-weight: 700; }
 .install-steps__list svg { vertical-align: middle; }
 .install-steps .big-button { margin-top: 0.6rem; max-width: 22rem; }
+
+/* Start-of-trip reminder: put the phone away (Finns bud 2). */
+.phone-away {
+  align-items: center;
+  animation: pa-in 0.3s ease both;
+  background: linear-gradient(160deg, rgba(11, 93, 77, 0.97), rgba(10, 61, 51, 0.98));
+  display: grid;
+  inset: 0;
+  justify-items: center;
+  padding: 1.6rem;
+  place-items: center;
+  position: fixed;
+  z-index: 60;
+}
+@keyframes pa-in { from { opacity: 0; } to { opacity: 1; } }
+.phone-away__card { color: #fff; display: grid; gap: 0.45rem; justify-items: center; max-width: 22rem; text-align: center; }
+.phone-away__ic { align-items: center; background: rgba(255, 255, 255, 0.14); border-radius: 50%; color: #fff; display: flex; height: 78px; justify-content: center; margin-bottom: 0.5rem; width: 78px; }
+.phone-away__ic svg { height: 38px; width: 38px; }
+.phone-away__title { font-family: var(--font-heading); font-size: 1.42rem; font-weight: 800; line-height: 1.2; }
+.phone-away__text { color: #d6e8de; font-size: 1.05rem; line-height: 1.45; margin: 0; }
+.phone-away__bud { background: rgba(255, 255, 255, 0.1); border-radius: 999px; color: #8fe3c4; font-size: 0.76rem; font-weight: 700; letter-spacing: 0.05em; margin: 0.5rem 0 0.2rem; padding: 0.32rem 0.85rem; text-transform: uppercase; }
+.phone-away__ok { background: #fff; color: var(--color-primary); margin-top: 0.9rem; max-width: 16rem; width: 100%; }
+.phone-away__ok:hover { background: #fff; filter: brightness(0.97); }
+@media (prefers-reduced-motion: reduce) { .phone-away { animation: none; } }
