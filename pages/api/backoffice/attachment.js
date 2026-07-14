@@ -1,14 +1,18 @@
 import { isAdminRequest } from '../../../lib/backofficeAuth';
 import { parseMultipartRequest } from '../../../lib/multipart';
 import { uploadReportImage, createCaseAttachment, setCaseAttachmentVisibility, deleteCaseAttachment, hasSupabaseConfig } from '../../../lib/supabaseRest';
-import { sanitizeImageFilename } from '../../../lib/reportImages';
+import { sanitizeImageFilename, isAllowedReportImageType } from '../../../lib/reportImages';
 
 export const config = { api: { bodyParser: false } };
 
 const MAX_BYTES = 10 * 1024 * 1024;
-function allowed(contentType) {
+// Reuse the same allowlist as the public report-image upload path (excludes
+// image/svg+xml — an inline <script> in an SVG served back from a public
+// bucket would execute when opened directly). PDFs stay allowed since that
+// was already a working attachment type here.
+function allowed(contentType, filename) {
   const t = String(contentType || '').toLowerCase();
-  return t.startsWith('image/') || t === 'application/pdf';
+  return isAllowedReportImageType(t, filename) || t === 'application/pdf';
 }
 
 export default async function handler(req, res) {
@@ -41,7 +45,7 @@ export default async function handler(req, res) {
 
     const created = [];
     for (const [index, file] of uploads.entries()) {
-      if (!allowed(file.contentType)) return res.status(400).json({ error: 'Kun bilder eller PDF.' });
+      if (!allowed(file.contentType, file.filename)) return res.status(400).json({ error: 'Kun bilder eller PDF.' });
       if (file.buffer.length > MAX_BYTES) return res.status(400).json({ error: 'Filen er for stor (maks 10 MB).' });
       const safeName = sanitizeImageFilename(file.filename || `vedlegg-${index + 1}`);
       const path = `cases/${reportId}/${Date.now()}-${index + 1}-${safeName}`;

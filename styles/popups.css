@@ -237,6 +237,7 @@
   color: var(--color-text);
   font-size: 0.85rem;
   line-height: 1.4;
+  white-space: pre-wrap;
 }
 
 /* Compact context stats below the thread */

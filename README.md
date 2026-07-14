@@ -214,12 +214,20 @@ ALTER TABLE public.bike_trips ADD COLUMN IF NOT EXISTS weather_bonus boolean NOT
 NOTIFY pgrst, 'reload schema';
 ```
 
+If you already created the trips table before the clipped route line and
+walking/school route type were added, apply this additive migration too:
+
+```sql
+ALTER TABLE public.bike_trips ADD COLUMN IF NOT EXISTS path jsonb, ADD COLUMN IF NOT EXISTS route_type text;
+NOTIFY pgrst, 'reload schema';
+```
+
 The feature is additive — until the tables exist, `GET /api/competitions` simply
-returns an empty list and the rest of the app is unaffected. The `mode`/weather
-columns are additive in the same way: `createBikeTrip` (`lib/supabaseRest.js`)
-retries the insert without them if the columns aren't migrated yet, and
-`getCompetitionStats` falls back to a narrower `select` — so trips keep logging
-and stats keep working either way, migrated or not.
+returns an empty list and the rest of the app is unaffected. The `mode`/weather/
+`path`/`route_type` columns are additive in the same way: `createBikeTrip`
+(`lib/supabaseRest.js`) retries the insert without them if the columns aren't
+migrated yet, and `getCompetitionStats` falls back to a narrower `select` — so
+trips keep logging and stats keep working either way, migrated or not.
 
 ## Environment variables
 

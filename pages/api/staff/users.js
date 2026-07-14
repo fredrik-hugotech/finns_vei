@@ -1,6 +1,13 @@
 import { isBackofficeAuthorized } from '../../../lib/backofficeAuth';
 import { getStaffFromRequest, hashPassword } from '../../../lib/staffAuth';
 import { listStaff, createStaff, setStaffActive, getStaffByEmail } from '../../../lib/supabaseRest';
+import { checkRequestRateLimit } from '../../../lib/rateLimit';
+
+// Gated by the shared BACKOFFICE_SECRET as a bootstrap fallback (same as
+// staff/bootstrap.js) alongside session-based auth — rate limit the secret
+// guess the same way.
+const RATE_LIMIT = 10;
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 
 // Superuser-only user management. The shared secret also authorizes (for setup).
 async function requireSuperuser(req) {
@@ -11,6 +18,12 @@ async function requireSuperuser(req) {
 }
 
 export default async function handler(req, res) {
+  const rateLimit = checkRequestRateLimit(req, 'staff-users', RATE_LIMIT, RATE_LIMIT_WINDOW_MS);
+  if (!rateLimit.allowed) {
+    res.setHeader('Retry-After', Math.ceil(rateLimit.retryAfterMs / 1000));
+    return res.status(429).json({ error: 'For mange forsøk. Prøv igjen om litt.' });
+  }
+
   const admin = await requireSuperuser(req);
   if (!admin) return res.status(403).json({ error: 'Kun superbrukere.' });
 

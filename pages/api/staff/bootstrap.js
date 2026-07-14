@@ -1,10 +1,24 @@
 import { isBackofficeAuthorized } from '../../../lib/backofficeAuth';
 import { countStaff, getStaffByEmail, createStaff } from '../../../lib/supabaseRest';
 import { hashPassword } from '../../../lib/staffAuth';
+import { checkRequestRateLimit } from '../../../lib/rateLimit';
+
+// Gated by the shared BACKOFFICE_SECRET, same as staff/login.js's password
+// check — rate limit it the same way since a guessed secret here lets an
+// attacker mint a brand-new superuser while countStaff() === 0.
+const RATE_LIMIT = 10;
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 
 // One-time creation of the first superuser, gated by the shared BACKOFFICE_SECRET.
 export default async function handler(req, res) {
   if (req.method !== 'POST') { res.setHeader('Allow', ['POST']); return res.status(405).end('Method Not Allowed'); }
+
+  const rateLimit = checkRequestRateLimit(req, 'staff-bootstrap', RATE_LIMIT, RATE_LIMIT_WINDOW_MS);
+  if (!rateLimit.allowed) {
+    res.setHeader('Retry-After', Math.ceil(rateLimit.retryAfterMs / 1000));
+    return res.status(429).json({ error: 'For mange forsøk. Prøv igjen om litt.' });
+  }
+
   if (!isBackofficeAuthorized(req)) return res.status(403).json({ error: 'Feil oppsett-passord.' });
 
   const { email, password, name } = req.body || {};

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { distanceMeters, pathDistanceMeters, clipAndSnapCells, clipPath, snapToGrid, CLIP_METERS } from '../lib/geoPrivacy';
+import { addPendingReport } from '../lib/offlineReportQueue';
 import Icon from './Icon';
 import WeatherFx from './WeatherFx';
 
@@ -126,30 +127,52 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mode =
     const point = nearStart ? snapToGrid(fix.lat, fix.lng) : fix;
     if (!point) { setFlash('Venter på posisjon …'); return; }
     haptic([20, 30, 20]);
+    // There's no walking-specific category in REPORT_CATEGORIES (lib/config.js)
+    // yet, so a point marked while walking falls back to 'Annet' rather than
+    // being mistagged as a cycling hazard.
+    const category = mode === 'gange' ? 'Annet' : 'Farlig for sykkel';
+    const modeLabel = mode === 'gange' ? 'gåregistrering' : 'sykkelregistrering';
+    // Same JSON-serializable shape ReportSheet.js queues on a genuine
+    // connectivity failure (see buildQueuePayload/handleOfflineSubmit there) —
+    // an image-free report, safe to park in the offline queue and auto-resend.
+    const queuePayload = {
+      reporter_type: 'barn',
+      category,
+      description: `Utrygt punkt markert under ${modeLabel} (${routeType === 'skole' ? 'skolerute' : 'fritidsrute'}).`,
+      lat: point.lat,
+      lng: point.lng,
+      bike_route_type: routeType,
+    };
+
+    // Already known to be offline — no point racing a doomed fetch, and out
+    // on a ride is exactly where connectivity is flaky (tunnels, fjord roads,
+    // forest routes). Queue it straight away instead of surfacing an error
+    // that would otherwise just discard the point.
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      addPendingReport(queuePayload);
+      setUnsafeCount((n) => n + 1);
+      setFlash('Lagret på enheten – sendes automatisk når du får dekning');
+      setTimeout(() => setFlash(''), 2200);
+      return;
+    }
+
     try {
-      // There's no walking-specific category in REPORT_CATEGORIES (lib/config.js)
-      // yet, so a point marked while walking falls back to 'Annet' rather than
-      // being mistagged as a cycling hazard.
-      const category = mode === 'gange' ? 'Annet' : 'Farlig for sykkel';
-      const modeLabel = mode === 'gange' ? 'gåregistrering' : 'sykkelregistrering';
       const response = await fetch('/api/report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          reporter_type: 'barn',
-          category,
-          description: `Utrygt punkt markert under ${modeLabel} (${routeType === 'skole' ? 'skolerute' : 'fritidsrute'}).`,
-          lat: point.lat,
-          lng: point.lng,
-          bike_route_type: routeType,
-        }),
+        body: JSON.stringify(queuePayload),
       });
       if (!response.ok) throw new Error('Kunne ikke lagre punktet');
 
       setUnsafeCount((n) => n + 1);
       setFlash('Utrygt punkt lagret');
-    } catch (_error) {
-      setFlash('Kunne ikke lagre punktet');
+    } catch (networkError) {
+      // fetch() itself threw (no response reached the server at all) — a real
+      // connectivity failure, not a server-side rejection. Safe to queue for
+      // automatic resend rather than losing the point.
+      addPendingReport(queuePayload);
+      setUnsafeCount((n) => n + 1);
+      setFlash('Lagret på enheten – sendes automatisk når du får dekning');
     }
     setTimeout(() => setFlash(''), 2200);
   };
