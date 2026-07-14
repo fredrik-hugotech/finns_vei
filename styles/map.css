@@ -64,22 +64,54 @@
 
 .nvdb-toggle-card {
   bottom: max(0.6rem, env(safe-area-inset-bottom));
-  display: grid;
-  gap: 0.34rem;
-  padding: 0.5rem;
+  overflow: hidden;
+  padding: 0;
   position: absolute;
   right: max(0.6rem, env(safe-area-inset-right));
-  width: 152px;
+  width: 172px;
   z-index: var(--z-map-control);
 }
 
-.nvdb-toggle-card strong {
-  color: var(--color-muted);
-  font-size: 0.74rem;
+/* Collapsible header: a compact "Kartlag" pill that expands the layer list. */
+.nvdb-toggle-card__head {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--color-text);
+  cursor: pointer;
+  display: flex;
+  font-size: 0.8rem;
   font-weight: 700;
-  letter-spacing: 0.01em;
-  line-height: 1;
-  text-transform: none;
+  gap: 0.4rem;
+  justify-content: space-between;
+  min-height: 38px;
+  padding: 0.36rem 0.55rem;
+  width: 100%;
+}
+
+.nvdb-toggle-card__title {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.34rem;
+}
+
+.nvdb-toggle-card__title svg { color: var(--color-primary); flex: none; }
+
+.nvdb-toggle-card__count {
+  background: var(--color-primary);
+  border-radius: 50%;
+  height: 7px;
+  margin-left: 0.1rem;
+  width: 7px;
+}
+
+.nvdb-toggle-card__chevron { color: var(--color-muted); flex: none; }
+
+.nvdb-toggle-card__body {
+  border-top: 1px solid var(--color-border);
+  display: grid;
+  gap: 0.34rem;
+  padding: 0.5rem;
 }
 
 .nvdb-toggle {
@@ -381,8 +413,8 @@
 @media (max-width: 640px) {
   .nvdb-toggle-card {
     bottom: auto;
-    top: max(0.55rem, env(safe-area-inset-top));
-    width: 108px;
+    top: calc(max(0.55rem, env(safe-area-inset-top)) + 5.4rem);
+    width: min(184px, calc(100vw - 1.2rem));
   }
 
   .weight-tuning-card {

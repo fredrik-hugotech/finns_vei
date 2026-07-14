@@ -598,6 +598,9 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   const [caseThread, setCaseThread] = useState(null);
   const [caseAccidents, setCaseAccidents] = useState(null);
   const [adminSecret, setAdminSecret] = useState(null);
+  // The Kartlag panel is collapsed to a compact pill on phones so it doesn't
+  // crowd the topbar; it stays expanded on wider screens where there's room.
+  const [layersOpen, setLayersOpen] = useState(() => (typeof window !== 'undefined' ? window.innerWidth > 720 : false));
   const [concernHeatmapOn, setConcernHeatmapOn] = useState(false);
   // "Bekymringsgrad-vekting": a staff-only, per-device preview of the
   // heatmap's category weights + support_count boost. State always starts
@@ -1380,54 +1383,68 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         </div>
       )}
       {adminSecret && (
-        <div className="layer-control nvdb-toggle-card" aria-label="Kartlag">
-          <strong>Kartlag</strong>
-          {NVDB_LAYERS.map((layer) => (
-            <button
-              key={layer.type}
-              type="button"
-              className={activeNvdbLayers.includes(layer.type) ? 'nvdb-toggle nvdb-toggle--active' : 'nvdb-toggle'}
-              onClick={() => toggleNvdbLayer(layer.type)}
-            >
-              {layer.label}
-            </button>
-          ))}
-          {showReports && (
-            <button
-              type="button"
-              className={concernHeatmapOn ? 'nvdb-toggle nvdb-toggle--active' : 'nvdb-toggle'}
-              onClick={toggleConcernHeatmap}
-            >
-              Bekymringsgrad
-            </button>
-          )}
-          {adminSecret && (
-            <button
-              type="button"
-              className={sporOn ? 'nvdb-toggle nvdb-toggle--active nvdb-toggle--spor' : 'nvdb-toggle nvdb-toggle--spor'}
-              onClick={toggleSpor}
-            >
-              Sykkelspor
-            </button>
-          )}
-          {adminSecret && sporOn && sporComps.length > 0 && (
-            <>
-              <select className="spor-select" value={sporCompId} onChange={(e) => changeSporComp(e.target.value)} aria-label="Velg konkurranse">
-                {sporComps.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-              <div className="spor-modes" role="group" aria-label="Transportmåte">
-                {[['samlet', 'Samlet'], ['sykkel', 'Sykle'], ['gange', 'Gå']].map(([value, label]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    className={sporMode === value ? 'spor-mode spor-mode--on' : 'spor-mode'}
-                    onClick={() => changeSporMode(value)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </>
+        <div className={layersOpen ? 'layer-control nvdb-toggle-card nvdb-toggle-card--open' : 'layer-control nvdb-toggle-card'} aria-label="Kartlag">
+          <button
+            type="button"
+            className="nvdb-toggle-card__head"
+            aria-expanded={layersOpen}
+            onClick={() => setLayersOpen((v) => !v)}
+          >
+            <span className="nvdb-toggle-card__title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5z" /><path d="M3 13l9 5 9-5" opacity=".6" /></svg>
+              Kartlag
+              {!layersOpen && (activeNvdbLayers.length > 0 || concernHeatmapOn || sporOn) && <span className="nvdb-toggle-card__count" aria-hidden="true" />}
+            </span>
+            <svg className="nvdb-toggle-card__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={layersOpen ? 'M6 15l6-6 6 6' : 'M6 9l6 6 6-6'} /></svg>
+          </button>
+          {layersOpen && (
+            <div className="nvdb-toggle-card__body">
+              {NVDB_LAYERS.map((layer) => (
+                <button
+                  key={layer.type}
+                  type="button"
+                  className={activeNvdbLayers.includes(layer.type) ? 'nvdb-toggle nvdb-toggle--active' : 'nvdb-toggle'}
+                  onClick={() => toggleNvdbLayer(layer.type)}
+                >
+                  {layer.label}
+                </button>
+              ))}
+              {showReports && (
+                <button
+                  type="button"
+                  className={concernHeatmapOn ? 'nvdb-toggle nvdb-toggle--active' : 'nvdb-toggle'}
+                  onClick={toggleConcernHeatmap}
+                >
+                  Bekymringsgrad
+                </button>
+              )}
+              <button
+                type="button"
+                className={sporOn ? 'nvdb-toggle nvdb-toggle--active nvdb-toggle--spor' : 'nvdb-toggle nvdb-toggle--spor'}
+                onClick={toggleSpor}
+              >
+                Sykkelspor
+              </button>
+              {sporOn && sporComps.length > 0 && (
+                <>
+                  <select className="spor-select" value={sporCompId} onChange={(e) => changeSporComp(e.target.value)} aria-label="Velg konkurranse">
+                    {sporComps.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                  <div className="spor-modes" role="group" aria-label="Transportmåte">
+                    {[['samlet', 'Samlet'], ['sykkel', 'Sykle'], ['gange', 'Gå']].map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        className={sporMode === value ? 'spor-mode spor-mode--on' : 'spor-mode'}
+                        onClick={() => changeSporMode(value)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           )}
         </div>
       )}
