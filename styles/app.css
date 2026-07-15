@@ -673,6 +673,57 @@
   font-weight: 500;
 }
 
+/* Label row that pairs a sheet-field label with an inline action such as
+   DictationButton, without disturbing the label's own spacing rules above. */
+.sheet-field__label-row {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: space-between;
+}
+
+.sheet-field__label-row .sheet-field__label {
+  margin-bottom: 0;
+}
+
+/* Voice dictation control (DictationButton) next to the description field —
+   only ever rendered client-side once Web Speech API support is detected. */
+.dictation-btn {
+  align-items: center;
+  background: var(--color-primary-tint);
+  border: none;
+  border-radius: var(--radius-pill);
+  color: var(--color-primary);
+  cursor: pointer;
+  display: inline-flex;
+  flex: none;
+  font-size: 0.78rem;
+  font-weight: 700;
+  gap: 0.3rem;
+  padding: 0.32rem 0.68rem;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.dictation-btn svg { flex: none; }
+
+.dictation-btn:active { transform: scale(0.97); }
+
+.dictation-btn--listening {
+  animation: dictation-pulse 1.4s ease-in-out infinite;
+  background: var(--color-danger);
+  color: #ffffff;
+}
+
+.dictation-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+@keyframes dictation-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(207, 67, 41, 0.35); }
+  50% { box-shadow: 0 0 0 6px rgba(207, 67, 41, 0); }
+}
+
 /* Category cards with icons */
 .category-grid {
   display: grid;

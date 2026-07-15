@@ -5,6 +5,7 @@ import { descriptionSuggestions } from '../lib/reportDescriptionSuggestions';
 import { REPORT_IMAGE_MAX_BYTES, REPORT_IMAGE_MAX_COUNT } from '../lib/reportImages';
 import { addMyReport } from '../lib/myReports';
 import BudTip from './BudTip';
+import DictationButton from './DictationButton';
 import { addPendingReport } from '../lib/offlineReportQueue';
 
 // Coordinates → a human place ("Marviksveien · Lund") so the reporter can
@@ -403,7 +404,13 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
               </div>
 
               <div className="sheet-field">
-                <label htmlFor="report-description" className="sheet-field__label">Fortell kort</label>
+                <div className="sheet-field__label-row">
+                  <label htmlFor="report-description" className="sheet-field__label">Fortell kort</label>
+                  <DictationButton
+                    value={form.description}
+                    onTranscript={(text) => setForm((current) => ({ ...current, description: text }))}
+                  />
+                </div>
                 {primaryCategory && (
                   <div className="suggestion-chips" role="group" aria-label="Forslag til beskrivelse">
                     {descriptionSuggestions(primaryCategory).map((phrase) => {
