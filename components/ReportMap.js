@@ -1298,8 +1298,14 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       if (pointRef.current) placeMarker(pointRef.current);
       onMapReadyRef.current?.({
         getCenter: () => {
-          const center = map.getCenter();
-          return { lng: center.lng, lat: center.lat };
+          // Use the geometric pixel-centre of the map container — exactly where
+          // the pick crosshair is drawn (CSS 50%/50%). map.getCenter() honours
+          // any lingering camera padding (e.g. the bottom:300 padding left by
+          // easeTo when viewing a case), which would return a point shifted
+          // north of the crosshair and make placed reports "jump" upward.
+          const el = map.getContainer();
+          const p = map.unproject([el.clientWidth / 2, el.clientHeight / 2]);
+          return { lng: p.lng, lat: p.lat };
         },
         flyTo: ({ lng, lat }) => map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 16), duration: 700 }),
         refreshReports: () => loadReports().catch((error) => console.error(error)),
