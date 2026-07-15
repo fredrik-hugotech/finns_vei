@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 
-// Gentle "add to home screen" helper. Non-intrusive: a slim, dismissible
-// one-time ribbon, plus a steps sheet that can also be reopened any time from
-// the top-bar "Installer app" link (via the 'ff-open-install' event). Hidden
-// entirely once the app is already installed (standalone display mode).
-const DISMISS_KEY = 'ff-install-dismissed';
+// Gentle "add to home screen" helper. Non-intrusive: a steps sheet, opened
+// either from the browser's own install prompt (Android/Chrome) or reopened
+// any time from the top-bar "Installer app" link (via the 'ff-open-install'
+// event). Hidden entirely once the app is already installed (standalone
+// display mode).
 
 function isStandalone() {
   if (typeof window === 'undefined') return false;

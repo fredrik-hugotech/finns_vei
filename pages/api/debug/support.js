@@ -1,5 +1,12 @@
 import { isDebugAuthorized, serverEnvStatus } from '../../../lib/envStatus';
 import { countReportSupports, getReportById, hasSupabaseConfig, sanitizeReportForDebug, syncReportSupportCount } from '../../../lib/supabaseRest';
+import { checkRequestRateLimit } from '../../../lib/rateLimit';
+
+// Secret-gated, but each call reads/writes Supabase - rate limit it like the
+// other secret-gated endpoints so a leaked/guessed DEBUG_SECRET can't be used
+// to hammer NVDB/Trello.
+const RATE_LIMIT = 10;
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -28,6 +35,12 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', ['GET']);
     return res.status(405).end('Method Not Allowed');
+  }
+
+  const rateLimit = checkRequestRateLimit(req, 'debug-support', RATE_LIMIT, RATE_LIMIT_WINDOW_MS);
+  if (!rateLimit.allowed) {
+    res.setHeader('Retry-After', Math.ceil(rateLimit.retryAfterMs / 1000));
+    return res.status(429).json({ error: 'For mange forsøk. Prøv igjen om litt.' });
   }
 
   if (!isDebugAuthorized(req)) {

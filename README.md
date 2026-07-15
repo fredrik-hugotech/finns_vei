@@ -144,8 +144,8 @@ per competition in the backoffice.
 **Privacy by design (children + GDPR):** raw GPS coordinates **never leave the
 device**. While tracking, the phone records the route only to draw the live line and
 compute distance. On stop, the device runs `clipAndSnapCells` (`lib/geoPrivacy.js`):
-it removes the segments within ~150 m of the start *and* end (protecting home and the
-exact destination), snaps the remainder to a coarse ~100 m grid, and uploads only that
+it removes the segment within ~50 m of the start (protecting home; the public
+destination is kept), snaps the remainder to a coarse ~100 m grid, and uploads only that
 **unordered set of cells** plus distance and duration. The published map is an
 aggregated heatmap (per-cell counts) — no individual route is ever stored or shown.
 No names are collected. The server re-snaps cells defensively in `createBikeTrip`.
