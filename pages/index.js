@@ -41,6 +41,13 @@ export default function Home() {
   const [tripResult, setTripResult] = useState(null); // { km, mode, weatherKind }
   const [message, setMessage] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
+  // Show the "Installer app" call-to-action only when the app isn't already
+  // running as an installed PWA — no point nagging people who've installed it.
+  const [canInstall, setCanInstall] = useState(false);
+  useEffect(() => {
+    const standalone = window.matchMedia?.('(display-mode: standalone)')?.matches || window.navigator.standalone === true;
+    setCanInstall(!standalone);
+  }, []);
   const [pendingQueueCount, setPendingQueueCount] = useState(0);
   const [pendingTripQueueCount, setPendingTripQueueCount] = useState(0);
   useEffect(() => {
@@ -402,6 +409,16 @@ export default function Home() {
               {pendingTripQueueCount === 1 ? '1 tur venter på å bli sendt' : `${pendingTripQueueCount} turer venter på å bli sendt`}
             </a>
           )}
+          {canInstall && (
+            <button
+              type="button"
+              className="app-install-cta"
+              onClick={() => { if (typeof window !== 'undefined') window.dispatchEvent(new Event('ff-open-install')); }}
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v12M8 11l4 4 4-4M5 21h14" /></svg>
+              Installer app
+            </button>
+          )}
           <div className="app-menu">
             <button
               type="button"
@@ -417,7 +434,6 @@ export default function Home() {
               <>
                 <button type="button" className="app-menu__backdrop" aria-hidden="true" tabIndex={-1} onClick={() => setMenuOpen(false)} />
                 <div className="app-menu__panel" role="menu">
-                  <button type="button" role="menuitem" className="app-menu__item" onClick={() => { setMenuOpen(false); if (typeof window !== 'undefined') window.dispatchEvent(new Event('ff-open-install')); }}>Installer app</button>
                   <a role="menuitem" className="app-menu__item" href="/mine-meldinger">Mine meldinger</a>
                   <a role="menuitem" className="app-menu__item" href="/mine-turer">Mine turer</a>
                   <a role="menuitem" className="app-menu__item app-menu__item--admin" href="/backoffice">Admin</a>

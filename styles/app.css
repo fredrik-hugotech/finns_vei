@@ -27,6 +27,27 @@
 /* Compact menu that keeps the secondary links (Installer app, Mine meldinger,
    Mine turer, Admin) out of the way during use — just one small button next to
    the brand, opening a dropdown. */
+/* Visible "Installer app" call-to-action in the topbar (the rest of the links
+   live behind the hamburger). Tinted so it invites a tap without shouting. */
+.app-install-cta {
+  align-items: center;
+  background: var(--color-primary-tint);
+  border: 1px solid #bcd6c8;
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-control);
+  color: var(--color-primary-dark);
+  display: inline-flex;
+  font-family: var(--font-heading);
+  font-size: 0.78rem;
+  font-weight: 700;
+  gap: 0.34rem;
+  min-height: 38px;
+  padding: 0.3rem 0.72rem 0.3rem 0.6rem;
+  white-space: nowrap;
+}
+.app-install-cta svg { color: var(--color-primary); flex: none; }
+.app-install-cta:active { transform: scale(0.97); }
+
 .app-menu { position: relative; }
 .app-menu__btn {
   align-items: center;
