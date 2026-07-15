@@ -598,10 +598,11 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   const [caseThread, setCaseThread] = useState(null);
   const [caseAccidents, setCaseAccidents] = useState(null);
   const [adminSecret, setAdminSecret] = useState(null);
-  // Public aerial-imagery toggle. Switching the base style wipes all custom
-  // sources/layers, so a style.load handler rebuilds them (see the map effect).
-  const [satellite, setSatellite] = useState(false);
-  const satelliteRef = useRef(false);
+  // Public aerial-imagery toggle. Aerial ("Flyfoto") is the default view;
+  // switching the base style wipes all custom sources/layers, so a style.load
+  // handler rebuilds them (see the map effect).
+  const [satellite, setSatellite] = useState(true);
+  const satelliteRef = useRef(true);
   // The Kartlag panel is collapsed to a compact pill on phones so it doesn't
   // crowd the topbar; it stays expanded on wider screens where there's room.
   const [layersOpen, setLayersOpen] = useState(() => (typeof window !== 'undefined' ? window.innerWidth > 720 : false));
@@ -1252,7 +1253,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
+      style: satelliteRef.current ? 'mapbox://styles/mapbox/satellite-streets-v12' : 'mapbox://styles/mapbox/streets-v12',
       center: pointRef.current ? [pointRef.current.lng, pointRef.current.lat] : DEFAULT_CENTER,
       zoom: selectable ? 13 : 11,
       attributionControl: false,
@@ -1260,6 +1261,13 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
 
     mapRef.current = map;
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
+    // "Zoom to my position" — the standard geolocate button under the zoom
+    // controls, so it's not just zoom in/out.
+    map.addControl(new mapboxgl.GeolocateControl({
+      positionOptions: { enableHighAccuracy: true },
+      trackUserLocation: false,
+      showUserHeading: false,
+    }), 'top-right');
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right');
 
     map.on('load', async () => {
