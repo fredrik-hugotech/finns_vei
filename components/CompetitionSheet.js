@@ -28,6 +28,18 @@ function formatKm(meters) {
   return ((Number(meters) || 0) / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 1 });
 }
 
+// A competition counts as "ended" once its end date has passed, or the
+// backoffice has explicitly switched it off — same rule the printable
+// diploma route (pages/api/og/konkurranse/[id]/sertifikat.js) uses, so the
+// link only shows up once there's actually a final result to print.
+function isCompetitionEnded(competition) {
+  if (!competition) return false;
+  if (competition.active === false) return true;
+  if (!competition.ends_on) return false;
+  const end = new Date(`${competition.ends_on}T23:59:59`);
+  return !Number.isNaN(end.getTime()) && end.getTime() < Date.now();
+}
+
 const RANK_CLASS = ['comp-row__rank--gold', 'comp-row__rank--silver', 'comp-row__rank--bronze'];
 
 export default function CompetitionSheet({ onClose, onPickStart, initialCompetitionId = null }) {
@@ -193,6 +205,16 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
                   ))}
                 </ol>
               </div>
+              {isCompetitionEnded(stats.competition) && (
+                <a
+                  className="comp-cert-link"
+                  href={`/api/og/konkurranse/${encodeURIComponent(stats.competition.id)}/sertifikat`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Icon name="trophy" size={16} /> Last ned diplom
+                </a>
+              )}
               {error && <div className="notice notice--error" role="status">{error}</div>}
             </>
           )}

@@ -2219,6 +2219,23 @@
   text-decoration: none;
 }
 
+/* Printable winner diploma link — only shown once a competition has ended */
+.comp-cert-link {
+  align-items: center;
+  background: var(--color-accent-tint);
+  border: 1px solid var(--color-accent-dark);
+  border-radius: var(--radius-md);
+  color: var(--color-accent-dark);
+  display: flex;
+  font-size: 0.9rem;
+  font-weight: 700;
+  gap: 0.4rem;
+  justify-content: center;
+  margin-top: 0.6rem;
+  min-height: 46px;
+  text-decoration: none;
+}
+
 /* ----------------------------------------------------------------------
    Larger screens: keep the app feel — sheets become centred floating cards,
    content sits in a comfortable column instead of stretching edge to edge.
