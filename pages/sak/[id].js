@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react';
 import Icon from '../../components/Icon';
 import Logo from '../../components/Logo';
 import { reportStatusMeta } from '../../lib/reportStatusMeta';
-import { getPublicReportById, hasSupabaseConfig } from '../../lib/supabaseRest';
+import { getPublicReportById, listCaseAttachments, hasSupabaseConfig } from '../../lib/supabaseRest';
 
-export default function SakPage({ report, shareUrl, ogImageUrl }) {
+export default function SakPage({ report, shareUrl, ogImageUrl, photos }) {
   const meta = reportStatusMeta(report.status);
   const title = `Finns Fairway – ${report.category}`;
   const description = report.description
@@ -19,6 +19,7 @@ export default function SakPage({ report, shareUrl, ogImageUrl }) {
   // client render before hydration flips this on.
   const [canShare, setCanShare] = useState(false);
   const [toast, setToast] = useState('');
+  const [lightbox, setLightbox] = useState(null);
 
   useEffect(() => {
     setCanShare(typeof navigator !== 'undefined' && Boolean(navigator.share || navigator.clipboard?.writeText));
@@ -83,6 +84,23 @@ export default function SakPage({ report, shareUrl, ogImageUrl }) {
               <p>{report.public_status_note}</p>
             </div>
           )}
+          {photos.length > 0 && (
+            <div className="share-card__gallery">
+              <strong className="share-card__gallery-title">Bilder fra oppfølgingen</strong>
+              <div className="share-card__gallery-grid">
+                {photos.map((photo) => (
+                  <button
+                    type="button"
+                    key={photo.id}
+                    className="share-card__gallery-thumb"
+                    onClick={() => setLightbox(photo.url)}
+                  >
+                    <img src={photo.url} alt={photo.filename || ''} loading="lazy" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <Link className="big-button big-button--primary" href={`/?sak=${encodeURIComponent(report.id)}`}>Åpne og støtt saken</Link>
           {canShare && (
             <button type="button" className="big-button big-button--secondary share-card__share" onClick={handleShare}>
@@ -92,6 +110,12 @@ export default function SakPage({ report, shareUrl, ogImageUrl }) {
         </section>
       </main>
       {toast && <div className="app-toast" role="status" onClick={() => setToast('')}>{toast}</div>}
+      {lightbox && (
+        <div className="lightbox" role="dialog" aria-modal="true" onClick={() => setLightbox(null)}>
+          <img src={lightbox} alt="Bilde i full størrelse" />
+          <button type="button" className="lightbox__close" aria-label="Lukk" onClick={() => setLightbox(null)}>✕</button>
+        </div>
+      )}
     </>
   );
 }
@@ -112,6 +136,19 @@ export async function getServerSideProps({ params, req }) {
     ? report.image_urls.find((image) => image && image.url)
     : null;
 
+  // Staff-uploaded case attachments marked "public" (e.g. proof a hazard was
+  // fixed). Best-effort: listCaseAttachments already swallows its own
+  // Supabase errors and resolves to [], so this never breaks the page.
+  let photos = [];
+  try {
+    const attachments = await listCaseAttachments(report.id, { publicOnly: true });
+    photos = (Array.isArray(attachments) ? attachments : [])
+      .filter((a) => a && a.url && String(a.content_type || '').startsWith('image/'))
+      .map((a) => ({ id: a.id, url: a.url, filename: a.filename || null }));
+  } catch (error) {
+    photos = [];
+  }
+
   const safe = {
     id: report.id || id,
     category: report.category || 'Sak',
@@ -127,5 +164,5 @@ export async function getServerSideProps({ params, req }) {
   const shareUrl = `${origin}/sak/${safe.id}`;
   const ogImageUrl = `${origin}/api/og/sak/${encodeURIComponent(safe.id)}`;
 
-  return { props: { report: safe, shareUrl, ogImageUrl } };
+  return { props: { report: safe, shareUrl, ogImageUrl, photos } };
 }
