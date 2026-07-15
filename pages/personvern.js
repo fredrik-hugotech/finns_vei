@@ -13,7 +13,7 @@ const POINTS = [
   },
   {
     title: 'Området rundt hjemmet skjules',
-    body: 'Når du logger en gå- eller sykkeltur, beskyttes de første ~150 meterne fra der du starter (ofte hjemme). Det punktet lagres aldri nøyaktig – det rundes av til et grovt rutenett før noe sendes.',
+    body: 'Når du logger en gå- eller sykkeltur, beskyttes de første ~50 meterne fra der du starter (ofte hjemme). Det punktet lagres aldri nøyaktig – det rundes av til et grovt rutenett før noe sendes.',
   },
   {
     title: 'Ruten bearbeides på telefonen din',
