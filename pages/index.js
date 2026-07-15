@@ -437,6 +437,7 @@ export default function Home() {
                   <a role="menuitem" className="app-menu__item" href="/aktuelt">Aktuelt</a>
                   <a role="menuitem" className="app-menu__item" href="/mine-meldinger">Mine meldinger</a>
                   <a role="menuitem" className="app-menu__item" href="/mine-turer">Mine turer</a>
+                  <a role="menuitem" className="app-menu__item" href="/personvern">Personvern</a>
                   <a role="menuitem" className="app-menu__item app-menu__item--admin" href="/backoffice">Admin</a>
                 </div>
               </>

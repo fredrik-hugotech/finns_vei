@@ -1097,6 +1097,36 @@
 }
 
 /* Anonymous "Mine turer" tracker (/mine-turer) */
+/* Personvern */
+.personvern-card { display: grid; gap: 0.7rem; }
+.personvern-list { display: grid; gap: 0.6rem; list-style: none; margin: 0.2rem 0 0; padding: 0; }
+.personvern-item {
+  align-items: start;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.7rem 0.75rem;
+}
+.personvern-item__check {
+  align-items: center;
+  background: var(--color-primary-tint);
+  border-radius: 50%;
+  color: var(--color-primary);
+  display: flex;
+  flex: none;
+  height: 28px;
+  justify-content: center;
+  margin-top: 0.05rem;
+  width: 28px;
+}
+.personvern-item__body { display: grid; gap: 0.18rem; }
+.personvern-item__body strong { font-size: 0.98rem; line-height: 1.25; }
+.personvern-item__body span { color: var(--color-muted); font-size: 0.88rem; line-height: 1.4; }
+.personvern-note { color: var(--color-muted); font-size: 0.88rem; margin: 0.3rem 0 0; }
+.personvern-note a { color: var(--color-primary); font-weight: 700; }
+
 /* Aktuelt — news + calendar + bud */
 .aktuelt-card { display: grid; gap: 0.9rem; }
 .aktuelt-section { display: grid; gap: 0.5rem; }
@@ -1273,6 +1303,24 @@
 }
 
 .comp-card:active { transform: scale(0.99); }
+
+/* "DEMO" tag on a demo competition */
+.comp-demo {
+  background: var(--color-accent-tint);
+  border: 1px solid #e2c47f;
+  border-radius: var(--radius-pill);
+  color: #8a5a00;
+  display: inline-block;
+  font-family: var(--font-heading);
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  margin-left: 0.4rem;
+  padding: 0.06rem 0.42rem;
+  transform: translateY(-1px);
+  vertical-align: middle;
+}
+.comp-demo-note { color: var(--color-muted); font-size: 0.82rem; margin: 0.1rem 0 0; }
 
 .comp-card__icon {
   flex: none;

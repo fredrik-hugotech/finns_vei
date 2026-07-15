@@ -24,6 +24,12 @@ function formatPeriod(competition) {
   return null;
 }
 
+// A competition counts as a demo if "demo" appears in its name or description
+// — no schema change needed, just name it e.g. "Demo – Sykle til trening".
+function isDemoComp(competition) {
+  return /\bdemo\b/i.test(competition?.name || '') || /\bdemo\b/i.test(competition?.description || '');
+}
+
 function formatKm(meters) {
   return ((Number(meters) || 0) / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 1 });
 }
@@ -143,7 +149,7 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
                   <button type="button" key={competition.id} className="comp-card" onClick={() => openDetail(competition)}>
                     <span className="comp-card__icon" aria-hidden="true"><Icon name="bike" size={22} /></span>
                     <span className="comp-card__body">
-                      <strong>{competition.name}</strong>
+                      <strong>{competition.name}{isDemoComp(competition) && <span className="comp-demo">DEMO</span>}</strong>
                       {formatPeriod(competition) && <span className="comp-card__period">{formatPeriod(competition)}</span>}
                       {competition.description && <span className="comp-card__desc">{competition.description}</span>}
                     </span>
@@ -159,7 +165,8 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
             <>
               <button type="button" className="comp-back" onClick={backToList}>‹ Alle konkurranser</button>
               <div className="support-intro">
-                <h2>{stats.competition.name}</h2>
+                <h2>{stats.competition.name}{isDemoComp(stats.competition) && <span className="comp-demo">DEMO</span>}</h2>
+                {isDemoComp(stats.competition) && <p className="comp-demo-note">Dette er en demo-konkurranse for å vise hvordan det fungerer.</p>}
                 {formatPeriod(stats.competition) && <p className="comp-period-line">{formatPeriod(stats.competition)}</p>}
                 {stats.competition.description && <p>{stats.competition.description}</p>}
               </div>
