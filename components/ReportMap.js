@@ -461,6 +461,29 @@ async function ensureReportCategorySymbolLayer(map) {
   }
 }
 
+// Give the aerial view a calm, branded feel without a Mapbox Studio style:
+// mute the satellite imagery (less saturation, a touch darker) so the coloured
+// report pins and route lines pop, and hide the commercial POI clutter (shop
+// and café brand labels). Best-effort — silently skips anything not present.
+function applyAerialTreatment(map) {
+  if (!map) return;
+  try {
+    if (map.getLayer('satellite')) {
+      map.setPaintProperty('satellite', 'raster-saturation', -0.4);
+      map.setPaintProperty('satellite', 'raster-brightness-max', 0.82);
+      map.setPaintProperty('satellite', 'raster-contrast', -0.08);
+    }
+    const layers = map.getStyle()?.layers || [];
+    for (const layer of layers) {
+      // Commercial points of interest (shops, cafés, brand pins) — not roads,
+      // places or transit, which stay for orientation.
+      if (/poi/i.test(layer.id) && !/transit/i.test(layer.id)) {
+        try { map.setLayoutProperty(layer.id, 'visibility', 'none'); } catch (_e) { /* skip */ }
+      }
+    }
+  } catch (_e) { /* best effort */ }
+}
+
 // Draw a competition's route density as weighted lines: every road segment is
 // coloured/sized by how many trips used it, so busy routes to/from venues stand
 // out as strong, bright lines and quiet ones stay faint. While the layer has
@@ -1271,6 +1294,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right');
 
     map.on('load', async () => {
+      if (satelliteRef.current) applyAerialTreatment(map);
       if (pointRef.current) placeMarker(pointRef.current);
       onMapReadyRef.current?.({
         getCenter: () => {
@@ -1324,6 +1348,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     let initialStyleSeen = false;
     map.on('style.load', () => {
       if (!initialStyleSeen) { initialStyleSeen = true; return; }
+      if (satelliteRef.current) applyAerialTreatment(map);
       if (pointRef.current) placeMarker(pointRef.current);
       loadReports().catch((error) => console.error(error));
       refreshNvdbLayers().catch((error) => console.error(error));
