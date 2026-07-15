@@ -1,6 +1,7 @@
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { KID_QUIZ } from '../lib/safetyCommandments';
+import { markBudCorrect } from '../lib/budProgress';
 
 // A quick, fun "sant eller usant" mini-quiz drawn from Finns 10 bud, shown
 // occasionally right after a trip (see TripCelebration) so the safety message
@@ -25,6 +26,13 @@ export default function BudQuiz() {
   const correctChoice = askTrue; // "Sant" is correct iff we're showing the true phrasing
   const answered = answer !== null;
   const isCorrect = answered && answer === correctChoice;
+
+  // Local-device-only progress tracking (lib/budProgress.js): note that this
+  // bud has been answered correctly at least once, so /bud can show a small
+  // "all done" badge once every kid commandment in the quiz has landed.
+  useEffect(() => {
+    if (isCorrect) markBudCorrect(item.n);
+  }, [isCorrect, item.n]);
 
   return (
     <div className="trip-cheer__bud trip-cheer__quiz">

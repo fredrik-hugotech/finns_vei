@@ -3249,6 +3249,41 @@ select.tkt-prop__ctrl { padding-right: 1.7rem; background-image: url("data:image
 .bud__body strong { display: block; font-size: 1.02rem; }
 .bud__body p { color: var(--color-text); font-size: 0.92rem; line-height: 1.45; margin: 0.15rem 0 0; }
 
+/* Read-aloud control (ReadAloudButton) — used both on the /bud list and in
+   the rotating BudTip card, so it's kept generic rather than scoped to
+   .bud__body. */
+.bud-read-btn {
+  align-items: center;
+  background: var(--color-primary-tint);
+  border: none;
+  border-radius: var(--radius-pill);
+  color: var(--color-primary);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.8rem;
+  font-weight: 700;
+  gap: 0.32rem;
+  margin-top: 0.5rem;
+  padding: 0.32rem 0.7rem;
+}
+.bud-read-btn svg { flex: none; }
+.bud-read-btn--speaking { background: var(--color-primary); color: #fff; }
+
+/* Quiz completion badge on /bud (lib/budProgress.js) */
+.bud-badge {
+  align-items: center;
+  background: var(--color-primary-tint);
+  border-radius: var(--radius-pill);
+  color: var(--color-primary);
+  display: inline-flex;
+  font-size: 0.92rem;
+  font-weight: 800;
+  gap: 0.4rem;
+  justify-self: center;
+  padding: 0.42rem 0.95rem;
+}
+.bud-badge svg { flex: none; }
+
 /* Case card: an explicit close button — the sheet has no dimming backdrop
    (so the map stays live), which made "how do I close this?" unclear. */
 .case-sheet__close {
