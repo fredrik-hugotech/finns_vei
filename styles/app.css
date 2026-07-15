@@ -3173,6 +3173,18 @@ select.tkt-prop__ctrl { padding-right: 1.7rem; background-image: url("data:image
   padding: 0.42rem 0.95rem;
 }
 .trip-cheer__weather svg { flex: none; }
+.trip-cheer__queued {
+  background: var(--color-surface-muted, rgba(0,0,0,0.04));
+  border-radius: var(--radius-md);
+  color: var(--color-muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0;
+  max-width: 22rem;
+  padding: 0.5rem 0.75rem;
+  text-align: center;
+}
 .trip-cheer__off {
   align-items: center;
   color: var(--color-muted);

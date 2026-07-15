@@ -13,7 +13,14 @@ const QUIZ_CHANCE = 1 / 3;
 // Shown to a child right after they log a trip. Praises the effort, shows how
 // far they went, calls out the weather bonus, and teaches one of Finns 10 bud
 // — instead of dropping them into the competition standings.
-export default function TripCelebration({ km, mode = 'sykkel', weatherKind = null, onDone }) {
+//
+// `queued` is true when the trip couldn't reach the server right away (e.g. a
+// tunnel/fjord dead zone right as tracking stopped) and was parked in
+// lib/offlineTripQueue.js for automatic resend instead. The trip still
+// happened and still counts, so the celebration itself doesn't change — only
+// a small, calm note is added so nobody mistakenly believes it's already on
+// the leaderboard when it's actually still waiting to sync.
+export default function TripCelebration({ km, mode = 'sykkel', weatherKind = null, queued = false, onDone }) {
   const verb = mode === 'gange' ? 'gikk' : 'syklet';
   const isPrecip = isPrecipKind(weatherKind);
   const weatherWord = weatherKind === 'snow' ? 'snøen' : weatherKind === 'sleet' ? 'sluddet' : 'regnet';
@@ -25,6 +32,12 @@ export default function TripCelebration({ km, mode = 'sykkel', weatherKind = nul
       <h1 className="kid-title">Bra jobba!</h1>
       <p className="kid-big-number">{km} km</p>
       <p className="kid-sub">Du {verb} {km} km i dag.</p>
+
+      {queued && (
+        <p className="trip-cheer__queued">
+          Turen er lagret på enheten – sendes automatisk når du får dekning igjen.
+        </p>
+      )}
 
       {isPrecip && (
         <div className="trip-cheer__weather">

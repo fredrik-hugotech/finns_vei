@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import Logo from '../components/Logo';
 import { getMyTrips } from '../lib/myTrips';
+import { TRIP_QUEUE_CHANGED_EVENT, flushTripQueue, getPendingTrips } from '../lib/offlineTripQueue';
 
 function formatDate(iso) {
   if (!iso) return '';
@@ -17,13 +18,40 @@ function formatKm(meters) {
 
 export default function MineTurer() {
   const [trips, setTrips] = useState(null); // null = not yet read from localStorage
+  const [pendingTrips, setPendingTrips] = useState([]); // queued on this device, not sent yet
 
   useEffect(() => {
     setTrips(getMyTrips());
   }, []);
 
+  // Same pattern as mine-meldinger.js's report queue: try to flush anything
+  // left over from a dead-zone trip finish as soon as this page loads (if
+  // already online) and again whenever the browser regains connectivity, and
+  // re-read "Mine turer" once a queued trip actually sends so it moves from
+  // "venter" into the confirmed list below.
+  useEffect(() => {
+    const refreshPending = () => setPendingTrips(getPendingTrips());
+    refreshPending();
+
+    const tryFlush = () => {
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+      flushTripQueue().then(() => {
+        refreshPending();
+        setTrips(getMyTrips());
+      }).catch(refreshPending);
+    };
+
+    tryFlush();
+    window.addEventListener('online', tryFlush);
+    window.addEventListener(TRIP_QUEUE_CHANGED_EVENT, refreshPending);
+    return () => {
+      window.removeEventListener('online', tryFlush);
+      window.removeEventListener(TRIP_QUEUE_CHANGED_EVENT, refreshPending);
+    };
+  }, []);
+
   const isLoading = trips === null;
-  const isEmpty = trips !== null && trips.length === 0;
+  const isEmpty = trips !== null && trips.length === 0 && pendingTrips.length === 0;
   const totalM = (trips || []).reduce((sum, entry) => sum + (Number(entry?.distanceM) || 0), 0);
 
   return (
@@ -41,6 +69,24 @@ export default function MineTurer() {
             Turer du har registrert fra denne enheten. Listen lagres kun i denne nettleseren — den er ikke knyttet til deg og forsvinner om du tømmer nettleserdata.
           </p>
 
+          {pendingTrips.length > 0 && (
+            <ul className="my-reports-list my-reports-list--pending">
+              {pendingTrips.map((entry) => {
+                const km = formatKm(entry.payload?.distanceM);
+                const modeLabel = entry.payload?.mode === 'gange' ? 'Gikk' : 'Syklet';
+                return (
+                  <li className="my-reports-item" key={entry.id}>
+                    <div className="my-reports-item__head">
+                      <span className="status-pill status-pill--ukjent">Venter på nett</span>
+                    </div>
+                    <strong className="my-reports-item__title">{km} km · {modeLabel}</strong>
+                    <p className="ui-small-text">Lagret på enheten – sendes automatisk når du får dekning igjen.</p>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
           {isLoading && <p className="ui-small-text">Laster …</p>}
 
           {isEmpty && (
@@ -50,7 +96,7 @@ export default function MineTurer() {
             </>
           )}
 
-          {!isLoading && !isEmpty && (
+          {!isLoading && trips.length > 0 && (
             <>
               <div className="my-trips-total">
                 <strong>{formatKm(totalM)} km</strong>
