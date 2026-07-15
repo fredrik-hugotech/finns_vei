@@ -1097,6 +1097,53 @@
 }
 
 /* Anonymous "Mine turer" tracker (/mine-turer) */
+/* Backoffice case "danger zone" — deliberate, type-to-confirm delete */
+.sak-danger { border-color: #e6c3ba !important; }
+.sak-danger h2 { color: var(--color-danger); }
+.sak-danger__arm {
+  background: transparent;
+  border: 1px solid #e0b3a8;
+  border-radius: var(--radius-md);
+  color: var(--color-danger);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 0.5rem 0.8rem;
+}
+.sak-danger__arm:hover { background: #fbeee9; }
+.sak-danger__box { display: grid; gap: 0.55rem; }
+.sak-danger__box p { color: var(--color-text); font-size: 0.9rem; line-height: 1.4; margin: 0; }
+.sak-danger__input {
+  border: 1.5px solid #e0b3a8;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  max-width: 12rem;
+  padding: 0.5rem 0.7rem;
+  text-transform: uppercase;
+}
+.sak-danger__input:focus { border-color: var(--color-danger); box-shadow: 0 0 0 3px rgba(207, 67, 41, 0.15); }
+.sak-danger__actions { display: flex; gap: 0.5rem; }
+.sak-danger__cancel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  cursor: pointer;
+  font-weight: 700;
+  padding: 0.55rem 0.9rem;
+}
+.sak-danger__go {
+  background: var(--color-danger);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-md);
+  color: #fff;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 0.55rem 0.9rem;
+}
+.sak-danger__go:disabled { cursor: not-allowed; opacity: 0.45; }
+
 /* Personvern */
 .personvern-card { display: grid; gap: 0.7rem; }
 .personvern-list { display: grid; gap: 0.6rem; list-style: none; margin: 0.2rem 0 0; padding: 0; }

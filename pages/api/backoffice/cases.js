@@ -4,6 +4,7 @@ import {
   listReportsForBackoffice,
   getReportById,
   updateReport,
+  deleteReport,
   addCaseStatusUpdate,
   getCaseTimeline,
   listCaseAttachments,
@@ -125,6 +126,14 @@ export default async function handler(req, res) {
         const email = req.body.assignee_email ? String(req.body.assignee_email).trim().toLowerCase() : null;
         await updateReport(id, { assignee_email: email });
         return res.status(200).json({ ok: true, assignee_email: email });
+      }
+
+      if (action === 'delete') {
+        // Extra server-side guard so a stray/replayed request can't delete a
+        // case — the client must send an explicit confirm flag.
+        if (req.body.confirm !== true) return res.status(400).json({ error: 'Sletting må bekreftes' });
+        await deleteReport(id);
+        return res.status(200).json({ ok: true, deleted: id });
       }
 
       if (action === 'add-internal') {

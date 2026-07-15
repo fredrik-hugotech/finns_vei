@@ -77,6 +77,9 @@ export default function SakDetalj() {
   const [siblings, setSiblings] = useState(null);
   const [place, setPlace] = useState(null);
   const [descOpen, setDescOpen] = useState(false);
+  const [deleteArmed, setDeleteArmed] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState('');
+  const [deleting, setDeleting] = useState(false);
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
   const load = useCallback(async () => {
@@ -163,6 +166,24 @@ export default function SakDetalj() {
     setStatus(next);
     try { await fetch('/api/backoffice/cases', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'set-status', id, status: next }) }); setFlash('Status oppdatert'); setTimeout(() => setFlash(''), 1600); }
     catch (_e) { setFlash('Kunne ikke endre status'); }
+  };
+
+  const deleteCase = async () => {
+    if (deleteConfirm.trim().toUpperCase() !== 'SLETT') return;
+    setDeleting(true); setFlash('');
+    try {
+      const r = await fetch('/api/backoffice/cases', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete', id, confirm: true }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { setFlash(d.error || 'Kunne ikke slette saken.'); setDeleting(false); return; }
+      router.replace('/backoffice/liste');
+    } catch (_e) {
+      setFlash('Kunne ikke slette saken.');
+      setDeleting(false);
+    }
   };
 
   const addNote = async () => {
@@ -434,6 +455,32 @@ export default function SakDetalj() {
                 <a href={data.trelloCardUrl} target="_blank" rel="noopener noreferrer">Åpne kortet i Trello ↗</a>
               </footer>
             )}
+
+            <section className="admin-section sak-danger">
+              <h2>Faresone</h2>
+              {!deleteArmed ? (
+                <button type="button" className="sak-danger__arm" onClick={() => setDeleteArmed(true)}>Slett denne saken …</button>
+              ) : (
+                <div className="sak-danger__box">
+                  <p>Dette sletter saken <b>permanent</b> og kan ikke angres. Skriv <b>SLETT</b> for å bekrefte.</p>
+                  <input
+                    className="sak-danger__input"
+                    value={deleteConfirm}
+                    onChange={(e) => setDeleteConfirm(e.target.value)}
+                    placeholder="SLETT"
+                    autoComplete="off"
+                    autoCapitalize="characters"
+                    spellCheck={false}
+                  />
+                  <div className="sak-danger__actions">
+                    <button type="button" className="sak-danger__cancel" onClick={() => { setDeleteArmed(false); setDeleteConfirm(''); }} disabled={deleting}>Avbryt</button>
+                    <button type="button" className="sak-danger__go" onClick={deleteCase} disabled={deleting || deleteConfirm.trim().toUpperCase() !== 'SLETT'}>
+                      {deleting ? 'Sletter …' : 'Slett saken permanent'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </section>
           </>
         )}
       </main>
