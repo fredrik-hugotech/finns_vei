@@ -90,10 +90,7 @@ export default function MineTurer() {
           {isLoading && <p className="ui-small-text">Laster …</p>}
 
           {isEmpty && (
-            <>
-              <p className="my-reports-empty">Ingen turer registrert ennå. Registrer en tur i sykkel-appen for å se den her.</p>
-              <Link className="big-button big-button--primary" href="/sykle">Registrer en tur</Link>
-            </>
+            <p className="my-reports-empty">Ingen turer registrert ennå. Start en tur fra konkurransen på forsiden — trykk på pokal-knappen på kartet — så dukker turene dine opp her.</p>
           )}
 
           {!isLoading && trips.length > 0 && (
