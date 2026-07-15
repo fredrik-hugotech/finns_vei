@@ -19,8 +19,14 @@ export default function MineMeldinger() {
   const [pendingReports, setPendingReports] = useState([]); // queued on this device, not sent yet
 
   useEffect(() => {
-    const refreshPending = () => setPendingReports(getPendingReports());
-    refreshPending();
+    // A queued report can flush automatically (e.g. the 'online' listener
+    // below, or another tab/page) while this page stays mounted — re-read the
+    // confirmed-reports list too, not just the pending count, so a report
+    // that just sent doesn't appear to vanish until a manual reload.
+    const refreshPending = () => {
+      setPendingReports(getPendingReports());
+      setEntries(getMyReports());
+    };
 
     const tryFlush = () => {
       if (typeof navigator !== 'undefined' && navigator.onLine === false) return;

@@ -5,7 +5,7 @@ import { checkRequestRateLimit } from '../../../lib/rateLimit';
 // Tight budget for a credential endpoint - 8 attempts per 10 minutes per IP
 // hash is generous for a staff member mistyping a password a few times, but
 // blunt for a script guessing passwords.
-const RATE_LIMIT = 30;
+const RATE_LIMIT = 8;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 
 export default async function handler(req, res) {
