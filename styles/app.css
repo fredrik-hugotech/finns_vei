@@ -835,6 +835,19 @@
   width: 22px;
 }
 
+/* Lightweight compression-in-progress label — sits over the thumbnail while
+   lib/imageCompression.js downscales the photo in the background. */
+.image-preview__status {
+  background: rgba(16, 48, 43, 0.82);
+  border-radius: var(--radius-sm);
+  bottom: 0.3rem;
+  color: #fff;
+  font-size: 0.68rem;
+  left: 0.3rem;
+  padding: 0.15rem 0.4rem;
+  position: absolute;
+}
+
 .optional-contact {
   gap: 0.4rem;
 }

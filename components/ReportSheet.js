@@ -3,6 +3,7 @@ import { REPORT_CATEGORIES, REPORTER_TYPES } from '../lib/config';
 import { categoryGlyph } from '../lib/reportCategoryGlyphs';
 import { descriptionSuggestions } from '../lib/reportDescriptionSuggestions';
 import { REPORT_IMAGE_MAX_BYTES, REPORT_IMAGE_MAX_COUNT } from '../lib/reportImages';
+import { compressImageFile } from '../lib/imageCompression';
 import { addMyReport } from '../lib/myReports';
 import BudTip from './BudTip';
 import { addPendingReport } from '../lib/offlineReportQueue';
@@ -170,12 +171,34 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
     resetAndClose();
   };
 
+  // Kicks off client-side compression (lib/imageCompression.js) for a
+  // just-added image in the background. Never awaited by the caller — the
+  // thumbnail shows "Komprimerer …" via compressStatus until this settles,
+  // and submitReport() just uploads whatever `file` the image entry holds at
+  // send time, compressed or not. compressImageFile() never rejects, but the
+  // catch here is a defensive backstop so a picked image can never get stuck
+  // showing "Komprimerer …" forever.
+  const runCompression = (id, file) => {
+    compressImageFile(file)
+      .then(({ file: outputFile, compressed }) => {
+        setImages((current) => current.map((image) => (
+          image.id === id ? { ...image, file: outputFile, compressStatus: compressed ? 'done' : 'skipped' } : image
+        )));
+      })
+      .catch(() => {
+        setImages((current) => current.map((image) => (
+          image.id === id ? { ...image, compressStatus: 'skipped' } : image
+        )));
+      });
+  };
+
   const addImages = (event) => {
     const selected = Array.from(event.target.files || []);
     event.target.value = '';
     if (!selected.length) return;
 
     const nextImages = [...images];
+    const toCompress = [];
     for (const file of selected) {
       if (nextImages.length >= REPORT_IMAGE_MAX_COUNT) {
         setStatus({ type: 'error', message: `Du kan legge ved maks ${REPORT_IMAGE_MAX_COUNT} bilder.` });
@@ -189,13 +212,20 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
         setStatus({ type: 'error', message: 'Et bilde er for stort. Maks 8 MB per bilde.' });
         continue;
       }
+      const id = `${file.name}-${file.lastModified}-${Math.random().toString(16).slice(2)}`;
       nextImages.push({
-        id: `${file.name}-${file.lastModified}-${Math.random().toString(16).slice(2)}`,
+        id,
         file,
         previewUrl: URL.createObjectURL(file),
+        // 'compressing' | 'done' | 'skipped' — drives the small status label
+        // under the thumbnail. Starts as 'compressing' for every accepted
+        // image; runCompression() below resolves it shortly after.
+        compressStatus: 'compressing',
       });
+      toCompress.push({ id, file });
     }
     setImages(nextImages);
+    toCompress.forEach(({ id, file }) => runCompression(id, file));
   };
 
   const removeImage = (id) => {
@@ -444,6 +474,9 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
                     {images.map((image, index) => (
                       <figure className="image-preview" key={image.id}>
                         <img src={image.previewUrl} alt={`Valgt bilde ${index + 1}`} />
+                        {image.compressStatus === 'compressing' && (
+                          <span className="image-preview__status" role="status">Komprimerer …</span>
+                        )}
                         <button type="button" onClick={() => removeImage(image.id)} aria-label="Fjern bilde">×</button>
                       </figure>
                     ))}
