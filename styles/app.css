@@ -1097,6 +1097,63 @@
 }
 
 /* Anonymous "Mine turer" tracker (/mine-turer) */
+/* Aktuelt — news + calendar + bud */
+.aktuelt-card { display: grid; gap: 0.9rem; }
+.aktuelt-section { display: grid; gap: 0.5rem; }
+.aktuelt-h2 {
+  color: var(--color-muted);
+  font-family: var(--font-heading);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  margin: 0;
+  text-transform: uppercase;
+}
+.aktuelt-list { display: grid; gap: 0.5rem; list-style: none; margin: 0; padding: 0; }
+.aktuelt-event {
+  align-items: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: flex;
+  gap: 0.7rem;
+  padding: 0.55rem 0.7rem;
+}
+.aktuelt-event__date {
+  align-items: center;
+  background: var(--color-primary-tint);
+  border-radius: var(--radius-sm);
+  color: var(--color-primary-dark);
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  line-height: 1.05;
+  min-width: 46px;
+  padding: 0.4rem 0.3rem;
+  text-align: center;
+}
+.aktuelt-event__date strong { font-family: var(--font-heading); font-size: 1.2rem; }
+.aktuelt-event__date span { font-size: 0.66rem; font-weight: 700; text-transform: uppercase; }
+.aktuelt-event__body { display: grid; gap: 0.12rem; }
+.aktuelt-event__body strong { font-size: 0.96rem; line-height: 1.25; }
+.aktuelt-event__meta { color: var(--color-muted); font-size: 0.8rem; }
+.aktuelt-news {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.aktuelt-news a,
+.aktuelt-news > strong {
+  color: var(--color-text);
+  display: grid;
+  gap: 0.18rem;
+  padding: 0.55rem 0.7rem;
+  text-decoration: none;
+}
+.aktuelt-news strong { font-size: 0.96rem; line-height: 1.25; }
+.aktuelt-news__sum { color: var(--color-muted); font-size: 0.84rem; line-height: 1.35; }
+.aktuelt-news__date { color: var(--color-muted); font-size: 0.74rem; font-weight: 600; }
+
 .my-trips-total {
   align-items: baseline;
   display: flex;
