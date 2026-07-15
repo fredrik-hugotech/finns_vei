@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { REPORT_STATUS } from '../lib/config';
+import { PUBLIC_UPDATE_TEMPLATES } from '../lib/caseUpdateTemplates';
 
 const STATUSES = Object.values(REPORT_STATUS);
 const SECRET_KEY = 'ff-admin-secret';
@@ -73,6 +74,15 @@ export default function CaseAdminPanel({ reportId, currentStatus, lat, lng, acci
     return s ? `${path}?secret=${encodeURIComponent(s)}` : path;
   };
 
+  // Prefills the public-update textarea from a canned phrase. If staff
+  // haven't typed anything yet, replace the placeholder-empty value
+  // outright; if they've already started writing, append the template on a
+  // new line instead of clobbering what they typed. Either way the result
+  // stays a plain editable string — this is a shortcut, not a locked choice.
+  const applyTemplate = (phrase) => {
+    setNote((current) => (current.trim() ? `${current.replace(/\s+$/, '')}\n${phrase}` : phrase));
+  };
+
   const dirty = (status && status !== currentStatus) || note.trim().length > 0;
 
   return (
@@ -138,6 +148,20 @@ export default function CaseAdminPanel({ reportId, currentStatus, lat, lng, acci
         <button type="button" className={noteMode === 'public' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setNoteMode('public')}>Offentlig oppdatering</button>
         <button type="button" className={noteMode === 'internal' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setNoteMode('internal')}>Internt notat</button>
       </div>
+      {noteMode === 'public' && (
+        <div className="suggestion-chips" role="group" aria-label="Hurtigsvar">
+          {PUBLIC_UPDATE_TEMPLATES.map((phrase) => (
+            <button
+              key={phrase}
+              type="button"
+              className="suggestion-chip"
+              onClick={() => applyTemplate(phrase)}
+            >
+              {phrase}
+            </button>
+          ))}
+        </div>
+      )}
       <textarea
         className="case-admin__note"
         value={note}
