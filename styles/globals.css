@@ -5,6 +5,7 @@
 @import './map.css';
 @import './popups.css';
 @import './app.css';
+@import './skolevei.css';
 
 * {
   box-sizing: border-box;
