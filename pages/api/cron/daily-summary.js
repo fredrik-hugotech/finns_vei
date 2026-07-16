@@ -1,6 +1,8 @@
 import { getReportsSince, hasSupabaseConfig } from '../../../lib/supabaseRest';
 import { buildDailySummaryEmail } from '../../../lib/dailySummaryEmail';
 import { siteBaseUrl } from '../../../lib/reportWorkflow';
+import { timingSafeEqualStrings } from '../../../lib/timingSafeEqualStrings';
+import { checkRequestRateLimit } from '../../../lib/rateLimit';
 
 // Daily digest of new reports, emailed to the team. Triggered by a Vercel cron
 // (see vercel.json). Until Slack is set up this is the notification channel.
@@ -16,6 +18,11 @@ const TO = process.env.SUMMARY_EMAIL_TO || 'post@finnsfairway.no';
 const FROM = process.env.SUMMARY_EMAIL_FROM || '';
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 
+// Secret-gated like the other cron/debug endpoints - rate limit it so a
+// leaked/guessed CRON_SECRET can't be used to hammer Supabase/Resend.
+const RATE_LIMIT = 10;
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+
 function log(event, details = {}) {
   console.log(JSON.stringify({ scope: 'cron/daily-summary', event, ...details }));
 }
@@ -24,9 +31,9 @@ function authorized(req) {
   const secret = process.env.CRON_SECRET;
   if (!secret) return true; // no secret configured — allow (e.g. local/dev)
   const header = req.headers.authorization || '';
-  if (header === `Bearer ${secret}`) return true;
+  if (timingSafeEqualStrings(header, `Bearer ${secret}`)) return true;
   // Manual trigger fallback: ?key=<secret>
-  return req.query?.key === secret;
+  return timingSafeEqualStrings(req.query?.key, secret);
 }
 
 async function sendEmail({ subject, html }) {
@@ -47,6 +54,13 @@ export default async function handler(req, res) {
     res.setHeader('Allow', ['GET', 'POST']);
     return res.status(405).end('Method Not Allowed');
   }
+
+  const rateLimit = checkRequestRateLimit(req, 'cron-daily-summary', RATE_LIMIT, RATE_LIMIT_WINDOW_MS);
+  if (!rateLimit.allowed) {
+    res.setHeader('Retry-After', Math.ceil(rateLimit.retryAfterMs / 1000));
+    return res.status(429).json({ error: 'For mange forsøk. Prøv igjen om litt.' });
+  }
+
   if (!authorized(req)) return res.status(401).json({ error: 'Unauthorized' });
   if (!hasSupabaseConfig()) return res.status(200).json({ ok: true, skipped: 'no supabase config' });
 

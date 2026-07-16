@@ -137,6 +137,13 @@ function Pill({ children, background = OCHRE, color = GREEN_DARK, fontSize = 26 
   );
 }
 
+// Public, unauthenticated route that runs a (bounded but non-trivial)
+// competition-stats aggregation on every request — cache at the edge so a
+// crawler or a hammered link doesn't force a fresh aggregation each time.
+// Certificate content only changes when a competition ends/updates, so a
+// short s-maxage with a longer stale-while-revalidate is plenty responsive.
+const CACHE_CONTROL = 's-maxage=300, stale-while-revalidate=3600';
+
 function renderCertificate({ badge, eyebrow, title, metricLabel, periodLabel, description, footer }) {
   return new ImageResponse(
     (
@@ -194,7 +201,7 @@ function renderCertificate({ badge, eyebrow, title, metricLabel, periodLabel, de
         </div>
       </div>
     ),
-    { width: WIDTH, height: HEIGHT },
+    { width: WIDTH, height: HEIGHT, headers: { 'Cache-Control': CACHE_CONTROL } },
   );
 }
 

@@ -82,6 +82,12 @@ function BrandMark({ size = 44 }) {
   );
 }
 
+// Public, unauthenticated route — cache at the edge so a crawler or a
+// hammered link doesn't force a fresh Supabase lookup + Satori render each
+// time. Case status/description can change, so a shorter s-maxage than the
+// competition certificate route.
+const CACHE_CONTROL = 's-maxage=60, stale-while-revalidate=600';
+
 function renderCard({ category, statusLabel, statusColor, description, footer }) {
   return new ImageResponse(
     (
@@ -148,7 +154,7 @@ function renderCard({ category, statusLabel, statusColor, description, footer })
        </div>
       </div>
     ),
-    { width: WIDTH, height: HEIGHT },
+    { width: WIDTH, height: HEIGHT, headers: { 'Cache-Control': CACHE_CONTROL } },
   );
 }
 
