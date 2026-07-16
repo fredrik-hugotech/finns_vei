@@ -4,7 +4,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { DEFAULT_CENTER } from '../lib/config';
 import { MAP_COLORS, MAP_STYLE } from '../lib/mapStyleConfig';
 
-// Loaded via next/dynamic with ssr:false from pages/skolevei.js (same
+// Loaded via next/dynamic with ssr:false from pages/din-vei.js (same
 // convention as ReportMap.js) because mapboxgl.accessToken below runs at
 // module-import time and touches browser-only globals.
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
@@ -12,22 +12,22 @@ mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 const EMPTY_FC = { type: 'FeatureCollection', features: [] };
 
 const SOURCE = {
-  corridor: 'skolevei-corridor',
-  line: 'skolevei-line',
-  accidents: 'skolevei-accidents',
-  reports: 'skolevei-reports',
-  points: 'skolevei-points',
+  corridor: 'dinvei-corridor',
+  line: 'dinvei-line',
+  accidents: 'dinvei-accidents',
+  reports: 'dinvei-reports',
+  points: 'dinvei-points',
 };
 
-// `path` is the full array of tapped points (home first, school last once
-// the route is finished). Interior points get role 'waypoint' (plain dot,
-// no letter) so only the true endpoints are labelled H/S.
+// `path` is the full array of tapped points (start first, end last once the
+// route is finished). Interior points get role 'waypoint' (plain dot, no
+// letter) so only the true endpoints are labelled A/B.
 function pointsFeatureCollection(path) {
   if (!Array.isArray(path) || path.length === 0) return EMPTY_FC;
   const features = path.map((point, index) => {
     let role = 'waypoint';
-    if (index === 0) role = 'home';
-    else if (index === path.length - 1 && path.length > 1) role = 'school';
+    if (index === 0) role = 'start';
+    else if (index === path.length - 1 && path.length > 1) role = 'end';
     return {
       type: 'Feature',
       geometry: { type: 'Point', coordinates: [point.lng, point.lat] },
@@ -63,7 +63,7 @@ function corridorFeatureCollection(rings) {
   };
 }
 
-export default function SkoleveiMap({
+export default function DinVeiMap({
   className,
   path,
   corridorRings,
@@ -115,13 +115,13 @@ export default function SkoleveiMap({
     map.on('load', () => {
       map.addSource(SOURCE.corridor, { type: 'geojson', data: EMPTY_FC });
       map.addLayer({
-        id: 'skolevei-corridor-fill',
+        id: 'dinvei-corridor-fill',
         type: 'fill',
         source: SOURCE.corridor,
         paint: { 'fill-color': MAP_COLORS.accidentLayer, 'fill-opacity': 0.14 },
       });
       map.addLayer({
-        id: 'skolevei-corridor-outline',
+        id: 'dinvei-corridor-outline',
         type: 'line',
         source: SOURCE.corridor,
         paint: { 'line-color': MAP_COLORS.accidentLayer, 'line-width': 1.5, 'line-opacity': 0.55 },
@@ -129,7 +129,7 @@ export default function SkoleveiMap({
 
       map.addSource(SOURCE.line, { type: 'geojson', data: EMPTY_FC });
       map.addLayer({
-        id: 'skolevei-line',
+        id: 'dinvei-line',
         type: 'line',
         source: SOURCE.line,
         layout: { 'line-cap': 'round', 'line-join': 'round' },
@@ -138,7 +138,7 @@ export default function SkoleveiMap({
 
       map.addSource(SOURCE.accidents, { type: 'geojson', data: EMPTY_FC });
       map.addLayer({
-        id: 'skolevei-accidents',
+        id: 'dinvei-accidents',
         type: 'circle',
         source: SOURCE.accidents,
         filter: ['==', ['geometry-type'], 'Point'],
@@ -147,7 +147,7 @@ export default function SkoleveiMap({
 
       map.addSource(SOURCE.reports, { type: 'geojson', data: EMPTY_FC });
       map.addLayer({
-        id: 'skolevei-reports',
+        id: 'dinvei-reports',
         type: 'circle',
         source: SOURCE.reports,
         paint: {
@@ -161,23 +161,23 @@ export default function SkoleveiMap({
 
       map.addSource(SOURCE.points, { type: 'geojson', data: EMPTY_FC });
       map.addLayer({
-        id: 'skolevei-points-circle',
+        id: 'dinvei-points-circle',
         type: 'circle',
         source: SOURCE.points,
         paint: {
-          'circle-radius': ['match', ['get', 'role'], 'home', 11, 'school', 11, 5],
-          'circle-color': ['match', ['get', 'role'], 'home', '#0b5d4d', 'school', '#B45309', '#0b5d4d'],
+          'circle-radius': ['match', ['get', 'role'], 'start', 11, 'end', 11, 5],
+          'circle-color': ['match', ['get', 'role'], 'start', '#0b5d4d', 'end', '#B45309', '#0b5d4d'],
           'circle-opacity': ['match', ['get', 'role'], 'waypoint', 0.85, 0.97],
           'circle-stroke-color': MAP_COLORS.white,
           'circle-stroke-width': ['match', ['get', 'role'], 'waypoint', 2, 3],
         },
       });
       map.addLayer({
-        id: 'skolevei-points-label',
+        id: 'dinvei-points-label',
         type: 'symbol',
         source: SOURCE.points,
         layout: {
-          'text-field': ['match', ['get', 'role'], 'home', 'H', 'school', 'S', ''],
+          'text-field': ['match', ['get', 'role'], 'start', 'A', 'end', 'B', ''],
           'text-size': 12,
           'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
           'text-allow-overlap': true,
