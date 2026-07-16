@@ -3697,4 +3697,173 @@ select.tkt-prop__ctrl { padding-right: 1.7rem; background-image: url("data:image
 .phone-away__bud { background: rgba(255, 255, 255, 0.1); border-radius: 999px; color: #8fe3c4; font-size: 0.76rem; font-weight: 700; letter-spacing: 0.05em; margin: 0.5rem 0 0.2rem; padding: 0.32rem 0.85rem; text-transform: uppercase; }
 .phone-away__ok { background: #fff; color: var(--color-primary); margin-top: 0.9rem; max-width: 16rem; width: 100%; }
 .phone-away__ok:hover { background: #fff; filter: brightness(0.97); }
+
+/* "Sjekk et sted" — slim single-point safety-check page. Full-screen map with
+   a top instruction pill and a bottom result sheet, in the same visual
+   language as the rest of the app but its own small class family so it
+   doesn't entangle with ReportMap's case sheet. */
+.sjekk-app { inset: 0; overflow: hidden; position: fixed; }
+
+.sjekk-topbar {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  left: max(0.7rem, env(safe-area-inset-left));
+  position: absolute;
+  top: max(0.7rem, env(safe-area-inset-top));
+  z-index: var(--z-map-control);
+}
+
+.sjekk-back {
+  align-items: center;
+  background: var(--color-surface);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-control);
+  color: var(--color-text);
+  display: inline-flex;
+  font-size: 0.82rem;
+  font-weight: 700;
+  gap: 0.35rem;
+  padding: 0.42rem 0.8rem 0.42rem 0.6rem;
+  text-decoration: none;
+}
+
+.sjekk-hint {
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-control);
+  color: var(--color-text);
+  font-size: 0.88rem;
+  font-weight: 600;
+  margin: 0;
+  max-width: 15.5rem;
+  padding: 0.55rem 0.75rem;
+}
+
+.sjekk-sheet {
+  background: var(--color-surface);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  bottom: 0;
+  box-shadow: var(--shadow-popup);
+  display: grid;
+  gap: 0.75rem;
+  left: 0;
+  max-height: 68dvh;
+  overflow-y: auto;
+  padding: 1rem 1.1rem calc(1.1rem + env(safe-area-inset-bottom));
+  position: absolute;
+  right: 0;
+  z-index: var(--z-map-control);
+}
+
+.sjekk-sheet__head { display: grid; gap: 0.15rem; justify-items: start; }
+.sjekk-sheet__title { font-size: 1.15rem; margin: 0.2rem 0 0; }
+.sjekk-sheet__radius { color: var(--color-muted); font-size: 0.82rem; margin: 0; }
+
+.sjekk-loading,
+.sjekk-empty,
+.sjekk-muted {
+  color: var(--color-muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.sjekk-empty { line-height: 1.4; }
+
+.sjekk-groups { display: grid; gap: 1rem; }
+
+.sjekk-group__title {
+  align-items: center;
+  display: flex;
+  font-size: 0.95rem;
+  gap: 0.4rem;
+  margin: 0 0 0.4rem;
+}
+
+.sjekk-group__count {
+  background: var(--color-surface-muted);
+  border-radius: var(--radius-pill);
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.08rem 0.5rem;
+}
+
+.sjekk-list {
+  display: grid;
+  gap: 0.6rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sjekk-report {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: flex;
+  gap: 0.55rem;
+  padding: 0.6rem 0.7rem;
+}
+
+.sjekk-report__glyph {
+  color: var(--color-primary);
+  flex: none;
+  height: 1.3rem;
+  width: 1.3rem;
+}
+.sjekk-report__glyph svg { height: 100%; width: 100%; }
+
+.sjekk-report__body { display: grid; gap: 0.25rem; min-width: 0; }
+
+.sjekk-report__head {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: space-between;
+}
+
+.sjekk-report__desc {
+  color: var(--color-text);
+  font-size: 0.85rem;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.sjekk-report__meta {
+  color: var(--color-muted);
+  font-size: 0.76rem;
+}
+
+.sjekk-report__link {
+  color: var(--color-primary);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+  width: fit-content;
+}
+
+.sjekk-accident {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.55rem 0.7rem;
+}
+
+.sjekk-accident__severity {
+  color: var(--color-warning);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.sjekk-more { padding: 0.2rem 0.1rem; }
+
+.sjekk-reset { margin-top: 0.2rem; }
+
+@media (min-width: 720px) {
+  .sjekk-sheet { left: max(1rem, calc(50% - 220px)); max-width: 440px; right: auto; }
+}
 @media (prefers-reduced-motion: reduce) { .phone-away { animation: none; } }
