@@ -195,6 +195,76 @@
   text-align: center;
 }
 
+.skolevei-section {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.skolevei-section-title {
+  color: var(--color-text);
+  font-family: var(--font-heading);
+  font-size: 0.86rem;
+  margin: 0;
+}
+
+/* Small colour-coded dot used inline in the severity breakdown row. */
+.severity-dot {
+  border-radius: 50%;
+  flex: none;
+  height: 10px;
+  width: 10px;
+}
+
+.severity-dot--fatal { background: #b91c1c; }
+.severity-dot--serious { background: #6D233F; }
+.severity-dot--minor { background: #a9600d; }
+.severity-dot--unknown { background: var(--color-muted); }
+
+/* Per-accident severity badge, same shape/sizing as .status-pill (reports)
+   so the two list styles read as one family. */
+.severity-pill {
+  align-items: center;
+  align-self: start;
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  padding: 0.22rem 0.56rem;
+}
+
+.severity-pill--fatal { background: #fbdada; color: #7f1d1d; }
+.severity-pill--serious { background: #f1dee4; color: #6D233F; }
+.severity-pill--minor { background: #f6ecda; color: #a9600d; }
+.severity-pill--unknown { background: var(--color-surface-muted); color: var(--color-muted); }
+
+.skolevei-accident-list {
+  display: grid;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.skolevei-accident-item {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.55rem 0.7rem;
+}
+
+.skolevei-accident-item__title {
+  color: var(--color-text);
+  font-size: 0.92rem;
+}
+
+.skolevei-accident-item__meta {
+  color: var(--color-muted);
+  font-size: 0.76rem;
+}
+
 .skolevei-report-list {
   display: grid;
   gap: 0.5rem;

@@ -12,6 +12,11 @@ import {
   filterFeaturesInCorridor,
   haversineDistanceMeters,
 } from '../lib/corridorGeometry';
+import {
+  ACCIDENT_SEVERITY_META,
+  ACCIDENT_SEVERITY_ORDER,
+  normalizeAccidentSeverity,
+} from '../lib/accidentSeverity';
 
 // mapboxgl touches browser-only globals at module-import time (same reason
 // ReportMap.js is always loaded this way from every page that uses it).
@@ -39,6 +44,10 @@ function formatDate(iso) {
 function formatMeters(value) {
   const rounded = Math.round(Number(value) || 0);
   return `${rounded} m`;
+}
+
+function accidentTypeLabel(properties = {}) {
+  return properties.accident_type || 'Trafikkulykke';
 }
 
 export default function SkoleveiSjekk() {
@@ -127,12 +136,21 @@ export default function SkoleveiSjekk() {
         breakdown.set(category, (breakdown.get(category) || 0) + 1);
       });
 
+      const severityCounts = new Map();
+      matchedAccidents.forEach(({ feature }) => {
+        const severity = normalizeAccidentSeverity(feature.properties?.severity);
+        severityCounts.set(severity, (severityCounts.get(severity) || 0) + 1);
+      });
+
       setResult({
         matchedReports,
         matchedAccidents,
         categoryBreakdown: Array.from(breakdown.entries())
           .map(([category, count]) => ({ category, count }))
           .sort((a, b) => b.count - a.count),
+        accidentSeverityBreakdown: ACCIDENT_SEVERITY_ORDER
+          .map((severity) => ({ severity, count: severityCounts.get(severity) || 0 }))
+          .filter((entry) => entry.count > 0),
         accidentsUnavailable,
         routeLengthM: haversineDistanceMeters(home, school),
       });
@@ -145,6 +163,7 @@ export default function SkoleveiSjekk() {
         matchedReports: [],
         matchedAccidents: [],
         categoryBreakdown: [],
+        accidentSeverityBreakdown: [],
         accidentsUnavailable: true,
         routeLengthM: haversineDistanceMeters(home, school),
       });
@@ -252,46 +271,98 @@ export default function SkoleveiSjekk() {
                 <p className="skolevei-note">Ulykkesdata er ikke tilgjengelig akkurat nå. Meldinger under er ikke påvirket.</p>
               )}
 
-              {result.categoryBreakdown.length > 0 && (
-                <ul className="skolevei-breakdown">
-                  {result.categoryBreakdown.map((entry) => (
-                    <li key={entry.category} className="skolevei-breakdown__item">
-                      <span className="skolevei-breakdown__glyph" dangerouslySetInnerHTML={{ __html: categoryGlyph(entry.category) }} />
-                      <span className="skolevei-breakdown__label">{entry.category}</span>
-                      <span className="skolevei-breakdown__count">{entry.count}</span>
-                    </li>
-                  ))}
-                </ul>
+              {result.matchedAccidents.length > 0 && (
+                <div className="skolevei-section">
+                  <h2 className="skolevei-section-title">Ulykker langs ruten</h2>
+
+                  {result.accidentSeverityBreakdown.length > 0 && (
+                    <ul className="skolevei-breakdown">
+                      {result.accidentSeverityBreakdown.map((entry) => (
+                        <li key={entry.severity} className="skolevei-breakdown__item">
+                          <span className={`severity-dot severity-dot--${entry.severity}`} aria-hidden="true" />
+                          <span className="skolevei-breakdown__label">{ACCIDENT_SEVERITY_META[entry.severity].label}</span>
+                          <span className="skolevei-breakdown__count">{entry.count}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  <ul className="skolevei-accident-list">
+                    {result.matchedAccidents
+                      .slice()
+                      .sort((a, b) => (
+                        ACCIDENT_SEVERITY_ORDER.indexOf(normalizeAccidentSeverity(a.feature.properties?.severity))
+                        - ACCIDENT_SEVERITY_ORDER.indexOf(normalizeAccidentSeverity(b.feature.properties?.severity))
+                      ))
+                      .map(({ feature, distanceM }) => {
+                        const properties = feature.properties || {};
+                        const severity = normalizeAccidentSeverity(properties.severity);
+                        const key = properties.id || `${feature.geometry?.coordinates?.join(',')}-${properties.year || ''}`;
+                        return (
+                          <li key={key} className="skolevei-accident-item">
+                            <span
+                              className={`severity-pill severity-pill--${severity}`}
+                              title={ACCIDENT_SEVERITY_META[severity].label}
+                            >
+                              {ACCIDENT_SEVERITY_META[severity].shortLabel}
+                            </span>
+                            <strong className="skolevei-accident-item__title">{accidentTypeLabel(properties)}</strong>
+                            <span className="skolevei-accident-item__meta">
+                              {formatMeters(distanceM)} fra ruten{properties.year ? ` · ${properties.year}` : ''}
+                            </span>
+                          </li>
+                        );
+                      })}
+                  </ul>
+                </div>
               )}
 
-              {result.matchedReports.length === 0 ? (
-                <p className="skolevei-empty">Ingen meldte farer funnet langs denne skoleveien. Bra tegn – men sjekk alltid selv også.</p>
-              ) : (
-                <ul className="skolevei-report-list">
-                  {result.matchedReports.map(({ feature, distanceM }) => {
-                    const id = reportIdFromFeature(feature);
-                    const properties = feature.properties || {};
-                    const meta = reportStatusMeta(properties.status);
-                    return (
-                      <li key={id || `${feature.geometry?.coordinates?.join(',')}`} className="skolevei-report-item">
-                        <Link href={id ? `/sak/${id}` : '#'} className="skolevei-report-item__link">
-                          <span
-                            className={`status-pill status-pill--${meta.key}`}
-                            dangerouslySetInnerHTML={{ __html: `${meta.icon}<span>${meta.label}</span>` }}
-                          />
-                          <strong className="skolevei-report-item__title">{properties.category || 'Melding'}</strong>
-                          <span className="skolevei-report-item__meta">
-                            {formatMeters(distanceM)} fra ruten{properties.created_at ? ` · ${formatDate(properties.created_at)}` : ''}
-                          </span>
-                          {properties.description && (
-                            <span className="skolevei-report-item__desc">{String(properties.description).slice(0, 140)}</span>
-                          )}
-                        </Link>
+              <div className="skolevei-section">
+                {(result.categoryBreakdown.length > 0 || result.matchedReports.length > 0) && (
+                  <h2 className="skolevei-section-title">Meldte farer</h2>
+                )}
+
+                {result.categoryBreakdown.length > 0 && (
+                  <ul className="skolevei-breakdown">
+                    {result.categoryBreakdown.map((entry) => (
+                      <li key={entry.category} className="skolevei-breakdown__item">
+                        <span className="skolevei-breakdown__glyph" dangerouslySetInnerHTML={{ __html: categoryGlyph(entry.category) }} />
+                        <span className="skolevei-breakdown__label">{entry.category}</span>
+                        <span className="skolevei-breakdown__count">{entry.count}</span>
                       </li>
-                    );
-                  })}
-                </ul>
-              )}
+                    ))}
+                  </ul>
+                )}
+
+                {result.matchedReports.length === 0 ? (
+                  <p className="skolevei-empty">Ingen meldte farer funnet langs denne skoleveien. Bra tegn – men sjekk alltid selv også.</p>
+                ) : (
+                  <ul className="skolevei-report-list">
+                    {result.matchedReports.map(({ feature, distanceM }) => {
+                      const id = reportIdFromFeature(feature);
+                      const properties = feature.properties || {};
+                      const meta = reportStatusMeta(properties.status);
+                      return (
+                        <li key={id || `${feature.geometry?.coordinates?.join(',')}`} className="skolevei-report-item">
+                          <Link href={id ? `/sak/${id}` : '#'} className="skolevei-report-item__link">
+                            <span
+                              className={`status-pill status-pill--${meta.key}`}
+                              dangerouslySetInnerHTML={{ __html: `${meta.icon}<span>${meta.label}</span>` }}
+                            />
+                            <strong className="skolevei-report-item__title">{properties.category || 'Melding'}</strong>
+                            <span className="skolevei-report-item__meta">
+                              {formatMeters(distanceM)} fra ruten{properties.created_at ? ` · ${formatDate(properties.created_at)}` : ''}
+                            </span>
+                            {properties.description && (
+                              <span className="skolevei-report-item__desc">{String(properties.description).slice(0, 140)}</span>
+                            )}
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
             </div>
           )}
         </section>
