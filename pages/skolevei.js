@@ -7,10 +7,11 @@ import { reportStatusMeta } from '../lib/reportStatusMeta';
 import { categoryGlyph } from '../lib/reportCategoryGlyphs';
 import {
   CORRIDOR_BUFFER_RADIUS_M,
-  buildCorridorPolygonRing,
-  corridorBbox,
-  filterFeaturesInCorridor,
-  haversineDistanceMeters,
+  MIN_ROUTE_POINTS,
+  buildRouteCorridorPolygons,
+  filterFeaturesInPathCorridor,
+  pathBbox,
+  routeLengthMeters,
 } from '../lib/corridorGeometry';
 import {
   ACCIDENT_SEVERITY_META,
@@ -54,68 +55,63 @@ export default function SkoleveiSjekk() {
   const mapApiRef = useRef(null);
   const handleMapReady = useCallback((api) => { mapApiRef.current = api; }, []);
 
-  const [home, setHome] = useState(null); // { lng, lat } | null
-  const [school, setSchool] = useState(null);
-  // Which point the next map tap sets. Starts on 'home'; becomes null once
-  // both points are set (a plain tap on the map no longer moves anything —
-  // the "Velg på nytt" buttons are the only way back into picking mode).
-  const [picking, setPicking] = useState('home');
+  // The hand-drawn route: home first, then one tap per point along the way
+  // the child actually walks/cycles, school last. `drawing` is true while
+  // taps still append to the path; the "Fullfør skolevei" button turns it
+  // off, and "Rediger rute" turns it back on to keep extending the route.
+  const [path, setPath] = useState([]); // [{ lng, lat }, ...]
+  const [drawing, setDrawing] = useState(true);
 
   const [result, setResult] = useState(null); // { matchedReports, matchedAccidents, categoryBreakdown, routeLengthM, accidentsUnavailable }
   const [loading, setLoading] = useState(false);
 
-  const bothPicked = Boolean(home && school);
+  const routeReady = path.length >= MIN_ROUTE_POINTS && !drawing;
 
-  const corridorRing = useMemo(() => {
-    if (!home || !school) return null;
-    return buildCorridorPolygonRing(home, school, CORRIDOR_BUFFER_RADIUS_M);
-  }, [home, school]);
+  const corridorRings = useMemo(() => {
+    if (path.length < MIN_ROUTE_POINTS) return null;
+    return buildRouteCorridorPolygons(path, CORRIDOR_BUFFER_RADIUS_M);
+  }, [path]);
 
   const handleMapClick = useCallback((point) => {
-    if (picking === 'home') {
-      haptic(10);
-      setHome(point);
-      setPicking((current) => (school ? null : 'school'));
-    } else if (picking === 'school') {
-      haptic(10);
-      setSchool(point);
-      setPicking(null);
-    }
-    // picking === null: both points are set and the user isn't redoing one
-    // right now — an ordinary tap on the map does nothing.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [picking, school]);
+    if (!drawing) return; // route finished — "Rediger rute" re-enables tapping
+    haptic(10);
+    setPath((current) => [...current, point]);
+  }, [drawing]);
 
-  const pickHome = () => { haptic(8); setPicking('home'); };
-  const pickSchool = () => { haptic(8); setPicking('school'); };
+  const undoLastPoint = () => { haptic(8); setPath((current) => current.slice(0, -1)); };
+  const finishRoute = () => { haptic(8); setDrawing(false); };
+  const editRoute = () => { haptic(8); setDrawing(true); };
   const resetAll = () => {
     haptic(8);
-    setHome(null);
-    setSchool(null);
-    setPicking('home');
+    setPath([]);
+    setDrawing(true);
     setResult(null);
   };
 
-  // Fly/fit the map whenever the set of picked points changes, so the
-  // corridor and its buffer are always in view without the user having to
-  // pan/zoom manually.
+  // Two deliberate camera moves only — zoom in once home is tapped, then
+  // fit the whole route once "Fullfør skolevei" is pressed. No re-fit on
+  // every intermediate waypoint tap: the user is actively panning/tapping
+  // within the current view while drawing, and refitting after each tap
+  // would fight their own camera control.
   useEffect(() => {
-    const points = [home, school].filter(Boolean);
-    if (points.length > 0) mapApiRef.current?.fitToPoints?.(points);
-  }, [home?.lng, home?.lat, school?.lng, school?.lat]);
+    if (drawing && path.length === 1) mapApiRef.current?.fitToPoints?.(path);
+    else if (!drawing && path.length >= MIN_ROUTE_POINTS) mapApiRef.current?.fitToPoints?.(path);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawing, path.length]);
 
   // Fetch existing public data (reports + NVDB accident layer) and filter to
-  // the corridor once both points are picked. Read-only, uses only the
-  // app's already-public endpoints — no new secret/service, nothing written.
+  // the route's corridor once the route is finished. Read-only, uses only
+  // the app's already-public endpoints — no new secret/service, nothing
+  // written.
   useEffect(() => {
-    if (!home || !school) {
+    if (!routeReady) {
       setResult(null);
       return undefined;
     }
     let cancelled = false;
     setLoading(true);
 
-    const bbox = corridorBbox(home, school, CORRIDOR_BUFFER_RADIUS_M).map((v) => v.toFixed(6)).join(',');
+    const bbox = pathBbox(path, CORRIDOR_BUFFER_RADIUS_M).map((v) => v.toFixed(6)).join(',');
 
     Promise.all([
       fetch('/api/reports').then((r) => (r.ok ? r.json() : null)).catch(() => null),
@@ -123,8 +119,8 @@ export default function SkoleveiSjekk() {
     ]).then(([reportsGeo, accidentsGeo]) => {
       if (cancelled) return;
 
-      const matchedReports = filterFeaturesInCorridor(reportsGeo?.features || [], home, school, CORRIDOR_BUFFER_RADIUS_M);
-      const matchedAccidents = filterFeaturesInCorridor(accidentsGeo?.features || [], home, school, CORRIDOR_BUFFER_RADIUS_M);
+      const matchedReports = filterFeaturesInPathCorridor(reportsGeo?.features || [], path, CORRIDOR_BUFFER_RADIUS_M);
+      const matchedAccidents = filterFeaturesInPathCorridor(accidentsGeo?.features || [], path, CORRIDOR_BUFFER_RADIUS_M);
       // Tolerant by design: a missing/degraded/timed-out accident layer never
       // shows a raw error — it just yields an empty, clearly-labelled state,
       // matching the pattern the "Ulykker" toggle already uses on the main map.
@@ -152,7 +148,7 @@ export default function SkoleveiSjekk() {
           .map((severity) => ({ severity, count: severityCounts.get(severity) || 0 }))
           .filter((entry) => entry.count > 0),
         accidentsUnavailable,
-        routeLengthM: haversineDistanceMeters(home, school),
+        routeLengthM: routeLengthMeters(path),
       });
       setLoading(false);
     }).catch(() => {
@@ -165,13 +161,13 @@ export default function SkoleveiSjekk() {
         categoryBreakdown: [],
         accidentSeverityBreakdown: [],
         accidentsUnavailable: true,
-        routeLengthM: haversineDistanceMeters(home, school),
+        routeLengthM: routeLengthMeters(path),
       });
       setLoading(false);
     });
 
     return () => { cancelled = true; };
-  }, [home?.lng, home?.lat, school?.lng, school?.lat]);
+  }, [routeReady, path]);
 
   const matchedReportsGeoJson = useMemo(() => ({
     type: 'FeatureCollection',
@@ -184,8 +180,9 @@ export default function SkoleveiSjekk() {
   }), [result]);
 
   let hint = '';
-  if (picking === 'home') hint = home ? 'Trykk på kartet for å velge hjem på nytt' : 'Trykk på kartet der hjemmet er';
-  else if (picking === 'school') hint = school ? 'Trykk på kartet for å velge skole på nytt' : 'Trykk på kartet der skolen er';
+  if (path.length === 0) hint = 'Trykk på kartet der hjemmet er';
+  else if (drawing && path.length === 1) hint = 'Trykk langs veien du går eller sykler, punkt for punkt';
+  else if (drawing && path.length >= 2) hint = 'Fortsett å trykke for å forlenge ruten, eller trykk «Fullfør skolevei» når du er fremme';
 
   return (
     <>
@@ -197,9 +194,8 @@ export default function SkoleveiSjekk() {
       <main className="app-shell skolevei-page">
         <SkoleveiMap
           className="map-canvas"
-          homePoint={home}
-          schoolPoint={school}
-          corridorRing={corridorRing}
+          path={path}
+          corridorRings={corridorRings}
           matchedReportsGeoJson={matchedReportsGeoJson}
           matchedAccidentsGeoJson={matchedAccidentsGeoJson}
           onMapClick={handleMapClick}
@@ -216,46 +212,57 @@ export default function SkoleveiSjekk() {
           <div className="skolevei-panel__head">
             <h1 className="skolevei-panel__title">Skolevei-sjekk</h1>
             <p className="skolevei-panel__lede">
-              Velg <strong>hjem</strong> og <strong>skole</strong> på kartet. Vi ser etter meldte farer og
-              registrerte ulykker innenfor {CORRIDOR_BUFFER_RADIUS_M} m fra en rett linje mellom punktene.
+              Tegn skoleveien punkt for punkt: trykk der <strong>hjemmet</strong> er, så videre langs veien du
+              går eller sykler, til du er ved <strong>skolen</strong>. Vi ser etter meldte farer og registrerte
+              ulykker innenfor {CORRIDOR_BUFFER_RADIUS_M} m fra ruten.
             </p>
           </div>
 
           <div className="skolevei-steps">
-            <button
-              type="button"
-              className={picking === 'home' ? 'skolevei-step skolevei-step--active' : 'skolevei-step'}
-              onClick={pickHome}
-            >
+            <div className={path.length === 0 ? 'skolevei-step skolevei-step--active' : 'skolevei-step'}>
               <span className="skolevei-step__dot skolevei-step__dot--home">H</span>
-              <span className="skolevei-step__label">{home ? 'Hjem valgt' : 'Velg hjem'}</span>
-              {home && <span className="skolevei-step__redo">Velg på nytt</span>}
-            </button>
-            <button
-              type="button"
-              className={picking === 'school' ? 'skolevei-step skolevei-step--active' : 'skolevei-step'}
-              onClick={pickSchool}
-            >
-              <span className="skolevei-step__dot skolevei-step__dot--school">S</span>
-              <span className="skolevei-step__label">{school ? 'Skole valgt' : 'Velg skole'}</span>
-              {school && <span className="skolevei-step__redo">Velg på nytt</span>}
-            </button>
+              <span className="skolevei-step__label">{path.length > 0 ? 'Hjem satt' : 'Trykk for hjem'}</span>
+            </div>
+            <div className={drawing && path.length > 0 ? 'skolevei-step skolevei-step--active' : 'skolevei-step'}>
+              <span className="skolevei-step__dot skolevei-step__dot--school">
+                {routeReady ? 'S' : Math.max(path.length - 1, 0)}
+              </span>
+              <span className="skolevei-step__label">
+                {routeReady
+                  ? `Fullført · ${path.length} punkter`
+                  : path.length > 0 ? 'Tegner ruten …' : 'Tegn skoleveien'}
+              </span>
+            </div>
           </div>
 
-          {(home || school) && (
+          <div className="skolevei-draw-actions">
+            {drawing && path.length > 1 && (
+              <button type="button" className="skolevei-draw-btn" onClick={undoLastPoint}>Angre siste punkt</button>
+            )}
+            {drawing && path.length >= MIN_ROUTE_POINTS && (
+              <button type="button" className="skolevei-draw-btn skolevei-draw-btn--primary" onClick={finishRoute}>
+                Fullfør skolevei
+              </button>
+            )}
+            {routeReady && (
+              <button type="button" className="skolevei-draw-btn" onClick={editRoute}>Rediger rute</button>
+            )}
+          </div>
+
+          {path.length > 0 && (
             <button type="button" className="skolevei-reset" onClick={resetAll}>Start på nytt</button>
           )}
 
-          {bothPicked && loading && (
+          {routeReady && loading && (
             <p className="skolevei-loading">Henter meldinger og ulykkesdata …</p>
           )}
 
-          {bothPicked && !loading && result && (
+          {routeReady && !loading && result && (
             <div className="skolevei-result">
               <div className="skolevei-stats">
                 <div className="skolevei-stat">
                   <strong>{formatMeters(result.routeLengthM)}</strong>
-                  <span>rett linje</span>
+                  <span>tegnet rute</span>
                 </div>
                 <div className="skolevei-stat">
                   <strong>{result.matchedReports.length}</strong>

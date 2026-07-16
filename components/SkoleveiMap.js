@@ -19,50 +19,54 @@ const SOURCE = {
   points: 'skolevei-points',
 };
 
-function pointsFeatureCollection(homePoint, schoolPoint) {
-  const features = [];
-  if (homePoint) {
-    features.push({
+// `path` is the full array of tapped points (home first, school last once
+// the route is finished). Interior points get role 'waypoint' (plain dot,
+// no letter) so only the true endpoints are labelled H/S.
+function pointsFeatureCollection(path) {
+  if (!Array.isArray(path) || path.length === 0) return EMPTY_FC;
+  const features = path.map((point, index) => {
+    let role = 'waypoint';
+    if (index === 0) role = 'home';
+    else if (index === path.length - 1 && path.length > 1) role = 'school';
+    return {
       type: 'Feature',
-      geometry: { type: 'Point', coordinates: [homePoint.lng, homePoint.lat] },
-      properties: { role: 'home' },
-    });
-  }
-  if (schoolPoint) {
-    features.push({
-      type: 'Feature',
-      geometry: { type: 'Point', coordinates: [schoolPoint.lng, schoolPoint.lat] },
-      properties: { role: 'school' },
-    });
-  }
+      geometry: { type: 'Point', coordinates: [point.lng, point.lat] },
+      properties: { role },
+    };
+  });
   return { type: 'FeatureCollection', features };
 }
 
-function lineFeatureCollection(homePoint, schoolPoint) {
-  if (!homePoint || !schoolPoint) return EMPTY_FC;
+function lineFeatureCollection(path) {
+  if (!Array.isArray(path) || path.length < 2) return EMPTY_FC;
   return {
     type: 'FeatureCollection',
     features: [{
       type: 'Feature',
-      geometry: { type: 'LineString', coordinates: [[homePoint.lng, homePoint.lat], [schoolPoint.lng, schoolPoint.lat]] },
+      geometry: { type: 'LineString', coordinates: path.map((p) => [p.lng, p.lat]) },
       properties: {},
     }],
   };
 }
 
-function corridorFeatureCollection(ring) {
-  if (!ring || ring.length < 4) return EMPTY_FC;
+// `rings` is an array of capsule rings, one per route segment (see
+// buildRouteCorridorPolygons in lib/corridorGeometry.js) — rendered as
+// separate, possibly-overlapping polygon features rather than one unioned
+// shape.
+function corridorFeatureCollection(rings) {
+  if (!Array.isArray(rings) || rings.length === 0) return EMPTY_FC;
   return {
     type: 'FeatureCollection',
-    features: [{ type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring] }, properties: {} }],
+    features: rings
+      .filter((ring) => ring && ring.length >= 4)
+      .map((ring) => ({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring] }, properties: {} })),
   };
 }
 
 export default function SkoleveiMap({
   className,
-  homePoint,
-  schoolPoint,
-  corridorRing,
+  path,
+  corridorRings,
   matchedReportsGeoJson,
   matchedAccidentsGeoJson,
   onMapClick,
@@ -77,7 +81,7 @@ export default function SkoleveiMap({
   // Latest props, read from the 'load' handler and the sync effect alike so
   // neither path works off a stale closure.
   const dataRef = useRef({});
-  dataRef.current = { homePoint, schoolPoint, corridorRing, matchedReportsGeoJson, matchedAccidentsGeoJson };
+  dataRef.current = { path, corridorRings, matchedReportsGeoJson, matchedAccidentsGeoJson };
 
   useEffect(() => {
     if (!containerRef.current || !hasMapboxToken) return undefined;
@@ -100,10 +104,10 @@ export default function SkoleveiMap({
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right');
 
     function syncData() {
-      const { homePoint: home, schoolPoint: school, corridorRing: ring, matchedReportsGeoJson: reports, matchedAccidentsGeoJson: accidents } = dataRef.current;
-      map.getSource(SOURCE.corridor)?.setData(corridorFeatureCollection(ring));
-      map.getSource(SOURCE.line)?.setData(lineFeatureCollection(home, school));
-      map.getSource(SOURCE.points)?.setData(pointsFeatureCollection(home, school));
+      const { path: currentPath, corridorRings: rings, matchedReportsGeoJson: reports, matchedAccidentsGeoJson: accidents } = dataRef.current;
+      map.getSource(SOURCE.corridor)?.setData(corridorFeatureCollection(rings));
+      map.getSource(SOURCE.line)?.setData(lineFeatureCollection(currentPath));
+      map.getSource(SOURCE.points)?.setData(pointsFeatureCollection(currentPath));
       map.getSource(SOURCE.reports)?.setData(reports || EMPTY_FC);
       map.getSource(SOURCE.accidents)?.setData(accidents || EMPTY_FC);
     }
@@ -161,11 +165,11 @@ export default function SkoleveiMap({
         type: 'circle',
         source: SOURCE.points,
         paint: {
-          'circle-radius': 11,
+          'circle-radius': ['match', ['get', 'role'], 'home', 11, 'school', 11, 5],
           'circle-color': ['match', ['get', 'role'], 'home', '#0b5d4d', 'school', '#B45309', '#0b5d4d'],
-          'circle-opacity': 0.97,
+          'circle-opacity': ['match', ['get', 'role'], 'waypoint', 0.85, 0.97],
           'circle-stroke-color': MAP_COLORS.white,
-          'circle-stroke-width': 3,
+          'circle-stroke-width': ['match', ['get', 'role'], 'waypoint', 2, 3],
         },
       });
       map.addLayer({
@@ -218,12 +222,12 @@ export default function SkoleveiMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !map.isStyleLoaded()) return;
-    map.getSource(SOURCE.corridor)?.setData(corridorFeatureCollection(corridorRing));
-    map.getSource(SOURCE.line)?.setData(lineFeatureCollection(homePoint, schoolPoint));
-    map.getSource(SOURCE.points)?.setData(pointsFeatureCollection(homePoint, schoolPoint));
+    map.getSource(SOURCE.corridor)?.setData(corridorFeatureCollection(corridorRings));
+    map.getSource(SOURCE.line)?.setData(lineFeatureCollection(path));
+    map.getSource(SOURCE.points)?.setData(pointsFeatureCollection(path));
     map.getSource(SOURCE.reports)?.setData(matchedReportsGeoJson || EMPTY_FC);
     map.getSource(SOURCE.accidents)?.setData(matchedAccidentsGeoJson || EMPTY_FC);
-  }, [homePoint, schoolPoint, corridorRing, matchedReportsGeoJson, matchedAccidentsGeoJson]);
+  }, [path, corridorRings, matchedReportsGeoJson, matchedAccidentsGeoJson]);
 
   if (!hasMapboxToken) {
     return <div className={className}><div className="map-missing">Kart mangler Mapbox-nøkkel.</div></div>;
