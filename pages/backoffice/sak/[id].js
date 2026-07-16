@@ -64,6 +64,10 @@ export default function SakDetalj() {
   const [dueDate, setDueDate] = useState('');
   const [assignee, setAssignee] = useState('');
   const [staffList, setStaffList] = useState([]);
+  // Current staff identity for the "Ta saken" / "Ta over" claim button. Stays
+  // null (and the button just doesn't render) for the legacy shared-secret
+  // backoffice login, which has no staff identity — /api/staff/me 401s there.
+  const [staffEmail, setStaffEmail] = useState(null);
   const [noteMode, setNoteMode] = useState('public');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
@@ -101,6 +105,7 @@ export default function SakDetalj() {
   useEffect(() => {
     fetch('/api/backoffice/cases').then((r) => (r.ok ? r.json() : null)).then((d) => { if (d) setSiblings((d.cases || []).map((x) => String(x.id))); }).catch(() => {});
     fetch('/api/staff/list').then((r) => (r.ok ? r.json() : null)).then((d) => { if (d) setStaffList(d.staff || []); }).catch(() => {});
+    fetch('/api/staff/me').then((r) => (r.ok ? r.json() : Promise.reject(new Error('no-staff')))).then((d) => setStaffEmail(d.email || null)).catch(() => {});
   }, []);
 
   const changeDue = async (v) => {
@@ -308,13 +313,31 @@ export default function SakDetalj() {
                     {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </label>
-                <label className="tkt-prop">
+                <div className="tkt-prop">
                   <span className="tkt-prop__k">Ansvarlig</span>
-                  <select className="tkt-prop__ctrl" value={assignee || ''} onChange={(e) => changeAssignee(e.target.value)}>
-                    <option value="">Ingen</option>
-                    {staffList.map((s) => <option key={s.email} value={s.email}>{s.name || s.email}</option>)}
-                  </select>
-                </label>
+                  <div className="tkt-assignee">
+                    <select className="tkt-prop__ctrl" value={assignee || ''} onChange={(e) => changeAssignee(e.target.value)}>
+                      <option value="">Ingen</option>
+                      {staffList.map((s) => <option key={s.email} value={s.email}>{s.name || s.email}</option>)}
+                    </select>
+                    {/* Self-assign shortcut. Only shown when we know who's logged
+                        in (staff cookie session) — the legacy shared-secret login
+                        has no staff identity, so this stays hidden there and the
+                        manual dropdown above keeps working as the fallback. */}
+                    {staffEmail && !assignee && (
+                      <button type="button" className="tkt-assignee__claim" onClick={() => changeAssignee(staffEmail)}>Ta saken</button>
+                    )}
+                    {staffEmail && assignee && assignee.toLowerCase() === staffEmail.toLowerCase() && (
+                      <span className="tkt-assignee__mine">Tildelt deg</span>
+                    )}
+                    {staffEmail && assignee && assignee.toLowerCase() !== staffEmail.toLowerCase() && (
+                      <span className="tkt-assignee__other">
+                        {staffList.find((s) => s.email === assignee)?.name || assignee}
+                        <button type="button" className="tkt-assignee__claim" onClick={() => changeAssignee(staffEmail)}>Ta over</button>
+                      </span>
+                    )}
+                  </div>
+                </div>
                 <label className="tkt-prop">
                   <span className="tkt-prop__k">Frist</span>
                   <input type="date" className={dueDate && String(dueDate) < todayStr && status !== REPORT_STATUS.DONE ? 'tkt-prop__ctrl tkt-prop__ctrl--over' : 'tkt-prop__ctrl'} value={dueDate} onChange={(e) => changeDue(e.target.value)} />

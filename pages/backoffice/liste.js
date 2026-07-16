@@ -54,6 +54,12 @@ export default function Liste() {
   const [q, setQ] = useState('');
   const [sort, setSort] = useState('new');
   const [agingFilter, setAgingFilter] = useState('');
+  // Current staff identity, used for the "Mine saker" quick filter. Only set
+  // when logged in via the staff cookie session — the legacy shared-secret
+  // backoffice login has no staff identity, so /api/staff/me 401s and this
+  // just stays null, which quietly hides the filter (no error shown).
+  const [staffEmail, setStaffEmail] = useState(null);
+  const [mineFilter, setMineFilter] = useState(false);
   const active = typeof router.query.status === 'string' && STATUSES.includes(router.query.status) ? router.query.status : '';
 
   useEffect(() => {
@@ -61,6 +67,13 @@ export default function Liste() {
       .then((r) => (r.status === 403 ? Promise.reject(new Error('not-authed')) : (r.ok ? r.json() : Promise.reject(new Error('feil')))))
       .then((d) => setCases(d.cases || []))
       .catch((e) => setError(e.message === 'not-authed' ? 'not-authed' : 'Kunne ikke hente saker.'));
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/staff/me')
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('no-staff'))))
+      .then((d) => setStaffEmail(d.email || null))
+      .catch(() => {});
   }, []);
 
   const shown = useMemo(() => {
@@ -73,7 +86,8 @@ export default function Liste() {
         if (agingFilter === 'over') return isOverdueCase(c, today);
         if (agingFilter === 'stale') return isStaleCase(c, today);
         return true;
-      });
+      })
+      .filter((c) => !mineFilter || !staffEmail || String(c.assignee_email || '').toLowerCase() === staffEmail.toLowerCase());
     const byNew = (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0);
     const sorters = {
       new: byNew,
@@ -87,7 +101,7 @@ export default function Liste() {
       },
     };
     return list.sort(sorters[sort] || byNew);
-  }, [cases, active, q, sort, agingFilter]);
+  }, [cases, active, q, sort, agingFilter, mineFilter, staffEmail]);
 
   const totalSupport = useMemo(() => (cases || []).reduce((n, c) => n + Number(c.support_count || 0), 0), [cases]);
 
@@ -103,6 +117,14 @@ export default function Liste() {
       stale: list.filter((c) => isStaleCase(c, today)).length,
     };
   }, [cases]);
+
+  // Same idea as `aging` above: count off the full case set, not `shown`, so
+  // the "Mine saker" chip always reflects the true total regardless of which
+  // other filters/search are currently applied.
+  const mineCount = useMemo(() => {
+    if (!staffEmail) return 0;
+    return (cases || []).filter((c) => String(c.assignee_email || '').toLowerCase() === staffEmail.toLowerCase()).length;
+  }, [cases, staffEmail]);
 
   return (
     <>
@@ -143,6 +165,16 @@ export default function Liste() {
             >
               {aging.stale} uten oppfølging &gt;30 dager
             </button>
+            {staffEmail && (
+              <button
+                type="button"
+                disabled={mineCount === 0}
+                className={mineFilter ? 'liste-summary__chip liste-summary__chip--mine liste-summary__chip--on' : 'liste-summary__chip liste-summary__chip--mine'}
+                onClick={() => setMineFilter((v) => !v)}
+              >
+                Mine saker ({mineCount})
+              </button>
+            )}
           </div>
         )}
 

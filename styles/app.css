@@ -2651,6 +2651,7 @@
 .liste-summary__chip:disabled { opacity: 0.45; }
 .liste-summary__chip--over.liste-summary__chip--on { background: #fbe3e0; border-color: var(--color-danger); color: var(--color-danger); }
 .liste-summary__chip--stale.liste-summary__chip--on { background: var(--color-primary-tint); border-color: var(--color-primary); color: var(--color-primary); }
+.liste-summary__chip--mine.liste-summary__chip--on { background: var(--color-primary-tint); border-color: var(--color-primary); color: var(--color-primary); }
 
 /* Support heart badge on list/dashboard cards */
 .admin-list-item__headright { align-items: center; display: flex; gap: 0.55rem; }
@@ -2719,6 +2720,21 @@
 select.tkt-prop__ctrl { padding-right: 1.7rem; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7a72' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.6rem center; }
 .tkt-prop__ctrl:focus-visible { border-color: var(--color-primary); outline: none; box-shadow: 0 0 0 3px rgba(39,106,74,0.14); }
 .tkt-prop__ctrl--over { border-color: #e2a29a; color: var(--color-danger); }
+
+/* "Ansvarlig" row: select + one-click self-assign ("Ta saken" / "Ta over"). */
+.tkt-assignee { display: grid; gap: 0.3rem; justify-items: end; justify-self: end; }
+.tkt-assignee__claim {
+  background: var(--color-primary-tint);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-pill);
+  color: var(--color-primary);
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  white-space: nowrap;
+}
+.tkt-assignee__mine { color: var(--color-primary); font-size: 0.78rem; font-weight: 700; }
+.tkt-assignee__other { align-items: center; color: var(--color-muted); display: flex; font-size: 0.78rem; font-weight: 600; gap: 0.4rem; }
 
 /* Activity thread — one chronological feed with a composer beneath it */
 .tkt-activity-head { align-items: baseline; display: flex; flex-wrap: wrap; gap: 0.5rem 0.8rem; justify-content: space-between; }
