@@ -7,3 +7,4 @@ build/
 .env
 .vercel/
 .DS_Store
+.claude/
