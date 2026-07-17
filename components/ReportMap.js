@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { DEFAULT_CENTER, NEARBY_REPORT_RADIUS_M, REPORT_STATUS } from '../lib/config';
-import { processStepsForStatus } from '../lib/processSteps';
+import { caseProgress } from '../lib/processSteps';
 import {
   MAP_COLORS,
   MAP_STYLE,
@@ -320,15 +320,16 @@ function popupStatsHtml(properties, { nearbyCount, radiusM }) {
   return `<dl class="popup-stats">${rows.join('')}</dl>`;
 }
 
-// Status-driven "slik jobber vi videre" checklist for the case popup — the
-// same steps and status→done mapping as the public case page.
-function processChecklistHtml(status) {
-  const items = processStepsForStatus(status).map((step) => `
-    <li class="process-step${step.done ? ' process-step--done' : ''}">
-      <span class="process-step__mark">${step.done ? '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4 4 10-11"/></svg>' : ''}</span>
-      <span class="process-step__text">${escapeHtml(step.label)}</span>
-    </li>`).join('');
-  return `<div class="popup-process"><strong class="popup-process__title">Slik jobber vi videre</strong><ol class="process-steps">${items}</ol></div>`;
+// Compact, status-driven "slik jobber vi videre" progress for the case box —
+// a tidy bar + step count + current/next step, so it never dominates the popup.
+function caseProgressHtml(status) {
+  const p = caseProgress(status);
+  return `<div class="case-progress">
+      <div class="case-progress__row"><strong>Slik jobber vi videre</strong><span class="case-progress__count">Steg ${p.done} av ${p.total}</span></div>
+      <div class="case-progress__track"><span class="case-progress__fill" style="width:${p.percent}%"></span></div>
+      <p class="case-progress__now"><span class="case-progress__dot"></span>${escapeHtml(p.current)}</p>
+      ${p.next ? `<p class="case-progress__next">Neste: ${escapeHtml(p.next)}</p>` : '<p class="case-progress__next">Saken er ferdig behandlet.</p>'}
+    </div>`;
 }
 
 function popupHtml(featureOrProperties = {}, context = { nearbyCount: 1, radiusM: NEARBY_RADIUS_M }) {
@@ -349,6 +350,8 @@ function popupHtml(featureOrProperties = {}, context = { nearbyCount: 1, radiusM
 
       ${(() => { const symbols = roadBadges(properties) + facetBadges(properties); return symbols ? `<div class="popup-symbols">${symbols}</div>` : ''; })()}
 
+      ${caseProgressHtml(properties.status || REPORT_STATUS.NEW)}
+
       <div class="popup-thread" data-thread>
         <article class="msg msg--citizen">
           <header class="msg__meta"><span class="msg__author">Innbygger</span>${citizenDate ? `<time>${escapeHtml(citizenDate)}</time>` : ''}</header>
@@ -359,8 +362,6 @@ function popupHtml(featureOrProperties = {}, context = { nearbyCount: 1, radiusM
       </div>
 
       ${attachmentsHtml(properties)}
-
-      ${processChecklistHtml(properties.status || REPORT_STATUS.NEW)}
 
       ${popupStatsHtml(properties, context)}
     </article>
