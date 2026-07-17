@@ -4,7 +4,6 @@ import { categoryGlyph } from '../lib/reportCategoryGlyphs';
 import { descriptionSuggestions } from '../lib/reportDescriptionSuggestions';
 import { REPORT_IMAGE_MAX_BYTES, REPORT_IMAGE_MAX_COUNT } from '../lib/reportImages';
 import { addMyReport } from '../lib/myReports';
-import BudTip from './BudTip';
 import { addPendingReport } from '../lib/offlineReportQueue';
 
 // Coordinates → a human place ("Marviksveien · Lund") so the reporter can
@@ -47,6 +46,18 @@ function haptic(ms = 8) {
   if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(ms);
 }
 
+// What happens after a report is sent — shown as a checklist on the success
+// screen so the reporter knows we actually act on it. The first step is already
+// done (the message is received); the rest describe our process.
+const PROCESS_STEPS = [
+  'Melding mottatt',
+  'Vi innhenter relevant saksinformasjon',
+  'Vi kobler saken til andre meldinger i samme område',
+  'Vi sjekker om det allerede er planlagt utbedring',
+  'Vi melder saken til kommune og/eller fylkeskommune',
+  'Du får varsling når utbedring/tiltak vedtas',
+];
+
 export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocation, onViewCase }) {
   const [reporterType, setReporterType] = useState(REPORTER_TYPES.ADULT);
   const [form, setForm] = useState(INITIAL_FORM);
@@ -56,6 +67,7 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
   const [submitted, setSubmitted] = useState(false);
   const [submittedId, setSubmittedId] = useState(null);
   const [place, setPlace] = useState(null);
+  const [shareFlash, setShareFlash] = useState('');
 
   const sheetRef = useRef(null);
   const drag = useRef({ y: 0, active: false, moved: false });
@@ -304,6 +316,41 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
     }
   };
 
+  // Sharing the just-created case so neighbours can add their support — more
+  // support means higher priority. The link points at the public case page.
+  const shareUrl = (submittedId && typeof window !== 'undefined') ? `${window.location.origin}/sak/${submittedId}` : '';
+  const shareText = 'Jeg meldte fra om et utrygt sted i nabolaget vårt. Er du enig? Støtt saken her:';
+
+  const flashShare = (message) => { setShareFlash(message); setTimeout(() => setShareFlash(''), 2800); };
+
+  const copyShareLink = async (appName) => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      flashShare(appName ? `Lenke kopiert – lim den inn i ${appName}` : 'Lenke kopiert');
+    } catch (_e) {
+      flashShare('Kunne ikke kopiere lenken');
+    }
+  };
+
+  const share = (channel) => {
+    if (!shareUrl) return;
+    haptic(8);
+    const u = encodeURIComponent(shareUrl);
+    const t = encodeURIComponent(shareText);
+    if (channel === 'facebook') {
+      window.open(`https://www.facebook.com/sharer/sharer.php?u=${u}`, '_blank', 'noopener');
+    } else if (channel === 'sms') {
+      window.location.href = `sms:?&body=${t}%20${u}`;
+    } else if (channel === 'copy') {
+      copyShareLink('');
+    } else if (channel === 'instagram' || channel === 'tiktok') {
+      // Instagram/TikTok can't be pre-filled from the web — use the OS share
+      // sheet if we can (it lists those apps), otherwise copy the link.
+      if (navigator.share) navigator.share({ text: shareText, url: shareUrl }).catch(() => {});
+      else copyShareLink(channel === 'instagram' ? 'Instagram' : 'TikTok');
+    }
+  };
+
   return (
     <div className="sheet-layer" role="dialog" aria-modal="true" aria-label="Meld fra">
       <div className="sheet-backdrop" onClick={resetAndClose} />
@@ -331,9 +378,56 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
               </div>
             )}
             <h2>{status.type === 'queued' ? 'Lagret på enheten' : 'Takk for at du sier fra!'}</h2>
-            <p>{status.type === 'queued' ? 'Ingen nett akkurat nå — meldingen sendes automatisk så snart enheten får dekning igjen.' : 'Meldingen er mottatt. Vi ser på saken så godt vi klarer.'}</p>
+
+            {status.type === 'queued' ? (
+              <p>Ingen nett akkurat nå — meldingen sendes automatisk så snart enheten får dekning igjen.</p>
+            ) : (
+              <>
+                <p>Din tilbakemelding blir prioritert, og behandlet slik:</p>
+
+                <ol className="process-steps">
+                  {PROCESS_STEPS.map((step, index) => (
+                    <li key={step} className={index === 0 ? 'process-step process-step--done' : 'process-step'}>
+                      <span className="process-step__mark" aria-hidden="true">
+                        {index === 0 && <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4 4 10-11" /></svg>}
+                      </span>
+                      <span className="process-step__text">{step}</span>
+                    </li>
+                  ))}
+                </ol>
+
+                {submittedId && (
+                  <div className="share-block">
+                    <strong className="share-block__title">Er det flere som deler din bekymring?</strong>
+                    <p className="share-block__sub">Varsle venner, familie eller naboer om saken.</p>
+                    <div className="share-row">
+                      <button type="button" className="share-btn" aria-label="Del på Instagram" onClick={() => share('instagram')}>
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.4" cy="6.6" r="1.1" fill="currentColor" stroke="none" /></svg>
+                      </button>
+                      <button type="button" className="share-btn" aria-label="Del på Facebook" onClick={() => share('facebook')}>
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M14 9h3V5.5h-3c-2.2 0-3.6 1.5-3.6 3.7V11H8v3.5h2.4V22h3.5v-7.5h2.6l.5-3.5h-3.1V9.6c0-.4.3-.6.6-.6z" /></svg>
+                      </button>
+                      <button type="button" className="share-btn" aria-label="Del på SMS" onClick={() => share('sms')}>
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"><path d="M4 5h16v11H8l-4 3.5V5z" /></svg>
+                      </button>
+                      <button type="button" className="share-btn" aria-label="Del på TikTok" onClick={() => share('tiktok')}>
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M16.5 3c.3 2 1.5 3.4 3.5 3.7V9c-1.4 0-2.6-.4-3.6-1.1v6.3c0 3.2-2.4 5.3-5.3 5.3S6 17.4 6 14.6c0-2.7 2.2-4.8 5-4.7v2.5c-1.4-.2-2.6.8-2.6 2.2 0 1.3 1 2.2 2.3 2.2 1.4 0 2.4-1 2.4-2.6V3h3.4z" /></svg>
+                      </button>
+                      <button type="button" className="share-btn" aria-label="Kopier lenke" onClick={() => share('copy')}>
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 15l6-6M8.5 12L6 14.5a3 3 0 0 0 4.2 4.2L12 17M15.5 12L18 9.5a3 3 0 0 0-4.2-4.2L12 7" /></svg>
+                      </button>
+                    </div>
+                    {shareFlash && <p className="share-flash" role="status">{shareFlash}</p>}
+                    <p className="share-block__note">
+                      <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M12 21s-7-4.5-9.3-9.1C1 8.5 2.6 5.5 5.7 5.5c1.9 0 3.2 1.1 4.3 2.7 1.1-1.6 2.4-2.7 4.3-2.7 3.1 0 4.7 3 3 6.4C19 16.5 12 21 12 21z" /></svg>
+                      Meldinger med stor støtte prioriteres.
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+
             {status.type !== 'queued' && status.message && <div className={`notice notice--${status.type}`} role="status">{status.message}</div>}
-            {status.type !== 'queued' && <BudTip audience={isAdult ? 'voksen' : 'barn'} />}
             <div className="sheet-success__actions">
               {status.type !== 'queued' && submittedId ? (
                 <button type="button" className="big-button big-button--primary" onClick={() => onViewCase?.(submittedId)}>Se saken på kartet</button>
