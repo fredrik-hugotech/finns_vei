@@ -241,6 +241,25 @@
 }
 
 /* Compact context stats below the thread */
+/* Status-driven "slik jobber vi videre" checklist inside the case popup */
+.popup-process {
+  border-top: 1px solid var(--color-border);
+  flex: none;
+  margin-top: 0.6rem;
+  padding-top: 0.7rem;
+}
+.popup-process__title {
+  color: var(--color-text);
+  display: block;
+  font-family: var(--font-heading);
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+.popup-process .process-steps { gap: 0.42rem; margin: 0; }
+.popup-process .process-step__mark { height: 22px; width: 22px; }
+.popup-process .process-step__mark svg { height: 12px; width: 12px; }
+.popup-process .process-step__text { font-size: 0.85rem; }
+
 .popup-stats {
   display: grid;
   flex: none;

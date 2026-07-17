@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { DEFAULT_CENTER, NEARBY_REPORT_RADIUS_M, REPORT_STATUS } from '../lib/config';
+import { processStepsForStatus } from '../lib/processSteps';
 import {
   MAP_COLORS,
   MAP_STYLE,
@@ -319,6 +320,17 @@ function popupStatsHtml(properties, { nearbyCount, radiusM }) {
   return `<dl class="popup-stats">${rows.join('')}</dl>`;
 }
 
+// Status-driven "slik jobber vi videre" checklist for the case popup — the
+// same steps and status→done mapping as the public case page.
+function processChecklistHtml(status) {
+  const items = processStepsForStatus(status).map((step) => `
+    <li class="process-step${step.done ? ' process-step--done' : ''}">
+      <span class="process-step__mark">${step.done ? '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4 4 10-11"/></svg>' : ''}</span>
+      <span class="process-step__text">${escapeHtml(step.label)}</span>
+    </li>`).join('');
+  return `<div class="popup-process"><strong class="popup-process__title">Slik jobber vi videre</strong><ol class="process-steps">${items}</ol></div>`;
+}
+
 function popupHtml(featureOrProperties = {}, context = { nearbyCount: 1, radiusM: NEARBY_RADIUS_M }) {
   const properties = featureOrProperties.properties || featureOrProperties || {};
   const category = properties.category || 'Melding';
@@ -347,6 +359,8 @@ function popupHtml(featureOrProperties = {}, context = { nearbyCount: 1, radiusM
       </div>
 
       ${attachmentsHtml(properties)}
+
+      ${processChecklistHtml(properties.status || REPORT_STATUS.NEW)}
 
       ${popupStatsHtml(properties, context)}
     </article>
