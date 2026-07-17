@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 // one-time ribbon, plus a steps sheet that can also be reopened any time from
 // the top-bar "Installer app" link (via the 'ff-open-install' event). Hidden
 // entirely once the app is already installed (standalone display mode).
-const DISMISS_KEY = 'ff-install-dismissed';
 
 function isStandalone() {
   if (typeof window === 'undefined') return false;

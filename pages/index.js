@@ -39,7 +39,6 @@ export default function Home() {
   const [activeCompetitions, setActiveCompetitions] = useState(null);
   const [tripContext, setTripContext] = useState(null);
   const [tripResult, setTripResult] = useState(null); // { km, mode, weatherKind }
-  const [message, setMessage] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   // Show the "Installer app" call-to-action only when the app isn't already
   // running as an installed PWA — no point nagging people who've installed it.
@@ -50,11 +49,6 @@ export default function Home() {
   }, []);
   const [pendingQueueCount, setPendingQueueCount] = useState(0);
   const [pendingTripQueueCount, setPendingTripQueueCount] = useState(0);
-  useEffect(() => {
-    if (!message) return undefined;
-    const timer = setTimeout(() => setMessage(''), 4000);
-    return () => clearTimeout(timer);
-  }, [message]);
 
   // Offline report + trip queues: try to resend anything left over from a
   // dead-zone submission as soon as the app loads (if we're already online)
@@ -558,10 +552,6 @@ export default function Home() {
             onClose={closeCompetitions}
             onPickStart={startTrip}
           />
-        )}
-
-        {message && (
-          <div className="app-toast" role="status" onClick={() => setMessage('')}>{message}</div>
         )}
 
         <InstallHint />

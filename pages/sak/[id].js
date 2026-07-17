@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import Icon from '../../components/Icon';
 import Logo from '../../components/Logo';
+import ReadAloudButton from '../../components/ReadAloudButton';
 import { reportStatusMeta } from '../../lib/reportStatusMeta';
 import { caseProgress } from '../../lib/processSteps';
 import { getPublicReportById, listCaseAttachments, hasSupabaseConfig } from '../../lib/supabaseRest';
@@ -13,6 +14,15 @@ export default function SakPage({ report, shareUrl, ogImageUrl, photos }) {
   const description = report.description
     ? report.description.slice(0, 180)
     : 'Meld fra om utrygge steder i trafikken, eller se kart over meldinger.';
+
+  // Same "read this aloud" control as /bud, reused here so the status and
+  // description of a case can be heard, not just read.
+  const readAloudText = [
+    `${report.category}.`,
+    `Status: ${meta.label}.`,
+    report.description || '',
+    report.public_status_note ? `Oppdatering fra Finns Fairway: ${report.public_status_note}` : '',
+  ].filter(Boolean).join(' ');
 
   // Feature-detected client-side so the button never renders as a dead no-op
   // on browsers without navigator.share or navigator.clipboard, and so the
@@ -77,6 +87,7 @@ export default function SakPage({ report, shareUrl, ogImageUrl, photos }) {
             dangerouslySetInnerHTML={{ __html: `${meta.icon}<span>${meta.label}</span>` }}
           />
           <h1>{report.category}</h1>
+          <ReadAloudButton text={readAloudText} label="Hør saken lest opp" />
 
           {(() => {
             const p = caseProgress(report.status);
