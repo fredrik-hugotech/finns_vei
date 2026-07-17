@@ -435,6 +435,7 @@ export default function Home() {
                 <button type="button" className="app-menu__backdrop" aria-hidden="true" tabIndex={-1} onClick={() => setMenuOpen(false)} />
                 <div className="app-menu__panel" role="menu">
                   <a role="menuitem" className="app-menu__item" href="/aktuelt">Aktuelt</a>
+                  <a role="menuitem" className="app-menu__item" href="/tryggeste-skolevei">Tryggeste skolevei</a>
                   <a role="menuitem" className="app-menu__item" href="/mine-meldinger">Mine meldinger</a>
                   <a role="menuitem" className="app-menu__item" href="/mine-turer">Mine turer</a>
                   <a role="menuitem" className="app-menu__item" href="/personvern">Personvern</a>

@@ -3808,4 +3808,213 @@ select.tkt-prop__ctrl { padding-right: 1.7rem; background-image: url("data:image
 .phone-away__bud { background: rgba(255, 255, 255, 0.1); border-radius: 999px; color: #8fe3c4; font-size: 0.76rem; font-weight: 700; letter-spacing: 0.05em; margin: 0.5rem 0 0.2rem; padding: 0.32rem 0.85rem; text-transform: uppercase; }
 .phone-away__ok { background: #fff; color: var(--color-primary); margin-top: 0.9rem; max-width: 16rem; width: 100%; }
 .phone-away__ok:hover { background: #fff; filter: brightness(0.97); }
+
+/* ── "Tryggeste skolevei" (pages/tryggeste-skolevei.js) ─────────────────
+   Reuses the same map-first app-shell + pick-mode crosshair pattern as the
+   main "Meld fra" flow, plus a result sheet listing the scored route
+   options returned by POST /api/safe-route. */
+.safe-route-back {
+  margin-right: 0.1rem;
+  text-decoration: none;
+}
+
+.safe-route-hint { display: inline-flex; align-items: center; gap: 0.4rem; }
+.safe-route-hint svg { flex: none; }
+
+.safe-route-pick-bar { gap: 0.55rem; }
+
+.safe-route-mode-toggle {
+  background: var(--color-surface-muted);
+  border-radius: var(--radius-pill);
+  display: grid;
+  gap: 2px;
+  grid-template-columns: 1fr 1fr;
+  padding: 3px;
+}
+
+.safe-route-mode-btn {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-pill);
+  color: var(--color-muted);
+  display: inline-flex;
+  font-family: var(--font-heading);
+  font-size: 0.86rem;
+  font-weight: 700;
+  gap: 0.35rem;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0.3rem 0.5rem;
+}
+
+.safe-route-mode-btn--active {
+  background: var(--color-surface);
+  box-shadow: var(--shadow-control);
+  color: var(--color-primary-dark);
+}
+
+.safe-route-loading {
+  align-items: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-soft);
+  color: var(--color-text);
+  display: inline-flex;
+  font-size: 0.88rem;
+  font-weight: 700;
+  gap: 0.5rem;
+  left: 50%;
+  padding: 0.55rem 1rem;
+  position: absolute;
+  top: max(3.6rem, calc(env(safe-area-inset-top) + 3.1rem));
+  transform: translateX(-50%);
+  white-space: nowrap;
+  z-index: 16;
+}
+
+.safe-route-loading__spinner {
+  animation: safe-route-spin 0.8s linear infinite;
+  border: 2.5px solid var(--color-border-strong);
+  border-radius: 50%;
+  border-top-color: var(--color-primary);
+  height: 16px;
+  width: 16px;
+}
+
+@keyframes safe-route-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .safe-route-loading__spinner { animation: none; }
+}
+
+/* Result sheet: a bottom card, not a full modal — the scored routes stay
+   visible on the map behind it. */
+.safe-route-sheet {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  bottom: 0;
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 0.55rem;
+  left: 0;
+  max-height: 62vh;
+  overflow-y: auto;
+  padding: 0.85rem 0.9rem calc(0.9rem + env(safe-area-inset-bottom));
+  position: absolute;
+  right: 0;
+  width: 100%;
+  z-index: 16;
+}
+
+.safe-route-sheet__head {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.safe-route-sheet__head strong {
+  align-items: center;
+  display: inline-flex;
+  font-family: var(--font-heading);
+  gap: 0.4rem;
+}
+
+.safe-route-sheet__reset {
+  background: var(--color-surface-muted);
+  border: 0;
+  border-radius: var(--radius-pill);
+  color: var(--color-primary-dark);
+  font-family: var(--font-heading);
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.4rem 0.75rem;
+}
+
+.safe-route-note {
+  background: var(--color-accent-tint);
+  border-radius: var(--radius-sm);
+  color: var(--color-warning);
+  font-size: 0.78rem;
+  margin: 0;
+  padding: 0.45rem 0.6rem;
+}
+
+.safe-route-list {
+  display: grid;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.safe-route-card {
+  background: var(--color-surface-2);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.65rem 0.75rem;
+  text-align: left;
+  width: 100%;
+}
+
+.safe-route-card--selected {
+  background: var(--color-primary-tint);
+  border-color: var(--color-primary);
+}
+
+.safe-route-card__top {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.safe-route-card__title {
+  font-family: var(--font-heading);
+  font-size: 0.94rem;
+  font-weight: 700;
+}
+
+.safe-route-badge {
+  border-radius: var(--radius-pill);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  white-space: nowrap;
+}
+
+.safe-route-badge--lav { background: #e6f5ec; color: var(--color-success); }
+.safe-route-badge--middels { background: var(--color-accent-tint); color: var(--color-warning); }
+.safe-route-badge--høy { background: #fdeae6; color: var(--color-danger); }
+
+.safe-route-card__stats {
+  color: var(--color-muted);
+  display: flex;
+  font-size: 0.82rem;
+  font-weight: 600;
+  gap: 0.9rem;
+}
+
+.safe-route-card__stats span { align-items: center; display: inline-flex; gap: 0.3rem; }
+
+.safe-route-card__reason {
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.safe-route-disclaimer {
+  color: var(--color-muted);
+  font-size: 0.72rem;
+  margin: 0.1rem 0 0;
+  text-align: center;
+}
+
+@media (min-width: 720px) {
+  .safe-route-sheet { left: 50%; max-width: 26rem; transform: translateX(-50%); }
+}
 @media (prefers-reduced-motion: reduce) { .phone-away { animation: none; } }

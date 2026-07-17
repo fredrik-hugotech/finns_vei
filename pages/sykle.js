@@ -166,6 +166,7 @@ export default function Sykle() {
               <span>Meld farlig sted</span>
             </button>
             <Link href="/mine-turer" className="kid-budlink">Mine turer ›</Link>
+            <Link href="/tryggeste-skolevei" className="kid-budlink">Finn tryggeste skolevei ›</Link>
             <Link href="/bud" className="kid-budlink">Finns 10 bud for trygg ferdsel ›</Link>
           </section>
         )}

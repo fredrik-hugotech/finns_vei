@@ -229,6 +229,52 @@ returns an empty list and the rest of the app is unaffected. The `mode`/weather/
 migrated yet, and `getCompetitionStats` falls back to a narrower `select` — so
 trips keep logging and stats keep working either way, migrated or not.
 
+## Tryggeste skolevei (safest-route suggestion)
+
+`/tryggeste-skolevei` connects the two previously-separate pillars above —
+citizen hazard reports/NVDB accidents on one side, the cycling-to-school
+module on the other — into one feature: pick a start point and a
+destination (e.g. home and the school) on the map using the same pick-mode
+crosshair as the "Meld fra" flow, and see a few candidate walk/cycle routes
+scored by how close they run to known hazards, with the lowest-risk one
+highlighted.
+
+- `POST /api/safe-route` takes `{ start: {lat,lng}, destination: {lat,lng},
+  mode: 'sykkel' | 'gange' }`, asks the Mapbox Directions API
+  (`alternatives=true`) for up to 3 candidate routes on the same
+  `NEXT_PUBLIC_MAPBOX_TOKEN` already used client-side (no new secret), and
+  scores each one (`lib/safeRoute.js`):
+  - **Hazard proximity**: every existing public hazard report
+    (`GET /api/reports`, i.e. `report_public_geojson`) within
+    `SAFE_ROUTE_HAZARD_RADIUS_M` (default 40 m) of the route contributes a
+    proximity-weighted score using the *exact same* category-severity ×
+    support_count weighting already used for the public Bekymringsgrad
+    heatmap (`buildConcernHeatmapWeightExpression` in
+    `lib/mapStyleConfig.js`) — reused as plain JS instead of a Mapbox GL
+    expression, not reinvented.
+  - **Accident proximity**: a handful of points sampled evenly along the
+    route (capped at 5 per route to keep NVDB call volume reasonable) are
+    checked against NVDB via the same `getAccidentSummary` helper
+    (`lib/nvdb.js`) the per-report accident context already uses, with
+    severity multipliers (fatal 2x, serious 1.5x) matching the accident
+    heatmap's paint expression. NVDB failures/timeouts degrade this signal
+    to "unavailable" for the whole request rather than erroring it — the
+    route list still returns, scored on hazards alone.
+  - The combined risk-per-km score classifies each route **Lav / Middels /
+    Høy risiko**, and the lowest-scoring route is flagged `recommended` and
+    drawn bold on the map; alternatives are drawn muted/dashed.
+- **Privacy**: this feature never reads or stores raw GPS trip data. It only
+  uses (a) the Mapbox Directions API's own route geometry for the two points
+  the user just picked (a generic routing result, not a stored trip), and
+  (b) the already-public hazard-report and NVDB-accident datasets. It
+  deliberately does **not** use the children's cycling-competition heatmap
+  (`GET /api/competitions/[id]` strips its `geojson` field from the public
+  response, on purpose) — see "Privacy by design" above. Hazard/accident
+  proximity alone is a complete v1 signal.
+- Optional tuning env vars (both sensible-default, neither required):
+  `SAFE_ROUTE_HAZARD_RADIUS_M` (default 40) and
+  `SAFE_ROUTE_ACCIDENT_RADIUS_M` (default 40).
+
 ## Environment variables
 
 Set these in Vercel Project Settings and locally in `.env.local` when developing. Do not commit secrets.
@@ -253,6 +299,8 @@ Set these in Vercel Project Settings and locally in `.env.local` when developing
 | `NVDB_ACCIDENT_REPORT_RADIUS_M` | Server | Optional | Small radius used for per-report accident context. Defaults to `20`. |
 | `NVDB_ACCIDENT_SEARCH_RADIUS_M` | Server | Optional | Broader radius used by accident map-layer lookups when needed. Defaults to `500`. |
 | `NVDB_ACCIDENT_OBJECT_TYPE_ID` | Server | Optional | NVDB object type for traffic accidents. Defaults to `570` (`Trafikkulykke`) and can be overridden if the catalog changes. |
+| `SAFE_ROUTE_HAZARD_RADIUS_M` | Server | Optional | How close (metres) a hazard report must be to a candidate route to count in "Tryggeste skolevei" scoring. Defaults to `40`. |
+| `SAFE_ROUTE_ACCIDENT_RADIUS_M` | Server | Optional | Search radius (metres) used at each sampled point along a candidate route for NVDB accident scoring. Defaults to `40`. |
 | `TRELLO_BOARD_ID` | Server | Optional | Trello board short ID used to auto-resolve the “Ny melding” list when no list ID is set. Defaults to `NNRJWwld`. |
 | `TRELLO_LIST_NAME_NY_MELDING` | Server | Optional | Trello list name to resolve on the board. Defaults to `Ny melding`. |
 | `DEBUG_SECRET` | Server secret | Recommended while debugging | Required query/header secret for temporary `/api/debug/*` endpoints. In production, debug endpoints are disabled with `403` if this is not set. |
