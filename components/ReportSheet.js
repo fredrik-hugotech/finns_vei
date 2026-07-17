@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { REPORT_CATEGORIES, REPORTER_TYPES } from '../lib/config';
+import { REPORT_CATEGORIES, REPORTER_TYPES, REPORT_STATUS } from '../lib/config';
+import { processStepsForStatus } from '../lib/processSteps';
 import { categoryGlyph } from '../lib/reportCategoryGlyphs';
 import { descriptionSuggestions } from '../lib/reportDescriptionSuggestions';
 import { REPORT_IMAGE_MAX_BYTES, REPORT_IMAGE_MAX_COUNT } from '../lib/reportImages';
@@ -45,18 +46,6 @@ const INITIAL_FORM = {
 function haptic(ms = 8) {
   if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(ms);
 }
-
-// What happens after a report is sent — shown as a checklist on the success
-// screen so the reporter knows we actually act on it. The first step is already
-// done (the message is received); the rest describe our process.
-const PROCESS_STEPS = [
-  'Melding mottatt',
-  'Vi innhenter relevant saksinformasjon',
-  'Vi kobler saken til andre meldinger i samme område',
-  'Vi sjekker om det allerede er planlagt utbedring',
-  'Vi melder saken til kommune og/eller fylkeskommune',
-  'Du får varsling når utbedring/tiltak vedtas',
-];
 
 export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocation, onViewCase }) {
   const [reporterType, setReporterType] = useState(REPORTER_TYPES.ADULT);
@@ -386,12 +375,12 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
                 <p>Din tilbakemelding blir prioritert, og behandlet slik:</p>
 
                 <ol className="process-steps">
-                  {PROCESS_STEPS.map((step, index) => (
-                    <li key={step} className={index === 0 ? 'process-step process-step--done' : 'process-step'}>
+                  {processStepsForStatus(REPORT_STATUS.NEW).map((step) => (
+                    <li key={step.label} className={step.done ? 'process-step process-step--done' : 'process-step'}>
                       <span className="process-step__mark" aria-hidden="true">
-                        {index === 0 && <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4 4 10-11" /></svg>}
+                        {step.done && <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4 4 10-11" /></svg>}
                       </span>
-                      <span className="process-step__text">{step}</span>
+                      <span className="process-step__text">{step.label}</span>
                     </li>
                   ))}
                 </ol>

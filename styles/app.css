@@ -919,6 +919,18 @@
 }
 .share-block__note svg { color: var(--color-danger); flex: none; }
 
+/* Status-driven process checklist on the public case page */
+.sak-process {
+  border-top: 1px solid var(--color-border);
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.4rem;
+  padding-top: 0.9rem;
+  text-align: left;
+  width: 100%;
+}
+.sak-process__title { font-family: var(--font-heading); font-size: 1rem; }
+
 .sheet-success__badge {
   align-items: center;
   background: var(--color-primary-tint);

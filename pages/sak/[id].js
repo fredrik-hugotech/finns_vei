@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Icon from '../../components/Icon';
 import Logo from '../../components/Logo';
 import { reportStatusMeta } from '../../lib/reportStatusMeta';
+import { processStepsForStatus } from '../../lib/processSteps';
 import { getPublicReportById, listCaseAttachments, hasSupabaseConfig } from '../../lib/supabaseRest';
 
 export default function SakPage({ report, shareUrl, ogImageUrl, photos }) {
@@ -84,6 +85,20 @@ export default function SakPage({ report, shareUrl, ogImageUrl, photos }) {
               <p>{report.public_status_note}</p>
             </div>
           )}
+
+          <div className="sak-process">
+            <strong className="sak-process__title">Slik jobber vi videre</strong>
+            <ol className="process-steps">
+              {processStepsForStatus(report.status).map((step) => (
+                <li key={step.label} className={step.done ? 'process-step process-step--done' : 'process-step'}>
+                  <span className="process-step__mark" aria-hidden="true">
+                    {step.done && <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4 4 10-11" /></svg>}
+                  </span>
+                  <span className="process-step__text">{step.label}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
           {photos.length > 0 && (
             <div className="share-card__gallery">
               <strong className="share-card__gallery-title">Bilder fra oppfølgingen</strong>
