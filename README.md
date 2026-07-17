@@ -40,6 +40,10 @@ The frontend never reads Supabase or NVDB directly. Reads and writes go through 
 - `POST /api/report-support` increments `support_count` for a report. The frontend uses local browser storage as a lightweight repeat-support guard; no login is required.
 - `GET /api/nvdb/layer?type=accidents&bbox=minLng,minLat,maxLng,maxLat&zoom=13` returns Mapbox-friendly GeoJSON for traffic accidents. Other NVDB layers are kept server-capable but hidden from the public UI for now.
 
+### "Rett myndighet"-henvisning
+
+Not every reported road belongs to the municipality: `road_category` is NVDB's raw `vegkategori` letter (`E`/`R` riksveg/europaveg, `F` fylkesveg, `K` kommunal veg, `P` privat veg, `S` skogsbilveg), and `road_owner`/`road_authority` hold the NVDB `vegforvalter` name when one exists, falling back to the same category inferred as text. `lib/roadAuthorityReferral.js` is a pure, client-safe helper (`classifyRoadAuthority`, `buildReferralDraft`) that reads these fields and, only for riksveg/europaveg (`Statens vegvesen`) and fylkesveg (kept generic as "fylkeskommunen" — no specific county is guessed), surfaces a **"Ikke kommunens vei"** card on `/backoffice/sak/[id]`. The card shows who is actually responsible and a short Norwegian explanation, plus a "generate referral" action that builds a pre-filled `mailto:` draft (case ID/link, category, description, location/vegreferanse, and a standard request text) with a copy-to-clipboard fallback of the same text. It never sends anything automatically — a human still reviews and sends it — and it deliberately does nothing for municipal, private/skogsbilveg, or not-yet-enriched roads so the common case stays uncluttered.
+
 ## Existing Supabase resources
 
 Expected server-side resources:
