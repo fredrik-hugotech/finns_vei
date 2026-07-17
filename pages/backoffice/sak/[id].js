@@ -274,6 +274,10 @@ export default function SakDetalj() {
               <div className="sak-hero__topline">
                 <span className={`status-pill status-pill--${meta.key}`} dangerouslySetInnerHTML={{ __html: `${meta.icon}<span>${meta.label}</span>` }} />
                 <span className="sak-hero__when">Meldt {fmtDate(c.created_at)}</span>
+                <a className="sak-hero__open" href={`/sak/${encodeURIComponent(c.id)}`} target="_blank" rel="noopener noreferrer">
+                  Åpne saken
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8" /></svg>
+                </a>
               </div>
               <h1>{c.category}</h1>
               <p className="sak-hero__place">

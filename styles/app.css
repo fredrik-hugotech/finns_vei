@@ -2852,8 +2852,24 @@ select.tkt-prop__ctrl { padding-right: 1.7rem; background-image: url("data:image
   gap: 0.5rem;
   padding: 1rem 1.1rem;
 }
-.sak-hero__topline { align-items: center; display: flex; gap: 0.7rem; justify-content: space-between; }
+.sak-hero__topline { align-items: center; display: flex; flex-wrap: wrap; gap: 0.5rem 0.7rem; justify-content: flex-start; }
 .sak-hero__when { color: var(--color-muted); font-size: 0.78rem; white-space: nowrap; }
+.sak-hero__open {
+  align-items: center;
+  background: var(--color-primary-tint);
+  border: 1px solid #bcd6c8;
+  border-radius: var(--radius-pill);
+  color: var(--color-primary-dark);
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 700;
+  gap: 0.3rem;
+  margin-left: auto;
+  padding: 0.3rem 0.7rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.sak-hero__open:active { transform: scale(0.97); }
 .sak-hero h1 { font-family: var(--font-heading); font-size: 1.5rem; line-height: 1.15; margin: 0; }
 .sak-hero__place { align-items: center; color: var(--color-primary); display: flex; font-size: 0.98rem; font-weight: 700; gap: 0.35rem; margin: 0.1rem 0 0; }
 .sak-hero__pin { color: var(--color-primary); flex: none; }
