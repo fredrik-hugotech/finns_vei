@@ -326,6 +326,10 @@ Backoffice AI endpoints:
 
 Future batch mode can run nightly AI suggestions for cases with new Trello activity, many supports, or status changes. For now AI only runs when explicitly triggered by a protected backoffice endpoint.
 
+### Internal statistics dashboard
+
+`/backoffice/statistikk` is a staff-only aggregation view over `public.reports`, gated the same way as the rest of the backoffice (staff session cookie or `BACKOFFICE_SECRET`/`DEBUG_SECRET`). It replaces the earlier public `/statistikk` page, which was removed because open public stats weren't wanted — this is the internal version built for staff instead. It shows new-reports-per-week/month, category and status breakdowns, resolution time (median/average days from `created_at` to `status_updated_at` for `Fullført` reports), and a road-owner/road-category split from the best-effort NVDB enrichment (missing values are shown as a count, not hidden). A segmented control switches between 30 days, 90 days, 12 months and all time, and a CSV download button exports the underlying rows for whichever period is shown. `GET /api/backoffice/statistikk?range=30|90|365|all` powers the page and reads up to 2000 reports at a time (newest first) via `listReportsForStats` in `lib/supabaseRest.js` — a bounded ceiling like the other backoffice list endpoints, not an unbounded table scan.
+
 ## Local development
 
 ```bash

@@ -3264,7 +3264,9 @@ select.tkt-prop__ctrl { padding-right: 1.7rem; background-image: url("data:image
 .sak-hero { border-radius: 14px; }
 
 /* ----------------------------------------------------------------------
-   Public transparency dashboard (/statistikk)
+   Stats dashboard. Originally built for the public /statistikk page (later
+   removed — public stats weren't wanted), now reused as-is for the
+   staff-only /backoffice/statistikk page.
    ---------------------------------------------------------------------- */
 .stats-page {
   align-content: start;
