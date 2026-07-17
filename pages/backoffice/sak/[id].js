@@ -5,6 +5,7 @@ import { useRouter } from 'next/router';
 import { reportStatusMeta } from '../../../lib/reportStatusMeta';
 import { REPORT_STATUS } from '../../../lib/config';
 import BackofficeHeader from '../../../components/BackofficeHeader';
+import { classifyRoadAuthority, buildReferralDraft } from '../../../lib/roadAuthorityReferral';
 
 const STATUSES = [REPORT_STATUS.NEW, REPORT_STATUS.REGISTERED, REPORT_STATUS.STARTED, REPORT_STATUS.DONE];
 const ACT_LABEL = { created: 'Sak opprettet', voice: 'Innbyggerstemme', public: 'Offentlig oppdatering', internal: 'Internt notat' };
@@ -80,6 +81,7 @@ export default function SakDetalj() {
   const [deleteArmed, setDeleteArmed] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [referralCopied, setReferralCopied] = useState(false);
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
   const load = useCallback(async () => {
@@ -118,6 +120,28 @@ export default function SakDetalj() {
   const support = data?.support || { count: 0, voices: [], facets: [] };
   const todayStr = new Date().toISOString().slice(0, 10);
   const meta = useMemo(() => reportStatusMeta(status || c?.status), [status, c]);
+
+  // "Rett myndighet"-henvisning: flag cases where NVDB's road data shows the
+  // municipality isn't actually responsible, and prepare a mailto/copy draft
+  // to the authority that is. Stays quiet for municipal/private/unknown roads.
+  const roadAuthority = useMemo(() => classifyRoadAuthority(c || {}), [c]);
+  const referralDraft = useMemo(() => {
+    if (!c || !roadAuthority.showReferral) return null;
+    const caseUrl = typeof window !== 'undefined' ? `${window.location.origin}/sak/${encodeURIComponent(c.id)}` : `/sak/${encodeURIComponent(c.id)}`;
+    return buildReferralDraft(
+      { caseId: c.id, caseUrl, category: c.category, description: c.description, lat: c.lat, lng: c.lng, roadReference: c.road_reference },
+      roadAuthority,
+    );
+  }, [c, roadAuthority]);
+
+  const copyReferral = async () => {
+    if (!referralDraft) return;
+    try {
+      await navigator.clipboard.writeText(referralDraft.body);
+      setReferralCopied(true);
+      setTimeout(() => setReferralCopied(false), 2000);
+    } catch (_e) { setFlash('Kunne ikke kopiere. Merk og kopier teksten manuelt.'); }
+  };
 
   // One chronological activity feed — the way ticket tools show a case:
   // creation, citizen voices, public updates and internal notes together.
@@ -302,6 +326,28 @@ export default function SakDetalj() {
                 </div>
               )}
             </header>
+
+            {roadAuthority.showReferral && (
+              <section className="admin-section sak-referral">
+                <h2>Ikke kommunens vei</h2>
+                <p className="sak-referral__lead">
+                  Ansvarlig myndighet: <b>{roadAuthority.authorityName}</b>
+                  {roadAuthority.roadCategoryLabel ? ` · ${roadAuthority.roadCategoryLabel}` : ''}
+                </p>
+                <p className="sak-referral__explain">{roadAuthority.explanation}</p>
+                {referralDraft && (
+                  <div className="sak-referral__box">
+                    <div className="sak-referral__actions">
+                      <a className="big-button big-button--primary" href={referralDraft.mailto}>Åpne e-postutkast</a>
+                      <button type="button" className="big-button big-button--secondary" onClick={copyReferral}>
+                        {referralCopied ? 'Kopiert!' : 'Kopier tekst'}
+                      </button>
+                    </div>
+                    <pre className="sak-referral__preview">{referralDraft.body}</pre>
+                  </div>
+                )}
+              </section>
+            )}
 
             <section className="admin-section tkt-detail">
               <h2>Detaljer</h2>
