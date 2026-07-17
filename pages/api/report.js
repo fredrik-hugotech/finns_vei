@@ -58,6 +58,13 @@ function validatePayload(body = {}) {
 
   const bikeRouteType = body.bike_route_type === 'skole' ? 'skole' : (body.bike_route_type === 'fritid' ? 'fritid' : null);
 
+  const isAdult = reporterType === REPORTER_TYPES.ADULT;
+  const contactEmail = isAdult ? cleanString(body.contact_email, 220) : null;
+  // Opt-in only: the checkbox is only meaningful (and only rendered) for adult
+  // reports with an email address filled in. A "barn" report never has contact
+  // fields at all, so it can never carry this flag either.
+  const wantsNotify = isAdult && (body.notify_on_status_change === true || body.notify_on_status_change === 'true');
+
   return {
     status: REPORT_STATUS.NEW,
     nvdb_status: 'pending',
@@ -67,9 +74,10 @@ function validatePayload(body = {}) {
     lat,
     lng,
     ...(bikeRouteType ? { bike_route_type: bikeRouteType } : {}),
-    contact_name: reporterType === REPORTER_TYPES.ADULT ? cleanString(body.contact_name, 160) : null,
-    contact_email: reporterType === REPORTER_TYPES.ADULT ? cleanString(body.contact_email, 220) : null,
-    contact_phone: reporterType === REPORTER_TYPES.ADULT ? cleanString(body.contact_phone, 80) : null,
+    contact_name: isAdult ? cleanString(body.contact_name, 160) : null,
+    contact_email: contactEmail,
+    contact_phone: isAdult ? cleanString(body.contact_phone, 80) : null,
+    notify_on_status_change: Boolean(wantsNotify && contactEmail),
   };
 }
 

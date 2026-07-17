@@ -3,6 +3,54 @@ import { REPORT_STATUS } from '../../../lib/config';
 import { addCaseStatusUpdate, hasSupabaseConfig, setPublicStatusFromTrelloComment, setReportStatusFromTrello } from '../../../lib/supabaseRest';
 import { siteBaseUrl } from '../../../lib/reportWorkflow';
 import { getNewReportListName } from '../../../lib/trello';
+import { buildCaseStatusEmail } from '../../../lib/statusChangeEmail';
+
+// "Følg saken": opt-in status-change email, reusing the exact same Resend
+// transport/env vars as the daily-summary cron (see pages/api/cron/daily-summary.js)
+// — no new secret. Read at call time (not module load) so tests/mocks that
+// tweak process.env still work, same as that file's top-level constants.
+async function sendCaseStatusEmail({ to, subject, html }) {
+  const apiKey = process.env.RESEND_API_KEY || '';
+  const from = process.env.SUMMARY_EMAIL_FROM || '';
+  if (!apiKey || !from) {
+    return { sent: false, reason: 'not_configured' };
+  }
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from, to: [to], subject, html }),
+  });
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(`Resend ${response.status}: ${body.slice(0, 200)}`);
+  }
+  return { sent: true };
+}
+
+// Best-effort "Følg saken" notification: only fires when the report opted in
+// (`notify_on_status_change`) and has an email address. Every failure path —
+// missing Resend config, a Resend error, a malformed report — is caught and
+// logged here so it can never fail or meaningfully delay the webhook's 200
+// response back to Trello (mirrors the "Vercel serverless functions cannot
+// rely on fire-and-forget work after the response" reasoning used for the
+// NVDB/Trello workflow in pages/api/report.js — it's awaited, just guarded).
+async function notifyStatusChangeBestEffort({ report, status, note }) {
+  try {
+    if (!report?.notify_on_status_change) return;
+    const email = String(report?.contact_email || '').trim();
+    if (!email) return;
+
+    const { subject, html } = buildCaseStatusEmail({ report, status, note, baseUrl: siteBaseUrl() });
+    const result = await sendCaseStatusEmail({ to: email, subject, html });
+    if (!result.sent) {
+      logWebhook('status_email_not_configured', { reportId: report?.id || null });
+      return;
+    }
+    logWebhook('status_email_sent', { reportId: report?.id || null, status });
+  } catch (error) {
+    logWebhook('status_email_failed', { reportId: report?.id || null, message: String(error?.message || '').slice(0, 240) });
+  }
+}
 
 // Signature verification requires the exact raw request bytes, so the default
 // Next.js JSON body parser is disabled here and the body is read + parsed manually.
@@ -176,6 +224,9 @@ async function handleListMove(action) {
 
   const updated = await setReportStatusFromTrello({ trelloCardId: cardId, status: resolvedStatus });
   logWebhook('status_sync_completed', { cardId, listBefore, listAfter, resolvedStatus, reportId: updated?.id || null, updated: Boolean(updated) });
+  if (updated) {
+    await notifyStatusChangeBestEffort({ report: updated, status: resolvedStatus, note: updated.public_status_note || null });
+  }
   return { handled: true, status: resolvedStatus, reportId: updated?.id || null };
 }
 
@@ -201,6 +252,7 @@ async function handleComment(action) {
     return { handled: true, reportId: null, updated: false, reason: 'no_matching_report' };
   }
   logWebhook('supabase_update_result', { cardId, reportId: updated.id, updated: true });
+  await notifyStatusChangeBestEffort({ report: updated, status: updated.status || null, note: text });
   return { handled: true, reportId: updated.id, updated: true };
 }
 

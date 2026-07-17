@@ -37,6 +37,9 @@ const INITIAL_FORM = {
   contact_name: '',
   contact_email: '',
   contact_phone: '',
+  // Opt-in only, unchecked by default — see the "Følg saken" checkbox below.
+  // Only ever sent to the server when an email address is actually filled in.
+  notify_on_status_change: false,
   // Honeypot anti-bot field. Real people never see or fill this (it's
   // positioned off-screen in the markup below); scripts that auto-fill
   // every form field tend to fill it anyway, which flags them server-side.
@@ -81,6 +84,11 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
   const updateField = (event) => {
     const { name, value } = event.target;
     setForm((current) => ({ ...current, [name]: value }));
+  };
+
+  const toggleNotifyOnStatusChange = (event) => {
+    const { checked } = event.target;
+    setForm((current) => ({ ...current, notify_on_status_change: checked }));
   };
 
   const toggleCategory = (category) => {
@@ -219,6 +227,9 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
     contact_name: isAdult ? form.contact_name : '',
     contact_email: isAdult ? form.contact_email : '',
     contact_phone: isAdult ? form.contact_phone : '',
+    // Only meaningful (and only ever true) for an adult report that actually
+    // has an email address — see the checkbox note in the JSX below.
+    notify_on_status_change: isAdult && form.contact_email.trim() ? Boolean(form.notify_on_status_change) : false,
     nettside: form.nettside,
   });
 
@@ -267,6 +278,7 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
     body.set('contact_name', queuePayload.contact_name);
     body.set('contact_email', queuePayload.contact_email);
     body.set('contact_phone', queuePayload.contact_phone);
+    body.set('notify_on_status_change', queuePayload.notify_on_status_change ? 'true' : 'false');
     body.set('nettside', queuePayload.nettside);
     images.forEach((image) => body.append('images', image.file));
 
@@ -540,6 +552,17 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
                   <input name="contact_name" value={form.contact_name} onChange={updateField} autoComplete="name" placeholder="Navn" />
                   <input name="contact_email" value={form.contact_email} onChange={updateField} type="email" autoComplete="email" placeholder="E-post" />
                   <input name="contact_phone" value={form.contact_phone} onChange={updateField} type="tel" autoComplete="tel" placeholder="Telefon" />
+                  {form.contact_email.trim() && (
+                    <label className="notify-status-checkbox">
+                      <input
+                        type="checkbox"
+                        name="notify_on_status_change"
+                        checked={form.notify_on_status_change}
+                        onChange={toggleNotifyOnStatusChange}
+                      />
+                      <span>Send meg en e-post når status på saken endres</span>
+                    </label>
+                  )}
                 </div>
               ) : (
                 <p className="privacy-note">Du melder som barn. Vi spør ikke om navn, e-post eller telefon.</p>

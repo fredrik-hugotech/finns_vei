@@ -132,6 +132,17 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.report_status_updates TO service_
 
 The unique index on `trello_action_id` makes webhook retries idempotent. The feature is best-effort: without the table, the popup falls back to the single `public_status_note`. The public GeoJSON exposes `updates_json` per feature.
 
+### Følg saken (opt-in e-post ved statusendring)
+
+An adult ("voksen") reporter who fills in an email address can tick **"Send meg en e-post når status på saken endres"** on the report form — unchecked by default, and only shown once an email is actually filled in, so it's an explicit opt-in rather than a default-on notification. Add the column with:
+
+```sql
+ALTER TABLE public.reports
+ADD COLUMN IF NOT EXISTS notify_on_status_change boolean NOT NULL DEFAULT false;
+```
+
+`POST /api/report` only ever sets this to `true` for `voksen` reports that also have a `contact_email`; `barn` reports have no contact fields at all, so they can never carry it. The insert is resilient the same way `createBikeTrip` is: `createReport` (`lib/supabaseRest.js`) retries the insert without the column if it isn't migrated yet, so submissions never break — apply the migration to actually enable the email.
+
 ## Children's cycling competitions
 
 A competition module lets the municipality run challenges such as *"the club that
@@ -316,6 +327,8 @@ Trello webhook setup:
 - `POST /api/trello/webhook` handles card moves between `Ny melding`, `Registrert`, `Startet`, and `Fullført` by updating `reports.status` and `status_updated_at` by `trello_card_id`.
 - Normal Trello comments remain internal. Only comments starting with `#public` update `public_status_note`.
 - Set `TRELLO_API_SECRET` (the Trello app secret paired with `TRELLO_API_KEY`, not the token) to verify the `X-Trello-Webhook` signature on each POST; without it, verification is skipped and a warning is logged once.
+
+Whenever the webhook moves a card's status or records a `#public` comment, it also best-effort-notifies the reporter: if the affected report has opted in (`notify_on_status_change`, see "Følg saken" above) and has a `contact_email`, a short status-update email is sent via the same Resend transport (`RESEND_API_KEY`/`SUMMARY_EMAIL_FROM`) the daily summary cron uses — no new secret. Sending is awaited (Vercel serverless functions can't rely on fire-and-forget after the response) but every failure — Resend down, env vars unset, malformed report — is caught and logged without affecting the `200` returned to Trello.
 
 Backoffice AI endpoints:
 
