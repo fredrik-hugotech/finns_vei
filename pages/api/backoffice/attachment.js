@@ -1,7 +1,7 @@
 import { isAdminRequest } from '../../../lib/backofficeAuth';
 import { parseMultipartRequest } from '../../../lib/multipart';
 import { uploadReportImage, createCaseAttachment, setCaseAttachmentVisibility, deleteCaseAttachment, hasSupabaseConfig } from '../../../lib/supabaseRest';
-import { sanitizeImageFilename, isAllowedReportImageType } from '../../../lib/reportImages';
+import { sanitizeImageFilename, resolveReportImageContentType } from '../../../lib/reportImages';
 
 export const config = { api: { bodyParser: false } };
 
@@ -9,10 +9,13 @@ const MAX_BYTES = 10 * 1024 * 1024;
 // Reuse the same allowlist as the public report-image upload path (excludes
 // image/svg+xml — an inline <script> in an SVG served back from a public
 // bucket would execute when opened directly). PDFs stay allowed since that
-// was already a working attachment type here.
-function allowed(contentType, filename) {
+// was already a working attachment type here. Returns the canonical
+// content-type to actually store (never the raw, potentially spoofed client
+// value) or null if the upload must be rejected.
+function resolveAllowedContentType(contentType, filename) {
   const t = String(contentType || '').toLowerCase();
-  return isAllowedReportImageType(t, filename) || t === 'application/pdf';
+  if (t === 'application/pdf') return 'application/pdf';
+  return resolveReportImageContentType(contentType, filename);
 }
 
 export default async function handler(req, res) {
@@ -45,15 +48,16 @@ export default async function handler(req, res) {
 
     const created = [];
     for (const [index, file] of uploads.entries()) {
-      if (!allowed(file.contentType, file.filename)) return res.status(400).json({ error: 'Kun bilder eller PDF.' });
+      const resolvedType = resolveAllowedContentType(file.contentType, file.filename);
+      if (!resolvedType) return res.status(400).json({ error: 'Kun bilder eller PDF.' });
       if (file.buffer.length > MAX_BYTES) return res.status(400).json({ error: 'Filen er for stor (maks 10 MB).' });
       const safeName = sanitizeImageFilename(file.filename || `vedlegg-${index + 1}`);
       const path = `cases/${reportId}/${Date.now()}-${index + 1}-${safeName}`;
-      const result = await uploadReportImage({ path, buffer: file.buffer, contentType: file.contentType });
+      const result = await uploadReportImage({ path, buffer: file.buffer, contentType: resolvedType });
       const row = await createCaseAttachment({
-        reportId, url: result.url, path: result.path, contentType: file.contentType, filename: file.filename || safeName, visibility, size: file.buffer.length,
+        reportId, url: result.url, path: result.path, contentType: resolvedType, filename: file.filename || safeName, visibility, size: file.buffer.length,
       });
-      created.push({ id: row?.id, url: result.url, filename: file.filename || safeName, content_type: file.contentType, visibility });
+      created.push({ id: row?.id, url: result.url, filename: file.filename || safeName, content_type: resolvedType, visibility });
     }
     return res.status(201).json({ attachments: created });
   } catch (error) {
