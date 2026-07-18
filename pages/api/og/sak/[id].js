@@ -148,7 +148,14 @@ function renderCard({ category, statusLabel, statusColor, description, footer })
        </div>
       </div>
     ),
-    { width: WIDTH, height: HEIGHT },
+    {
+      width: WIDTH,
+      height: HEIGHT,
+      // Case status (and, once set, the public update text) changes over
+      // time, so this must not be cached effectively-forever like Next's
+      // ImageResponse default — keep it short-lived instead.
+      headers: { 'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=600' },
+    },
   );
 }
 

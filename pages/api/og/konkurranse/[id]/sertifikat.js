@@ -194,7 +194,14 @@ function renderCertificate({ badge, eyebrow, title, metricLabel, periodLabel, de
         </div>
       </div>
     ),
-    { width: WIDTH, height: HEIGHT },
+    {
+      width: WIDTH,
+      height: HEIGHT,
+      // The certificate flips from "Snart klart" to a real finished
+      // certificate once the competition ends, so this must not be cached
+      // effectively-forever like Next's ImageResponse default.
+      headers: { 'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=600' },
+    },
   );
 }
 
