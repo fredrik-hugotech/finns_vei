@@ -229,6 +229,51 @@ returns an empty list and the rest of the app is unaffected. The `mode`/weather/
 migrated yet, and `getCompetitionStats` falls back to a narrower `select` — so
 trips keep logging and stats keep working either way, migrated or not.
 
+## Recurring hotspot / seasonal-pattern overview
+
+Backoffice staff can see which locations keep getting reported across *multiple different
+seasons or years* — chronic problem spots — as distinct from spots that simply got many
+reports during one short burst (e.g. a single bad week). This is a separate signal from
+`/backoffice/hotteste` (open cases ranked by current support/engagement) and from the
+~35 m `CASE_GROUP_RADIUS_M` case-grouping radius (which only links a *new* report to an
+already-open Trello case).
+
+- `lib/hotspotAnalysis.js` clusters the full `public.reports` history (any status, any
+  age) purely in JS using the same haversine `distanceMeters` helper the bike-trip
+  privacy code uses (`lib/geoPrivacy.js`) — there's no PostGIS/spatial index in this
+  project, so no new dependency is introduced. Clustering is a simple greedy,
+  chronological single-pass: each report joins the nearest existing cluster within
+  `HOTSPOT_RADIUS_M` (default 75 m — roughly 2x the case-grouping radius, since this pass
+  groups "same general spot over a long time span" rather than "same live case right
+  now") or starts a new one.
+- Each cluster is only surfaced as a "hotspot" once it has reports in at least
+  `HOTSPOT_MIN_PERIODS` (default 2) distinct **meteorological seasons** (Norwegian
+  vinter/vår/sommer/høst, with December grouped into the *following* winter so one whole
+  winter only counts as one period). Ranking is by distinct-period count first, then
+  report count — a spot with 6 reports across 3 different years ranks above 10 reports
+  from one busy week, since that's the whole point of the feature.
+- `GET /api/backoffice/hotspots` (admin-gated via `isAdminRequest`, same 403-first pattern
+  as `/api/backoffice/hot-cases`) returns the ranked list: center point, report count,
+  distinct-period count and labels, first/last-seen dates, dominant category, and status
+  mix.
+- `/backoffice/gjentakende-steder` renders the ranked list (linked from the dashboard
+  shortcuts next to Hotteste saker) and links out to `/backoffice/sak/[id]` for one of the
+  underlying reports at each spot. Shows a calm "ingen gjentakende steder funnet ennå"
+  message on a young/sparse dataset instead of an error.
+- Pure read/analysis: no schema changes, no new secrets, no writes.
+
+Known first-version limitations: the clustering is greedy and order-dependent (a
+cluster's centroid re-centers as members are added, so it can drift slightly rather than
+staying pinned to one exact point); a report right at a season boundary (e.g. late
+November vs. early December) can count as 2 distinct periods despite being only a few
+weeks apart; and very close but genuinely distinct hotspots (e.g. two crossings 50 m
+apart on the same street) can merge into one under the default radius.
+
+| Variable | Scope | Default | Purpose |
+| --- | --- | --- | --- |
+| `HOTSPOT_RADIUS_M` | Server | `75` | Spatial clustering radius for the recurring hotspot overview. |
+| `HOTSPOT_MIN_PERIODS` | Server | `2` | Minimum distinct seasons/years a spot must appear in to count as a recurring hotspot. |
+
 ## Environment variables
 
 Set these in Vercel Project Settings and locally in `.env.local` when developing. Do not commit secrets.
