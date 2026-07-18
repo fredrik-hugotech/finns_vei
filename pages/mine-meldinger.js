@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import Logo from '../components/Logo';
 import { reportStatusMeta } from '../lib/reportStatusMeta';
-import { getMyReports, removeMyReport } from '../lib/myReports';
+import { getMyReports, removeMyReport, getReportLastSeenAt, markReportSeen } from '../lib/myReports';
 import { QUEUE_CHANGED_EVENT, flushQueue, getPendingReports } from '../lib/offlineReportQueue';
 
 function formatDate(iso) {
@@ -11,6 +11,20 @@ function formatDate(iso) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
   return date.toLocaleDateString('nb-NO', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+// A report can be updated either through its workflow status or through a
+// public note/reply — take whichever happened most recently.
+function latestUpdateAt(live) {
+  if (!live) return null;
+  const candidates = [live.status_updated_at, live.public_status_updated_at].filter(Boolean);
+  if (!candidates.length) return null;
+  return candidates.reduce((latest, iso) => {
+    const time = new Date(iso).getTime();
+    if (Number.isNaN(time)) return latest;
+    if (!latest || time > new Date(latest).getTime()) return iso;
+    return latest;
+  }, null);
 }
 
 export default function MineMeldinger() {
@@ -62,6 +76,16 @@ export default function MineMeldinger() {
         reports.forEach((report) => { if (report?.id) map[report.id] = report; });
         setLiveById(map);
         setFetchState(reports.length ? 'ok' : 'empty');
+        // Reports with no recorded "last seen" timestamp yet (existing
+        // trackers from before this feature shipped, or a report that was
+        // just submitted) get a baseline set to now, so the "new update"
+        // badge only ever reflects changes going forward — never a stale or
+        // incorrect badge on a first-ever view.
+        reports.forEach((report) => {
+          if (report?.id && getReportLastSeenAt(report.id) === null) {
+            markReportSeen(report.id);
+          }
+        });
       })
       .catch(() => setFetchState('error'));
   }, [entries]);
@@ -69,6 +93,13 @@ export default function MineMeldinger() {
   const handleRemove = (id) => {
     removeMyReport(id);
     setEntries((current) => (current || []).filter((entry) => entry.id !== id));
+  };
+
+  // Clear the "new update" badge as the reporter actually opens the report's
+  // own detail page — matches the interaction point where they'd notice the
+  // update, not just where it happened to render in the list.
+  const handleOpen = (id) => {
+    markReportSeen(id);
   };
 
   const isEmpty = entries !== null && entries.length === 0;
@@ -119,6 +150,15 @@ export default function MineMeldinger() {
                 const category = live?.category || entry.category || 'Melding';
                 const dateLabel = formatDate(entry.createdAt);
 
+                // Only compare against a recorded last-seen timestamp — a
+                // report we have never recorded a "seen" moment for (see the
+                // backfill above) must never show an update badge.
+                const updatedAt = latestUpdateAt(live);
+                const lastSeenAt = getReportLastSeenAt(entry.id);
+                const hasNewUpdate = Boolean(
+                  updatedAt && lastSeenAt && new Date(updatedAt).getTime() > new Date(lastSeenAt).getTime()
+                );
+
                 let statusNode;
                 if (live) {
                   const meta = reportStatusMeta(live.status);
@@ -143,12 +183,24 @@ export default function MineMeldinger() {
                 return (
                   <li className="my-reports-item" key={entry.id}>
                     <div className="my-reports-item__head">
-                      {statusNode}
+                      <span className="my-reports-item__head-left">
+                        {statusNode}
+                        {hasNewUpdate && (
+                          <span className="my-reports-item__update-badge" role="status">
+                            <span className="my-reports-item__update-dot" aria-hidden="true" />
+                            Ny oppdatering
+                          </span>
+                        )}
+                      </span>
                       {dateLabel && <span className="my-reports-item__date">{dateLabel}</span>}
                     </div>
                     <strong className="my-reports-item__title">{category}</strong>
                     <div className="my-reports-item__actions">
-                      <Link className="big-button big-button--secondary my-reports-item__open" href={`/sak/${encodeURIComponent(entry.id)}`}>
+                      <Link
+                        className="big-button big-button--secondary my-reports-item__open"
+                        href={`/sak/${encodeURIComponent(entry.id)}`}
+                        onClick={() => handleOpen(entry.id)}
+                      >
                         Se saken
                       </Link>
                       <button

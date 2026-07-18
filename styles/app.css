@@ -1143,8 +1143,36 @@
 .my-reports-item__head {
   align-items: center;
   display: flex;
-  gap: 0.5rem;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.5rem;
   justify-content: space-between;
+}
+
+.my-reports-item__head-left {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.my-reports-item__update-badge {
+  align-items: center;
+  background: var(--color-primary-tint);
+  border-radius: var(--radius-pill);
+  color: var(--color-primary);
+  display: inline-flex;
+  font-size: 0.74rem;
+  font-weight: 700;
+  gap: 0.3rem;
+  padding: 0.18rem 0.55rem;
+}
+
+.my-reports-item__update-dot {
+  background: var(--color-primary);
+  border-radius: 50%;
+  flex: none;
+  height: 6px;
+  width: 6px;
 }
 
 .my-reports-item__note {
