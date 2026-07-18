@@ -45,6 +45,11 @@ export default function ReadAloudButton({ text, label = 'Hør på meg', classNam
   const [supported, setSupported] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const mountedRef = useRef(false);
+  // Guards the race where speak() is still awaiting the voice list (up to
+  // ~300ms) when the user taps "Stopp": stop() flips this to false so the
+  // pending speak() call bails out instead of starting playback right after
+  // the button has already flipped back to "Hør på meg".
+  const shouldSpeakRef = useRef(false);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -62,6 +67,7 @@ export default function ReadAloudButton({ text, label = 'Hør på meg', classNam
   if (!supported || !text) return null;
 
   function stop() {
+    shouldSpeakRef.current = false;
     window.speechSynthesis.cancel();
     setSpeaking(false);
   }
@@ -69,9 +75,10 @@ export default function ReadAloudButton({ text, label = 'Hør på meg', classNam
   async function speak() {
     const synth = window.speechSynthesis;
     synth.cancel(); // stop any other bud that might still be reading
+    shouldSpeakRef.current = true;
     setSpeaking(true);
     const voices = await getVoicesWhenReady(synth);
-    if (!mountedRef.current) return;
+    if (!mountedRef.current || !shouldSpeakRef.current) return;
     const voice = pickNorwegianVoice(voices);
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = voice ? voice.lang : 'nb-NO';

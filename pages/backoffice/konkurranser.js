@@ -105,14 +105,19 @@ export default function KonkurranserAdmin() {
 
   const toggleActive = async (competition) => {
     try {
-      await fetch('/api/backoffice/competitions', {
+      const response = await fetch('/api/backoffice/competitions', {
         method: 'PATCH',
         headers: authHeaders(),
         body: JSON.stringify({ id: competition.id, active: !competition.active }),
       });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || `Kunne ikke endre status (HTTP ${response.status})`);
+      }
       load();
-    } catch (_error) {
-      setStatus('Kunne ikke endre status.');
+    } catch (error) {
+      setStatus(error.message || 'Kunne ikke endre status.');
+      load();
     }
   };
 

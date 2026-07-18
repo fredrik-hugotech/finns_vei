@@ -68,7 +68,11 @@ export default function Sykle() {
   };
 
   const startTrip = () => {
-    if (competition?.clubs?.length && !club) { setDangerStatus(''); haptic(20); return; }
+    // Club-required guard for the trip setup flow (not the danger-report
+    // flow, which owns dangerStatus) — the "Velg laget ditt først" hint
+    // already renders declaratively from `club` being empty, so just give
+    // haptic feedback and bail out.
+    if (competition?.clubs?.length && !club) { haptic(20); return; }
     haptic(12);
     setMapMounted(true);
     setView('tracking');

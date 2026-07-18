@@ -105,13 +105,25 @@ export default function SakDetalj() {
 
   const changeDue = async (v) => {
     setDueDate(v);
-    try { await fetch('/api/backoffice/cases', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'set-due', id, due_date: v || null }) }); setFlash('Frist oppdatert'); setTimeout(() => setFlash(''), 1500); }
-    catch (_e) { setFlash('Kunne ikke lagre frist'); }
+    try {
+      const r = await fetch('/api/backoffice/cases', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'set-due', id, due_date: v || null }) });
+      if (!r.ok) throw new Error('due');
+      setFlash('Frist oppdatert'); setTimeout(() => setFlash(''), 1500);
+    } catch (_e) {
+      setFlash('Kunne ikke lagre frist');
+      load();
+    }
   };
   const changeAssignee = async (v) => {
     setAssignee(v);
-    try { await fetch('/api/backoffice/cases', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'set-assignee', id, assignee_email: v || null }) }); setFlash('Tildeling oppdatert'); setTimeout(() => setFlash(''), 1500); }
-    catch (_e) { setFlash('Kunne ikke lagre tildeling'); }
+    try {
+      const r = await fetch('/api/backoffice/cases', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'set-assignee', id, assignee_email: v || null }) });
+      if (!r.ok) throw new Error('assignee');
+      setFlash('Tildeling oppdatert'); setTimeout(() => setFlash(''), 1500);
+    } catch (_e) {
+      setFlash('Kunne ikke lagre tildeling');
+      load();
+    }
   };
 
   const c = data?.case;
@@ -164,8 +176,14 @@ export default function SakDetalj() {
 
   const changeStatus = async (next) => {
     setStatus(next);
-    try { await fetch('/api/backoffice/cases', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'set-status', id, status: next }) }); setFlash('Status oppdatert'); setTimeout(() => setFlash(''), 1600); }
-    catch (_e) { setFlash('Kunne ikke endre status'); }
+    try {
+      const r = await fetch('/api/backoffice/cases', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'set-status', id, status: next }) });
+      if (!r.ok) throw new Error('status');
+      setFlash('Status oppdatert'); setTimeout(() => setFlash(''), 1600);
+    } catch (_e) {
+      setFlash('Kunne ikke endre status');
+      load();
+    }
   };
 
   const deleteCase = async () => {
@@ -222,13 +240,23 @@ export default function SakDetalj() {
   const toggleAtt = async (att) => {
     const nextVis = att.visibility === 'public' ? 'internal' : 'public';
     setData((d) => (d ? { ...d, attachments: (d.attachments || []).map((a) => (a.id === att.id ? { ...a, visibility: nextVis } : a)) } : d));
-    try { await fetch('/api/backoffice/attachment', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: att.id, visibility: nextVis }) }); }
-    catch (_e) { load(); }
+    try {
+      const r = await fetch('/api/backoffice/attachment', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: att.id, visibility: nextVis }) });
+      if (!r.ok) throw new Error('toggle');
+    } catch (_e) {
+      setFlash('Kunne ikke oppdatere vedlegg');
+      load();
+    }
   };
   const deleteAtt = async (att) => {
     setData((d) => (d ? { ...d, attachments: (d.attachments || []).filter((a) => a.id !== att.id) } : d));
-    try { await fetch('/api/backoffice/attachment', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: att.id }) }); }
-    catch (_e) { load(); }
+    try {
+      const r = await fetch('/api/backoffice/attachment', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: att.id }) });
+      if (!r.ok) throw new Error('delete');
+    } catch (_e) {
+      setFlash('Kunne ikke slette vedlegg');
+      load();
+    }
   };
   const isImage = (a) => String(a.content_type || '').startsWith('image/');
 
