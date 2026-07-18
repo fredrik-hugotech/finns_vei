@@ -64,6 +64,10 @@ export default function SakPage({ report, shareUrl, ogImageUrl, photos }) {
     <>
       <Head>
         <title>{title}</title>
+        {/* Overrides the global user-scalable=no from _app.js — this page shows
+            the public "bilder fra oppfølgingen" photo gallery, where visitors
+            should be able to pinch-zoom, same as the backoffice attachment views. */}
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <meta name="description" content={description} />
         <meta property="og:type" content="article" />
         <meta property="og:site_name" content="Finns Fairway" />

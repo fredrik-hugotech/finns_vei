@@ -1,6 +1,16 @@
 import { generateBackofficeAiSuggestion, aiConfigStatus } from '../../../../lib/backofficeAi';
 import { isAdminRequest } from '../../../../lib/backofficeAuth';
 import { hasSupabaseConfig, sanitizeReportForBackofficeAi } from '../../../../lib/supabaseRest';
+import { checkRequestRateLimit } from '../../../../lib/rateLimit';
+
+// Each call here can trigger a real, billed OpenAI request (see
+// lib/backofficeAi.js) and BACKOFFICE_AI_DAILY_LIMIT is opt-in/unset by
+// default, so nothing previously stopped a valid admin session (or a
+// guessed BACKOFFICE_SECRET) from looping this over every report and
+// running up spend. Rate limit it like the other write-triggering
+// backoffice endpoints.
+const RATE_LIMIT = 20;
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 
 function errorResponse(error) {
   return {
@@ -14,6 +24,13 @@ export default async function handler(req, res) {
     res.setHeader('Allow', ['POST']);
     return res.status(405).end('Method Not Allowed');
   }
+
+  const rateLimit = checkRequestRateLimit(req, 'backoffice-ai-suggest', RATE_LIMIT, RATE_LIMIT_WINDOW_MS);
+  if (!rateLimit.allowed) {
+    res.setHeader('Retry-After', Math.ceil(rateLimit.retryAfterMs / 1000));
+    return res.status(429).json({ error: 'For mange forsøk. Prøv igjen om litt.', code: 'rate_limited' });
+  }
+
   if (!(await isAdminRequest(req))) return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
   if (!hasSupabaseConfig()) return res.status(503).json({ error: 'Supabase is not configured', code: 'missing_supabase_config' });
 
