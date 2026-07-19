@@ -1276,6 +1276,8 @@
 .sak-referral__lead b { color: var(--color-warning); }
 .sak-referral__explain { color: var(--color-muted); font-size: 0.88rem; line-height: 1.4; margin: 0; }
 .sak-referral__box { display: grid; gap: 0.6rem; }
+.sak-referral__to { color: var(--color-text); font-size: 0.85rem; margin: 0; }
+.sak-referral__to-note { color: var(--color-muted); }
 .sak-referral__actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .sak-referral__actions .big-button { flex: none; min-height: 42px; padding: 0 1rem; width: auto; }
 .sak-referral__preview {
