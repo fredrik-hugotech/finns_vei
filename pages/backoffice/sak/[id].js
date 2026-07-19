@@ -82,6 +82,7 @@ export default function SakDetalj() {
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [referralCopied, setReferralCopied] = useState(false);
+  const [me, setMe] = useState(null);
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
   const load = useCallback(async () => {
@@ -103,6 +104,9 @@ export default function SakDetalj() {
   useEffect(() => {
     fetch('/api/backoffice/cases').then((r) => (r.ok ? r.json() : null)).then((d) => { if (d) setSiblings((d.cases || []).map((x) => String(x.id))); }).catch(() => {});
     fetch('/api/staff/list').then((r) => (r.ok ? r.json() : null)).then((d) => { if (d) setStaffList(d.staff || []); }).catch(() => {});
+    // Best-effort: only named staff accounts (not the legacy shared-secret
+    // login) get a name back here, used to sign the referral draft below.
+    fetch('/api/staff/me').then((r) => (r.ok ? r.json() : null)).then((d) => { if (d) setMe(d); }).catch(() => {});
   }, []);
 
   const changeDue = async (v) => {
@@ -141,10 +145,24 @@ export default function SakDetalj() {
     if (!c || !roadAuthority.showReferral) return null;
     const caseUrl = typeof window !== 'undefined' ? `${window.location.origin}/sak/${encodeURIComponent(c.id)}` : `/sak/${encodeURIComponent(c.id)}`;
     return buildReferralDraft(
-      { caseId: c.id, caseUrl, category: c.category, description: c.description, lat: c.lat, lng: c.lng, roadReference: c.road_reference },
+      {
+        caseId: c.id,
+        caseUrl,
+        category: c.category,
+        description: c.description,
+        lat: c.lat,
+        lng: c.lng,
+        roadReference: c.road_reference,
+        place,
+        status: c.status,
+        speedLimit: c.speed_limit,
+        supportCount: support.count,
+        accidentCount: Array.isArray(accidents) ? accidents.length : null,
+        senderName: me?.name || null,
+      },
       roadAuthority,
     );
-  }, [c, roadAuthority]);
+  }, [c, roadAuthority, place, support.count, accidents, me]);
 
   const copyReferral = async () => {
     if (!referralDraft) return;
@@ -365,6 +383,11 @@ export default function SakDetalj() {
                 <p className="sak-referral__explain">{roadAuthority.explanation}</p>
                 {referralDraft && (
                   <div className="sak-referral__box">
+                    <p className="sak-referral__to">
+                      {referralDraft.to
+                        ? <>Til: <b>{referralDraft.to}</b> <span className="sak-referral__to-note">(Statens vegvesens offisielle kontaktadresse — sjekk/endre gjerne før sending)</span></>
+                        : <>Til: <i>ikke fylt inn</i> <span className="sak-referral__to-note">(finn riktig fylkeskommunes e-postadresse selv — ingen enkelt felles adresse finnes)</span></>}
+                    </p>
                     <div className="sak-referral__actions">
                       <a className="big-button big-button--primary" href={referralDraft.mailto}>Åpne e-postutkast</a>
                       <button type="button" className="big-button big-button--secondary" onClick={copyReferral}>
