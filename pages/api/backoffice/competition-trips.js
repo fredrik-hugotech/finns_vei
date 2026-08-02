@@ -1,5 +1,9 @@
 import { isAdminRequest } from '../../../lib/backofficeAuth';
 import { getCompetitionStats, listCompetitions, hasSupabaseConfig } from '../../../lib/supabaseRest';
+import { checkRequestRateLimit } from '../../../lib/rateLimit';
+
+const RATE_LIMIT = 30;
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 
 // Internal: the density heatmap geojson + leaderboard for a competition.
 // Gated by BACKOFFICE_SECRET so the "where children cycle" data stays internal.
@@ -7,6 +11,11 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', ['GET']);
     return res.status(405).end('Method Not Allowed');
+  }
+  const rateLimit = checkRequestRateLimit(req, 'backoffice-competition-trips', RATE_LIMIT, RATE_LIMIT_WINDOW_MS);
+  if (!rateLimit.allowed) {
+    res.setHeader('Retry-After', Math.ceil(rateLimit.retryAfterMs / 1000));
+    return res.status(429).json({ error: 'For mange forsøk. Prøv igjen om litt.', code: 'rate_limited' });
   }
   if (!(await isAdminRequest(req))) {
     return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });

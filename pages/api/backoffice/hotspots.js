@@ -1,5 +1,9 @@
 import { isAdminRequest } from '../../../lib/backofficeAuth';
 import { listRecurringHotspots, hasSupabaseConfig } from '../../../lib/supabaseRest';
+import { checkRequestRateLimit } from '../../../lib/rateLimit';
+
+const RATE_LIMIT = 30;
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 
 // Read-only recurrence/seasonal-pattern view: groups the FULL report history
 // (any status, any age) into spatial clusters (lib/hotspotAnalysis.js) and
@@ -9,6 +13,12 @@ import { listRecurringHotspots, hasSupabaseConfig } from '../../../lib/supabaseR
 // ranks currently OPEN cases by a heat score right now. No mutations happen
 // here — this is pure analysis over existing data.
 export default async function handler(req, res) {
+  const rateLimit = checkRequestRateLimit(req, 'backoffice-hotspots', RATE_LIMIT, RATE_LIMIT_WINDOW_MS);
+  if (!rateLimit.allowed) {
+    res.setHeader('Retry-After', Math.ceil(rateLimit.retryAfterMs / 1000));
+    return res.status(429).json({ error: 'For mange forsøk. Prøv igjen om litt.', code: 'rate_limited' });
+  }
+
   if (!(await isAdminRequest(req))) {
     return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
   }
