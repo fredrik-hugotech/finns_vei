@@ -19,9 +19,9 @@ function shortId(id) {
 
 // "Trygghetsskilt" — a print-ready A4/A5 poster with a QR code that opens
 // the case's public page (/sak/[id]). Staff generate this from the case
-// workspace (CaseAdminPanel's "Skriv ut skilt" button), print it, and post
-// it near the real-world hazard so passersby can scan it to see live status
-// or add their own supporting voice.
+// workspace ("Skriv ut skilt" button on /backoffice/sak/[id]), print it, and
+// post it near the real-world hazard so passersby can scan it to see live
+// status or add their own supporting voice.
 export default function SkiltPage({ authorized, notFound, report, publicUrl, qrSvg }) {
   const [size, setSize] = useState('a4');
 

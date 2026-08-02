@@ -1,13 +1,10 @@
 import Head from 'next/head';
 import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
 import BackofficeHeader from '../../components/BackofficeHeader';
 
 const EMPTY_CLUB = { name: '' };
 
 export default function KonkurranserAdmin() {
-  const router = useRouter();
-  const [secret, setSecret] = useState('');
   const [competitions, setCompetitions] = useState([]);
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,17 +16,6 @@ export default function KonkurranserAdmin() {
   const [helmetFocus, setHelmetFocus] = useState(true);
   const [metric, setMetric] = useState('trips');
   const [clubs, setClubs] = useState([{ ...EMPTY_CLUB }]);
-
-  useEffect(() => {
-    if (router.isReady && typeof router.query.secret === 'string') {
-      setSecret(router.query.secret);
-      return;
-    }
-    try {
-      const stored = window.localStorage.getItem('ff-admin-secret');
-      if (stored) setSecret(stored);
-    } catch (_e) { /* ignore */ }
-  }, [router.isReady, router.query.secret]);
 
   // Cookie session authorises admin requests; no manual password needed.
   const authHeaders = useCallback(() => ({ 'Content-Type': 'application/json' }), []);
@@ -55,7 +41,7 @@ export default function KonkurranserAdmin() {
     } finally {
       setLoading(false);
     }
-  }, [secret, authHeaders]);
+  }, [authHeaders]);
 
   useEffect(() => { load(); }, [load]);
 
