@@ -16,6 +16,11 @@ import { addTrelloCardComment, getTrelloBoardId, hasTrelloConfig } from '../../.
 import { checkRequestRateLimit } from '../../../lib/rateLimit';
 
 const STATUSES = Object.values(REPORT_STATUS);
+// Defensive cap, not pagination — ordered newest-first, so once the case
+// count passes this the OLDEST (often most overdue) cases silently drop off
+// every list/dashboard view. Expose it in the response so the UI can warn
+// staff instead of quietly showing an incomplete list.
+const CASES_LIMIT = 150;
 
 // This is the shared-secret's most-hit oracle (main case dashboard, loaded
 // constantly by staff) — rate limit it like every other secret-gated route
@@ -91,9 +96,11 @@ export default async function handler(req, res) {
           },
         });
       }
-      const cases = await listReportsForBackoffice({ limit: 150 });
+      const cases = await listReportsForBackoffice({ limit: CASES_LIMIT });
       return res.status(200).json({
         cases,
+        truncated: cases.length >= CASES_LIMIT,
+        limit: CASES_LIMIT,
         trelloBoardUrl: `https://trello.com/b/${getTrelloBoardId()}`,
         statuses: STATUSES,
       });

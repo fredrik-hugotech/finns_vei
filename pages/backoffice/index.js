@@ -99,11 +99,12 @@ export default function Backoffice() {
 
 function Dashboard({ me, onLogout }) {
   const [cases, setCases] = useState(null);
+  const [truncated, setTruncated] = useState(false);
   const [boardUrl, setBoardUrl] = useState('');
 
   useEffect(() => {
     fetch('/api/backoffice/cases').then((r) => (r.ok ? r.json() : null)).then((d) => {
-      if (d) { setCases(d.cases || []); setBoardUrl(d.trelloBoardUrl || ''); }
+      if (d) { setCases(d.cases || []); setTruncated(Boolean(d.truncated)); setBoardUrl(d.trelloBoardUrl || ''); }
     }).catch(() => setCases([]));
   }, []);
 
@@ -178,6 +179,10 @@ function Dashboard({ me, onLogout }) {
           </div>
           <button type="button" className="dash2__logout" onClick={onLogout}>Logg ut</button>
         </header>
+
+        {truncated && (
+          <p className="admin-warning">Viser kun de {cases.length} nyeste sakene — tallene og listene under dekker ikke eldre saker (ofte de som har ventet lengst). Se <Link href="/backoffice/liste">alle saker</Link> for full liste.</p>
+        )}
 
         <div className="dash2__pulse">
           {pulse.map((p) => (
