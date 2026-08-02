@@ -112,16 +112,16 @@ export default function Liste() {
         <input className="sak-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Søk i saker …" aria-label="Søk" />
 
         <div className="liste-filters">
-          <Link href="/backoffice/liste" className={active ? 'liste-filter' : 'liste-filter liste-filter--on'}>Alle</Link>
+          <Link href="/backoffice/liste" aria-current={active ? undefined : 'page'} className={active ? 'liste-filter' : 'liste-filter liste-filter--on'}>Alle</Link>
           {STATUSES.map((s) => (
-            <Link key={s} href={`/backoffice/liste?status=${encodeURIComponent(s)}`} className={active === s ? 'liste-filter liste-filter--on' : 'liste-filter'}>{s}</Link>
+            <Link key={s} href={`/backoffice/liste?status=${encodeURIComponent(s)}`} aria-current={active === s ? 'page' : undefined} className={active === s ? 'liste-filter liste-filter--on' : 'liste-filter'}>{s}</Link>
           ))}
         </div>
 
         <div className="liste-sort">
           <span className="liste-sort__label">Sorter</span>
           {SORTS.map((s) => (
-            <button key={s.key} type="button" className={sort === s.key ? 'liste-sort__btn liste-sort__btn--on' : 'liste-sort__btn'} onClick={() => setSort(s.key)}>{s.label}</button>
+            <button key={s.key} type="button" aria-pressed={sort === s.key} className={sort === s.key ? 'liste-sort__btn liste-sort__btn--on' : 'liste-sort__btn'} onClick={() => setSort(s.key)}>{s.label}</button>
           ))}
         </div>
 
@@ -130,6 +130,7 @@ export default function Liste() {
             <button
               type="button"
               disabled={aging.over === 0}
+              aria-pressed={agingFilter === 'over'}
               className={agingFilter === 'over' ? 'liste-summary__chip liste-summary__chip--over liste-summary__chip--on' : 'liste-summary__chip liste-summary__chip--over'}
               onClick={() => setAgingFilter((f) => (f === 'over' ? '' : 'over'))}
             >
@@ -138,6 +139,7 @@ export default function Liste() {
             <button
               type="button"
               disabled={aging.stale === 0}
+              aria-pressed={agingFilter === 'stale'}
               className={agingFilter === 'stale' ? 'liste-summary__chip liste-summary__chip--stale liste-summary__chip--on' : 'liste-summary__chip liste-summary__chip--stale'}
               onClick={() => setAgingFilter((f) => (f === 'stale' ? '' : 'stale'))}
             >

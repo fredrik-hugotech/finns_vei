@@ -186,12 +186,16 @@ export default function SakDetalj() {
   const prevId = idx > 0 ? siblings[idx - 1] : null;
   const nextId = idx >= 0 && siblings && idx < siblings.length - 1 ? siblings[idx + 1] : null;
 
-  // Arrow keys move between cases (unless typing in a field).
+  // Arrow keys move between cases (unless typing in a field); Escape closes
+  // the image lightbox, matching the backdrop-click/× dismiss it already has.
   useEffect(() => {
     const onKey = (e) => {
+      if (lightbox) {
+        if (e.key === 'Escape') setLightbox(null);
+        return;
+      }
       const t = e.target;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
-      if (lightbox) return;
       if (e.key === 'ArrowLeft' && prevId) router.push(`/backoffice/sak/${prevId}`);
       if (e.key === 'ArrowRight' && nextId) router.push(`/backoffice/sak/${nextId}`);
     };
@@ -368,7 +372,7 @@ export default function SakDetalj() {
               )}
               {c.images?.length > 0 && (
                 <div className="sak-images sak-hero__images">
-                  {c.images.map((src, i) => <button type="button" key={i} onClick={() => setLightbox(src)}><img src={src} alt="" /></button>)}
+                  {c.images.map((src, i) => <button type="button" key={i} onClick={() => setLightbox(src)}><img src={src} alt={`Bilde ${i + 1} av saken`} /></button>)}
                 </div>
               )}
             </header>
@@ -467,8 +471,8 @@ export default function SakDetalj() {
 
               <div className="tkt-composer">
                 <div className="case-admin__notetabs">
-                  <button type="button" className={noteMode === 'public' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setNoteMode('public')}>Svar til innbygger</button>
-                  <button type="button" className={noteMode === 'internal' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setNoteMode('internal')}>Internt notat</button>
+                  <button type="button" aria-pressed={noteMode === 'public'} className={noteMode === 'public' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setNoteMode('public')}>Svar til innbygger</button>
+                  <button type="button" aria-pressed={noteMode === 'internal'} className={noteMode === 'internal' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setNoteMode('internal')}>Internt notat</button>
                 </div>
                 <textarea className="sak-note" rows={3} value={note} onChange={(e) => setNote(e.target.value)}
                   placeholder={noteMode === 'internal' ? 'Lim inn e-post fra kommunen, eller skriv et internt notat. Kun for ansatte.' : 'Skriv en oppdatering som vises for innbyggeren.'} />
@@ -509,8 +513,8 @@ export default function SakDetalj() {
               <div className="sak-att__head">
                 <h2>Vedlegg</h2>
                 <div className="case-admin__notetabs sak-att__vis">
-                  <button type="button" className={uploadVis === 'internal' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setUploadVis('internal')}>Internt</button>
-                  <button type="button" className={uploadVis === 'public' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setUploadVis('public')}>Offentlig</button>
+                  <button type="button" aria-pressed={uploadVis === 'internal'} className={uploadVis === 'internal' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setUploadVis('internal')}>Internt</button>
+                  <button type="button" aria-pressed={uploadVis === 'public'} className={uploadVis === 'public' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setUploadVis('public')}>Offentlig</button>
                 </div>
               </div>
               <label
@@ -528,7 +532,7 @@ export default function SakDetalj() {
                   {data.attachments.map((a) => (
                     <div key={a.id} className={a.visibility === 'public' ? 'sak-att sak-att--public' : 'sak-att'}>
                       {isImage(a)
-                        ? <button type="button" className="sak-att__thumb" onClick={() => setLightbox(a.url)}><img src={a.url} alt={a.filename || ''} /></button>
+                        ? <button type="button" className="sak-att__thumb" onClick={() => setLightbox(a.url)}><img src={a.url} alt={a.filename || 'Vedleggsbilde'} /></button>
                         : <a href={a.url} target="_blank" rel="noopener noreferrer" className="sak-att__thumb"><span className="sak-att__file">PDF</span></a>}
                       <div className="sak-att__meta">
                         <span className={a.visibility === 'public' ? 'sak-att__badge sak-att__badge--public' : 'sak-att__badge'}>{a.visibility === 'public' ? 'Offentlig' : 'Internt'}</span>
