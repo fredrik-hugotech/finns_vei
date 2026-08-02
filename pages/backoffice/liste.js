@@ -50,6 +50,7 @@ const SORTS = [
 export default function Liste() {
   const router = useRouter();
   const [cases, setCases] = useState(null);
+  const [truncated, setTruncated] = useState(false);
   const [error, setError] = useState('');
   const [q, setQ] = useState('');
   const [sort, setSort] = useState('new');
@@ -59,7 +60,7 @@ export default function Liste() {
   useEffect(() => {
     fetch('/api/backoffice/cases')
       .then((r) => (r.status === 403 ? Promise.reject(new Error('not-authed')) : (r.ok ? r.json() : Promise.reject(new Error('feil')))))
-      .then((d) => setCases(d.cases || []))
+      .then((d) => { setCases(d.cases || []); setTruncated(Boolean(d.truncated)); })
       .catch((e) => setError(e.message === 'not-authed' ? 'not-authed' : 'Kunne ikke hente saker.'));
   }, []);
 
@@ -153,6 +154,9 @@ export default function Liste() {
         {!error && cases === null && <p className="admin-list-empty">Laster …</p>}
         {!error && cases && shown.length === 0 && <p className="admin-list-empty">Ingen saker her.</p>}
         {!error && cases && shown.length > 0 && <p className="sak-count">{shown.length} sak{shown.length === 1 ? '' : 'er'}{totalSupport > 0 ? ` · ${totalSupport} støtter totalt` : ''}</p>}
+        {!error && truncated && (
+          <p className="admin-warning">Viser kun de {cases.length} nyeste sakene — det finnes flere. Eldre saker (ofte de som har ventet lengst) er ikke med i denne listen eller i tallene over.</p>
+        )}
 
         <div className="admin-list">
           {shown.map((c) => {

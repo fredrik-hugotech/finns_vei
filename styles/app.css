@@ -1789,6 +1789,7 @@
 .admin-page h1 { font-family: var(--font-heading); margin: 0; }
 .admin-page h2 { font-family: var(--font-heading); font-size: 1.05rem; margin: 0 0 0.6rem; }
 .admin-help { color: var(--color-muted); font-size: 0.86rem; margin: 0; }
+.admin-warning { background: color-mix(in srgb, #b45309 12%, transparent); border: 1px solid color-mix(in srgb, #b45309 35%, transparent); border-radius: var(--radius-sm, 6px); color: #b45309; font-size: 0.86rem; margin: 0; padding: 0.5rem 0.7rem; }
 
 .admin-field { display: grid; gap: 0.28rem; }
 .admin-field > span,
