@@ -1,10 +1,19 @@
 import { isAdminRequest } from '../../../../lib/backofficeAuth';
 import { approveReportAiPublicStatus, hasSupabaseConfig, sanitizeReportForBackofficeAi } from '../../../../lib/supabaseRest';
+import { checkRequestRateLimit } from '../../../../lib/rateLimit';
+
+const RATE_LIMIT = 20;
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
     return res.status(405).end('Method Not Allowed');
+  }
+  const rateLimit = checkRequestRateLimit(req, 'backoffice-ai-approve', RATE_LIMIT, RATE_LIMIT_WINDOW_MS);
+  if (!rateLimit.allowed) {
+    res.setHeader('Retry-After', Math.ceil(rateLimit.retryAfterMs / 1000));
+    return res.status(429).json({ error: 'For mange forsøk. Prøv igjen om litt.', code: 'rate_limited' });
   }
   if (!(await isAdminRequest(req))) return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
   if (!hasSupabaseConfig()) return res.status(503).json({ error: 'Supabase is not configured', code: 'missing_supabase_config' });

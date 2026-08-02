@@ -5,8 +5,18 @@ import {
   updateCompetition,
   hasSupabaseConfig,
 } from '../../../lib/supabaseRest';
+import { checkRequestRateLimit } from '../../../lib/rateLimit';
+
+const RATE_LIMIT = 60;
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 
 export default async function handler(req, res) {
+  const rateLimit = checkRequestRateLimit(req, 'backoffice-competitions', RATE_LIMIT, RATE_LIMIT_WINDOW_MS);
+  if (!rateLimit.allowed) {
+    res.setHeader('Retry-After', Math.ceil(rateLimit.retryAfterMs / 1000));
+    return res.status(429).json({ error: 'For mange forsøk. Prøv igjen om litt.', code: 'rate_limited' });
+  }
+
   if (!(await isAdminRequest(req))) {
     // Safe diagnostic: reveal only whether a secret is configured (boolean),
     // never the value, so we can tell "no secret in Vercel" from "wrong password".

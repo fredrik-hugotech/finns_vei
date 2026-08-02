@@ -13,10 +13,23 @@ import {
   hasSupabaseConfig,
 } from '../../../lib/supabaseRest';
 import { addTrelloCardComment, getTrelloBoardId, hasTrelloConfig } from '../../../lib/trello';
+import { checkRequestRateLimit } from '../../../lib/rateLimit';
 
 const STATUSES = Object.values(REPORT_STATUS);
 
+// This is the shared-secret's most-hit oracle (main case dashboard, loaded
+// constantly by staff) — rate limit it like every other secret-gated route
+// so a guessed/looping BACKOFFICE_SECRET can't hammer it unthrottled.
+const RATE_LIMIT = 180;
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+
 export default async function handler(req, res) {
+  const rateLimit = checkRequestRateLimit(req, 'backoffice-cases', RATE_LIMIT, RATE_LIMIT_WINDOW_MS);
+  if (!rateLimit.allowed) {
+    res.setHeader('Retry-After', Math.ceil(rateLimit.retryAfterMs / 1000));
+    return res.status(429).json({ error: 'For mange forsøk. Prøv igjen om litt.', code: 'rate_limited' });
+  }
+
   if (!(await isAdminRequest(req))) {
     return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
   }
