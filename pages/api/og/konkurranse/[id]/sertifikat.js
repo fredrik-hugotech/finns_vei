@@ -227,7 +227,7 @@ export default async function handler(req) {
 
   let stats = null;
   try {
-    stats = await getCompetitionStats(id);
+    stats = await getCompetitionStats(id, { includeGeojson: false });
   } catch (_error) {
     stats = null;
   }

@@ -22,7 +22,7 @@ export default async function handler(req, res) {
 
   const id = String(req.query.id || '');
   try {
-    const stats = await getCompetitionStats(id);
+    const stats = await getCompetitionStats(id, { includeGeojson: false });
     if (!stats) return res.status(404).json({ error: 'Fant ikke konkurransen' });
     // The density geojson is internal (admin only) — never expose it publicly.
     const { geojson, ...publicStats } = stats;
