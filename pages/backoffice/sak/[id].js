@@ -102,7 +102,7 @@ export default function SakDetalj() {
   useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
-    fetch('/api/backoffice/cases').then((r) => (r.ok ? r.json() : null)).then((d) => { if (d) setSiblings((d.cases || []).map((x) => String(x.id))); }).catch(() => {});
+    fetch('/api/backoffice/cases?ids=1').then((r) => (r.ok ? r.json() : null)).then((d) => { if (d) setSiblings((d.ids || []).map(String)); }).catch(() => {});
     fetch('/api/staff/list').then((r) => (r.ok ? r.json() : null)).then((d) => { if (d) setStaffList(d.staff || []); }).catch(() => {});
     // Best-effort: only named staff accounts (not the legacy shared-secret
     // login) get a name back here, used to sign the referral draft below.
