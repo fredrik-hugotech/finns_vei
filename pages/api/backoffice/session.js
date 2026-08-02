@@ -11,6 +11,10 @@ const RATE_LIMIT = 8;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 
 export default async function handler(req, res) {
+  if (req.method !== 'GET') {
+    res.setHeader('Allow', ['GET']);
+    return res.status(405).end('Method Not Allowed');
+  }
   const rateLimit = checkRequestRateLimit(req, 'backoffice-session', RATE_LIMIT, RATE_LIMIT_WINDOW_MS);
   if (!rateLimit.allowed) {
     res.setHeader('Retry-After', Math.ceil(rateLimit.retryAfterMs / 1000));
