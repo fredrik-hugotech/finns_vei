@@ -501,6 +501,7 @@ export default function SakDetalj() {
               <div className="sak-side__actions">
                 <Link className="big-button big-button--secondary" href={`/?sak=${encodeURIComponent(c.id)}`}>Vis på kart</Link>
                 {Number.isFinite(Number(c.lat)) && <a className="big-button big-button--secondary" href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${c.lat},${c.lng}`} target="_blank" rel="noopener noreferrer">Street View</a>}
+                <Link className="big-button big-button--secondary" href={`/backoffice/skilt/${encodeURIComponent(c.id)}`}>Skriv ut skilt</Link>
               </div>
             </section>
 

@@ -1,6 +1,5 @@
 import Head from 'next/head';
 import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
 import BackofficeHeader from '../../components/BackofficeHeader';
 import { clipAndSnapCells, clipPath } from '../../lib/geoPrivacy';
 
@@ -35,8 +34,6 @@ function distMeters(a, b) {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export default function SeedSpor() {
-  const router = useRouter();
-  const [secret, setSecret] = useState('');
   const [competitions, setCompetitions] = useState([]);
   const [competitionId, setCompetitionId] = useState('');
   const [status, setStatus] = useState('');
@@ -45,19 +42,18 @@ export default function SeedSpor() {
 
   const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
-  useEffect(() => {
-    if (router.isReady && typeof router.query.secret === 'string') setSecret(router.query.secret);
-  }, [router.isReady, router.query.secret]);
-
   const load = useCallback(async () => {
     try {
       const response = await fetch('/api/backoffice/competitions');
       if (response.status === 403) { setStatus('Logg inn på /backoffice først.'); return; }
       const data = await response.json();
-      const list = (data.competitions || []).filter((c) => c.active);
+      // Only offer competitions that look like demo data — this tool injects
+      // synthetic bike trips via the same public endpoint real rides use, so
+      // pointing it at a real competition would silently pollute its
+      // leaderboard/heatmap with fake trips.
+      const list = (data.competitions || []).filter((c) => c.active && c.name.includes('DEMO'));
       setCompetitions(list);
-      const demo = list.find((c) => c.name.includes('DEMO'));
-      setCompetitionId((demo || list[0])?.id || '');
+      setCompetitionId(list[0]?.id || '');
     } catch (error) {
       setStatus('Kunne ikke hente konkurranser.');
     }
@@ -134,13 +130,15 @@ export default function SeedSpor() {
         <h1>Generer demo-spor</h1>
         <p className="admin-help">Lager ekte, vei-følgende sykkelruter fra Kristiansand-nabolag til idrettsanlegg (via Mapbox i nettleseren) og legger dem inn som turer på valgt konkurranse. Kjør gjerne på «DEMO – Sykkelspor».</p>
 
-        {competitions.length > 0 && (
+        {competitions.length > 0 ? (
           <label className="admin-field">
             <span>Konkurranse</span>
             <select className="comp-select" value={competitionId} onChange={(e) => setCompetitionId(e.target.value)}>
               {competitions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </label>
+        ) : (
+          <p className="admin-help">Ingen konkurranser med «DEMO» i navnet ennå — opprett en på <a href="/backoffice/konkurranser">/backoffice/konkurranser</a> først (dette verktøyet viser bevisst kun demo-konkurranser, for ikke å forurense en ekte ledertavle med falske turer).</p>
         )}
 
         <button type="button" className="big-button big-button--primary" onClick={generate} disabled={running || !competitionId}>
