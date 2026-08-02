@@ -96,6 +96,12 @@ export default async function handler(req, res) {
           },
         });
       }
+      // Lightweight mode for prev/next sibling navigation on the case
+      // workspace — same order/limit as the full list, but a single column.
+      if (req.query.ids === '1') {
+        const idRows = await listReportsForBackoffice({ limit: CASES_LIMIT, idsOnly: true });
+        return res.status(200).json({ ids: idRows.map((r) => r.id), truncated: idRows.length >= CASES_LIMIT, limit: CASES_LIMIT });
+      }
       const cases = await listReportsForBackoffice({ limit: CASES_LIMIT });
       return res.status(200).json({
         cases,
