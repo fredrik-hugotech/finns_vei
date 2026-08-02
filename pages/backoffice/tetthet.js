@@ -82,6 +82,21 @@ export default function Sykkelspor() {
                 <span className="spor-panel__meta">Ingen lagrede spor i denne konkurransen ennå. Velg en annen, eller logg en tur.</span>
               )}
               {status && status !== 'not-authed' && <span className="spor-panel__meta">{status}</span>}
+              {stats?.leaderboard?.length > 0 && (
+                <ol className="comp-board__list spor-panel__leaderboard">
+                  {stats.leaderboard.map((row, index) => (
+                    <li key={row.club} className="comp-row">
+                      <span className="comp-row__rank">{index + 1}</span>
+                      <span className="comp-row__club">{row.club}</span>
+                      <span className="comp-row__stats">
+                        <span className="comp-row__helmet">Hjelm {row.helmetPct}%</span>
+                        <span className={stats.metric === 'distance' ? 'comp-row__count comp-row__count--muted' : 'comp-row__count'}>{row.trips} turer</span>
+                        <span className={stats.metric === 'distance' ? 'comp-row__count' : 'comp-row__count comp-row__count--muted'}>{(row.distanceM / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 1 })} km</span>
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              )}
             </>
           )}
         </div>
