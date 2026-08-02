@@ -29,7 +29,7 @@ export default async function handler(req, res) {
     res.setHeader('Retry-After', Math.ceil(rateLimit.retryAfterMs / 1000));
     return res.status(429).json({ error: 'For mange forsøk. Prøv igjen om litt.' });
   }
-  if (!(await isAdminRequest(req))) return res.status(403).json({ error: 'Forbidden' });
+  if (!(await isAdminRequest(req))) return res.status(403).json({ error: 'Ingen tilgang' });
   if (!hasSupabaseConfig()) return res.status(503).json({ error: 'Supabase er ikke konfigurert' });
 
   try {

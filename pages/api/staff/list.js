@@ -16,7 +16,7 @@ export default async function handler(req, res) {
     res.setHeader('Retry-After', Math.ceil(rateLimit.retryAfterMs / 1000));
     return res.status(429).json({ error: 'For mange forsøk. Prøv igjen om litt.', code: 'rate_limited' });
   }
-  if (!(await isAdminRequest(req))) return res.status(403).json({ error: 'Forbidden' });
+  if (!(await isAdminRequest(req))) return res.status(403).json({ error: 'Ingen tilgang' });
   try {
     const staff = (await listStaff()).filter((s) => s.active !== false).map((s) => ({ email: s.email, name: s.name || null }));
     return res.status(200).json({ staff });
