@@ -89,22 +89,30 @@ function validateImages(files = []) {
 }
 
 async function uploadImagesBestEffort(reportId, files = []) {
-  const uploaded = [];
-  for (const [index, file] of files.entries()) {
+  // Independent uploads (different storage paths) — run them concurrently
+  // instead of one-at-a-time so 2-3 photos don't serialize their latency.
+  const results = await Promise.allSettled(files.map(async (file, index) => {
     const safeName = sanitizeImageFilename(file.filename || `bilde-${index + 1}`);
     const path = `reports/${reportId}/${Date.now()}-${index + 1}-${safeName}`;
-    try {
-      const result = await uploadReportImage({ path, buffer: file.buffer, contentType: file.contentType });
-      uploaded.push({
-        url: result.url,
-        path: result.path,
-        content_type: file.contentType,
-        size: file.buffer.length,
-      });
-    } catch (error) {
-      logApi('image_upload_failed', { reportId, index, contentType: file.contentType, size: file.buffer.length, status: error?.status || null, message: String(error?.message || '').slice(0, 240) });
+    const result = await uploadReportImage({ path, buffer: file.buffer, contentType: file.contentType });
+    return {
+      url: result.url,
+      path: result.path,
+      content_type: file.contentType,
+      size: file.buffer.length,
+    };
+  }));
+
+  const uploaded = [];
+  results.forEach((result, index) => {
+    if (result.status === 'fulfilled') {
+      uploaded.push(result.value);
+    } else {
+      const file = files[index];
+      const error = result.reason;
+      logApi('image_upload_failed', { reportId, index, contentType: file?.contentType, size: file?.buffer?.length, status: error?.status || null, message: String(error?.message || '').slice(0, 240) });
     }
-  }
+  });
   return uploaded;
 }
 

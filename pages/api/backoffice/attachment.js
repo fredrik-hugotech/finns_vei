@@ -63,19 +63,25 @@ export default async function handler(req, res) {
     const uploads = files.filter((f) => f.fieldName === 'file' && f.buffer?.length > 0);
     if (uploads.length === 0) return res.status(400).json({ error: 'Ingen fil valgt' });
 
-    const created = [];
-    for (const [index, file] of uploads.entries()) {
+    // Validate every file up front (no async) before uploading anything, so a
+    // bad file later in the batch can't leave earlier files already uploaded
+    // as orphans — then upload the validated files concurrently, since each
+    // goes to an independent storage path.
+    const validated = uploads.map((file, index) => {
       const resolvedType = resolveAllowedContentType(file.contentType, file.filename);
-      if (!resolvedType) return res.status(400).json({ error: 'Kun bilder eller PDF.' });
-      if (file.buffer.length > MAX_BYTES) return res.status(400).json({ error: 'Filen er for stor (maks 10 MB).' });
-      const safeName = sanitizeImageFilename(file.filename || `vedlegg-${index + 1}`);
+      if (!resolvedType) throw Object.assign(new Error('Kun bilder eller PDF.'), { status: 400 });
+      if (file.buffer.length > MAX_BYTES) throw Object.assign(new Error('Filen er for stor (maks 10 MB).'), { status: 400 });
+      return { file, index, resolvedType, safeName: sanitizeImageFilename(file.filename || `vedlegg-${index + 1}`) };
+    });
+
+    const created = await Promise.all(validated.map(async ({ file, index, resolvedType, safeName }) => {
       const path = `cases/${reportId}/${Date.now()}-${index + 1}-${safeName}`;
       const result = await uploadReportImage({ path, buffer: file.buffer, contentType: resolvedType });
       const row = await createCaseAttachment({
         reportId, url: result.url, path: result.path, contentType: resolvedType, filename: file.filename || safeName, visibility, size: file.buffer.length,
       });
-      created.push({ id: row?.id, url: result.url, filename: file.filename || safeName, content_type: resolvedType, visibility });
-    }
+      return { id: row?.id, url: result.url, filename: file.filename || safeName, content_type: resolvedType, visibility };
+    }));
     return res.status(201).json({ attachments: created });
   } catch (error) {
     console.error(error);
