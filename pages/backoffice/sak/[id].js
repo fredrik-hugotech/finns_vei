@@ -6,6 +6,7 @@ import { reportStatusMeta } from '../../../lib/reportStatusMeta';
 import { REPORT_STATUS } from '../../../lib/config';
 import BackofficeHeader from '../../../components/BackofficeHeader';
 import { classifyRoadAuthority, buildReferralDraft } from '../../../lib/roadAuthorityReferral';
+import { describeFetchError } from '../../../lib/backofficeFormat';
 
 const STATUSES = [REPORT_STATUS.NEW, REPORT_STATUS.REGISTERED, REPORT_STATUS.STARTED, REPORT_STATUS.DONE];
 const ACT_LABEL = { created: 'Sak opprettet', voice: 'Innbyggerstemme', public: 'Offentlig oppdatering', internal: 'Internt notat' };
@@ -90,7 +91,7 @@ export default function SakDetalj() {
     try {
       const r = await fetch(`/api/backoffice/cases?id=${encodeURIComponent(id)}`);
       if (r.status === 403) { setError('not-authed'); return; }
-      if (!r.ok) { setError('Kunne ikke hente saken.'); return; }
+      if (!r.ok) { setError(await describeFetchError(r, 'Kunne ikke hente saken.')); return; }
       const d = await r.json();
       setData(d);
       setStatus(d.case?.status || '');

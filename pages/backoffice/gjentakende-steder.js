@@ -2,6 +2,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import BackofficeHeader from '../../components/BackofficeHeader';
+import { describeFetchError } from '../../lib/backofficeFormat';
 
 function fmtDate(value) {
   if (!value) return '';
@@ -24,9 +25,13 @@ export default function GjentakendeSteder() {
 
   useEffect(() => {
     fetch('/api/backoffice/hotspots')
-      .then((r) => (r.status === 403 ? Promise.reject(new Error('not-authed')) : (r.ok ? r.json() : Promise.reject(new Error('feil')))))
+      .then(async (r) => {
+        if (r.status === 403) throw new Error('not-authed');
+        if (!r.ok) throw new Error(await describeFetchError(r, 'Kunne ikke hente gjentakende steder.'));
+        return r.json();
+      })
       .then((d) => setHotspots(d.hotspots || []))
-      .catch((e) => setError(e.message === 'not-authed' ? 'not-authed' : 'Kunne ikke hente gjentakende steder.'));
+      .catch((e) => setError(e.message === 'not-authed' ? 'not-authed' : e.message));
   }, []);
 
   const totalReports = useMemo(

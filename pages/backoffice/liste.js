@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { reportStatusMeta } from '../../lib/reportStatusMeta';
 import { REPORT_STATUS } from '../../lib/config';
-import { timeAgo, ownerShort } from '../../lib/backofficeFormat';
+import { timeAgo, ownerShort, describeFetchError } from '../../lib/backofficeFormat';
 import BackofficeHeader from '../../components/BackofficeHeader';
 
 const STATUSES = [REPORT_STATUS.NEW, REPORT_STATUS.REGISTERED, REPORT_STATUS.STARTED, REPORT_STATUS.DONE];
@@ -44,9 +44,13 @@ export default function Liste() {
 
   useEffect(() => {
     fetch('/api/backoffice/cases')
-      .then((r) => (r.status === 403 ? Promise.reject(new Error('not-authed')) : (r.ok ? r.json() : Promise.reject(new Error('feil')))))
+      .then(async (r) => {
+        if (r.status === 403) throw new Error('not-authed');
+        if (!r.ok) throw new Error(await describeFetchError(r, 'Kunne ikke hente saker.'));
+        return r.json();
+      })
       .then((d) => { setCases(d.cases || []); setTruncated(Boolean(d.truncated)); })
-      .catch((e) => setError(e.message === 'not-authed' ? 'not-authed' : 'Kunne ikke hente saker.'));
+      .catch((e) => setError(e.message === 'not-authed' ? 'not-authed' : e.message));
   }, []);
 
   const shown = useMemo(() => {
