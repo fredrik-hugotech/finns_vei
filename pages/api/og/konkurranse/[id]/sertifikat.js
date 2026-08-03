@@ -1,5 +1,9 @@
 import { ImageResponse } from 'next/og';
 import { getCompetitionStats, hasSupabaseConfig } from '../../../../../lib/supabaseRest';
+import { checkEdgeRateLimit } from '../../../../../lib/rateLimitEdge';
+
+const RATE_LIMIT = 60;
+const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 
 // Printable "winner certificate" for a finished cycling/walking competition.
 // Mirrors pages/api/og/sak/[id].js: built with next/og's built-in
@@ -216,6 +220,17 @@ function fallbackCard(description = FALLBACK_DESCRIPTION) {
 }
 
 export default async function handler(req) {
+  const rateLimit = checkEdgeRateLimit(req, 'og-konkurranse-sertifikat', RATE_LIMIT, RATE_LIMIT_WINDOW_MS);
+  if (!rateLimit.allowed) {
+    return new Response(JSON.stringify({ error: 'For mange forespørsler' }), {
+      status: 429,
+      headers: {
+        'Content-Type': 'application/json',
+        'Retry-After': String(Math.ceil(rateLimit.retryAfterMs / 1000)),
+      },
+    });
+  }
+
   const { pathname } = new URL(req.url);
   // .../konkurranse/<id>/sertifikat — id is the second-to-last segment.
   const parts = pathname.split('/').filter(Boolean);
