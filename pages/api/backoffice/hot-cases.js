@@ -18,7 +18,7 @@ export default async function handler(req, res) {
   }
 
   if (!(await isAdminRequest(req))) {
-    return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
+    return res.status(403).json({ error: 'Ingen tilgang', code: 'forbidden' });
   }
   if (!hasSupabaseConfig()) {
     return res.status(503).json({ error: 'Supabase is not configured' });
