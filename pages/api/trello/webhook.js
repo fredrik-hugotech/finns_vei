@@ -3,6 +3,13 @@ import { REPORT_STATUS } from '../../../lib/config';
 import { addCaseStatusUpdate, hasSupabaseConfig, setPublicStatusFromTrelloComment, setReportStatusFromTrello } from '../../../lib/supabaseRest';
 import { siteBaseUrl } from '../../../lib/reportWorkflow';
 import { getNewReportListName } from '../../../lib/trello';
+import { checkRequestRateLimit } from '../../../lib/rateLimit';
+
+const RATE_LIMIT = 120;
+const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
+// Trello payloads are small JSON documents (a card move / a comment); this is
+// generous headroom, not a real expected size.
+const MAX_BODY_BYTES = 512 * 1024;
 
 // Signature verification requires the exact raw request bytes, so the default
 // Next.js JSON body parser is disabled here and the body is read + parsed manually.
@@ -31,9 +38,18 @@ function logWebhook(event, details = {}) {
   console.log(JSON.stringify({ scope: 'api/trello/webhook', event, ...details }));
 }
 
-async function readRawBody(req) {
+async function readRawBody(req, maxBytes = MAX_BODY_BYTES) {
   const chunks = [];
-  for await (const chunk of req) chunks.push(Buffer.from(chunk));
+  let total = 0;
+  for await (const chunk of req) {
+    total += chunk.length;
+    if (total > maxBytes) {
+      const error = new Error('Forespørselen er for stor');
+      error.status = 413;
+      throw error;
+    }
+    chunks.push(Buffer.from(chunk));
+  }
   return Buffer.concat(chunks);
 }
 
@@ -214,7 +230,19 @@ export default async function handler(req, res) {
     return res.status(405).end('Method Not Allowed');
   }
 
-  const rawBody = await readRawBody(req);
+  const rateLimit = checkRequestRateLimit(req, 'trello-webhook', RATE_LIMIT, RATE_LIMIT_WINDOW_MS);
+  if (!rateLimit.allowed) {
+    res.setHeader('Retry-After', Math.ceil(rateLimit.retryAfterMs / 1000));
+    return res.status(429).json({ error: 'For mange forespørsler' });
+  }
+
+  let rawBody;
+  try {
+    rawBody = await readRawBody(req);
+  } catch (error) {
+    logWebhook('body_too_large', { status: error?.status || 500 });
+    return res.status(error?.status || 500).json({ error: error.message || 'Kunne ikke lese forespørselen' });
+  }
   const callbackUrl = `${siteBaseUrl()}/api/trello/webhook`;
   const signatureHeader = req.headers['x-trello-webhook'];
   if (!verifyTrelloSignature({ rawBody, header: signatureHeader, callbackUrl })) {
