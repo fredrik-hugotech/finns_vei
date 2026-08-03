@@ -35,6 +35,7 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mode =
   }, []);
 
   const pointsRef = useRef([]);
+  const distanceRef = useRef(0);
   const lastFixRef = useRef(null);
   const startedAtRef = useRef(null);
   const watchIdRef = useRef(null);
@@ -83,9 +84,13 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mode =
         const points = pointsRef.current;
         const last = points[points.length - 1];
         if (last && distanceMeters(last, point) < 5) { setStatus('tracking'); return; }
+        // Incremental running total instead of re-summing the whole path on
+        // every fix — pathDistanceMeters(points) here would make the total
+        // work across a long trip grow quadratically with the point count.
+        if (last) distanceRef.current += distanceMeters(last, point);
         points.push(point);
         setStatus('tracking');
-        setDistanceM(pathDistanceMeters(points));
+        setDistanceM(distanceRef.current);
         setPointCount(points.length);
         // Read via the ref (not a captured prop) so a map that's still loading
         // when tracking starts is picked up as soon as it becomes ready.
