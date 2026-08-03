@@ -285,6 +285,9 @@ export default function SakDetalj() {
   };
   const toggleAtt = async (att) => {
     const nextVis = att.visibility === 'public' ? 'internal' : 'public';
+    if (nextVis === 'public' && !window.confirm('Gjøre dette vedlegget offentlig? Alle som ser saken kan da se det, inkludert på delte lenker.')) {
+      return;
+    }
     setData((d) => (d ? { ...d, attachments: (d.attachments || []).map((a) => (a.id === att.id ? { ...a, visibility: nextVis } : a)) } : d));
     try {
       const r = await fetch('/api/backoffice/attachment', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: att.id, visibility: nextVis }) });
@@ -295,6 +298,7 @@ export default function SakDetalj() {
     }
   };
   const deleteAtt = async (att) => {
+    if (!window.confirm('Slette dette vedlegget permanent? Dette kan ikke angres.')) return;
     setData((d) => (d ? { ...d, attachments: (d.attachments || []).filter((a) => a.id !== att.id) } : d));
     try {
       const r = await fetch('/api/backoffice/attachment', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: att.id }) });
