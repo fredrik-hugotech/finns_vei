@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Logo from '../../components/Logo';
 import { reportStatusMeta } from '../../lib/reportStatusMeta';
 import { REPORT_STATUS } from '../../lib/config';
+import { timeAgo } from '../../lib/backofficeFormat';
 
 const FLAG = 'ff-admin-secret'; // client "logged in" flag; real auth is the httpOnly cookie
 const STATUSES = [REPORT_STATUS.NEW, REPORT_STATUS.REGISTERED, REPORT_STATUS.STARTED, REPORT_STATUS.DONE];
@@ -12,15 +13,6 @@ function greetingFor(name) {
   const h = new Date().getHours();
   const part = h < 10 ? 'God morgen' : h < 18 ? 'God dag' : 'God kveld';
   return `${part}, ${name || 'Fairway'}`;
-}
-function timeAgo(value) {
-  if (!value) return '';
-  const diff = Date.now() - new Date(value).getTime();
-  const d = Math.floor(diff / 86400000);
-  if (d > 0) return `${d} d`;
-  const h = Math.floor(diff / 3600000);
-  if (h > 0) return `${h} t`;
-  return `${Math.max(1, Math.floor(diff / 60000))} min`;
 }
 function fmtShort(d) {
   if (!d) return '';
@@ -157,7 +149,7 @@ function Dashboard({ me, onLogout }) {
           <span className={`status-pill status-pill--${meta.key}`} dangerouslySetInnerHTML={{ __html: `${meta.icon}<span>${meta.label}</span>` }} />
           <span className="admin-list-item__headright">
             {Number(c.support_count) > 0 && <span className="admin-list-item__support" title="Innbyggerstøtte">♥ {c.support_count}</span>}
-            <span className="admin-list-item__time">{timeAgo(c.created_at)} siden</span>
+            <span className="admin-list-item__time">{timeAgo(c.created_at)}</span>
           </span>
         </div>
         <strong className="admin-list-item__title">{c.category}</strong>

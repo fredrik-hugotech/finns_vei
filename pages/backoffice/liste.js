@@ -4,25 +4,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { reportStatusMeta } from '../../lib/reportStatusMeta';
 import { REPORT_STATUS } from '../../lib/config';
+import { timeAgo, ownerShort } from '../../lib/backofficeFormat';
 import BackofficeHeader from '../../components/BackofficeHeader';
 
 const STATUSES = [REPORT_STATUS.NEW, REPORT_STATUS.REGISTERED, REPORT_STATUS.STARTED, REPORT_STATUS.DONE];
-
-function timeAgo(value) {
-  if (!value) return '';
-  const diff = Date.now() - new Date(value).getTime();
-  const days = Math.floor(diff / 86400000);
-  if (days > 0) return `${days} d siden`;
-  const hours = Math.floor(diff / 3600000);
-  if (hours > 0) return `${hours} t siden`;
-  return `${Math.max(1, Math.floor(diff / 60000))} min siden`;
-}
-function ownerShort(owner, speed) {
-  const map = { kommune: 'Kommunal', fylke: 'Fylkesvei', stat: 'Riksvei', privat: 'Privat' };
-  const o = map[String(owner || '').toLowerCase()];
-  const s = speed ? `${speed} km/t` : '';
-  return [o, s].filter(Boolean).join(' · ');
-}
 
 function isOverdueCase(c, today) {
   return Boolean(c.due_date) && c.status !== REPORT_STATUS.DONE && String(c.due_date).slice(0, 10) < today;
