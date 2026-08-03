@@ -33,9 +33,19 @@ function cleanString(value, maxLength = 1000) {
   return cleaned || null;
 }
 
+// User-facing Norwegian validation messages are safe to return as-is. Marked
+// with `.safe` so the top-level handler can tell them apart from raw
+// backend/Supabase error text, which must never reach an anonymous caller.
+function invalidInput(message) {
+  const error = new Error(message);
+  error.status = 400;
+  error.safe = true;
+  return error;
+}
+
 function parseCoordinate(value, name) {
   const number = Number(value);
-  if (!Number.isFinite(number)) throw new Error(`${name} mangler`);
+  if (!Number.isFinite(number)) throw invalidInput(`${name} mangler`);
   return number;
 }
 
@@ -45,15 +55,15 @@ function validatePayload(body = {}) {
   const lng = parseCoordinate(body.lng, 'Posisjon');
 
   if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-    throw new Error('Posisjonen ser ikke riktig ut');
+    throw invalidInput('Posisjonen ser ikke riktig ut');
   }
 
   const category = REPORT_CATEGORIES.includes(body.category) ? body.category : null;
-  if (!category) throw new Error('Velg en kategori');
+  if (!category) throw invalidInput('Velg en kategori');
 
   const description = cleanString(body.description, 1200);
   if (!description || description.length < 3) {
-    throw new Error('Skriv en kort beskrivelse');
+    throw invalidInput('Skriv en kort beskrivelse');
   }
 
   const bikeRouteType = body.bike_route_type === 'skole' ? 'skole' : (body.bike_route_type === 'fritid' ? 'fritid' : null);
@@ -75,15 +85,15 @@ function validatePayload(body = {}) {
 
 function validateImages(files = []) {
   const images = files.filter((file) => file.fieldName === 'images' && file.buffer?.length > 0);
-  if (images.length > REPORT_IMAGE_MAX_COUNT) throw new Error(`Du kan legge ved maks ${REPORT_IMAGE_MAX_COUNT} bilder.`);
+  if (images.length > REPORT_IMAGE_MAX_COUNT) throw invalidInput(`Du kan legge ved maks ${REPORT_IMAGE_MAX_COUNT} bilder.`);
   images.forEach((file) => {
     const canonicalType = resolveReportImageContentType(file.contentType, file.filename);
-    if (!canonicalType) throw new Error('Du kan bare laste opp bildefiler.');
+    if (!canonicalType) throw invalidInput('Du kan bare laste opp bildefiler.');
     // Normalize to the validated, allowlisted type so the raw client-supplied
     // contentType (which can be spoofed, e.g. text/html) is never the value
     // written as the storage object's Content-Type header downstream.
     file.contentType = canonicalType;
-    if (file.buffer.length > REPORT_IMAGE_MAX_BYTES) throw new Error('Et bilde er for stort. Maks 8 MB per bilde.');
+    if (file.buffer.length > REPORT_IMAGE_MAX_BYTES) throw invalidInput('Et bilde er for stort. Maks 8 MB per bilde.');
   });
   return images;
 }
@@ -141,7 +151,7 @@ export default async function handler(req, res) {
     // other bad input so the mechanism isn't revealed.
     if (String(fields?.[HONEYPOT_FIELD] || '').trim()) {
       logApi('honeypot_triggered', { field: HONEYPOT_FIELD });
-      throw new Error('Ugyldig innsending');
+      throw invalidInput('Ugyldig innsending');
     }
 
     const reportInput = validatePayload(fields);
@@ -191,7 +201,12 @@ export default async function handler(req, res) {
       image_count: uploadedImages.length,
     });
   } catch (error) {
-    console.error(JSON.stringify({ scope: 'api/report', event: 'request_failed', error: error?.message }));
-    return res.status(error?.status || 400).json({ error: error.message || 'Kunne ikke lagre meldingen' });
+    console.error(JSON.stringify({ scope: 'api/report', event: 'request_failed', status: error?.status || null, error: error?.message }));
+    // Only messages explicitly marked `.safe` (our own validation/upload
+    // checks) are ever shown to the caller — anything else (e.g. raw
+    // PostgREST/Supabase error text bubbling up from createReport) would leak
+    // internal schema/backend details to an anonymous public submitter.
+    const message = error?.safe ? error.message : 'Kunne ikke lagre meldingen. Prøv igjen om litt.';
+    return res.status(error?.status || 500).json({ error: message });
   }
 }
