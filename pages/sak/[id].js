@@ -156,12 +156,14 @@ export async function getServerSideProps({ params, req }) {
   const id = String(params.id || '');
   if (!hasSupabaseConfig()) return { notFound: true };
 
-  let report = null;
-  try {
-    report = await getPublicReportById(id);
-  } catch (error) {
-    report = null;
-  }
+  // getPublicReportById(id) and listCaseAttachments(id, ...) are independent
+  // Supabase reads keyed off the same route id (getPublicReportById queries
+  // by exact primary key, so report.id === id whenever a report is found) —
+  // run them concurrently instead of sequentially.
+  const [report, attachments] = await Promise.all([
+    getPublicReportById(id).catch(() => null),
+    listCaseAttachments(id, { publicOnly: true }).catch(() => []),
+  ]);
   if (!report) return { notFound: true };
 
   const firstImage = Array.isArray(report.image_urls)
@@ -169,17 +171,10 @@ export async function getServerSideProps({ params, req }) {
     : null;
 
   // Staff-uploaded case attachments marked "public" (e.g. proof a hazard was
-  // fixed). Best-effort: listCaseAttachments already swallows its own
-  // Supabase errors and resolves to [], so this never breaks the page.
-  let photos = [];
-  try {
-    const attachments = await listCaseAttachments(report.id, { publicOnly: true });
-    photos = (Array.isArray(attachments) ? attachments : [])
-      .filter((a) => a && a.url && String(a.content_type || '').startsWith('image/'))
-      .map((a) => ({ id: a.id, url: a.url, filename: a.filename || null }));
-  } catch (error) {
-    photos = [];
-  }
+  // fixed).
+  const photos = (Array.isArray(attachments) ? attachments : [])
+    .filter((a) => a && a.url && String(a.content_type || '').startsWith('image/'))
+    .map((a) => ({ id: a.id, url: a.url, filename: a.filename || null }));
 
   const safe = {
     id: report.id || id,
