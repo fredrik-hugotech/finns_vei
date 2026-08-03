@@ -4,6 +4,7 @@ import { checkRequestRateLimit } from '../../../lib/rateLimit';
 
 const RATE_LIMIT = 60;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const HOT_CASES_LIMIT = 300;
 
 // Read-only triage view: open cases ranked by a heat score (support_count +
 // concern/facet diversity), so staff aren't limited to Trello column order
@@ -28,8 +29,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    const cases = await listHotCases({ limit: 300 });
-    return res.status(200).json({ cases });
+    const cases = await listHotCases({ limit: HOT_CASES_LIMIT });
+    return res.status(200).json({ cases, truncated: cases.length >= HOT_CASES_LIMIT, limit: HOT_CASES_LIMIT });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: error?.message || 'Kunne ikke hente hotteste saker' });

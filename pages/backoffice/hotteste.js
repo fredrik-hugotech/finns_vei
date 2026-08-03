@@ -33,12 +33,13 @@ function ownerShort(owner, speed) {
 // /backoffice/sak/[id].
 export default function Hotteste() {
   const [cases, setCases] = useState(null);
+  const [truncated, setTruncated] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     fetch('/api/backoffice/hot-cases')
       .then((r) => (r.status === 403 ? Promise.reject(new Error('not-authed')) : (r.ok ? r.json() : Promise.reject(new Error('feil')))))
-      .then((d) => setCases(d.cases || []))
+      .then((d) => { setCases(d.cases || []); setTruncated(Boolean(d.truncated)); })
       .catch((e) => setError(e.message === 'not-authed' ? 'not-authed' : 'Kunne ikke hente hotteste saker.'));
   }, []);
 
@@ -59,6 +60,9 @@ export default function Hotteste() {
         {!error && cases && cases.length === 0 && <p className="admin-list-empty">Ingen åpne saker akkurat nå. Fint jobbet.</p>}
         {!error && cases && cases.length > 0 && (
           <p className="sak-count">{cases.length} åpne sak{cases.length === 1 ? '' : 'er'}{totalSupport > 0 ? ` · ${totalSupport} støtter totalt` : ''}</p>
+        )}
+        {!error && truncated && (
+          <p className="admin-warning">Viser kun de {cases.length} hotteste sakene — det finnes flere åpne saker som ikke er med i denne rangeringen.</p>
         )}
 
         <div className="admin-list">
