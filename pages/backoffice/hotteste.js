@@ -2,7 +2,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { reportStatusMeta } from '../../lib/reportStatusMeta';
-import { timeAgo, ownerShort } from '../../lib/backofficeFormat';
+import { timeAgo, ownerShort, describeFetchError } from '../../lib/backofficeFormat';
 import BackofficeHeader from '../../components/BackofficeHeader';
 
 function ageDays(value) {
@@ -22,9 +22,13 @@ export default function Hotteste() {
 
   useEffect(() => {
     fetch('/api/backoffice/hot-cases')
-      .then((r) => (r.status === 403 ? Promise.reject(new Error('not-authed')) : (r.ok ? r.json() : Promise.reject(new Error('feil')))))
+      .then(async (r) => {
+        if (r.status === 403) throw new Error('not-authed');
+        if (!r.ok) throw new Error(await describeFetchError(r, 'Kunne ikke hente hotteste saker.'));
+        return r.json();
+      })
       .then((d) => { setCases(d.cases || []); setTruncated(Boolean(d.truncated)); })
-      .catch((e) => setError(e.message === 'not-authed' ? 'not-authed' : 'Kunne ikke hente hotteste saker.'));
+      .catch((e) => setError(e.message === 'not-authed' ? 'not-authed' : e.message));
   }, []);
 
   const totalSupport = useMemo(() => (cases || []).reduce((n, c) => n + Number(c.support_count || 0), 0), [cases]);
