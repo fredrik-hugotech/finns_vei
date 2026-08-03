@@ -1,6 +1,6 @@
 import Head from 'next/head';
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Logo from '../../components/Logo';
 import { reportStatusMeta } from '../../lib/reportStatusMeta';
 import { REPORT_STATUS } from '../../lib/config';
@@ -108,28 +108,32 @@ function Dashboard({ me, onLogout }) {
     }).catch(() => setCases([]));
   }, []);
 
-  const counts = STATUSES.reduce((acc, s) => { acc[s] = 0; return acc; }, {});
-  (cases || []).forEach((c) => { if (counts[c.status] !== undefined) counts[c.status] += 1; else counts[c.status] = (counts[c.status] || 0) + 1; });
   const todayStr = new Date().toISOString().slice(0, 10);
   const myEmail = String(me.email || '').toLowerCase();
 
-  const open = (cases || []).filter((c) => c.status !== REPORT_STATUS.DONE);
-  const overdue = open.filter((c) => c.due_date && String(c.due_date).slice(0, 10) < todayStr);
-  const unassigned = open.filter((c) => !c.assignee_email);
-  const newToday = (cases || []).filter((c) => String(c.created_at || '').slice(0, 10) === todayStr);
-  const totalSupport = (cases || []).reduce((n, c) => n + Number(c.support_count || 0), 0);
+  const counts = useMemo(() => {
+    const acc = STATUSES.reduce((a, s) => { a[s] = 0; return a; }, {});
+    (cases || []).forEach((c) => { if (acc[c.status] !== undefined) acc[c.status] += 1; else acc[c.status] = (acc[c.status] || 0) + 1; });
+    return acc;
+  }, [cases]);
 
-  const minDag = (cases || [])
+  const open = useMemo(() => (cases || []).filter((c) => c.status !== REPORT_STATUS.DONE), [cases]);
+  const overdue = useMemo(() => open.filter((c) => c.due_date && String(c.due_date).slice(0, 10) < todayStr), [open, todayStr]);
+  const unassigned = useMemo(() => open.filter((c) => !c.assignee_email), [open]);
+  const newToday = useMemo(() => (cases || []).filter((c) => String(c.created_at || '').slice(0, 10) === todayStr), [cases, todayStr]);
+  const totalSupport = useMemo(() => (cases || []).reduce((n, c) => n + Number(c.support_count || 0), 0), [cases]);
+
+  const minDag = useMemo(() => (cases || [])
     .filter((c) => c.status === REPORT_STATUS.NEW)
     .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
-    .slice(0, 6);
-  const mine = (cases || [])
+    .slice(0, 6), [cases]);
+  const mine = useMemo(() => (cases || [])
     .filter((c) => String(c.assignee_email || '').toLowerCase() === myEmail && c.status !== REPORT_STATUS.DONE)
-    .sort((a, b) => (a.due_date || '9999-12-31').localeCompare(b.due_date || '9999-12-31'));
-  const mostSupported = open
+    .sort((a, b) => (a.due_date || '9999-12-31').localeCompare(b.due_date || '9999-12-31')), [cases, myEmail]);
+  const mostSupported = useMemo(() => open
     .filter((c) => Number(c.support_count || 0) > 0)
     .sort((a, b) => Number(b.support_count || 0) - Number(a.support_count || 0))
-    .slice(0, 5);
+    .slice(0, 5), [open]);
 
   const pulse = [
     { key: 'open', n: open.length, label: 'Åpne saker', href: '/backoffice/liste' },
