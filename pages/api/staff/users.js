@@ -43,6 +43,29 @@ export default async function handler(req, res) {
     if (req.method === 'PATCH') {
       const { id, active } = req.body || {};
       if (!id) return res.status(400).json({ error: 'Mangler bruker-id' });
+
+      if (active === false) {
+        // getStaffFromRequest() already rejects any session with
+        // active === false on its very next request, and staff/bootstrap only
+        // works when there are zero staff rows — so deactivating yourself or
+        // the last active superuser can permanently lock everyone out with no
+        // recovery path (if BACKOFFICE_SECRET isn't set).
+        const allStaff = await listStaff();
+        const target = allStaff.find((s) => s.id === id);
+        if (!target) return res.status(404).json({ error: 'Fant ikke brukeren.' });
+
+        if (admin.id && admin.id === id) {
+          return res.status(400).json({ error: 'Du kan ikke deaktivere din egen konto.' });
+        }
+
+        if (target.role === 'superuser' && target.active !== false) {
+          const activeSuperusers = allStaff.filter((s) => s.role === 'superuser' && s.active !== false);
+          if (activeSuperusers.length <= 1) {
+            return res.status(400).json({ error: 'Kan ikke deaktivere den siste aktive superbrukeren.' });
+          }
+        }
+      }
+
       await setStaffActive(id, active);
       return res.status(200).json({ ok: true });
     }
