@@ -417,6 +417,13 @@ export default function SakDetalj() {
                   <span className="tkt-prop__k">Ansvarlig</span>
                   <select className="tkt-prop__ctrl" value={assignee || ''} onChange={(e) => changeAssignee(e.target.value)}>
                     <option value="">Ingen</option>
+                    {/* If the case is assigned to someone no longer in the active staff
+                        list (e.g. deactivated), keep them selectable so the dropdown
+                        doesn't silently fall back to "Ingen" while the case is still
+                        actually assigned to them server-side. */}
+                    {assignee && !staffList.some((s) => s.email === assignee) && (
+                      <option value={assignee}>{assignee} (inaktiv)</option>
+                    )}
                     {staffList.map((s) => <option key={s.email} value={s.email}>{s.name || s.email}</option>)}
                   </select>
                 </label>
