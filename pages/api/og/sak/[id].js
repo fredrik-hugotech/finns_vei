@@ -2,6 +2,10 @@ import { ImageResponse } from 'next/og';
 import { STATUS_COLORS } from '../../../../lib/config';
 import { reportStatusMeta } from '../../../../lib/reportStatusMeta';
 import { getPublicReportById, hasSupabaseConfig } from '../../../../lib/supabaseRest';
+import { checkEdgeRateLimit } from '../../../../lib/rateLimitEdge';
+
+const RATE_LIMIT = 60;
+const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 
 // Social preview card for a public case (`/sak/<id>`). Built with next/og's
 // built-in ImageResponse (Satori under the hood), which only understands a
@@ -160,6 +164,17 @@ function renderCard({ category, statusLabel, statusColor, description, footer })
 }
 
 export default async function handler(req) {
+  const rateLimit = checkEdgeRateLimit(req, 'og-sak', RATE_LIMIT, RATE_LIMIT_WINDOW_MS);
+  if (!rateLimit.allowed) {
+    return new Response(JSON.stringify({ error: 'For mange forespørsler' }), {
+      status: 429,
+      headers: {
+        'Content-Type': 'application/json',
+        'Retry-After': String(Math.ceil(rateLimit.retryAfterMs / 1000)),
+      },
+    });
+  }
+
   const { pathname } = new URL(req.url);
   const id = decodeURIComponent(pathname.split('/').filter(Boolean).pop() || '');
 
