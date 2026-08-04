@@ -12,6 +12,20 @@ function formatKm(meters) {
   return (meters / 1000).toLocaleString('nb-NO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+// How often the live line on the map is actually redrawn. mapApi.showLivePath
+// re-serializes the WHOLE accumulated points array into a fresh GeoJSON
+// LineString and hands it to source.setData(), which Mapbox fully re-parses
+// and re-tessellates — same anti-pattern as the distance sum used to have
+// (see the running-total comment below), just for the live-path render this
+// time. GPS fixes land roughly once a second (maximumAge: 1000), so redrawing
+// on literally every fix makes the total per-ride rendering cost grow
+// quadratically with trip length. Throttling the redraw to every ~2.5s keeps
+// the line visibly live (well within the ~2-3s lag that's fine for a live
+// map line) while cutting the number of full-line rebuilds over a ride by
+// roughly the same factor. The camera recenter (flyToLngLat) is cheap and
+// still happens on every fix, so panning stays smooth even between redraws.
+const LIVE_PATH_REDRAW_MS = 2500;
+
 // Live GPS tracker. Records the raw path ON THE DEVICE only — to draw the live
 // route and compute distance — then hands back distance, duration and the
 // clipped+snapped cells/path. Also lets the rider drop "unsafe point" reports.
@@ -41,6 +55,7 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mode =
   const watchIdRef = useRef(null);
   const wakeLockRef = useRef(null);
   const weatherFetchedRef = useRef(false);
+  const lastLivePathRenderRef = useRef(0);
 
   // Fetch the weather once, at the first GPS fix — so we can celebrate sun and
   // give a little praise (and the bonus) for heading out in rain/snow.
@@ -96,10 +111,19 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mode =
         // when tracking starts is picked up as soon as it becomes ready.
         const mapApi = mapApiRef?.current;
         if (mapApi) {
-          mapApi.showLivePath?.({
-            type: 'FeatureCollection',
-            features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: points.map((p) => [p.lng, p.lat]) } }],
-          });
+          const now = Date.now();
+          // Always redraw for the first couple of points (otherwise no line
+          // would be visible for up to LIVE_PATH_REDRAW_MS after the ride
+          // starts), then throttle the expensive full-line rebuild. `points`
+          // itself (used for distance and the final saved route on stop) is
+          // still updated above on every single fix, regardless of this.
+          if (points.length <= 2 || now - lastLivePathRenderRef.current >= LIVE_PATH_REDRAW_MS) {
+            lastLivePathRenderRef.current = now;
+            mapApi.showLivePath?.({
+              type: 'FeatureCollection',
+              features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: points.map((p) => [p.lng, p.lat]) } }],
+            });
+          }
           mapApi.flyToLngLat?.(point);
         }
       },
