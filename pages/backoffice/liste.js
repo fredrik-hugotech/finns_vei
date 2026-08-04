@@ -38,9 +38,41 @@ export default function Liste() {
   const [truncated, setTruncated] = useState(false);
   const [error, setError] = useState('');
   const [q, setQ] = useState('');
-  const [sort, setSort] = useState('new');
-  const [agingFilter, setAgingFilter] = useState('');
+  // sort/agingFilter mirror `status` below: derived straight from router.query
+  // rather than local state, so a route change into /backoffice/sak/[id] and
+  // back (or a page reload) doesn't reset them to defaults.
   const active = typeof router.query.status === 'string' && STATUSES.includes(router.query.status) ? router.query.status : '';
+  const sortQuery = typeof router.query.sort === 'string' ? router.query.sort : '';
+  const sort = SORTS.some((s) => s.key === sortQuery) ? sortQuery : 'new';
+  const agingQuery = typeof router.query.aging === 'string' ? router.query.aging : '';
+  const agingFilter = agingQuery === 'over' || agingQuery === 'stale' ? agingQuery : '';
+
+  // Builds a query object for a link/push that keeps whichever of
+  // status/sort/aging aren't being changed by this particular control.
+  function buildQuery(overrides) {
+    const merged = { ...router.query, ...overrides };
+    Object.keys(merged).forEach((key) => {
+      if (merged[key] === undefined || merged[key] === '' || merged[key] === null) delete merged[key];
+    });
+    return merged;
+  }
+
+  // `q` is free-text (may echo report descriptions/locations), so it's kept
+  // out of the URL and persisted in sessionStorage instead — same goal as
+  // the router.query mirroring above (survive a visit to a case and back)
+  // without putting arbitrary search text in the address bar/history.
+  useEffect(() => {
+    try {
+      const saved = window.sessionStorage.getItem('backoffice-liste-q');
+      if (saved) setQ(saved);
+    } catch {}
+  }, []);
+
+  function handleQChange(e) {
+    const value = e.target.value;
+    setQ(value);
+    try { window.sessionStorage.setItem('backoffice-liste-q', value); } catch {}
+  }
 
   useEffect(() => {
     fetch('/api/backoffice/cases')
@@ -58,7 +90,7 @@ export default function Liste() {
     const today = new Date().toISOString().slice(0, 10);
     const list = (cases || [])
       .filter((c) => !active || c.status === active)
-      .filter((c) => !query || `${c.category} ${c.description || ''} ${ownerShort(c.road_owner, c.speed_limit)}`.toLowerCase().includes(query))
+      .filter((c) => !query || `${c.category} ${c.description || ''} ${ownerShort(c.road_owner, c.speed_limit)} ${c.assignee_email || ''}`.toLowerCase().includes(query))
       .filter((c) => {
         if (agingFilter === 'over') return isOverdueCase(c, today);
         if (agingFilter === 'stale') return isStaleCase(c, today);
@@ -99,19 +131,19 @@ export default function Liste() {
       <Head><title>Saker – Finns Fairway</title><meta name="robots" content="noindex" /><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" /></Head>
       <BackofficeHeader title="Saker" />
       <main className="page admin-list-page">
-        <input className="sak-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Søk i saker …" aria-label="Søk" />
+        <input className="sak-search" value={q} onChange={handleQChange} placeholder="Søk i saker …" aria-label="Søk" />
 
         <div className="liste-filters">
-          <Link href="/backoffice/liste" aria-current={active ? undefined : 'page'} className={active ? 'liste-filter' : 'liste-filter liste-filter--on'}>Alle</Link>
+          <Link href={{ pathname: '/backoffice/liste', query: buildQuery({ status: undefined }) }} aria-current={active ? undefined : 'page'} className={active ? 'liste-filter' : 'liste-filter liste-filter--on'}>Alle</Link>
           {STATUSES.map((s) => (
-            <Link key={s} href={`/backoffice/liste?status=${encodeURIComponent(s)}`} aria-current={active === s ? 'page' : undefined} className={active === s ? 'liste-filter liste-filter--on' : 'liste-filter'}>{s}</Link>
+            <Link key={s} href={{ pathname: '/backoffice/liste', query: buildQuery({ status: s }) }} aria-current={active === s ? 'page' : undefined} className={active === s ? 'liste-filter liste-filter--on' : 'liste-filter'}>{s}</Link>
           ))}
         </div>
 
         <div className="liste-sort">
           <span className="liste-sort__label">Sorter</span>
           {SORTS.map((s) => (
-            <button key={s.key} type="button" aria-pressed={sort === s.key} className={sort === s.key ? 'liste-sort__btn liste-sort__btn--on' : 'liste-sort__btn'} onClick={() => setSort(s.key)}>{s.label}</button>
+            <button key={s.key} type="button" aria-pressed={sort === s.key} className={sort === s.key ? 'liste-sort__btn liste-sort__btn--on' : 'liste-sort__btn'} onClick={() => router.push({ pathname: '/backoffice/liste', query: buildQuery({ sort: s.key === 'new' ? undefined : s.key }) })}>{s.label}</button>
           ))}
         </div>
 
@@ -122,7 +154,7 @@ export default function Liste() {
               disabled={aging.over === 0}
               aria-pressed={agingFilter === 'over'}
               className={agingFilter === 'over' ? 'liste-summary__chip liste-summary__chip--over liste-summary__chip--on' : 'liste-summary__chip liste-summary__chip--over'}
-              onClick={() => setAgingFilter((f) => (f === 'over' ? '' : 'over'))}
+              onClick={() => router.push({ pathname: '/backoffice/liste', query: buildQuery({ aging: agingFilter === 'over' ? undefined : 'over' }) })}
             >
               {aging.over} forfalt
             </button>
@@ -131,7 +163,7 @@ export default function Liste() {
               disabled={aging.stale === 0}
               aria-pressed={agingFilter === 'stale'}
               className={agingFilter === 'stale' ? 'liste-summary__chip liste-summary__chip--stale liste-summary__chip--on' : 'liste-summary__chip liste-summary__chip--stale'}
-              onClick={() => setAgingFilter((f) => (f === 'stale' ? '' : 'stale'))}
+              onClick={() => router.push({ pathname: '/backoffice/liste', query: buildQuery({ aging: agingFilter === 'stale' ? undefined : 'stale' }) })}
             >
               {aging.stale} uten oppfølging &gt;30 dager
             </button>
