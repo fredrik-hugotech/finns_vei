@@ -4,6 +4,7 @@ import { processStepsForStatus } from '../lib/processSteps';
 import { categoryGlyph } from '../lib/reportCategoryGlyphs';
 import { descriptionSuggestions } from '../lib/reportDescriptionSuggestions';
 import { REPORT_IMAGE_MAX_BYTES, REPORT_IMAGE_MAX_COUNT } from '../lib/reportImages';
+import { compressImageFile, isHeicFile } from '../lib/imageCompression';
 import { addMyReport } from '../lib/myReports';
 import { addPendingReport } from '../lib/offlineReportQueue';
 
@@ -176,7 +177,11 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
     event.target.value = '';
     if (!selected.length) return;
 
+    // Validation runs against the ORIGINAL file, exactly as before -
+    // compression (below) only ever shrinks what gets uploaded, it's never
+    // a way around the size cap.
     const nextImages = [...images];
+    const accepted = [];
     for (const file of selected) {
       if (nextImages.length >= REPORT_IMAGE_MAX_COUNT) {
         setStatus({ type: 'error', message: `Du kan legge ved maks ${REPORT_IMAGE_MAX_COUNT} bilder.` });
@@ -190,13 +195,45 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
         setStatus({ type: 'error', message: 'Et bilde er for stort. Maks 8 MB per bilde.' });
         continue;
       }
-      nextImages.push({
+      const entry = {
         id: `${file.name}-${file.lastModified}-${Math.random().toString(16).slice(2)}`,
         file,
         previewUrl: URL.createObjectURL(file),
-      });
+        // HEIC/HEIF can't generally be decoded into a canvas by the browser,
+        // so those pass straight through to upload untouched - no point
+        // showing a "Komprimerer …" state that will never resolve to a change.
+        compressing: !isHeicFile(file),
+      };
+      nextImages.push(entry);
+      accepted.push(entry);
     }
     setImages(nextImages);
+
+    // Compress in the background, per image, without blocking the form.
+    // Best effort: on any failure (or a "compressed" result that isn't
+    // actually smaller) the original file is kept, silently.
+    accepted.forEach((entry) => {
+      if (!entry.compressing) return;
+      compressImageFile(entry.file).then((compressed) => {
+        setImages((current) => {
+          const index = current.findIndex((image) => image.id === entry.id);
+          if (index === -1) return current; // removed while compressing
+          const updated = [...current];
+          if (compressed !== entry.file) {
+            URL.revokeObjectURL(updated[index].previewUrl);
+            updated[index] = {
+              ...updated[index],
+              file: compressed,
+              previewUrl: URL.createObjectURL(compressed),
+              compressing: false,
+            };
+          } else {
+            updated[index] = { ...updated[index], compressing: false };
+          }
+          return updated;
+        });
+      });
+    });
   };
 
   const removeImage = (id) => {
@@ -527,6 +564,7 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
                     {images.map((image, index) => (
                       <figure className="image-preview" key={image.id}>
                         <img src={image.previewUrl} alt={`Valgt bilde ${index + 1}`} />
+                        {image.compressing && <span className="image-preview__status">Komprimerer …</span>}
                         <button type="button" onClick={() => removeImage(image.id)} aria-label="Fjern bilde">×</button>
                       </figure>
                     ))}

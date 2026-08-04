@@ -148,6 +148,17 @@ textarea:focus {
   margin-top: 0.15rem;
 }
 
+.image-preview__status {
+  background: rgba(17, 24, 39, 0.72);
+  border-radius: var(--radius-sm);
+  bottom: 0.35rem;
+  color: #fff;
+  font-size: 0.65rem;
+  left: 0.35rem;
+  padding: 0.15rem 0.35rem;
+  position: absolute;
+}
+
 .image-preview button {
   background: #111827;
   border: 0;
