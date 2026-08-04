@@ -270,19 +270,37 @@ export default function SakDetalj() {
     const files = Array.from(fileList || []);
     if (!files.length) return;
     setUploading(true); setFlash('');
-    let failed = false;
+    // Attempt every file even if an earlier one fails, so one bad photo
+    // doesn't silently swallow the rest of the batch.
+    const failures = [];
+    let okCount = 0;
     try {
       for (const file of files) {
-        const fd = new FormData();
-        fd.append('reportId', String(id));
-        fd.append('visibility', uploadVis);
-        fd.append('file', file);
-        const r = await fetch('/api/backoffice/attachment', { method: 'POST', body: fd });
-        if (!r.ok) { const d = await r.json().catch(() => ({})); setFlash(d.error || 'Opplasting feilet'); failed = true; break; }
+        try {
+          const fd = new FormData();
+          fd.append('reportId', String(id));
+          fd.append('visibility', uploadVis);
+          fd.append('file', file);
+          const r = await fetch('/api/backoffice/attachment', { method: 'POST', body: fd });
+          if (!r.ok) {
+            const d = await r.json().catch(() => ({}));
+            failures.push({ name: file.name, reason: d.error || 'ukjent feil' });
+          } else {
+            okCount += 1;
+          }
+        } catch (_e) {
+          failures.push({ name: file.name, reason: 'nettverksfeil' });
+        }
       }
-      if (!failed) setFlash('Vedlegg lagt til');
+      if (failures.length === 0) {
+        setFlash(files.length === 1 ? 'Vedlegg lagt til' : `${okCount} av ${files.length} lastet opp`);
+      } else if (okCount === 0) {
+        setFlash(files.length === 1 ? (failures[0].reason || 'Opplasting feilet') : `Opplasting feilet — ${failures.map((f) => `${f.name}: ${f.reason}`).join(', ')}`);
+      } else {
+        setFlash(`${okCount} av ${files.length} lastet opp — ${failures.map((f) => `${f.name}: ${f.reason}`).join(', ')}`);
+      }
       load();
-    } catch (_e) { setFlash('Opplasting feilet'); } finally { setUploading(false); }
+    } finally { setUploading(false); }
   };
   const toggleAtt = async (att) => {
     const nextVis = att.visibility === 'public' ? 'internal' : 'public';
@@ -491,6 +509,9 @@ export default function SakDetalj() {
                 <button type="button" className="big-button big-button--primary" onClick={addNote} disabled={busy || note.trim().length < 2}>
                   {busy ? 'Lagrer …' : (noteMode === 'internal' ? 'Legg til notat' : 'Publiser oppdatering')}
                 </button>
+                {data && !data.hasCard && (
+                  <p className="notice notice--warning">Denne saken mangler Trello-kort — kan ikke publisere eller lagre notat ennå.</p>
+                )}
               </div>
             </section>
 
