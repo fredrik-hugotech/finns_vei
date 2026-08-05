@@ -8,6 +8,7 @@ export default function KonkurranserAdmin() {
   const [competitions, setCompetitions] = useState([]);
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -59,9 +60,11 @@ export default function KonkurranserAdmin() {
   const submit = async (event) => {
     event.preventDefault();
     if (!name.trim()) { setStatus('Gi konkurransen et navn.'); return; }
+    if (submitting) return;
     const payloadClubs = clubs
       .filter((club) => club.name.trim())
       .map((club) => ({ name: club.name.trim() }));
+    setSubmitting(true);
     try {
       const response = await fetch('/api/backoffice/competitions', {
         method: 'POST',
@@ -86,6 +89,8 @@ export default function KonkurranserAdmin() {
       load();
     } catch (error) {
       setStatus(error.message || 'Noe gikk galt.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -191,7 +196,7 @@ export default function KonkurranserAdmin() {
               <button type="button" className="big-button big-button--secondary" onClick={addClub}>+ Legg til klubb</button>
             </div>
 
-            <button type="submit" className="big-button big-button--primary">Opprett konkurranse</button>
+            <button type="submit" className="big-button big-button--primary" disabled={submitting}>{submitting ? 'Oppretter …' : 'Opprett konkurranse'}</button>
           </form>
         </section>
       </main>

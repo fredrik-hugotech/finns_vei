@@ -8,6 +8,7 @@ export default function Brukere() {
   const [error, setError] = useState('');
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'staff' });
   const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -24,6 +25,7 @@ export default function Brukere() {
   const add = async (e) => {
     e.preventDefault();
     setMsg('');
+    setBusy(true);
     try {
       const r = await fetch('/api/staff/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
       const d = await r.json().catch(() => ({}));
@@ -32,12 +34,15 @@ export default function Brukere() {
       setMsg('Bruker opprettet.');
       load();
     } catch (_e) { setMsg('Noe gikk galt.'); }
+    finally { setBusy(false); }
   };
 
   const toggle = async (u) => {
     if (u.active && !window.confirm(`Deaktivere ${u.name || u.email}? De mister tilgang umiddelbart.`)) return;
     try {
-      await fetch('/api/staff/users', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: u.id, active: !u.active }) });
+      const r = await fetch('/api/staff/users', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: u.id, active: !u.active }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { setMsg(d.error || 'Kunne ikke endre.'); return; }
       load();
     } catch (_e) { setMsg('Kunne ikke endre.'); }
   };
@@ -81,7 +86,7 @@ export default function Brukere() {
               </select>
             </label>
             {msg && <div className="admin-status">{msg}</div>}
-            <button type="submit" className="big-button big-button--primary" disabled={!form.email || !form.password || form.password.length < 8}>Opprett bruker</button>
+            <button type="submit" className="big-button big-button--primary" disabled={busy || !form.email || !form.password || form.password.length < 8}>{busy ? 'Oppretter …' : 'Opprett bruker'}</button>
           </form>
         </section>
       </main>
