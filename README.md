@@ -278,6 +278,31 @@ apart on the same street) can merge into one under the default radius.
 | `HOTSPOT_RADIUS_M` | Server | `75` | Spatial clustering radius for the recurring hotspot overview. |
 | `HOTSPOT_MIN_PERIODS` | Server | `2` | Minimum distinct seasons/years a spot must appear in to count as a recurring hotspot. |
 
+## Database indexes (performance)
+
+`public.staff_sessions` (staff login sessions, keyed by `token`) isn't otherwise
+documented in this file yet — see the "Backlog" section for that doc gap. Its
+`staff_id` foreign key had no covering index; `reports` lacked indexes on the
+columns actually used to filter/sort it outside `status`/`category`/`case_id`.
+Applied directly to the Supabase project (additive, safe to re-run):
+
+```sql
+CREATE INDEX IF NOT EXISTS reports_trello_card_id_idx ON public.reports(trello_card_id);
+CREATE INDEX IF NOT EXISTS reports_created_at_idx ON public.reports(created_at DESC);
+CREATE INDEX IF NOT EXISTS reports_lat_lng_idx ON public.reports(lat, lng);
+CREATE INDEX IF NOT EXISTS staff_sessions_staff_id_idx ON public.staff_sessions(staff_id);
+```
+
+`reports_trello_card_id_idx` backs every Trello webhook delivery and grouped-report
+write (`countReportsByTrelloCard`, `updateReportByTrelloCardId`); `reports_created_at_idx`
+backs the `order=created_at.desc` used across most backoffice lists;
+`reports_lat_lng_idx` supports the `CASE_GROUP_RADIUS_M` bounding-box scan run on
+every `POST /api/report` (a plain btree, not a spatial index — fine at today's
+volume, but a real bounding-box/PostGIS index would be needed if `reports` grows
+much larger). `getStaffFromRequest` (`lib/staffAuth.js`) also now deletes a
+`staff_sessions` row opportunistically once it's found expired, instead of only
+ever removing rows on explicit logout.
+
 ## Environment variables
 
 Set these in Vercel Project Settings and locally in `.env.local` when developing. Do not commit secrets.
@@ -398,6 +423,11 @@ This repo is intended to deploy through the linked Vercel GitHub integration. In
 
 - Optional image upload to Supabase Storage bucket `report-images`.
 - Admin-only workflow views for follow-up status changes.
+- Doc gap (not a code issue): `public.staff`, `public.staff_sessions`, and
+  `public.case_attachments` exist in Supabase but were never given a `CREATE
+  TABLE` block in this file like the other tables above — worth backfilling
+  next time one of them changes, so the schema here doesn't silently drift
+  further from what's actually live.
 
 ## Report image uploads
 
