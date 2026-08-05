@@ -1,4 +1,5 @@
 import { parseFeed, parseIcs } from '../../lib/feeds';
+import { checkRequestRateLimit } from '../../lib/rateLimit';
 
 // "Aktuelt" data: latest news (RSS/Atom) + upcoming events (iCal). Both sources
 // are optional and set via env so no code change is needed to wire them up:
@@ -9,6 +10,8 @@ import { parseFeed, parseIcs } from '../../lib/feeds';
 const NEWS_FEED_URL = process.env.NEWS_FEED_URL || '';
 const CALENDAR_ICS_URL = process.env.CALENDAR_ICS_URL || '';
 const TTL_MS = 10 * 60 * 1000;
+const RATE_LIMIT = 120;
+const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 
 // Per-instance memo so repeated opens within a few minutes don't re-fetch.
 // The Cache-Control header below does the real cross-user caching at the edge.
@@ -26,6 +29,12 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', ['GET']);
     return res.status(405).end('Method Not Allowed');
+  }
+
+  const rateLimit = checkRequestRateLimit(req, 'aktuelt', RATE_LIMIT, RATE_LIMIT_WINDOW_MS);
+  if (!rateLimit.allowed) {
+    res.setHeader('Retry-After', Math.ceil(rateLimit.retryAfterMs / 1000));
+    return res.status(429).json({ error: 'For mange forespørsler' });
   }
 
   res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=1800');
