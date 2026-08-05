@@ -16,12 +16,12 @@ export default async function handler(req, res) {
     res.setHeader('Retry-After', Math.ceil(rateLimit.retryAfterMs / 1000));
     return res.status(429).json({ error: 'For mange forsøk. Prøv igjen om litt.', code: 'rate_limited' });
   }
-  if (!(await isAdminRequest(req))) return res.status(403).json({ error: 'Ingen tilgang' });
+  if (!(await isAdminRequest(req))) return res.status(403).json({ error: 'Ingen tilgang', code: 'forbidden' });
   try {
     const staff = (await listStaff()).filter((s) => s.active !== false).map((s) => ({ email: s.email, name: s.name || null }));
     return res.status(200).json({ staff });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ error: 'Kunne ikke hente ansatte' });
+    return res.status(500).json({ error: 'Kunne ikke hente ansatte', code: 'unknown' });
   }
 }
