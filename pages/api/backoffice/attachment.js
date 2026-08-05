@@ -27,21 +27,21 @@ export default async function handler(req, res) {
   const rateLimit = checkRequestRateLimit(req, 'backoffice-attachment', RATE_LIMIT, RATE_LIMIT_WINDOW_MS);
   if (!rateLimit.allowed) {
     res.setHeader('Retry-After', Math.ceil(rateLimit.retryAfterMs / 1000));
-    return res.status(429).json({ error: 'For mange forsøk. Prøv igjen om litt.' });
+    return res.status(429).json({ error: 'For mange forsøk. Prøv igjen om litt.', code: 'rate_limited' });
   }
-  if (!(await isAdminRequest(req))) return res.status(403).json({ error: 'Ingen tilgang' });
-  if (!hasSupabaseConfig()) return res.status(503).json({ error: 'Supabase er ikke konfigurert' });
+  if (!(await isAdminRequest(req))) return res.status(403).json({ error: 'Ingen tilgang', code: 'forbidden' });
+  if (!hasSupabaseConfig()) return res.status(503).json({ error: 'Supabase er ikke konfigurert', code: 'missing_supabase_config' });
 
   try {
     // JSON actions: change visibility / delete
     if (req.method === 'PATCH' || req.method === 'DELETE') {
       const { fields } = await parseMultipartRequest(req);
       if (req.method === 'PATCH') {
-        if (!fields.id) return res.status(400).json({ error: 'Mangler id' });
+        if (!fields.id) return res.status(400).json({ error: 'Mangler id', code: 'missing_id' });
         await setCaseAttachmentVisibility(fields.id, fields.visibility);
         return res.status(200).json({ ok: true });
       }
-      if (!fields.id) return res.status(400).json({ error: 'Mangler id' });
+      if (!fields.id) return res.status(400).json({ error: 'Mangler id', code: 'missing_id' });
       await deleteCaseAttachment(fields.id);
       return res.status(200).json({ ok: true });
     }
@@ -51,17 +51,17 @@ export default async function handler(req, res) {
     const { fields, files } = await parseMultipartRequest(req);
     const reportId = fields.reportId || fields.report_id;
     const visibility = fields.visibility === 'public' ? 'public' : 'internal';
-    if (!reportId) return res.status(400).json({ error: 'Mangler sak-id' });
+    if (!reportId) return res.status(400).json({ error: 'Mangler sak-id', code: 'missing_report_id' });
     // reportId is embedded directly in the storage path below (report-images
     // is a public bucket) — require it to look like a real UUID and resolve
     // to an existing report before using it in a path, so it can't be used to
     // write outside the intended cases/<reportId>/ prefix.
-    if (!UUID_RE.test(String(reportId))) return res.status(400).json({ error: 'Ugyldig sak-id' });
+    if (!UUID_RE.test(String(reportId))) return res.status(400).json({ error: 'Ugyldig sak-id', code: 'invalid_report_id' });
     const targetReport = await getReportById(reportId);
-    if (!targetReport) return res.status(404).json({ error: 'Fant ikke saken' });
+    if (!targetReport) return res.status(404).json({ error: 'Fant ikke saken', code: 'not_found' });
 
     const uploads = files.filter((f) => f.fieldName === 'file' && f.buffer?.length > 0);
-    if (uploads.length === 0) return res.status(400).json({ error: 'Ingen fil valgt' });
+    if (uploads.length === 0) return res.status(400).json({ error: 'Ingen fil valgt', code: 'no_file' });
 
     // Validate every file up front (no async) before uploading anything, so a
     // bad file later in the batch can't leave earlier files already uploaded
@@ -69,8 +69,8 @@ export default async function handler(req, res) {
     // goes to an independent storage path.
     const validated = uploads.map((file, index) => {
       const resolvedType = resolveAllowedContentType(file.contentType, file.filename);
-      if (!resolvedType) throw Object.assign(new Error('Kun bilder eller PDF.'), { status: 400 });
-      if (file.buffer.length > MAX_BYTES) throw Object.assign(new Error('Filen er for stor (maks 10 MB).'), { status: 400 });
+      if (!resolvedType) throw Object.assign(new Error('Kun bilder eller PDF.'), { status: 400, code: 'invalid_file_type' });
+      if (file.buffer.length > MAX_BYTES) throw Object.assign(new Error('Filen er for stor (maks 10 MB).'), { status: 400, code: 'file_too_large' });
       return { file, index, resolvedType, safeName: sanitizeImageFilename(file.filename || `vedlegg-${index + 1}`) };
     });
 
@@ -85,6 +85,6 @@ export default async function handler(req, res) {
     return res.status(201).json({ attachments: created });
   } catch (error) {
     console.error(error);
-    return res.status(error?.status || 500).json({ error: error?.message || 'Kunne ikke laste opp.' });
+    return res.status(error?.status || 500).json({ error: error?.message || 'Kunne ikke laste opp.', code: error?.code || 'unknown' });
   }
 }
