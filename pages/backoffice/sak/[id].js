@@ -254,6 +254,11 @@ export default function SakDetalj() {
   const addNote = async () => {
     const text = note.trim();
     if (text.length < 2) return;
+    // Publishing to noteMode 'public' is immediately citizen-visible and, unlike
+    // an attachment (which can be toggled back to internal or deleted), there is
+    // no edit/retract action anywhere in the API — same reason attachments got a
+    // confirm dialog before going public/being deleted.
+    if (noteMode !== 'internal' && !window.confirm('Publisere denne oppdateringen? Den vises umiddelbart for innbyggeren og kan ikke redigeres eller trekkes tilbake i etterkant.')) return;
     setBusy(true); setFlash('');
     try {
       const action = noteMode === 'internal' ? 'add-internal' : 'add-update';
