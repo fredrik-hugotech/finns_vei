@@ -1,5 +1,5 @@
-import { getStaffFromRequest, verifyPassword, hashPassword } from '../../../lib/staffAuth';
-import { getStaffByEmail, setStaffPassword } from '../../../lib/supabaseRest';
+import { getStaffFromRequest, verifyPassword, hashPassword, sessionTokenFromRequest } from '../../../lib/staffAuth';
+import { getStaffByEmail, setStaffPassword, deleteOtherStaffSessions } from '../../../lib/supabaseRest';
 import { checkRequestRateLimit } from '../../../lib/rateLimit';
 
 // Tight budget for a credential check, same as staff/login.js and
@@ -31,6 +31,15 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Feil nåværende passord.' });
     }
     await setStaffPassword(staff.id, hashPassword(newPassword));
+    // A password change is often prompted by a lost/shared device or a
+    // suspected leaked cookie - without this, any other already-issued
+    // session token for this account stays valid for up to SESSION_DAYS
+    // more days, defeating the point of changing the password. Keep only
+    // the session that made this request.
+    const currentToken = sessionTokenFromRequest(req);
+    if (currentToken) {
+      await deleteOtherStaffSessions(staff.id, currentToken).catch((error) => console.error(error));
+    }
     return res.status(200).json({ ok: true });
   } catch (error) {
     console.error(error);
