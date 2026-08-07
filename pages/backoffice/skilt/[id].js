@@ -24,6 +24,11 @@ function shortId(id) {
 // status or add their own supporting voice.
 export default function SkiltPage({ authorized, notFound, report, publicUrl, qrSvg }) {
   const [size, setSize] = useState('a4');
+  // Derived from the same publicUrl the QR code/link above already use, so
+  // the printed footer can never drift to a different (wrong) domain again.
+  const siteHost = (() => {
+    try { return new URL(publicUrl).host; } catch (_e) { return publicUrl; }
+  })();
 
   if (!authorized) {
     return (
@@ -92,7 +97,7 @@ export default function SkiltPage({ authorized, notFound, report, publicUrl, qrS
           <footer className="skilt-poster__footer">
             <span className={`skilt-poster__status skilt-poster__status--${meta.key}`}>{meta.label}</span>
             <span className="skilt-poster__caseid">Sak #{shortId(report.id)}</span>
-            <span className="skilt-poster__site">finns-fairway.no</span>
+            <span className="skilt-poster__site">{siteHost}</span>
           </footer>
         </section>
       </div>
