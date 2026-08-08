@@ -275,7 +275,7 @@ function ChangePassword() {
       <input type="password" className="admin-login__input" value={cur} onChange={(e) => setCur(e.target.value)} placeholder="Nåværende passord" autoComplete="current-password" />
       <input type="password" className="admin-login__input" value={next} onChange={(e) => setNext(e.target.value)} placeholder="Nytt passord (minst 8 tegn)" autoComplete="new-password" />
       {msg && <p className="admin-login__sub">{msg}</p>}
-      <button type="submit" className="big-button big-button--secondary" disabled={busy}>{busy ? 'Bytter …' : 'Lagre nytt passord'}</button>
+      <button type="submit" className="big-button big-button--secondary" disabled={busy || !cur || next.length < 8}>{busy ? 'Bytter …' : 'Lagre nytt passord'}</button>
     </form>
   );
 }
