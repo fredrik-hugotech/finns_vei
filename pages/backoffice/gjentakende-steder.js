@@ -2,7 +2,9 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import BackofficeHeader from '../../components/BackofficeHeader';
-import { describeFetchError } from '../../lib/backofficeFormat';
+import { timeAgo, describeFetchError } from '../../lib/backofficeFormat';
+
+const TTL_MINUTES = 5;
 
 function fmtDate(value) {
   if (!value) return '';
@@ -22,6 +24,7 @@ function fmtDate(value) {
 export default function GjentakendeSteder() {
   const [hotspots, setHotspots] = useState(null);
   const [error, setError] = useState('');
+  const [cachedAt, setCachedAt] = useState(null);
 
   useEffect(() => {
     fetch('/api/backoffice/hotspots')
@@ -30,7 +33,7 @@ export default function GjentakendeSteder() {
         if (!r.ok) throw new Error(await describeFetchError(r, 'Kunne ikke hente gjentakende steder.'));
         return r.json();
       })
-      .then((d) => setHotspots(d.hotspots || []))
+      .then((d) => { setHotspots(d.hotspots || []); setCachedAt(d.cachedAt || null); })
       .catch((e) => setError(e.message === 'not-authed' ? 'not-authed' : e.message));
   }, []);
 
@@ -68,6 +71,11 @@ export default function GjentakendeSteder() {
           <p className="sak-count">
             {hotspots.length} gjentakende sted{hotspots.length === 1 ? '' : 'er'}
             {totalReports > 0 ? ` · ${totalReports} meldinger totalt` : ''}
+            {cachedAt && (
+              <span className="dash2__hint" title={`Data caches i inntil ${TTL_MINUTES} min — en nylig endring kan ta litt tid før den vises her.`}>
+                {' '}· hentet {timeAgo(cachedAt)}
+              </span>
+            )}
           </p>
         )}
 

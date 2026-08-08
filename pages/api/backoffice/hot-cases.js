@@ -36,12 +36,12 @@ export default async function handler(req, res) {
 
   try {
     if (cache.data && Date.now() - cache.at < TTL_MS) {
-      return res.status(200).json(cache.data);
+      return res.status(200).json({ ...cache.data, cachedAt: cache.at });
     }
     const cases = await listHotCases({ limit: HOT_CASES_LIMIT });
     const data = { cases, truncated: cases.length >= HOT_CASES_LIMIT, limit: HOT_CASES_LIMIT };
     cache = { at: Date.now(), data };
-    return res.status(200).json(data);
+    return res.status(200).json({ ...data, cachedAt: cache.at });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: error?.message || 'Kunne ikke hente hotteste saker' });
