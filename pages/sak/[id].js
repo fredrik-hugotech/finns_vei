@@ -152,7 +152,7 @@ export default function SakPage({ report, shareUrl, ogImageUrl, photos }) {
   );
 }
 
-export async function getServerSideProps({ params, req }) {
+export async function getServerSideProps({ params, req, res }) {
   const id = String(params.id || '');
   if (!hasSupabaseConfig()) return { notFound: true };
 
@@ -165,6 +165,14 @@ export async function getServerSideProps({ params, req }) {
     listCaseAttachments(id, { publicOnly: true }).catch(() => []),
   ]);
   if (!report) return { notFound: true };
+
+  // This is the URL embedded in every Trello card and every citizen "share"
+  // tap, so link-preview bots and repeat visits each triggered a fresh SSR
+  // render plus 2 live Supabase queries with no caching at all — unlike its
+  // own OG-image sibling route (/api/og/sak/[id]), which already caches for
+  // 300s. Same TTL here, only once we know the report actually exists (a
+  // transient Supabase hiccup shouldn't get cached as a false "not found").
+  res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
 
   const firstImage = Array.isArray(report.image_urls)
     ? report.image_urls.find((image) => image && image.url)
