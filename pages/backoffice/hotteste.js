@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { reportStatusMeta } from '../../lib/reportStatusMeta';
 import { timeAgo, ownerShort, describeFetchError } from '../../lib/backofficeFormat';
+
+const TTL_MINUTES = 5;
 import BackofficeHeader from '../../components/BackofficeHeader';
 
 function ageDays(value) {
@@ -19,6 +21,7 @@ export default function Hotteste() {
   const [cases, setCases] = useState(null);
   const [truncated, setTruncated] = useState(false);
   const [error, setError] = useState('');
+  const [cachedAt, setCachedAt] = useState(null);
 
   useEffect(() => {
     fetch('/api/backoffice/hot-cases')
@@ -27,7 +30,7 @@ export default function Hotteste() {
         if (!r.ok) throw new Error(await describeFetchError(r, 'Kunne ikke hente hotteste saker.'));
         return r.json();
       })
-      .then((d) => { setCases(d.cases || []); setTruncated(Boolean(d.truncated)); })
+      .then((d) => { setCases(d.cases || []); setTruncated(Boolean(d.truncated)); setCachedAt(d.cachedAt || null); })
       .catch((e) => setError(e.message === 'not-authed' ? 'not-authed' : e.message));
   }, []);
 
@@ -47,7 +50,14 @@ export default function Hotteste() {
         {!error && cases === null && <p className="admin-list-empty">Laster …</p>}
         {!error && cases && cases.length === 0 && <p className="admin-list-empty">Ingen åpne saker akkurat nå. Fint jobbet.</p>}
         {!error && cases && cases.length > 0 && (
-          <p className="sak-count">{cases.length} åpne sak{cases.length === 1 ? '' : 'er'}{totalSupport > 0 ? ` · ${totalSupport} støtter totalt` : ''}</p>
+          <p className="sak-count">
+            {cases.length} åpne sak{cases.length === 1 ? '' : 'er'}{totalSupport > 0 ? ` · ${totalSupport} støtter totalt` : ''}
+            {cachedAt && (
+              <span className="dash2__hint" title={`Data caches i inntil ${TTL_MINUTES} min — en nylig endring kan ta litt tid før den vises her.`}>
+                {' '}· hentet {timeAgo(cachedAt)}
+              </span>
+            )}
+          </p>
         )}
         {!error && truncated && (
           <p className="admin-warning">Viser kun de {cases.length} hotteste sakene — det finnes flere åpne saker som ikke er med i denne rangeringen.</p>
