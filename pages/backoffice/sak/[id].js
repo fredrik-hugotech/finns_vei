@@ -258,7 +258,13 @@ export default function SakDetalj() {
     // an attachment (which can be toggled back to internal or deleted), there is
     // no edit/retract action anywhere in the API — same reason attachments got a
     // confirm dialog before going public/being deleted.
-    if (noteMode !== 'internal' && !window.confirm('Publisere denne oppdateringen? Den vises umiddelbart for innbyggeren og kan ikke redigeres eller trekkes tilbake i etterkant.')) return;
+    // Includes a preview of the actual text (not just the action) — `note`
+    // persists across the internal/public tab toggle, so without the preview
+    // a staffer who drafted something in the internal tab and switched to
+    // the public tab before submitting had no chance to re-read the content
+    // this dialog is meant to protect against publishing by mistake.
+    const preview = text.length > 200 ? `${text.slice(0, 200)}…` : text;
+    if (noteMode !== 'internal' && !window.confirm(`Publisere denne oppdateringen?\n\n«${preview}»\n\nDen vises umiddelbart for innbyggeren og kan ikke redigeres eller trekkes tilbake i etterkant.`)) return;
     setBusy(true); setFlash('');
     try {
       const action = noteMode === 'internal' ? 'add-internal' : 'add-update';
