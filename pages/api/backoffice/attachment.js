@@ -2,6 +2,7 @@ import { isAdminRequest } from '../../../lib/backofficeAuth';
 import { parseMultipartRequest } from '../../../lib/multipart';
 import { uploadReportImage, createCaseAttachment, setCaseAttachmentVisibility, deleteCaseAttachment, hasSupabaseConfig, getReportById } from '../../../lib/supabaseRest';
 import { sanitizeImageFilename, resolveReportImageContentType } from '../../../lib/reportImages';
+import { matchesFileSignature } from '../../../lib/fileSignature';
 import { checkRequestRateLimit } from '../../../lib/rateLimit';
 
 export const config = { api: { bodyParser: false } };
@@ -70,6 +71,11 @@ export default async function handler(req, res) {
     const validated = uploads.map((file, index) => {
       const resolvedType = resolveAllowedContentType(file.contentType, file.filename);
       if (!resolvedType) throw Object.assign(new Error('Kun bilder eller PDF.'), { status: 400, code: 'invalid_file_type' });
+      // The content-type allowlist above only checks the client-declared
+      // header/extension, which a request can freely set — verify the
+      // actual file bytes match what's declared before it's stored in the
+      // public bucket and served back with that content-type.
+      if (!matchesFileSignature(file.buffer, resolvedType)) throw Object.assign(new Error('Filinnholdet samsvarer ikke med filtypen.'), { status: 400, code: 'file_content_mismatch' });
       if (file.buffer.length > MAX_BYTES) throw Object.assign(new Error('Filen er for stor (maks 10 MB).'), { status: 400, code: 'file_too_large' });
       return { file, index, resolvedType, safeName: sanitizeImageFilename(file.filename || `vedlegg-${index + 1}`) };
     });
