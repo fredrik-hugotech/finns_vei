@@ -90,7 +90,7 @@ export default function Liste() {
     const today = new Date().toISOString().slice(0, 10);
     const list = (cases || [])
       .filter((c) => !active || c.status === active)
-      .filter((c) => !query || `${c.category} ${c.description || ''} ${ownerShort(c.road_owner, c.speed_limit)} ${c.assignee_email || ''}`.toLowerCase().includes(query))
+      .filter((c) => !query || `${c.category} ${c.description || ''} ${ownerShort(c.road_owner, c.speed_limit)} ${c.assignee_email || ''} ${c.id || ''}`.toLowerCase().includes(query))
       .filter((c) => {
         if (agingFilter === 'over') return isOverdueCase(c, today);
         if (agingFilter === 'stale') return isStaleCase(c, today);
