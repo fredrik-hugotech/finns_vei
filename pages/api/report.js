@@ -2,6 +2,7 @@ import { REPORT_CATEGORIES, REPORT_STATUS, REPORTER_TYPES } from '../../lib/conf
 import { runReportWorkflowBestEffort } from '../../lib/reportWorkflow';
 import { createReport, hasSupabaseConfig, updateReportImages, uploadReportImage } from '../../lib/supabaseRest';
 import { resolveReportImageContentType, REPORT_IMAGE_MAX_BYTES, REPORT_IMAGE_MAX_COUNT, sanitizeImageFilename } from '../../lib/reportImages';
+import { matchesFileSignature } from '../../lib/fileSignature';
 import { checkRequestRateLimit } from '../../lib/rateLimit';
 import { parseMultipartRequest } from '../../lib/multipart';
 
@@ -89,6 +90,11 @@ function validateImages(files = []) {
   images.forEach((file) => {
     const canonicalType = resolveReportImageContentType(file.contentType, file.filename);
     if (!canonicalType) throw invalidInput('Du kan bare laste opp bildefiler.');
+    // The allowlist above only checks the client-declared header/extension,
+    // which an anonymous request can freely set — verify the actual file
+    // bytes match before it's stored in the public bucket and served back
+    // with that (still attacker-chosen, absent this check) content-type.
+    if (!matchesFileSignature(file.buffer, canonicalType)) throw invalidInput('Du kan bare laste opp bildefiler.');
     // Normalize to the validated, allowlisted type so the raw client-supplied
     // contentType (which can be spoofed, e.g. text/html) is never the value
     // written as the storage object's Content-Type header downstream.
