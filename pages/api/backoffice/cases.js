@@ -120,7 +120,14 @@ export default async function handler(req, res) {
 
       if (action === 'set-status') {
         if (!STATUSES.includes(status)) return res.status(400).json({ error: 'Ugyldig status' });
-        await updateReport(id, { status });
+        // Mirror what the Trello webhook path already does on a card move
+        // (see setReportStatusFromTrello) — without this, changing status
+        // from the dashboard dropdown (the more commonly used path) never
+        // touched status_updated_at, so /backoffice/liste's "uten
+        // oppfølging >30 dager" staleness filter kept judging a case's last
+        // touch by its Trello card history (or created_at) even for cases
+        // staff were actively progressing right here.
+        await updateReport(id, { status, status_updated_at: new Date().toISOString() });
         // Keep Trello informed (plain comment — not #public, so the webhook won't re-import it).
         if (report.trello_card_id && hasTrelloConfig()) {
           await addTrelloCardComment(report.trello_card_id, `Status endret til «${status}» fra dashbordet.`).catch(() => {});
