@@ -25,6 +25,7 @@ export default function GjentakendeSteder() {
   const [hotspots, setHotspots] = useState(null);
   const [error, setError] = useState('');
   const [cachedAt, setCachedAt] = useState(null);
+  const [truncated, setTruncated] = useState(false);
 
   useEffect(() => {
     fetch('/api/backoffice/hotspots')
@@ -33,7 +34,7 @@ export default function GjentakendeSteder() {
         if (!r.ok) throw new Error(await describeFetchError(r, 'Kunne ikke hente gjentakende steder.'));
         return r.json();
       })
-      .then((d) => { setHotspots(d.hotspots || []); setCachedAt(d.cachedAt || null); })
+      .then((d) => { setHotspots(d.hotspots || []); setCachedAt(d.cachedAt || null); setTruncated(Boolean(d.truncated)); })
       .catch((e) => setError(e.message === 'not-authed' ? 'not-authed' : e.message));
   }, []);
 
@@ -77,6 +78,9 @@ export default function GjentakendeSteder() {
               </span>
             )}
           </p>
+        )}
+        {!error && truncated && (
+          <p className="admin-warning">Viser kun basert på de 5000 eldste meldingene — det finnes flere. Nyere meldinger mangler fra denne oversikten.</p>
         )}
 
         <div className="admin-list">
