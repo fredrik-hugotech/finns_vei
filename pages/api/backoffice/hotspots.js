@@ -45,8 +45,8 @@ export default async function handler(req, res) {
     if (cache.data && Date.now() - cache.at < TTL_MS) {
       return res.status(200).json({ ...cache.data, cachedAt: cache.at });
     }
-    const hotspots = await listRecurringHotspots({ limit: 5000 });
-    const data = { hotspots };
+    const { hotspots, truncated } = await listRecurringHotspots({ limit: 5000 });
+    const data = { hotspots, truncated };
     cache = { at: Date.now(), data };
     return res.status(200).json({ ...data, cachedAt: cache.at });
   } catch (error) {
