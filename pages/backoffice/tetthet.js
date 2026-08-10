@@ -14,14 +14,16 @@ export default function Sykkelspor() {
   const [mapApi, setMapApi] = useState(null);
   const [competitions, setCompetitions] = useState([]);
   const [competitionId, setCompetitionId] = useState('');
+  const [mode, setMode] = useState('');
   const [stats, setStats] = useState(null);
   const [status, setStatus] = useState('');
 
-  const load = useCallback(async (id) => {
+  const load = useCallback(async (id, modeFilter) => {
     if (!id) return;
     setStatus('Henter …');
     try {
-      const r = await fetch(`/api/backoffice/competition-trips?id=${encodeURIComponent(id)}`);
+      const modeQuery = modeFilter ? `&mode=${encodeURIComponent(modeFilter)}` : '';
+      const r = await fetch(`/api/backoffice/competition-trips?id=${encodeURIComponent(id)}${modeQuery}`);
       if (r.status === 403) { setStatus('not-authed'); return; }
       if (!r.ok) { setStatus('Kunne ikke hente data.'); return; }
       const d = await r.json();
@@ -38,7 +40,7 @@ export default function Sykkelspor() {
         const list = d.competitions || [];
         setCompetitions(list);
         const first = (list.find((c) => c.active) || list[0])?.id || '';
-        if (first) { setCompetitionId(first); load(first); }
+        if (first) { setCompetitionId(first); load(first, ''); }
       })
       .catch((e) => setStatus(e.message === 'not-authed' ? 'not-authed' : 'Utilgjengelig.'));
   }, [load]);
@@ -54,8 +56,10 @@ export default function Sykkelspor() {
     }
   }, [mapApi, stats]);
 
-  const onSelect = (id) => { setCompetitionId(id); load(id); };
+  const onSelect = (id) => { setCompetitionId(id); load(id, mode); };
+  const onModeChange = (nextMode) => { setMode(nextMode); load(competitionId, nextMode); };
   const trackCount = stats?.geojson?.features?.length || 0;
+  const modeCounts = stats?.modeCounts || null;
 
   return (
     <>
@@ -73,6 +77,13 @@ export default function Sykkelspor() {
               {competitions.length > 0 && (
                 <select className="comp-select" value={competitionId} onChange={(e) => onSelect(e.target.value)}>
                   {competitions.map((c) => <option key={c.id} value={c.id}>{c.name}{c.active ? '' : ' (skjult)'}</option>)}
+                </select>
+              )}
+              {modeCounts && (modeCounts.sykkel > 0 && modeCounts.gange > 0) && (
+                <select className="comp-select" value={mode} onChange={(e) => onModeChange(e.target.value)}>
+                  <option value="">Alle ({modeCounts.sykkel + modeCounts.gange})</option>
+                  <option value="sykkel">Sykkel ({modeCounts.sykkel})</option>
+                  <option value="gange">Gange ({modeCounts.gange})</option>
                 </select>
               )}
               {stats && (
