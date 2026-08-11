@@ -9,6 +9,7 @@ export default function Brukere() {
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'staff' });
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
+  const [togglingId, setTogglingId] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -38,13 +39,16 @@ export default function Brukere() {
   };
 
   const toggle = async (u) => {
+    if (togglingId) return;
     if (u.active && !window.confirm(`Deaktivere ${u.name || u.email}? De mister tilgang umiddelbart.`)) return;
+    setTogglingId(u.id);
     try {
       const r = await fetch('/api/staff/users', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: u.id, active: !u.active }) });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) { setMsg(d.error || 'Kunne ikke endre.'); return; }
       load();
     } catch (_e) { setMsg('Kunne ikke endre.'); }
+    finally { setTogglingId(null); }
   };
 
   return (
@@ -67,7 +71,7 @@ export default function Brukere() {
                   <strong>{u.name || u.email}</strong>
                   <span className="admin-list__meta">{u.email} · {u.role === 'superuser' ? 'superbruker' : 'ansatt'}{u.active ? '' : ' · deaktivert'}</span>
                 </div>
-                <button type="button" className="big-button big-button--secondary" onClick={() => toggle(u)}>{u.active ? 'Deaktiver' : 'Aktiver'}</button>
+                <button type="button" className="big-button big-button--secondary" disabled={togglingId === u.id} onClick={() => toggle(u)}>{u.active ? 'Deaktiver' : 'Aktiver'}</button>
               </li>
             ))}
           </ul>
