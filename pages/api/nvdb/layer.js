@@ -65,12 +65,18 @@ export default async function handler(req, res) {
     if (Number.isFinite(numericZoom) && numericZoom < MIN_ACCIDENT_FETCH_ZOOM) {
       return res.status(200).json(emptyNvdbFeatureCollection({ reason: 'zoom_too_low', message: 'Zoom inn for å se ulykker', rawObjectCount: 0, featureCount: 0, pointFeatureCount: 0, invalidGeometryCount: 0, firstGeometry: null, coordinateRange: null, derivedBbox: null, bbox: String(bbox), zoom: Number.isFinite(numericZoom) ? numericZoom : null }));
     }
-    const maxSpan = Number.isFinite(numericZoom) && numericZoom < 13
-      ? { lng: 0.3, lat: 0.2 }
-      : { lng: 0.12, lat: 0.08 };
-    if (span && (span.lng > maxSpan.lng || span.lat > maxSpan.lat)) {
-      return res.status(200).json(emptyNvdbFeatureCollection({ reason: 'bbox_too_broad', message: 'Zoom inn for å se ulykker', rawObjectCount: 0, featureCount: 0, pointFeatureCount: 0, invalidGeometryCount: 0, firstGeometry: null, coordinateRange: null, derivedBbox: null, bbox: String(bbox), zoom: Number.isFinite(numericZoom) ? numericZoom : null }));
-    }
+  }
+
+  // Every layer type shares this bbox-span guard (not just accidents) so a
+  // direct API call can't force NVDB to search an unbounded area (e.g. all
+  // of Norway) for speed_limit/gangfelt/aadt, which are otherwise reachable
+  // even though they're hidden from the public map UI.
+  const maxSpan = type === 'accidents'
+    ? (Number.isFinite(numericZoom) && numericZoom < 13 ? { lng: 0.3, lat: 0.2 } : { lng: 0.12, lat: 0.08 })
+    : { lng: 1, lat: 1 };
+  if (span && (span.lng > maxSpan.lng || span.lat > maxSpan.lat)) {
+    const message = type === 'accidents' ? 'Zoom inn for å se ulykker' : 'Bounding box er for stor for dette laget';
+    return res.status(200).json(emptyNvdbFeatureCollection({ reason: 'bbox_too_broad', message, rawObjectCount: 0, featureCount: 0, pointFeatureCount: 0, invalidGeometryCount: 0, firstGeometry: null, coordinateRange: null, derivedBbox: null, bbox: String(bbox), zoom: Number.isFinite(numericZoom) ? numericZoom : null }));
   }
 
   logLayer('requested', { type, bbox: String(bbox), zoom: Number.isFinite(numericZoom) ? numericZoom : null });
