@@ -9,6 +9,7 @@ export default function KonkurranserAdmin() {
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [togglingId, setTogglingId] = useState(null);
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -95,6 +96,8 @@ export default function KonkurranserAdmin() {
   };
 
   const toggleActive = async (competition) => {
+    if (togglingId) return;
+    setTogglingId(competition.id);
     try {
       const response = await fetch('/api/backoffice/competitions', {
         method: 'PATCH',
@@ -109,6 +112,8 @@ export default function KonkurranserAdmin() {
     } catch (error) {
       setStatus(error.message || 'Kunne ikke endre status.');
       load();
+    } finally {
+      setTogglingId(null);
     }
   };
 
@@ -140,7 +145,7 @@ export default function KonkurranserAdmin() {
                       {competition.metric === 'distance' ? ' · flest km' : ' · flest turer'}
                     </span>
                   </div>
-                  <button type="button" className="comp-toggle" onClick={() => toggleActive(competition)}>
+                  <button type="button" className="comp-toggle" disabled={togglingId === competition.id} onClick={() => toggleActive(competition)}>
                     {competition.active ? 'Skjul' : 'Aktiver'}
                   </button>
                 </li>
