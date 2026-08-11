@@ -130,9 +130,9 @@ function Dashboard({ me, onLogout }) {
   const pulse = [
     { key: 'open', n: open.length, label: 'Åpne saker', href: '/backoffice/liste' },
     { key: 'overdue', n: overdue.length, label: 'Forfalt', href: { pathname: '/backoffice/liste', query: { aging: 'over' } }, warn: overdue.length > 0 },
-    { key: 'unassigned', n: unassigned.length, label: 'Uten ansvarlig', href: '/backoffice/liste' },
-    { key: 'today', n: newToday.length, label: 'Nye i dag', href: '/backoffice/liste' },
-    { key: 'support', n: totalSupport, label: 'Innbyggerstøtter', href: '/backoffice/liste' },
+    { key: 'unassigned', n: unassigned.length, label: 'Uten ansvarlig', href: { pathname: '/backoffice/liste', query: { assignee: 'unassigned' } } },
+    { key: 'today', n: newToday.length, label: 'Nye i dag', href: { pathname: '/backoffice/liste', query: { created: 'today' } } },
+    { key: 'support', n: totalSupport, label: 'Innbyggerstøtter', href: { pathname: '/backoffice/liste', query: { sort: 'support' } } },
   ];
 
   const dueBadge = (c) => {

@@ -46,6 +46,8 @@ export default function Liste() {
   const sort = SORTS.some((s) => s.key === sortQuery) ? sortQuery : 'new';
   const agingQuery = typeof router.query.aging === 'string' ? router.query.aging : '';
   const agingFilter = agingQuery === 'over' || agingQuery === 'stale' ? agingQuery : '';
+  const assigneeFilter = router.query.assignee === 'unassigned' ? 'unassigned' : '';
+  const createdFilter = router.query.created === 'today' ? 'today' : '';
 
   // Builds a query object for a link/push that keeps whichever of
   // status/sort/aging aren't being changed by this particular control.
@@ -95,7 +97,9 @@ export default function Liste() {
         if (agingFilter === 'over') return isOverdueCase(c, today);
         if (agingFilter === 'stale') return isStaleCase(c, today);
         return true;
-      });
+      })
+      .filter((c) => !assigneeFilter || !c.assignee_email)
+      .filter((c) => !createdFilter || String(c.created_at || '').slice(0, 10) === today);
     const byNew = (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0);
     const sorters = {
       new: byNew,
@@ -109,7 +113,7 @@ export default function Liste() {
       },
     };
     return list.sort(sorters[sort] || byNew);
-  }, [cases, active, q, sort, agingFilter]);
+  }, [cases, active, q, sort, agingFilter, assigneeFilter, createdFilter]);
 
   const totalSupport = useMemo(() => (cases || []).reduce((n, c) => n + Number(c.support_count || 0), 0), [cases]);
 
@@ -123,6 +127,8 @@ export default function Liste() {
     return {
       over: list.filter((c) => isOverdueCase(c, today)).length,
       stale: list.filter((c) => isStaleCase(c, today)).length,
+      unassigned: list.filter((c) => !c.assignee_email).length,
+      today: list.filter((c) => String(c.created_at || '').slice(0, 10) === today).length,
     };
   }, [cases]);
 
@@ -166,6 +172,24 @@ export default function Liste() {
               onClick={() => router.push({ pathname: '/backoffice/liste', query: buildQuery({ aging: agingFilter === 'stale' ? undefined : 'stale' }) })}
             >
               {aging.stale} uten oppfølging &gt;30 dager
+            </button>
+            <button
+              type="button"
+              disabled={aging.unassigned === 0}
+              aria-pressed={assigneeFilter === 'unassigned'}
+              className={assigneeFilter === 'unassigned' ? 'liste-summary__chip liste-summary__chip--on' : 'liste-summary__chip'}
+              onClick={() => router.push({ pathname: '/backoffice/liste', query: buildQuery({ assignee: assigneeFilter === 'unassigned' ? undefined : 'unassigned' }) })}
+            >
+              {aging.unassigned} uten ansvarlig
+            </button>
+            <button
+              type="button"
+              disabled={aging.today === 0}
+              aria-pressed={createdFilter === 'today'}
+              className={createdFilter === 'today' ? 'liste-summary__chip liste-summary__chip--on' : 'liste-summary__chip'}
+              onClick={() => router.push({ pathname: '/backoffice/liste', query: buildQuery({ created: createdFilter === 'today' ? undefined : 'today' }) })}
+            >
+              {aging.today} nye i dag
             </button>
           </div>
         )}
