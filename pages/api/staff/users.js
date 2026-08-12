@@ -44,12 +44,16 @@ export default async function handler(req, res) {
       const { id, active } = req.body || {};
       if (!id) return res.status(400).json({ error: 'Mangler bruker-id' });
 
-      if (active === false) {
+      if (active !== true) {
         // getStaffFromRequest() already rejects any session with
         // active === false on its very next request, and staff/bootstrap only
         // works when there are zero staff rows — so deactivating yourself or
         // the last active superuser can permanently lock everyone out with no
-        // recovery path (if BACKOFFICE_SECRET isn't set).
+        // recovery path (if BACKOFFICE_SECRET isn't set). setStaffActive()
+        // below persists Boolean(active), so this guard must catch every
+        // non-true value (missing/null/0/''), not just a strict `false`,
+        // or a caller that omits `active` bypasses the lockout protection
+        // while still ending up deactivated.
         const allStaff = await listStaff();
         const target = allStaff.find((s) => s.id === id);
         if (!target) return res.status(404).json({ error: 'Fant ikke brukeren.' });
