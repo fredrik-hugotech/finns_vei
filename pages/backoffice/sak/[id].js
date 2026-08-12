@@ -517,7 +517,7 @@ export default function SakDetalj() {
                 </div>
                 <textarea className="sak-note" rows={3} value={note} onChange={(e) => setNote(e.target.value)}
                   placeholder={noteMode === 'internal' ? 'Lim inn e-post fra kommunen, eller skriv et internt notat. Kun for ansatte.' : 'Skriv en oppdatering som vises for innbyggeren.'} />
-                <button type="button" className="big-button big-button--primary" onClick={addNote} disabled={busy || note.trim().length < 2}>
+                <button type="button" className="big-button big-button--primary" onClick={addNote} disabled={busy || note.trim().length < 2 || (data && !data.hasCard)}>
                   {busy ? 'Lagrer …' : (noteMode === 'internal' ? 'Legg til notat' : 'Publiser oppdatering')}
                 </button>
                 {data && !data.hasCard && (
