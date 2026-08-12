@@ -40,6 +40,10 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
+      const { name } = req.body || {};
+      if (!name || !String(name).trim()) {
+        return res.status(400).json({ error: 'Oppgi et navn på konkurransen.', code: 'missing_name' });
+      }
       const competition = await createCompetition(req.body || {});
       return res.status(201).json({ competition });
     }

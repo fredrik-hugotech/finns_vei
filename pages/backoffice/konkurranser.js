@@ -201,7 +201,7 @@ export default function KonkurranserAdmin() {
               <button type="button" className="big-button big-button--secondary" onClick={addClub}>+ Legg til klubb</button>
             </div>
 
-            <button type="submit" className="big-button big-button--primary" disabled={submitting}>{submitting ? 'Oppretter …' : 'Opprett konkurranse'}</button>
+            <button type="submit" className="big-button big-button--primary" disabled={submitting || !name.trim()}>{submitting ? 'Oppretter …' : 'Opprett konkurranse'}</button>
           </form>
         </section>
       </main>
