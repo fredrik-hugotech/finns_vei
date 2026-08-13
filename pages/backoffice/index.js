@@ -309,7 +309,7 @@ function FirstSetup({ onDone }) {
       <input type="email" className="admin-login__input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="E-post" />
       <input type="password" className="admin-login__input" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Passord (minst 8 tegn)" />
       {msg && <p className="admin-login__sub">{msg}</p>}
-      <button type="submit" className="big-button big-button--primary admin-login__btn" disabled={busy}>{busy ? 'Oppretter …' : 'Opprett superbruker'}</button>
+      <button type="submit" className="big-button big-button--primary admin-login__btn" disabled={busy || !secret || !email || !password || password.length < 8}>{busy ? 'Oppretter …' : 'Opprett superbruker'}</button>
     </form>
   );
 }
