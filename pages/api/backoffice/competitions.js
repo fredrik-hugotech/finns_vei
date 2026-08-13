@@ -40,9 +40,12 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const { name } = req.body || {};
+      const { name, starts_on: startsOn, ends_on: endsOn } = req.body || {};
       if (!name || !String(name).trim()) {
         return res.status(400).json({ error: 'Oppgi et navn på konkurransen.', code: 'missing_name' });
+      }
+      if (startsOn && endsOn && String(endsOn) < String(startsOn)) {
+        return res.status(400).json({ error: 'Til-dato kan ikke være før fra-dato.', code: 'invalid_date_range' });
       }
       const competition = await createCompetition(req.body || {});
       return res.status(201).json({ competition });
