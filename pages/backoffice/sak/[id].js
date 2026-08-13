@@ -212,14 +212,18 @@ export default function SakDetalj() {
       .then((a) => { if (!cancelled) setAccidents(a); })
       .catch(() => { if (!cancelled) setAccidents('error'); });
     return () => { cancelled = true; };
-  }, [c]);
+    // Only re-fetch when the case's own location changes (e.g. navigating to
+    // a different case) — not on every setData() from an unrelated note/
+    // attachment/status update, which would otherwise re-fire this on every
+    // case-workspace interaction.
+  }, [c?.lat, c?.lng]);
 
   useEffect(() => {
     if (!c || !mapboxToken || !Number.isFinite(Number(c.lat)) || !Number.isFinite(Number(c.lng))) return undefined;
     let cancelled = false;
     reverseGeocode(Number(c.lat), Number(c.lng), mapboxToken).then((p) => { if (!cancelled) setPlace(p); });
     return () => { cancelled = true; };
-  }, [c, mapboxToken]);
+  }, [c?.lat, c?.lng, mapboxToken]);
 
   const changeStatus = async (next) => {
     setStatus(next);
