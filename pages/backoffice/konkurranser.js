@@ -61,6 +61,7 @@ export default function KonkurranserAdmin() {
   const submit = async (event) => {
     event.preventDefault();
     if (!name.trim()) { setStatus('Gi konkurransen et navn.'); return; }
+    if (startsOn && endsOn && endsOn < startsOn) { setStatus('Til-dato kan ikke være før fra-dato.'); return; }
     if (submitting) return;
     const payloadClubs = clubs
       .filter((club) => club.name.trim())
