@@ -49,7 +49,11 @@ export default async function handler(req, res) {
 
     if (req.method !== 'POST') { res.setHeader('Allow', ['POST', 'PATCH', 'DELETE']); return res.status(405).end('Method Not Allowed'); }
 
-    const { fields, files } = await parseMultipartRequest(req);
+    // Size the whole-body ceiling to this endpoint's own per-file cap (MAX_BYTES),
+    // not the unrelated public report-form budget the parser defaults to — a
+    // multi-file staff upload batch (several 10MB-capped photos) must not be
+    // rejected outright before per-file validation even runs.
+    const { fields, files } = await parseMultipartRequest(req, { maxBytes: MAX_BYTES * 12 + 2 * 1024 * 1024 });
     const reportId = fields.reportId || fields.report_id;
     const visibility = fields.visibility === 'public' ? 'public' : 'internal';
     if (!reportId) return res.status(400).json({ error: 'Mangler sak-id', code: 'missing_report_id' });
