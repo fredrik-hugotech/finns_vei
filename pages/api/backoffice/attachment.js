@@ -58,7 +58,7 @@ export default async function handler(req, res) {
     // to an existing report before using it in a path, so it can't be used to
     // write outside the intended cases/<reportId>/ prefix.
     if (!UUID_RE.test(String(reportId))) return res.status(400).json({ error: 'Ugyldig sak-id', code: 'invalid_report_id' });
-    const targetReport = await getReportById(reportId);
+    const targetReport = await getReportById(reportId, { select: 'id' });
     if (!targetReport) return res.status(404).json({ error: 'Fant ikke saken', code: 'not_found' });
 
     const uploads = files.filter((f) => f.fieldName === 'file' && f.buffer?.length > 0);

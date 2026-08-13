@@ -115,7 +115,7 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
       const { action, id, status, text } = req.body || {};
       if (!id) return res.status(400).json({ error: 'Mangler sak-id' });
-      const report = await getReportById(id);
+      const report = await getReportById(id, { select: 'id,trello_card_id' });
       if (!report) return res.status(404).json({ error: 'Fant ikke saken' });
 
       if (action === 'set-status') {
