@@ -215,7 +215,7 @@ export async function getServerSideProps({ params, req, query }) {
 
   let reportRow = null;
   try {
-    reportRow = await getReportById(id);
+    reportRow = await getReportById(id, { select: 'id,category,description,status' });
   } catch (_error) {
     reportRow = null;
   }
