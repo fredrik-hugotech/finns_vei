@@ -2,6 +2,7 @@ import { getReportsSince, hasSupabaseConfig } from '../../../lib/supabaseRest';
 import { buildDailySummaryEmail } from '../../../lib/dailySummaryEmail';
 import { siteBaseUrl } from '../../../lib/reportWorkflow';
 import { checkRequestRateLimit } from '../../../lib/rateLimit';
+import { timingSafeEqualStrings } from '../../../lib/timingSafeEqualStrings';
 
 // Daily digest of new reports, emailed to the team. Triggered by a Vercel cron
 // (see vercel.json). Until Slack is set up this is the notification channel.
@@ -27,9 +28,9 @@ function authorized(req) {
   const secret = process.env.CRON_SECRET;
   if (!secret) return true; // no secret configured — allow (e.g. local/dev)
   const header = req.headers.authorization || '';
-  if (header === `Bearer ${secret}`) return true;
+  if (timingSafeEqualStrings(header, `Bearer ${secret}`)) return true;
   // Manual trigger fallback: ?key=<secret>
-  return req.query?.key === secret;
+  return timingSafeEqualStrings(req.query?.key, secret);
 }
 
 async function sendEmail({ subject, html }) {
