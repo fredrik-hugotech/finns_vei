@@ -54,6 +54,12 @@ export default async function handler(req, res) {
     if (req.method === 'PATCH') {
       const { id, ...patch } = req.body || {};
       if (!id) return res.status(400).json({ error: 'Missing id', code: 'missing_id' });
+      if (patch.name !== undefined && !String(patch.name).trim()) {
+        return res.status(400).json({ error: 'Oppgi et navn på konkurransen.', code: 'missing_name' });
+      }
+      if (patch.starts_on && patch.ends_on && String(patch.ends_on) < String(patch.starts_on)) {
+        return res.status(400).json({ error: 'Til-dato kan ikke være før fra-dato.', code: 'invalid_date_range' });
+      }
       const competition = await updateCompetition(id, patch);
       return res.status(200).json({ competition });
     }
