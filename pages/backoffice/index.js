@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Logo from '../../components/Logo';
 import { reportStatusMeta } from '../../lib/reportStatusMeta';
 import { REPORT_STATUS } from '../../lib/config';
-import { timeAgo } from '../../lib/backofficeFormat';
+import { timeAgo, describeFetchError } from '../../lib/backofficeFormat';
 
 const FLAG = 'ff-admin-secret'; // client "logged in" flag; real auth is the httpOnly cookie
 const STATUSES = [REPORT_STATUS.NEW, REPORT_STATUS.REGISTERED, REPORT_STATUS.STARTED, REPORT_STATUS.DONE];
@@ -93,11 +93,17 @@ function Dashboard({ me, onLogout }) {
   const [cases, setCases] = useState(null);
   const [truncated, setTruncated] = useState(false);
   const [boardUrl, setBoardUrl] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    fetch('/api/backoffice/cases').then((r) => (r.ok ? r.json() : null)).then((d) => {
-      if (d) { setCases(d.cases || []); setTruncated(Boolean(d.truncated)); setBoardUrl(d.trelloBoardUrl || ''); }
-    }).catch(() => setCases([]));
+    fetch('/api/backoffice/cases')
+      .then(async (r) => {
+        if (r.status === 403) throw new Error('not-authed');
+        if (!r.ok) throw new Error(await describeFetchError(r, 'Kunne ikke hente saker.'));
+        return r.json();
+      })
+      .then((d) => { setCases(d.cases || []); setTruncated(Boolean(d.truncated)); setBoardUrl(d.trelloBoardUrl || ''); })
+      .catch((e) => setError(e.message === 'not-authed' ? 'not-authed' : e.message));
   }, []);
 
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -176,7 +182,12 @@ function Dashboard({ me, onLogout }) {
           <button type="button" className="dash2__logout" onClick={onLogout}>Logg ut</button>
         </header>
 
-        {truncated && (
+        {error === 'not-authed' && (
+          <p className="admin-warning">Økten er utløpt. <Link href="/backoffice">Logg inn på nytt</Link></p>
+        )}
+        {error && error !== 'not-authed' && <p className="admin-warning">{error}</p>}
+
+        {!error && truncated && (
           <p className="admin-warning">Viser kun de {cases.length} nyeste sakene — tallene og listene under dekker ikke eldre saker (ofte de som har ventet lengst). Se <Link href="/backoffice/liste">alle saker</Link> for full liste.</p>
         )}
 
