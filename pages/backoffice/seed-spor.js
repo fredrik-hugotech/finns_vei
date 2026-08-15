@@ -2,6 +2,7 @@ import Head from 'next/head';
 import { useCallback, useEffect, useState } from 'react';
 import BackofficeHeader from '../../components/BackofficeHeader';
 import { clipAndSnapCells, clipPath } from '../../lib/geoPrivacy';
+import { describeFetchError } from '../../lib/backofficeFormat';
 
 // Real-ish Kristiansand sports venues (routing snaps to the nearest road anyway).
 const VENUES = [
@@ -46,6 +47,7 @@ export default function SeedSpor() {
     try {
       const response = await fetch('/api/backoffice/competitions');
       if (response.status === 403) { setStatus('Logg inn på /backoffice først.'); return; }
+      if (!response.ok) { setStatus(await describeFetchError(response, 'Kunne ikke hente konkurranser.')); return; }
       const data = await response.json();
       // Only offer competitions that look like demo data — this tool injects
       // synthetic bike trips via the same public endpoint real rides use, so
