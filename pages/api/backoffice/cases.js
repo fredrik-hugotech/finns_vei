@@ -46,7 +46,9 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
       // Single case (for the card-level admin panel): return its Trello link.
       if (typeof req.query.id === 'string' && req.query.id) {
-        const report = await getReportById(req.query.id);
+        const report = await getReportById(req.query.id, {
+          select: 'id,status,trello_card_id,image_urls,support_count,category,description,created_at,due_date,assignee_email,lat,lng,reporter_type,bike_route_type,public_status_note,road_owner,road_authority,road_category,speed_limit,road_reference,contact_name,contact_email,contact_phone',
+        });
         if (!report) return res.status(404).json({ error: 'Fant ikke saken' });
         // These three lookups don't depend on each other's results, so run
         // them concurrently instead of sequentially.
