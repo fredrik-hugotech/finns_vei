@@ -2,6 +2,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import BackofficeHeader from '../../components/BackofficeHeader';
+import { describeFetchError } from '../../lib/backofficeFormat';
 
 export default function Brukere() {
   const [users, setUsers] = useState(null);
@@ -15,7 +16,7 @@ export default function Brukere() {
     try {
       const r = await fetch('/api/staff/users');
       if (r.status === 403) { setError('not-authed'); return; }
-      if (!r.ok) throw new Error('feil');
+      if (!r.ok) { setError(await describeFetchError(r, 'Kunne ikke hente brukere.')); return; }
       const d = await r.json();
       setUsers(d.users || []);
     } catch (_e) { setError('Kunne ikke hente brukere.'); }
@@ -64,7 +65,7 @@ export default function Brukere() {
         <section className="admin-section">
           <h2>Tilgang</h2>
           <ul className="admin-list">
-            {users === null && <p className="admin-list-empty">Laster …</p>}
+            {!error && users === null && <p className="admin-list-empty">Laster …</p>}
             {(users || []).map((u) => (
               <li key={u.id} className="admin-list__item">
                 <div>
