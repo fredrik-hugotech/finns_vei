@@ -2,6 +2,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useState } from 'react';
+import { describeFetchError } from '../../lib/backofficeFormat';
 
 const ReportMap = dynamic(() => import('../../components/ReportMap'), {
   ssr: false,
@@ -25,7 +26,7 @@ export default function Sykkelspor() {
       const modeQuery = modeFilter ? `&mode=${encodeURIComponent(modeFilter)}` : '';
       const r = await fetch(`/api/backoffice/competition-trips?id=${encodeURIComponent(id)}${modeQuery}`);
       if (r.status === 403) { setStatus('not-authed'); return; }
-      if (!r.ok) { setStatus('Kunne ikke hente data.'); return; }
+      if (!r.ok) { setStatus(await describeFetchError(r, 'Kunne ikke hente data.')); return; }
       const d = await r.json();
       setStats(d);
       setStatus('');
@@ -35,14 +36,18 @@ export default function Sykkelspor() {
   // Cookie session authorises admin requests — load the competition list on mount.
   useEffect(() => {
     fetch('/api/backoffice/competition-trips')
-      .then((r) => (r.status === 403 ? Promise.reject(new Error('not-authed')) : (r.ok ? r.json() : Promise.reject(new Error('feil')))))
+      .then(async (r) => {
+        if (r.status === 403) throw new Error('not-authed');
+        if (!r.ok) throw new Error(await describeFetchError(r, 'Utilgjengelig.'));
+        return r.json();
+      })
       .then((d) => {
         const list = d.competitions || [];
         setCompetitions(list);
         const first = (list.find((c) => c.active) || list[0])?.id || '';
         if (first) { setCompetitionId(first); load(first, ''); }
       })
-      .catch((e) => setStatus(e.message === 'not-authed' ? 'not-authed' : 'Utilgjengelig.'));
+      .catch((e) => setStatus(e.message === 'not-authed' ? 'not-authed' : e.message));
   }, [load]);
 
   // Draw whenever BOTH the map and the data are ready (order-independent).
