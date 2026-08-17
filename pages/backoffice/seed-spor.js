@@ -99,7 +99,7 @@ export default function SeedSpor() {
       try {
         const result = await routeCells(jitter, venue);
         if (result && result.path.length >= 2) {
-          await fetch('/api/bike-trips', {
+          const r = await fetch('/api/bike-trips', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -112,7 +112,7 @@ export default function SeedSpor() {
               path: result.path,
             }),
           });
-          ok += 1;
+          if (r.ok) { ok += 1; } else { fail += 1; }
         } else { fail += 1; }
       } catch (error) {
         fail += 1;
