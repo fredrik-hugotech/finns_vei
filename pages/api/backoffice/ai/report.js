@@ -22,7 +22,9 @@ export default async function handler(req, res) {
   if (!id) return res.status(400).json({ error: 'Missing report id', code: 'missing_id' });
 
   try {
-    const report = await getReportById(id);
+    const report = await getReportById(id, {
+      select: 'id,status,public_status_note,public_status_updated_at,public_status_source,ai_internal_summary,ai_public_status_suggestion,ai_priority_suggestion,ai_next_action_suggestion,ai_suggestion_status,ai_suggestion_updated_at,ai_suggestion_note',
+    });
     return res.status(200).json({ ok: true, report_exists: Boolean(report), report: sanitizeReportForBackofficeAi(report), env: backofficeEnvStatus() });
   } catch (error) {
     return res.status(500).json({ error: error?.message || 'Backoffice report lookup failed', code: 'unknown' });
