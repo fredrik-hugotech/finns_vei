@@ -1,6 +1,7 @@
 import Head from 'next/head';
 import { useCallback, useEffect, useState } from 'react';
 import BackofficeHeader from '../../components/BackofficeHeader';
+import { describeFetchError } from '../../lib/backofficeFormat';
 
 const EMPTY_CLUB = { name: '' };
 
@@ -33,8 +34,7 @@ export default function KonkurranserAdmin() {
         return;
       }
       if (!response.ok) {
-        const payload = await response.json().catch(() => ({}));
-        throw new Error(payload.error || `Kunne ikke hente konkurranser (HTTP ${response.status})`);
+        throw new Error(await describeFetchError(response, `Kunne ikke hente konkurranser (HTTP ${response.status})`));
       }
       const data = await response.json();
       setCompetitions(data.competitions || []);
