@@ -7,6 +7,7 @@ import { REPORT_STATUS } from '../../../lib/config';
 import BackofficeHeader from '../../../components/BackofficeHeader';
 import { classifyRoadAuthority, buildReferralDraft } from '../../../lib/roadAuthorityReferral';
 import { describeFetchError } from '../../../lib/backofficeFormat';
+import { PUBLIC_UPDATE_TEMPLATES } from '../../../lib/caseUpdateTemplates';
 
 const STATUSES = [REPORT_STATUS.NEW, REPORT_STATUS.REGISTERED, REPORT_STATUS.STARTED, REPORT_STATUS.DONE];
 const ACT_LABEL = { created: 'Sak opprettet', voice: 'Innbyggerstemme', public: 'Offentlig oppdatering', internal: 'Internt notat' };
@@ -281,6 +282,14 @@ export default function SakDetalj() {
     } catch (_e) { setFlash('Noe gikk galt.'); } finally { setBusy(false); }
   };
 
+  // Prefills the public-update textarea from a canned phrase. If staff haven't
+  // typed anything yet, replace the placeholder-empty value outright; if
+  // they've already started writing, append the template on a new line
+  // instead of clobbering what they typed.
+  const applyTemplate = (phrase) => {
+    setNote((current) => (current.trim() ? `${current.replace(/\s+$/, '')}\n${phrase}` : phrase));
+  };
+
   const doUpload = async (fileList) => {
     const files = Array.from(fileList || []);
     if (!files.length) return;
@@ -519,6 +528,15 @@ export default function SakDetalj() {
                   <button type="button" aria-pressed={noteMode === 'public'} className={noteMode === 'public' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setNoteMode('public')}>Svar til innbygger</button>
                   <button type="button" aria-pressed={noteMode === 'internal'} className={noteMode === 'internal' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setNoteMode('internal')}>Internt notat</button>
                 </div>
+                {noteMode === 'public' && (
+                  <div className="suggestion-chips" role="group" aria-label="Hurtigsvar">
+                    {PUBLIC_UPDATE_TEMPLATES.map((phrase) => (
+                      <button key={phrase} type="button" className="suggestion-chip" onClick={() => applyTemplate(phrase)}>
+                        {phrase}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <textarea className="sak-note" rows={3} value={note} onChange={(e) => setNote(e.target.value)}
                   placeholder={noteMode === 'internal' ? 'Lim inn e-post fra kommunen, eller skriv et internt notat. Kun for ansatte.' : 'Skriv en oppdatering som vises for innbyggeren.'} />
                 <button type="button" className="big-button big-button--primary" onClick={addNote} disabled={busy || note.trim().length < 2 || (data && !data.hasCard)}>
