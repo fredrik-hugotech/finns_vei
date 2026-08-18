@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { distanceMeters, pathDistanceMeters, clipAndSnapCells, clipPath, snapToGrid, CLIP_METERS } from '../lib/geoPrivacy';
+import { distanceMeters, pathDistanceMeters, clipAndSnapCells, clipPath, snapToGrid, randomOffsetPoint, CLIP_METERS } from '../lib/geoPrivacy';
 import { addPendingReport } from '../lib/offlineReportQueue';
 import Icon from './Icon';
 import WeatherFx from './WeatherFx';
@@ -51,6 +51,12 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mode =
   const pointsRef = useRef([]);
   const distanceRef = useRef(0);
   const lastFixRef = useRef(null);
+  // A randomly-offset stand-in for the trip's true start (likely home),
+  // generated once from the first GPS fix and reused for the rest of the
+  // trip. Every privacy-relevant decision (markUnsafe's nearStart check, the
+  // final clip on stop) is made against this, never against the real first
+  // fix — see the design note in lib/geoPrivacy.js.
+  const jitteredStartRef = useRef(null);
   const startedAtRef = useRef(null);
   const watchIdRef = useRef(null);
   const wakeLockRef = useRef(null);
@@ -104,6 +110,7 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mode =
         // work across a long trip grow quadratically with the point count.
         if (last) distanceRef.current += distanceMeters(last, point);
         points.push(point);
+        if (!jitteredStartRef.current) jitteredStartRef.current = randomOffsetPoint(point);
         setStatus('tracking');
         setDistanceM(distanceRef.current);
         setPointCount(points.length);
@@ -150,8 +157,10 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mode =
     // Same privacy rule as the rest of the trip: protect the ~50m zone around
     // the start (likely home) by snapping it to the coarse grid instead of
     // sending the exact fix. Points further along the ride stay at full
-    // precision since they're genuinely useful hazard locations.
-    const start = pointsRef.current[0] || fix;
+    // precision since they're genuinely useful hazard locations. Measured
+    // against the jittered stand-in, never the true first fix — this
+    // decision is never based on where home actually is.
+    const start = jitteredStartRef.current || fix;
     const nearStart = distanceMeters(fix, start) <= CLIP_METERS;
     const point = nearStart ? snapToGrid(fix.lat, fix.lng) : fix;
     if (!point) { setFlash('Venter på posisjon …'); return; }
@@ -212,8 +221,9 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mode =
     const points = pointsRef.current;
     const durationS = startedAtRef.current ? (Date.now() - startedAtRef.current) / 1000 : 0;
     const finalDistance = pathDistanceMeters(points);
-    const cells = clipAndSnapCells(points);
-    const path = clipPath(points);
+    const homeRef = jitteredStartRef.current || points[0];
+    const cells = clipAndSnapCells(points, { homeRef });
+    const path = clipPath(points, { homeRef });
     const weatherPayload = weather
       ? { symbol: weather.symbolCode || null, precipMm: weather.precipMm ?? null, tempC: weather.tempC ?? null, bonus: Boolean(weather.isPrecip), kind: weather.kind || null }
       : null;

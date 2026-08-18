@@ -148,11 +148,23 @@ per competition in the backoffice.
 **Privacy by design (children + GDPR):** raw GPS coordinates **never leave the
 device**. While tracking, the phone records the route only to draw the live line and
 compute distance. On stop, the device runs `clipAndSnapCells` (`lib/geoPrivacy.js`):
-it removes the segments within ~50 m of the start *and* end (protecting home and the
-exact destination), snaps the remainder to a coarse ~100 m grid, and uploads only that
-**unordered set of cells** plus distance and duration. The published map is an
-aggregated heatmap (per-cell counts) — no individual route is ever stored or shown.
-No names are collected. The server re-snaps cells defensively in `createBikeTrip`.
+it removes the segments within ~50 m of the start (protecting home), snaps the
+remainder to a coarse ~100 m grid, and uploads only that **unordered set of cells**
+plus distance and duration. The published map is an aggregated heatmap (per-cell
+counts) — no individual route is ever stored or shown. No names are collected.
+
+The system never determines or stores what a child's true home coordinate is, not
+even transiently. Every clip is anchored on a *randomly offset stand-in* for the
+start (`randomOffsetPoint`), generated once client-side per trip and reused for the
+whole trip — the raw first GPS fix is never itself used as the clip boundary's
+center. `createBikeTrip` re-clips defensively server-side and, critically,
+generates its **own independent** random offset around whatever the client
+declares as the start rather than trusting or reusing the client's value — so the
+actual protected zone is unpredictable to the client and can't be deliberately
+placed a known-safe distance from. (Prior to 2026-08-18, both device and server
+clipped around the literal claimed start point, which was `points[0]`, so anyone
+skipping the on-device clip and POSTing straight to `/api/bike-trips` could place
+the true start at an exactly-computable safe distance and have it survive.)
 
 - Public: `GET /api/competitions` (active list), `GET /api/competitions/[id]`
   (competition + leaderboard + heatmap GeoJSON), `POST /api/bike-trips` (log a trip:
