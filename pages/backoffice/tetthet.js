@@ -18,6 +18,7 @@ export default function Sykkelspor() {
   const [mode, setMode] = useState('');
   const [stats, setStats] = useState(null);
   const [status, setStatus] = useState('');
+  const [loaded, setLoaded] = useState(false);
 
   const load = useCallback(async (id, modeFilter) => {
     if (!id) return;
@@ -47,7 +48,8 @@ export default function Sykkelspor() {
         const first = (list.find((c) => c.active) || list[0])?.id || '';
         if (first) { setCompetitionId(first); load(first, ''); }
       })
-      .catch((e) => setStatus(e.message === 'not-authed' ? 'not-authed' : e.message));
+      .catch((e) => setStatus(e.message === 'not-authed' ? 'not-authed' : e.message))
+      .finally(() => setLoaded(true));
   }, [load]);
 
   // Draw whenever BOTH the map and the data are ready (order-independent).
@@ -85,6 +87,10 @@ export default function Sykkelspor() {
           ) : (
             <>
               <strong>Sykkelspor</strong>
+              {!loaded && <span className="spor-panel__meta">Laster …</span>}
+              {loaded && competitions.length === 0 && (
+                <span className="spor-panel__meta">Ingen konkurranser ennå. Opprett en på <Link href="/backoffice/konkurranser">/backoffice/konkurranser</Link>.</span>
+              )}
               {competitions.length > 0 && (
                 <select className="comp-select" value={competitionId} onChange={(e) => onSelect(e.target.value)}>
                   {competitions.map((c) => <option key={c.id} value={c.id}>{c.name}{c.active ? '' : ' (skjult)'}</option>)}
