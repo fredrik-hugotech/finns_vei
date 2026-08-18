@@ -335,6 +335,23 @@ backs `pages/api/backoffice/attachment.js` and the attachment list on
 `/backoffice/sak/[id]` — see "Report image uploads" above for the similar,
 separate `reports.image_urls` mechanism used for the original report photos.
 
+**Storage (2026-08-18):** `visibility: 'public'` attachments live in the same
+public `report-images` bucket as report photos, at a permanent URL. Until
+2026-08-18, `visibility: 'internal'` attachments lived there too — same
+bucket, only a database column marking them "internal", with no actual
+access control: anyone with (or guessing) the storage URL could read a
+staff-only attachment directly, bypassing `isAdminRequest` entirely. Internal
+attachments now live in a separate **private** Supabase Storage bucket
+(`case-attachments-internal`, `public: false`), never reachable by a plain
+URL. `lib/supabaseRest.js`'s `bucketForVisibility()` is the single place that
+decides which bucket a given visibility uses; `listCaseAttachments()` signs a
+fresh, 1-hour-expiry URL for every internal row on each read
+(`getSignedStorageUrl`) instead of storing a permanent one (internal rows
+store `url: null`). Toggling visibility (`setCaseAttachmentVisibility`)
+physically moves the file between buckets — download + re-upload + delete,
+since Storage has no built-in cross-bucket move — and only updates the DB row
+once the move succeeds.
+
 Note: `case_attachments.report_id` has **no foreign key constraint** to
 `reports.id` in production today, so nothing prevents an attachment row from
 outliving its report (confirmed: one such orphaned row exists, from
@@ -560,6 +577,11 @@ Required Supabase setup for the MVP:
   - `REPORT_IMAGE_MAX_BYTES=8388608`
 
 Images are stored under `reports/<report-id>/...` and `reports.image_urls` stores objects with `url`, `path`, `content_type`, and `size`. Trello card descriptions include image links, and the app best-effort attaches each public image URL to the Trello card. Report creation still succeeds if image upload or Trello attachment fails.
+
+Internal-visibility case attachments (`/backoffice/sak/[id]`) additionally
+require a **private** Storage bucket named `case-attachments-internal` (or
+set `SUPABASE_STORAGE_BUCKET_CASE_ATTACHMENTS_INTERNAL`), created with
+`public: false` — see "Staff accounts and case attachments" above.
 
 ## Brand assets
 

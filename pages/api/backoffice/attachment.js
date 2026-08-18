@@ -1,6 +1,6 @@
 import { isAdminRequest } from '../../../lib/backofficeAuth';
 import { parseMultipartRequest } from '../../../lib/multipart';
-import { uploadReportImage, createCaseAttachment, setCaseAttachmentVisibility, deleteCaseAttachment, hasSupabaseConfig, getReportById } from '../../../lib/supabaseRest';
+import { uploadReportImage, createCaseAttachment, setCaseAttachmentVisibility, deleteCaseAttachment, hasSupabaseConfig, getReportById, bucketForVisibility, getSignedStorageUrl } from '../../../lib/supabaseRest';
 import { sanitizeImageFilename, resolveReportImageContentType } from '../../../lib/reportImages';
 import { matchesFileSignature } from '../../../lib/fileSignature';
 import { checkRequestRateLimit } from '../../../lib/rateLimit';
@@ -86,11 +86,17 @@ export default async function handler(req, res) {
 
     const created = await Promise.all(validated.map(async ({ file, index, resolvedType, safeName }) => {
       const path = `cases/${reportId}/${Date.now()}-${index + 1}-${safeName}`;
-      const result = await uploadReportImage({ path, buffer: file.buffer, contentType: resolvedType });
+      const bucket = bucketForVisibility(visibility);
+      const result = await uploadReportImage({ path, buffer: file.buffer, contentType: resolvedType, bucket });
       const row = await createCaseAttachment({
         reportId, url: result.url, path: result.path, contentType: resolvedType, filename: file.filename || safeName, visibility, size: file.buffer.length,
       });
-      return { id: row?.id, url: result.url, filename: file.filename || safeName, content_type: resolvedType, visibility };
+      // The stored row's url is null for internal attachments (see
+      // createCaseAttachment) — sign one now so the response the uploader
+      // sees immediately can still preview the file, without waiting for a
+      // page reload to hit listCaseAttachments' signing path.
+      const previewUrl = visibility === 'public' ? result.url : await getSignedStorageUrl(path, bucket);
+      return { id: row?.id, url: previewUrl, filename: file.filename || safeName, content_type: resolvedType, visibility };
     }));
     return res.status(201).json({ attachments: created });
   } catch (error) {
