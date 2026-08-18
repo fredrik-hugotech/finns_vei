@@ -147,7 +147,7 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mode =
   const markUnsafe = async () => {
     const fix = lastFixRef.current;
     if (!fix) { setFlash('Venter på posisjon …'); return; }
-    // Same privacy rule as the rest of the trip: protect the ~150m zone around
+    // Same privacy rule as the rest of the trip: protect the ~50m zone around
     // the start (likely home) by snapping it to the coarse grid instead of
     // sending the exact fix. Points further along the ride stay at full
     // precision since they're genuinely useful hazard locations.
