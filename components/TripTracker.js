@@ -173,6 +173,14 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mode =
     // Same JSON-serializable shape ReportSheet.js queues on a genuine
     // connectivity failure (see buildQueuePayload/handleOfflineSubmit there) —
     // an image-free report, safe to park in the offline queue and auto-resend.
+    // The true trip start (not the jittered stand-in) — sent alongside so
+    // the server can independently re-derive its own randomly-offset
+    // reference and enforce the same privacy rule server-side, regardless of
+    // what this client did above. Never stored: /api/report reads it only to
+    // make that one decision, then discards it. Omitted if, for whatever
+    // reason, no start point was ever recorded — the report still goes
+    // through, just without the extra server-side check.
+    const tripStart = pointsRef.current[0] || null;
     const queuePayload = {
       reporter_type: 'barn',
       category,
@@ -180,6 +188,7 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mode =
       lat: point.lat,
       lng: point.lng,
       bike_route_type: routeType,
+      ...(tripStart ? { trip_start_lat: tripStart.lat, trip_start_lng: tripStart.lng } : {}),
     };
 
     // Already known to be offline — no point racing a doomed fetch, and out

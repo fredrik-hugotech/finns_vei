@@ -1,6 +1,7 @@
 import { REPORT_CATEGORIES, REPORT_STATUS, REPORTER_TYPES } from '../../lib/config';
 import { runReportWorkflowBestEffort } from '../../lib/reportWorkflow';
 import { createReport, hasSupabaseConfig, updateReportImages, uploadReportImage } from '../../lib/supabaseRest';
+import { distanceMeters, randomOffsetPoint, snapToGrid, CLIP_METERS } from '../../lib/geoPrivacy';
 import { resolveReportImageContentType, REPORT_IMAGE_MAX_BYTES, REPORT_IMAGE_MAX_COUNT, sanitizeImageFilename } from '../../lib/reportImages';
 import { matchesFileSignature } from '../../lib/fileSignature';
 import { checkRequestRateLimit } from '../../lib/rateLimit';
@@ -50,13 +51,44 @@ function parseCoordinate(value, name) {
   return number;
 }
 
+// Optional: present only when a report was created mid-trip (TripTracker's
+// "marker utrygt punkt", i.e. a report tied to an active bike/walk trip).
+// Same "case" as any other report — see validatePayload — just with a trip
+// context attached, used below only to decide whether the reported point
+// needs privacy protection. Never returned/stored: this function reads it
+// purely to make that one decision, then it's discarded.
+function parseOptionalCoordinate(value) {
+  if (value === undefined || value === null || value === '') return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
 function validatePayload(body = {}) {
   const reporterType = body.reporter_type === REPORTER_TYPES.ADULT ? REPORTER_TYPES.ADULT : REPORTER_TYPES.CHILD;
-  const lat = parseCoordinate(body.lat, 'Posisjon');
-  const lng = parseCoordinate(body.lng, 'Posisjon');
+  let lat = parseCoordinate(body.lat, 'Posisjon');
+  let lng = parseCoordinate(body.lng, 'Posisjon');
 
   if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
     throw invalidInput('Posisjonen ser ikke riktig ut');
+  }
+
+  // Defense in depth for reports tied to a bike/walk trip: the client
+  // (TripTracker.js) already snaps a near-start point to the coarse grid
+  // before sending it, but never trust that alone — a request straight to
+  // this endpoint could skip it entirely. If the caller also declares the
+  // trip's start point, re-derive an independent, randomly-offset stand-in
+  // for it here (never the raw declared start itself, same principle as
+  // createBikeTrip) and snap the reported point if it falls within the
+  // privacy radius of that stand-in — regardless of what the client already
+  // did. The declared start itself is never stored or returned.
+  const tripStartLat = parseOptionalCoordinate(body.trip_start_lat);
+  const tripStartLng = parseOptionalCoordinate(body.trip_start_lng);
+  if (tripStartLat !== null && tripStartLng !== null) {
+    const homeRef = randomOffsetPoint({ lat: tripStartLat, lng: tripStartLng });
+    if (homeRef && distanceMeters({ lat, lng }, homeRef) <= CLIP_METERS) {
+      const snapped = snapToGrid(lat, lng);
+      if (snapped) { lat = snapped.lat; lng = snapped.lng; }
+    }
   }
 
   const category = REPORT_CATEGORIES.includes(body.category) ? body.category : null;
