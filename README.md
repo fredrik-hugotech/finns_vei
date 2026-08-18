@@ -290,10 +290,62 @@ apart on the same street) can merge into one under the default radius.
 | `HOTSPOT_RADIUS_M` | Server | `75` | Spatial clustering radius for the recurring hotspot overview. |
 | `HOTSPOT_MIN_PERIODS` | Server | `2` | Minimum distinct seasons/years a spot must appear in to count as a recurring hotspot. |
 
+## Staff accounts and case attachments
+
+Three tables exist in Supabase but were previously undocumented here (doc gap
+noted 2026-08-05, filled in 2026-08-18 from the live schema):
+
+```sql
+CREATE TABLE IF NOT EXISTS public.staff (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  email text NOT NULL UNIQUE,
+  name text,
+  role text NOT NULL DEFAULT 'staff',   -- 'staff' | 'superuser'
+  password_hash text NOT NULL,
+  active boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.staff_sessions (
+  token text PRIMARY KEY,
+  staff_id uuid NOT NULL REFERENCES public.staff(id),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  expires_at timestamptz NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.case_attachments (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  report_id uuid NOT NULL,              -- no FK constraint in production
+                                         -- today (see note below)
+  url text NOT NULL,
+  path text,
+  content_type text,
+  filename text,
+  visibility text NOT NULL DEFAULT 'internal', -- 'internal' | 'public'
+  size integer,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+```
+
+`staff` backs email/password login (`lib/staffAuth.js`, scrypt hashing) and
+role-gated actions (`role = 'superuser'` for user management). `staff_sessions`
+is the cookie-session store; `getStaffFromRequest` opportunistically deletes a
+row once it's found expired, in addition to explicit logout. `case_attachments`
+backs `pages/api/backoffice/attachment.js` and the attachment list on
+`/backoffice/sak/[id]` — see "Report image uploads" above for the similar,
+separate `reports.image_urls` mechanism used for the original report photos.
+
+Note: `case_attachments.report_id` has **no foreign key constraint** to
+`reports.id` in production today, so nothing prevents an attachment row from
+outliving its report (confirmed: one such orphaned row exists, from
+2026-07-07, `visibility: 'public'` — see the Backlog entry below). A future
+migration could add `REFERENCES public.reports(id) ON DELETE CASCADE`, but
+that's additive schema work, not part of this doc-only pass.
+
 ## Database indexes (performance)
 
-`public.staff_sessions` (staff login sessions, keyed by `token`) isn't otherwise
-documented in this file yet — see the "Backlog" section for that doc gap. Its
+`public.staff_sessions` (staff login sessions, keyed by `token`) — see the
+"Staff accounts and case attachments" section above for its full schema. Its
 `staff_id` foreign key had no covering index; `reports` lacked indexes on the
 columns actually used to filter/sort it outside `status`/`category`/`case_id`.
 Applied directly to the Supabase project (additive, safe to re-run):
@@ -483,11 +535,16 @@ This repo is intended to deploy through the linked Vercel GitHub integration. In
 
 - Optional image upload to Supabase Storage bucket `report-images`.
 - Admin-only workflow views for follow-up status changes.
-- Doc gap (not a code issue): `public.staff`, `public.staff_sessions`, and
-  `public.case_attachments` exist in Supabase but were never given a `CREATE
-  TABLE` block in this file like the other tables above — worth backfilling
-  next time one of them changes, so the schema here doesn't silently drift
-  further from what's actually live.
+- One orphaned `case_attachments` row exists in production (id
+  `602bf453-0eba-4a62-82e5-52597c64583c`, `report_id`
+  `d9bf626e-c5c2-4a2c-82f0-76d37045ad74`, `visibility: 'public'`, created
+  2026-07-07) — its `reports` row no longer exists. Confirmed via direct
+  query 2026-08-18. Deliberately not deleted automatically (destructive);
+  delete it manually when convenient, or add the missing FK constraint
+  noted above first so this can't recur.
+- `case_attachments.report_id` has no FK constraint to `reports.id` (see
+  above) — an additive migration to add one is safe to do whenever
+  convenient, no rush.
 
 ## Report image uploads
 
