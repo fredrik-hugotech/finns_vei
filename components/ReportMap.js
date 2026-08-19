@@ -425,7 +425,7 @@ const NVDB_LAYERS = [
   { type: 'accidents', label: 'Ulykker', color: MAP_COLORS.accidentLayer },
 ];
 
-const ACCIDENT_LAYER_IDS = ['accident-points', 'accident-point-symbol'];
+const ACCIDENT_LAYER_IDS = ['accident-heatmap', 'accident-points', 'accident-point-symbol'];
 const REPORT_LAYER_IDS = ['reports-clusters', 'reports-cluster-count', 'reports-circle', 'reports-category-symbol', 'reports-support-badge'];
 
 function moveLayersToTop(map, layerIds) {
@@ -848,7 +848,17 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       });
 
       if (layerType === 'accidents') {
-        // Heatmap removed — the clear accident points read much better.
+        // Heatmap below MIN..ACCIDENT_HEATMAP_MAX_ZOOM (context, kept translucent
+        // so it never overshadows report pins/case card), clear individual
+        // points from ACCIDENT_POINT_MIN_ZOOM once you're close to a case.
+        map.addLayer({
+          id: 'accident-heatmap',
+          type: 'heatmap',
+          source: sourceId,
+          maxzoom: ACCIDENT_HEATMAP_MAX_ZOOM,
+          filter: ['match', ['geometry-type'], ['Point'], true, false],
+          paint: MAP_STYLE.accidentHeatmapPaint,
+        });
         map.addLayer({
           id: 'accident-points',
           type: 'circle',
