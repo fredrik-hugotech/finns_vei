@@ -335,6 +335,10 @@ export default function SakDetalj() {
     try {
       const r = await fetch('/api/backoffice/attachment', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: att.id, visibility: nextVis }) });
       if (!r.ok) throw new Error('toggle');
+      // Toggling moves the file between buckets and changes its URL (a fresh
+      // signed URL for 'internal', a permanent one for 'public') — reload so
+      // the thumbnail/link doesn't keep pointing at the old location.
+      load();
     } catch (_e) {
       setFlash('Kunne ikke oppdatere vedlegg');
       load();
