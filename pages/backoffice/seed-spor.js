@@ -139,9 +139,9 @@ export default function SeedSpor() {
               {competitions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </label>
-        ) : (
+        ) : !status ? (
           <p className="admin-help">Ingen konkurranser med «DEMO» i navnet ennå — opprett en på <a href="/backoffice/konkurranser">/backoffice/konkurranser</a> først (dette verktøyet viser bevisst kun demo-konkurranser, for ikke å forurense en ekte ledertavle med falske turer).</p>
-        )}
+        ) : null}
 
         <button type="button" className="big-button big-button--primary" onClick={generate} disabled={running || !competitionId}>
           {running ? `Genererer … ${progress.done}/${progress.total}` : 'Generer ~40 vei-ruter'}

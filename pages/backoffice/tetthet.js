@@ -88,7 +88,7 @@ export default function Sykkelspor() {
             <>
               <strong>Sykkelspor</strong>
               {!loaded && <span className="spor-panel__meta">Laster …</span>}
-              {loaded && competitions.length === 0 && (
+              {loaded && !status && competitions.length === 0 && (
                 <span className="spor-panel__meta">Ingen konkurranser ennå. Opprett en på <Link href="/backoffice/konkurranser">/backoffice/konkurranser</Link>.</span>
               )}
               {competitions.length > 0 && (
