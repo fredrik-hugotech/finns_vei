@@ -1,7 +1,7 @@
 import Head from 'next/head';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { describeFetchError } from '../../lib/backofficeFormat';
 
 const ReportMap = dynamic(() => import('../../components/ReportMap'), {
@@ -20,18 +20,28 @@ export default function Sykkelspor() {
   const [status, setStatus] = useState('');
   const [loaded, setLoaded] = useState(false);
 
+  // requestId guards against out-of-order responses when the competition or
+  // mode filter is switched again before an earlier fetch has resolved.
+  const requestIdRef = useRef(0);
+
   const load = useCallback(async (id, modeFilter) => {
     if (!id) return;
+    const requestId = ++requestIdRef.current;
+    setStats(null);
     setStatus('Henter …');
     try {
       const modeQuery = modeFilter ? `&mode=${encodeURIComponent(modeFilter)}` : '';
       const r = await fetch(`/api/backoffice/competition-trips?id=${encodeURIComponent(id)}${modeQuery}`);
+      if (requestId !== requestIdRef.current) return;
       if (r.status === 403) { setStatus('not-authed'); return; }
       if (!r.ok) { setStatus(await describeFetchError(r, 'Kunne ikke hente data.')); return; }
       const d = await r.json();
+      if (requestId !== requestIdRef.current) return;
       setStats(d);
       setStatus('');
-    } catch (_e) { setStatus('Kunne ikke hente data.'); }
+    } catch (_e) {
+      if (requestId === requestIdRef.current) setStatus('Kunne ikke hente data.');
+    }
   }, []);
 
   // Cookie session authorises admin requests — load the competition list on mount.
