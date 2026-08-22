@@ -1,6 +1,6 @@
 import Head from 'next/head';
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { reportStatusMeta } from '../../../lib/reportStatusMeta';
 import { REPORT_STATUS } from '../../../lib/config';
@@ -87,21 +87,46 @@ export default function SakDetalj() {
   const [me, setMe] = useState(null);
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
+  // requestId guards against an out-of-order response overwriting a newer
+  // case's data when navigating quickly between cases (prev/next, arrow keys).
+  const requestIdRef = useRef(0);
+
   const load = useCallback(async () => {
     if (!id) return;
+    const requestId = ++requestIdRef.current;
+    setData(null);
+    setError('');
     try {
       const r = await fetch(`/api/backoffice/cases?id=${encodeURIComponent(id)}`);
+      if (requestId !== requestIdRef.current) return;
       if (r.status === 403) { setError('not-authed'); return; }
       if (!r.ok) { setError(await describeFetchError(r, 'Kunne ikke hente saken.')); return; }
       const d = await r.json();
+      if (requestId !== requestIdRef.current) return;
       setData(d);
       setStatus(d.case?.status || '');
       setDueDate(d.case?.due_date ? String(d.case.due_date).slice(0, 10) : '');
       setAssignee(d.case?.assignee_email || '');
-    } catch (_e) { setError('Noe gikk galt.'); }
+    } catch (_e) {
+      if (requestId === requestIdRef.current) setError('Noe gikk galt.');
+    }
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Navigating to a different case (prev/next link, arrow keys) reuses this
+  // same component instance — reset per-case UI state that must never leak
+  // across cases, most importantly an armed delete confirmation and an
+  // unsent note draft (either could otherwise be applied to the wrong case).
+  useEffect(() => {
+    setDeleteArmed(false);
+    setDeleteConfirm('');
+    setNote('');
+    setNoteMode('public');
+    setDescOpen(false);
+    setShowAcc(false);
+    setLightbox(null);
+  }, [id]);
 
   useEffect(() => {
     fetch('/api/backoffice/cases?ids=1').then((r) => (r.ok ? r.json() : null)).then((d) => { if (d) setSiblings((d.ids || []).map(String)); }).catch(() => {});
@@ -222,6 +247,7 @@ export default function SakDetalj() {
   useEffect(() => {
     if (!c || !mapboxToken || !Number.isFinite(Number(c.lat)) || !Number.isFinite(Number(c.lng))) return undefined;
     let cancelled = false;
+    setPlace(null);
     reverseGeocode(Number(c.lat), Number(c.lng), mapboxToken).then((p) => { if (!cancelled) setPlace(p); });
     return () => { cancelled = true; };
   }, [c?.lat, c?.lng, mapboxToken]);
