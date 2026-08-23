@@ -23,9 +23,9 @@ export default function KonkurranserAdmin() {
   // Cookie session authorises admin requests; no manual password needed.
   const authHeaders = useCallback(() => ({ 'Content-Type': 'application/json' }), []);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async ({ resetStatus = true } = {}) => {
     setLoading(true);
-    setStatus('');
+    if (resetStatus) setStatus('');
     try {
       const response = await fetch('/api/backoffice/competitions', { headers: authHeaders() });
       if (response.status === 403) {
@@ -88,7 +88,7 @@ export default function KonkurranserAdmin() {
       }
       setStatus('Konkurranse opprettet ✓');
       resetForm();
-      load();
+      load({ resetStatus: false });
     } catch (error) {
       setStatus(error.message || 'Noe gikk galt.');
     } finally {
