@@ -1,6 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Next 16's `next dev` auto-writes an "agent rules" block into CLAUDE.md
+  // on every dev-server start (see generate-agent-files.js) — useful in
+  // general, but CLAUDE.md here is explicitly Fredrik's own curated
+  // standing-instructions file, not a place for a vendor tool to
+  // auto-append content. Disabled so it stays exactly what he wrote.
+  agentRules: false,
   async redirects() {
     return [
       { source: '/map', destination: '/', permanent: false },
