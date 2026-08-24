@@ -389,6 +389,7 @@ CREATE INDEX IF NOT EXISTS reports_trello_card_id_idx ON public.reports(trello_c
 CREATE INDEX IF NOT EXISTS reports_created_at_idx ON public.reports(created_at DESC);
 CREATE INDEX IF NOT EXISTS reports_lat_lng_idx ON public.reports(lat, lng);
 CREATE INDEX IF NOT EXISTS staff_sessions_staff_id_idx ON public.staff_sessions(staff_id);
+CREATE INDEX IF NOT EXISTS case_attachments_report_idx ON public.case_attachments(report_id);
 ```
 
 `reports_trello_card_id_idx` backs every Trello webhook delivery and grouped-report
@@ -397,7 +398,11 @@ backs the `order=created_at.desc` used across most backoffice lists;
 `reports_lat_lng_idx` supports the `CASE_GROUP_RADIUS_M` bounding-box scan run on
 every `POST /api/report` (a plain btree, not a spatial index — fine at today's
 volume, but a real bounding-box/PostGIS index would be needed if `reports` grows
-much larger). `getStaffFromRequest` (`lib/staffAuth.js`) also now deletes a
+much larger). `case_attachments_report_idx` backs `listCaseAttachments()`'s
+`report_id=eq.<id>` lookup, hit from both the backoffice case workspace and the
+public, unauthenticated `report-thread` endpoint (confirmed already present in
+production 2026-08-24; documented here to close a doc gap, not newly added).
+`getStaffFromRequest` (`lib/staffAuth.js`) also now deletes a
 `staff_sessions` row opportunistically once it's found expired, instead of only
 ever removing rows on explicit logout.
 
