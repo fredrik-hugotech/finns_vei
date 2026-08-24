@@ -166,6 +166,23 @@ clipped around the literal claimed start point, which was `points[0]`, so anyone
 skipping the on-device clip and POSTing straight to `/api/bike-trips` could place
 the true start at an exactly-computable safe distance and have it survive.)
 
+The stored route line (`bike_trips.path`, the ordered GPS trace behind the
+Strava-style route rendering) is capped at `MAX_PATH_POINTS` (2026-08-23,
+`lib/geoPrivacy.js`, default 3000) via Douglas-Peucker line simplification
+applied inside `clipPath` — shared by both the on-device clip and
+`createBikeTrip`'s server-side re-clip, so the cap holds even for a client
+that skips it. Unlike truncating or fixed-interval decimation, this keeps
+exactly the points where the route genuinely deviates (a shortcut off the
+road, a different route than expected) and only drops redundant
+near-collinear points from the ~1/s GPS fix rate, so route shape stays
+accurate for staff review even after a long ride is reduced to a few
+thousand points. Before this, nothing bounded path length at all — a long
+ride (sessions up to `MAX_TRIP_DURATION_S`, 12h) could accumulate tens of
+thousands of points and risk exceeding the API's request-body limit right
+when the trip was saved. `path_cells` (the unordered heatmap grid, already
+deduplicated to the ~100 m grid) is not affected — it stays naturally
+bounded by route distance and grid size.
+
 - Public: `GET /api/competitions` (active list), `GET /api/competitions/[id]`
   (competition + leaderboard + heatmap GeoJSON), `POST /api/bike-trips` (log a trip:
   `{ competitionId, club, helmet, distanceM, durationS, cells }`).
