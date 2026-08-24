@@ -43,10 +43,14 @@ const nextConfig = {
     //     nvdbapiles.atlas.vegvesen.no, api.met.no are all called
     //     server-side only (API routes) — CSP governs the browser, not
     //     server-to-server fetches, so none of these need allowlisting here.
-    // Verified in a real browser against a Vercel preview deployment before
-    // merging to main (headless Chromium, checked for console CSP
-    // violations across /, /sykle, /tryggeste-skolevei, /backoffice/tetthet,
-    // and a backoffice case page) — see the nightly report for that run.
+    // Re-verified 2026-08-23 (headless Chromium against a local `next start`
+    // build, since Vercel Authentication blocks headless access to preview
+    // URLs) after several nights of unrelated `main` changes landed on this
+    // branch, including the removal of the /tryggeste-skolevei page this
+    // comment used to reference — checked /, /map, /sykle, /bud and
+    // /backoffice for console CSP violations (none), plus an independent
+    // audit of every external host referenced anywhere client-side against
+    // this allowlist. See reports/nightly/2026-08-23.md.
     const supabaseHost = (() => {
       try { return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).host; } catch (_e) { return null; }
     })();
