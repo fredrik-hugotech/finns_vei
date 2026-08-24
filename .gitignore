@@ -7,3 +7,7 @@ build/
 .env
 .vercel/
 .DS_Store
+# Local git worktree scratch space used by isolated background agent runs —
+# never real project content, and can be a live in-progress checkout at the
+# moment .gitignore is checked, so never something to add/commit.
+.claude/

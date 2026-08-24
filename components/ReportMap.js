@@ -425,7 +425,7 @@ const NVDB_LAYERS = [
   { type: 'accidents', label: 'Ulykker', color: MAP_COLORS.accidentLayer },
 ];
 
-const ACCIDENT_LAYER_IDS = ['accident-points', 'accident-point-symbol'];
+const ACCIDENT_LAYER_IDS = ['accident-heatmap', 'accident-points', 'accident-point-symbol'];
 const REPORT_LAYER_IDS = ['reports-clusters', 'reports-cluster-count', 'reports-circle', 'reports-category-symbol', 'reports-support-badge'];
 
 function moveLayersToTop(map, layerIds) {
@@ -572,86 +572,6 @@ function showLivePath(map, geojson) {
   }
 }
 
-// "Tryggeste skolevei" candidate routes: each LineString feature carries
-// `recommended` (bool) and `riskLevel` ('lav'|'middels'|'høy') properties set
-// by the page from the /api/safe-route response. Alternatives are drawn
-// muted/dashed first, then the single recommended/selected route is drawn
-// bold and solid on top so it always reads clearly against the others.
-function showSafeRoutes(map, geojson) {
-  if (!map || !map.isStyleLoaded?.()) {
-    if (map) setTimeout(() => showSafeRoutes(map, geojson), 200);
-    return;
-  }
-  const data = geojson && geojson.type ? geojson : { type: 'FeatureCollection', features: [] };
-  const source = map.getSource('safe-routes');
-  if (source) {
-    source.setData(data);
-    return;
-  }
-
-  map.addSource('safe-routes', { type: 'geojson', data });
-
-  const riskColor = ['match', ['get', 'riskLevel'], 'lav', '#4c9a80', 'middels', '#d99a12', 'høy', '#cf4329', '#8a9490'];
-
-  map.addLayer({
-    id: 'safe-route-alt-casing',
-    type: 'line',
-    source: 'safe-routes',
-    filter: ['==', ['get', 'recommended'], false],
-    layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-color': '#ffffff', 'line-opacity': 0.75, 'line-width': 6 },
-  });
-  map.addLayer({
-    id: 'safe-route-alt-lines',
-    type: 'line',
-    source: 'safe-routes',
-    filter: ['==', ['get', 'recommended'], false],
-    layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: {
-      'line-color': riskColor,
-      'line-opacity': 0.8,
-      'line-width': 3.5,
-      'line-dasharray': [2, 1.6],
-    },
-  });
-  map.addLayer({
-    id: 'safe-route-casing',
-    type: 'line',
-    source: 'safe-routes',
-    filter: ['==', ['get', 'recommended'], true],
-    layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-color': '#ffffff', 'line-opacity': 0.92, 'line-width': 9.5 },
-  });
-  map.addLayer({
-    id: 'safe-route-lines',
-    type: 'line',
-    source: 'safe-routes',
-    filter: ['==', ['get', 'recommended'], true],
-    layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: {
-      'line-color': ['match', ['get', 'riskLevel'], 'lav', '#0d6b52', 'middels', '#d99a12', 'høy', '#cf4329', '#0d6b52'],
-      'line-opacity': 1,
-      'line-width': 6,
-    },
-  });
-}
-
-// Place/move/remove one of the two "Tryggeste skolevei" waypoint pins.
-function setWaypointMarker(map, ref, point, color) {
-  if (!map) return;
-  if (!point) {
-    ref.current?.remove();
-    ref.current = null;
-    return;
-  }
-  const lngLat = [point.lng, point.lat];
-  if (!ref.current) {
-    ref.current = new mapboxgl.Marker({ color }).setLngLat(lngLat).addTo(map);
-  } else {
-    ref.current.setLngLat(lngLat);
-  }
-}
-
 // Frame a FeatureCollection (points/lines) in view, leaving room at the bottom
 // for the competition sheet/chip so the heatmap sits in the visible area.
 function fitToGeoJson(map, geojson) {
@@ -685,11 +605,6 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   const mapRef = useRef(null);
   const markerRef = useRef(null);
   const pinnedMarkerRef = useRef(null);
-  // "Tryggeste skolevei" (pages/tryggeste-skolevei.js) start/destination pins
-  // — a separate pair of markers from pinnedMarkerRef so the safe-route page
-  // can show both points at once alongside the scored route lines.
-  const safeRouteStartMarkerRef = useRef(null);
-  const safeRouteDestMarkerRef = useRef(null);
   const onMapReadyRef = useRef(onMapReady);
   const pointRef = useRef(point);
   const pickModeRef = useRef(pickMode);
@@ -933,7 +848,17 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       });
 
       if (layerType === 'accidents') {
-        // Heatmap removed — the clear accident points read much better.
+        // Heatmap below MIN..ACCIDENT_HEATMAP_MAX_ZOOM (context, kept translucent
+        // so it never overshadows report pins/case card), clear individual
+        // points from ACCIDENT_POINT_MIN_ZOOM once you're close to a case.
+        map.addLayer({
+          id: 'accident-heatmap',
+          type: 'heatmap',
+          source: sourceId,
+          maxzoom: ACCIDENT_HEATMAP_MAX_ZOOM,
+          filter: ['match', ['geometry-type'], ['Point'], true, false],
+          paint: MAP_STYLE.accidentHeatmapPaint,
+        });
         map.addLayer({
           id: 'accident-points',
           type: 'circle',
@@ -1433,17 +1358,6 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         clearLivePath: () => showLivePath(map, { type: 'FeatureCollection', features: [] }),
         fitCompetition: (geojson) => fitToGeoJson(map, geojson),
         flyToLngLat: ({ lng, lat }) => map.easeTo({ center: [lng, lat], duration: 600 }),
-        // "Tryggeste skolevei": draw/clear scored candidate routes + the two
-        // start/destination pins. See pages/tryggeste-skolevei.js.
-        showSafeRoutes: (geojson) => showSafeRoutes(map, geojson),
-        fitSafeRoutes: (geojson) => fitToGeoJson(map, geojson),
-        setSafeRouteStart: (waypoint) => setWaypointMarker(map, safeRouteStartMarkerRef, waypoint, '#0d6b52'),
-        setSafeRouteDestination: (waypoint) => setWaypointMarker(map, safeRouteDestMarkerRef, waypoint, '#cf4329'),
-        clearSafeRoutes: () => {
-          showSafeRoutes(map, { type: 'FeatureCollection', features: [] });
-          setWaypointMarker(map, safeRouteStartMarkerRef, null, '#0d6b52');
-          setWaypointMarker(map, safeRouteDestMarkerRef, null, '#cf4329');
-        },
       });
       try {
         await loadReports();

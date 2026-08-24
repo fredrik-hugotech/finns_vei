@@ -1,6 +1,6 @@
 import Head from 'next/head';
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { reportStatusMeta } from '../../../lib/reportStatusMeta';
 import { REPORT_STATUS } from '../../../lib/config';
@@ -85,26 +85,48 @@ export default function SakDetalj() {
   const [deleting, setDeleting] = useState(false);
   const [referralCopied, setReferralCopied] = useState(false);
   const [me, setMe] = useState(null);
-  const [ai, setAi] = useState(null);
-  const [aiEnv, setAiEnv] = useState(null);
-  const [aiBusy, setAiBusy] = useState(false);
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+
+  // requestId guards against an out-of-order response overwriting a newer
+  // case's data when navigating quickly between cases (prev/next, arrow keys).
+  const requestIdRef = useRef(0);
 
   const load = useCallback(async () => {
     if (!id) return;
+    const requestId = ++requestIdRef.current;
+    setData(null);
+    setError('');
     try {
       const r = await fetch(`/api/backoffice/cases?id=${encodeURIComponent(id)}`);
+      if (requestId !== requestIdRef.current) return;
       if (r.status === 403) { setError('not-authed'); return; }
       if (!r.ok) { setError(await describeFetchError(r, 'Kunne ikke hente saken.')); return; }
       const d = await r.json();
+      if (requestId !== requestIdRef.current) return;
       setData(d);
       setStatus(d.case?.status || '');
       setDueDate(d.case?.due_date ? String(d.case.due_date).slice(0, 10) : '');
       setAssignee(d.case?.assignee_email || '');
-    } catch (_e) { setError('Noe gikk galt.'); }
+    } catch (_e) {
+      if (requestId === requestIdRef.current) setError('Noe gikk galt.');
+    }
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Navigating to a different case (prev/next link, arrow keys) reuses this
+  // same component instance — reset per-case UI state that must never leak
+  // across cases, most importantly an armed delete confirmation and an
+  // unsent note draft (either could otherwise be applied to the wrong case).
+  useEffect(() => {
+    setDeleteArmed(false);
+    setDeleteConfirm('');
+    setNote('');
+    setNoteMode('public');
+    setDescOpen(false);
+    setShowAcc(false);
+    setLightbox(null);
+  }, [id]);
 
   useEffect(() => {
     fetch('/api/backoffice/cases?ids=1').then((r) => (r.ok ? r.json() : null)).then((d) => { if (d) setSiblings((d.ids || []).map(String)); }).catch(() => {});
@@ -113,30 +135,6 @@ export default function SakDetalj() {
     // login) get a name back here, used to sign the referral draft below.
     fetch('/api/staff/me').then((r) => (r.ok ? r.json() : null)).then((d) => { if (d) setMe(d); }).catch(() => {});
   }, []);
-
-  const loadAi = useCallback(() => {
-    if (!id) return;
-    fetch(`/api/backoffice/ai/report?id=${encodeURIComponent(id)}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (d) { setAi(d.report || null); setAiEnv(d.env || null); } })
-      .catch(() => {});
-  }, [id]);
-
-  useEffect(() => { loadAi(); }, [loadAi]);
-
-  const aiAction = async (action) => {
-    setAiBusy(true); setFlash('');
-    try {
-      const path = action === 'suggest' ? '/api/backoffice/ai/suggest' : action === 'approve' ? '/api/backoffice/ai/approve-public-status' : '/api/backoffice/ai/reject';
-      const r = await fetch(`${path}?id=${encodeURIComponent(id)}`, { method: 'POST' });
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok) { setFlash(d.error || 'AI-forslag feilet.'); return; }
-      setAi(d.report || null);
-      if (action === 'suggest') setFlash('AI-forslag generert — se gjennom før du eventuelt godkjenner.');
-      if (action === 'approve') { setFlash('AI-forslag publisert som offentlig status.'); load(); }
-      if (action === 'reject') setFlash('AI-forslag avvist.');
-    } catch (_e) { setFlash('Noe gikk galt.'); } finally { setAiBusy(false); }
-  };
 
   const changeDue = async (v) => {
     setDueDate(v);
@@ -249,6 +247,7 @@ export default function SakDetalj() {
   useEffect(() => {
     if (!c || !mapboxToken || !Number.isFinite(Number(c.lat)) || !Number.isFinite(Number(c.lng))) return undefined;
     let cancelled = false;
+    setPlace(null);
     reverseGeocode(Number(c.lat), Number(c.lng), mapboxToken).then((p) => { if (!cancelled) setPlace(p); });
     return () => { cancelled = true; };
   }, [c?.lat, c?.lng, mapboxToken]);
@@ -362,6 +361,10 @@ export default function SakDetalj() {
     try {
       const r = await fetch('/api/backoffice/attachment', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: att.id, visibility: nextVis }) });
       if (!r.ok) throw new Error('toggle');
+      // Toggling moves the file between buckets and changes its URL (a fresh
+      // signed URL for 'internal', a permanent one for 'public') — reload so
+      // the thumbnail/link doesn't keep pointing at the old location.
+      load();
     } catch (_e) {
       setFlash('Kunne ikke oppdatere vedlegg');
       load();
@@ -474,48 +477,6 @@ export default function SakDetalj() {
                     </div>
                     <pre className="sak-referral__preview">{referralDraft.body}</pre>
                   </div>
-                )}
-              </section>
-            )}
-
-            {aiEnv && (
-              <section className="admin-section sak-ai">
-                <h2>AI-forslag <span className="sak-ai__badge">forhåndsvisning — ikke i produksjon</span></h2>
-                {!aiEnv.backofficeAiEnabled || !aiEnv.hasOpenAiApiKey ? (
-                  <p className="admin-help">
-                    Ikke aktivert i dette miljøet. Sett <code>BACKOFFICE_AI_ENABLED=true</code> og <code>OPENAI_API_KEY</code> for å prøve dette.
-                  </p>
-                ) : (
-                  <>
-                    <p className="admin-help">Genererer et internt utkast (sammendrag, prioritet, neste steg, forslag til offentlig statustekst) fra sakens data og siste Trello-hendelser. Publiserer aldri automatisk — noen må aktivt godkjenne forslaget til offentlig status først.</p>
-                    {(!ai || ai.ai_suggestion_status === 'none') && (
-                      <button type="button" className="big-button big-button--secondary" onClick={() => aiAction('suggest')} disabled={aiBusy}>
-                        {aiBusy ? 'Genererer …' : 'Generer AI-forslag'}
-                      </button>
-                    )}
-                    {ai && ai.ai_suggestion_status !== 'none' && (
-                      <div className="sak-ai__suggestion">
-                        <p className="sak-ai__status">
-                          Status: <b>{{ draft: 'Utkast, ikke publisert', approved: 'Godkjent og publisert', rejected: 'Avvist' }[ai.ai_suggestion_status] || ai.ai_suggestion_status}</b>
-                        </p>
-                        {ai.ai_priority_suggestion && <p className="sak-kv"><span>Foreslått prioritet</span><b>{ai.ai_priority_suggestion}</b></p>}
-                        {ai.ai_internal_summary && <p className="sak-kv"><span>Internt sammendrag</span><b>{ai.ai_internal_summary}</b></p>}
-                        {ai.ai_next_action_suggestion && <p className="sak-kv"><span>Foreslått neste steg</span><b>{ai.ai_next_action_suggestion}</b></p>}
-                        {ai.ai_public_status_suggestion && <p className="sak-kv"><span>Forslag til offentlig status</span><b>«{ai.ai_public_status_suggestion}»</b></p>}
-                        {ai.ai_suggestion_status === 'draft' && (
-                          <div className="sak-referral__actions">
-                            <button type="button" className="big-button big-button--primary" onClick={() => aiAction('approve')} disabled={aiBusy}>Godkjenn og publiser</button>
-                            <button type="button" className="big-button big-button--secondary" onClick={() => aiAction('reject')} disabled={aiBusy}>Avvis</button>
-                          </div>
-                        )}
-                        {ai.ai_suggestion_status !== 'draft' && (
-                          <button type="button" className="big-button big-button--secondary" onClick={() => aiAction('suggest')} disabled={aiBusy}>
-                            {aiBusy ? 'Genererer …' : 'Generer nytt forslag'}
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </>
                 )}
               </section>
             )}

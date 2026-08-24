@@ -1,11 +1,14 @@
 import { getReportsSince, hasSupabaseConfig } from '../../../lib/supabaseRest';
 import { buildDailySummaryEmail } from '../../../lib/dailySummaryEmail';
+import { emailTransportConfigured, sendNotificationEmail } from '../../../lib/emailTransport';
 import { siteBaseUrl } from '../../../lib/reportWorkflow';
 import { checkRequestRateLimit } from '../../../lib/rateLimit';
 import { timingSafeEqualStrings } from '../../../lib/timingSafeEqualStrings';
 
 // Daily digest of new reports, emailed to the team. Triggered by a Vercel cron
 // (see vercel.json). Until Slack is set up this is the notification channel.
+// Sends via lib/emailTransport.js, shared with the instant per-report email
+// (see pages/api/report.js).
 // Env:
 //   CRON_SECRET          protects the endpoint (Vercel sends it as a Bearer token)
 //   RESEND_API_KEY       Resend API key (email transport)
@@ -14,9 +17,6 @@ import { timingSafeEqualStrings } from '../../../lib/timingSafeEqualStrings';
 //   SUMMARY_WINDOW_HOURS lookback window (default 24)
 //   SUMMARY_SEND_EMPTY   set to "1" to also send on days with no new cases
 const WINDOW_HOURS = Number(process.env.SUMMARY_WINDOW_HOURS || 24);
-const TO = process.env.SUMMARY_EMAIL_TO || 'post@finnsfairway.no';
-const FROM = process.env.SUMMARY_EMAIL_FROM || '';
-const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const RATE_LIMIT = 30;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 
@@ -31,19 +31,6 @@ function authorized(req) {
   if (timingSafeEqualStrings(header, `Bearer ${secret}`)) return true;
   // Manual trigger fallback: ?key=<secret>
   return timingSafeEqualStrings(req.query?.key, secret);
-}
-
-async function sendEmail({ subject, html }) {
-  const response = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: FROM, to: [TO], subject, html }),
-  });
-  if (!response.ok) {
-    const body = await response.text().catch(() => '');
-    throw new Error(`Resend ${response.status}: ${body.slice(0, 200)}`);
-  }
-  return response.json().catch(() => ({}));
 }
 
 export default async function handler(req, res) {
@@ -78,13 +65,13 @@ export default async function handler(req, res) {
     }
 
     // Not configured to actually send yet — build succeeded, just no transport.
-    if (!RESEND_API_KEY || !FROM) {
-      log('email_not_configured', { count: reports.length, hasKey: Boolean(RESEND_API_KEY), hasFrom: Boolean(FROM) });
+    if (!emailTransportConfigured()) {
+      log('email_not_configured', { count: reports.length });
       return res.status(200).json({ ok: true, count: reports.length, sent: false, reason: 'email not configured' });
     }
 
-    await sendEmail({ subject, html });
-    log('sent', { count: reports.length, to: TO });
+    const result = await sendNotificationEmail({ subject, html });
+    log('sent', { count: reports.length, to: result.to });
     return res.status(200).json({ ok: true, count: reports.length, sent: true });
   } catch (error) {
     log('failed', { message: String(error?.message || '').slice(0, 240) });
