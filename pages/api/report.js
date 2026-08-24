@@ -1,7 +1,9 @@
 import { REPORT_CATEGORIES, REPORT_STATUS, REPORTER_TYPES } from '../../lib/config';
-import { runReportWorkflowBestEffort } from '../../lib/reportWorkflow';
+import { runReportWorkflowBestEffort, siteBaseUrl } from '../../lib/reportWorkflow';
 import { createReport, hasSupabaseConfig, updateReportImages, uploadReportImage } from '../../lib/supabaseRest';
 import { distanceMeters, randomOffsetPoint, snapToGrid, CLIP_METERS } from '../../lib/geoPrivacy';
+import { buildNewReportEmail } from '../../lib/dailySummaryEmail';
+import { emailTransportConfigured, sendNotificationEmail } from '../../lib/emailTransport';
 import { resolveReportImageContentType, REPORT_IMAGE_MAX_BYTES, REPORT_IMAGE_MAX_COUNT, sanitizeImageFilename } from '../../lib/reportImages';
 import { matchesFileSignature } from '../../lib/fileSignature';
 import { checkRequestRateLimit } from '../../lib/rateLimit';
@@ -230,6 +232,19 @@ export default async function handler(req, res) {
     const workflow = await runReportWorkflowBestEffort(reportWithImages);
     const report = workflow.report || reportWithImages;
     const warning = imageWarning || workflow.trelloWarning || null;
+
+    // Instant notification to the team, in addition to the daily digest
+    // (pages/api/cron/daily-summary.js) — best-effort, never blocks the
+    // citizen's submission.
+    if (emailTransportConfigured()) {
+      try {
+        const { subject, html } = buildNewReportEmail({ report, baseUrl: siteBaseUrl() });
+        await sendNotificationEmail({ subject, html });
+        logApi('new_report_email_sent', { reportId: report.id });
+      } catch (error) {
+        logApi('new_report_email_failed', { reportId: report.id, message: String(error?.message || '').slice(0, 240) });
+      }
+    }
 
     return res.status(201).json({
       id: report.id,
