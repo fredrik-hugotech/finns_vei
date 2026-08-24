@@ -112,7 +112,7 @@ export default function KonkurranserAdmin() {
       load();
     } catch (error) {
       setStatus(error.message || 'Kunne ikke endre status.');
-      load();
+      load({ resetStatus: false });
     } finally {
       setTogglingId(null);
     }
