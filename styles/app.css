@@ -1272,6 +1272,20 @@
    reading as an error state like .sak-danger. */
 .sak-referral { border-color: #ecd2a3 !important; background: #fdf7ea; }
 .sak-referral h2 { color: var(--color-warning); }
+/* Compact variant: municipal/private/unknown roads have no "wrong authority"
+   to warn about, so this drops the amber warning styling and starts
+   collapsed — a plain toggle button rather than an always-visible card. */
+.sak-referral--compact { background: var(--color-surface); border-color: var(--color-border) !important; padding: 0.7rem 0.9rem; }
+.sak-referral--compact .sak-referral__box { margin-top: 0.6rem; }
+.sak-referral__toggle {
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 650;
+  padding: 0;
+}
 .sak-referral__lead { color: var(--color-text); font-size: 0.92rem; margin: 0; }
 .sak-referral__lead b { color: var(--color-warning); }
 .sak-referral__explain { color: var(--color-muted); font-size: 0.88rem; line-height: 1.4; margin: 0; }

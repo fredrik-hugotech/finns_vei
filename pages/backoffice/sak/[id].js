@@ -84,6 +84,7 @@ export default function SakDetalj() {
   const [siblings, setSiblings] = useState(null);
   const [place, setPlace] = useState(null);
   const [descOpen, setDescOpen] = useState(false);
+  const [draftOpen, setDraftOpen] = useState(false);
   const [deleteArmed, setDeleteArmed] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [deleting, setDeleting] = useState(false);
@@ -170,10 +171,13 @@ export default function SakDetalj() {
 
   // "Rett myndighet"-henvisning: flag cases where NVDB's road data shows the
   // municipality isn't actually responsible, and prepare a mailto/copy draft
-  // to the authority that is. Stays quiet for municipal/private/unknown roads.
+  // to the authority that is. Auto-shown for state/county roads
+  // (roadAuthority.showReferral); for municipal/private/unknown roads the
+  // same draft is still built (generic framing, no authority to name) but
+  // stays behind a collapsed toggle instead — see draftOpen below.
   const roadAuthority = useMemo(() => classifyRoadAuthority(c || {}), [c]);
   const referralDraft = useMemo(() => {
-    if (!c || !roadAuthority.showReferral) return null;
+    if (!c) return null;
     const caseUrl = typeof window !== 'undefined' ? `${window.location.origin}/sak/${encodeURIComponent(c.id)}` : `/sak/${encodeURIComponent(c.id)}`;
     return buildReferralDraft(
       {
@@ -480,6 +484,33 @@ export default function SakDetalj() {
                       {referralDraft.to
                         ? <>Til: <b>{referralDraft.to}</b> <span className="sak-referral__to-note">(Statens vegvesens offisielle kontaktadresse — sjekk/endre gjerne før sending)</span></>
                         : <>Til: <i>ikke fylt inn</i> <span className="sak-referral__to-note">(finn riktig fylkeskommunes e-postadresse selv — ingen enkelt felles adresse finnes)</span></>}
+                    </p>
+                    <div className="sak-referral__actions">
+                      <a className="big-button big-button--primary" href={referralDraft.mailto}>Åpne e-postutkast</a>
+                      <button type="button" className="big-button big-button--secondary" onClick={copyReferral}>
+                        {referralCopied ? 'Kopiert!' : 'Kopier tekst'}
+                      </button>
+                    </div>
+                    <pre className="sak-referral__preview">{referralDraft.body}</pre>
+                  </div>
+                )}
+              </section>
+            )}
+
+            {!roadAuthority.showReferral && referralDraft && (
+              <section className="admin-section sak-referral sak-referral--compact">
+                <button
+                  type="button"
+                  className="sak-referral__toggle"
+                  aria-expanded={draftOpen}
+                  onClick={() => setDraftOpen((v) => !v)}
+                >
+                  {draftOpen ? 'Skjul e-postutkast ▴' : 'Lag e-postutkast ✉'}
+                </button>
+                {draftOpen && (
+                  <div className="sak-referral__box">
+                    <p className="sak-referral__to">
+                      Til: <i>ikke fylt inn</i> <span className="sak-referral__to-note">(velg selv hvem saken skal sendes til, f.eks. internt til vei-/driftsavdelingen)</span>
                     </p>
                     <div className="sak-referral__actions">
                       <a className="big-button big-button--primary" href={referralDraft.mailto}>Åpne e-postutkast</a>
