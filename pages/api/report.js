@@ -8,6 +8,7 @@ import { resolveReportImageContentType, REPORT_IMAGE_MAX_BYTES, REPORT_IMAGE_MAX
 import { matchesFileSignature } from '../../lib/fileSignature';
 import { checkRequestRateLimit } from '../../lib/rateLimit';
 import { parseMultipartRequest } from '../../lib/multipart';
+import { waitUntil } from '@vercel/functions';
 
 export const config = {
   api: {
@@ -235,15 +236,17 @@ export default async function handler(req, res) {
 
     // Instant notification to the team, in addition to the daily digest
     // (pages/api/cron/daily-summary.js) — best-effort, never blocks the
-    // citizen's submission.
+    // citizen's submission. Sent via waitUntil() so the reporter's response
+    // doesn't wait on Resend on top of the NVDB/Trello workflow above; the
+    // function is kept alive by the platform long enough for this to finish
+    // after the response is already on its way.
     if (emailTransportConfigured()) {
-      try {
-        const { subject, html } = buildNewReportEmail({ report, baseUrl: siteBaseUrl() });
-        await sendNotificationEmail({ subject, html });
-        logApi('new_report_email_sent', { reportId: report.id });
-      } catch (error) {
-        logApi('new_report_email_failed', { reportId: report.id, message: String(error?.message || '').slice(0, 240) });
-      }
+      const { subject, html } = buildNewReportEmail({ report, baseUrl: siteBaseUrl() });
+      waitUntil(
+        sendNotificationEmail({ subject, html })
+          .then(() => logApi('new_report_email_sent', { reportId: report.id }))
+          .catch((error) => logApi('new_report_email_failed', { reportId: report.id, message: String(error?.message || '').slice(0, 240) }))
+      );
     }
 
     return res.status(201).json({
