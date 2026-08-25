@@ -2,11 +2,16 @@ import { isAdminRequest } from '../../../lib/backofficeAuth';
 import { REPORT_STATUS } from '../../../lib/config';
 import { REPORT_STATUS_ORDER } from '../../../lib/reportStatusMeta';
 import { listReportsForStats, hasSupabaseConfig } from '../../../lib/supabaseRest';
+import { checkRequestRateLimit } from '../../../lib/rateLimit';
 
 // Bounded like other backoffice list endpoints (cases.js: 150, hot-cases:
 // 300) — this one scans further back in history for aggregation, so the
 // ceiling is higher, but it is still a ceiling, not "every report ever".
 const MAX_ROWS = 2000;
+// Same limit/window as the sibling hot-cases.js — this was the only route
+// under pages/api/** with no rate limit at all (found 2026-08-25).
+const RATE_LIMIT = 60;
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 const DAY_MS = 86400000;
 const RANGE_DAYS = { 30: 30, 90: 90, 365: 365 };
 
@@ -128,6 +133,12 @@ function resolutionStats(rows) {
 }
 
 export default async function handler(req, res) {
+  const rateLimit = checkRequestRateLimit(req, 'backoffice-statistikk', RATE_LIMIT, RATE_LIMIT_WINDOW_MS);
+  if (!rateLimit.allowed) {
+    res.setHeader('Retry-After', Math.ceil(rateLimit.retryAfterMs / 1000));
+    return res.status(429).json({ error: 'For mange forsøk. Prøv igjen om litt.', code: 'rate_limited' });
+  }
+
   if (!(await isAdminRequest(req))) {
     return res.status(403).json({ error: 'Ingen tilgang', code: 'forbidden' });
   }
