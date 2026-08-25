@@ -2932,6 +2932,7 @@ select.tkt-prop__ctrl { padding-right: 1.7rem; background-image: url("data:image
 .sak-hero h1 { font-family: var(--font-heading); font-size: 1.5rem; line-height: 1.15; margin: 0; }
 .sak-hero__place { align-items: center; color: var(--color-primary); display: flex; font-size: 0.98rem; font-weight: 700; gap: 0.35rem; margin: 0.1rem 0 0; }
 .sak-hero__pin { color: var(--color-primary); flex: none; }
+.sak-hero__map { margin: 0.5rem 0 0.15rem; }
 .sak-hero__meta { color: var(--color-muted); font-size: 0.84rem; margin: 0; }
 .sak-hero__report { border-top: 1px solid var(--color-border); margin-top: 0.15rem; padding-top: 0.55rem; }
 .sak-hero__desc { color: var(--color-text); font-size: 0.96rem; line-height: 1.5; margin: 0; white-space: pre-wrap; }

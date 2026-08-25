@@ -445,6 +445,11 @@ export default function SakDetalj() {
                 </svg>
                 <span>{place || (Number.isFinite(Number(c.lat)) ? 'Henter sted …' : 'Sted ukjent')}</span>
               </p>
+              {mapThumb && (
+                <Link href={`/?sak=${encodeURIComponent(c.id)}`} className="tkt-map sak-hero__map">
+                  <img src={mapThumb} alt="Kart over stedet" />
+                </Link>
+              )}
               <p className="sak-hero__meta">{c.reporter_type === 'voksen' ? 'Meldt av voksen' : 'Meldt av barn'}{c.bike_route_type ? ` · ${c.bike_route_type === 'skole' ? 'skolerute' : 'fritidsrute'}` : ''}</p>
               {c.description && (
                 <div className="sak-hero__report">
@@ -587,11 +592,6 @@ export default function SakDetalj() {
 
             <section className="admin-section">
               <h2>Sted</h2>
-              {mapThumb && (
-                <Link href={`/?sak=${encodeURIComponent(c.id)}`} className="tkt-map">
-                  <img src={mapThumb} alt="Kart over stedet" />
-                </Link>
-              )}
               {Array.isArray(accidents) && (
                 <div className="case-admin__accidents">
                   <button type="button" className="case-admin__accidents-toggle" onClick={() => setShowAcc((v) => !v)} disabled={accidents.length === 0}>
