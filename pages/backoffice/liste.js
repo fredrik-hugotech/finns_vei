@@ -3,11 +3,38 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { reportStatusMeta } from '../../lib/reportStatusMeta';
-import { REPORT_STATUS } from '../../lib/config';
+import { REPORT_STATUS, REPORT_CATEGORIES, REPORTER_TYPES } from '../../lib/config';
 import { timeAgo, ownerShort, describeFetchError } from '../../lib/backofficeFormat';
+import { classifyRoadAuthority } from '../../lib/roadAuthorityReferral';
 import BackofficeHeader from '../../components/BackofficeHeader';
 
 const STATUSES = [REPORT_STATUS.NEW, REPORT_STATUS.REGISTERED, REPORT_STATUS.STARTED, REPORT_STATUS.DONE];
+
+// Reuses the same NVDB road-category → authority classification as the
+// "Rett myndighet"-henvisning card on the case page (lib/roadAuthorityReferral.js),
+// so "Kommunal" here always means the same thing it means there.
+const OWNER_FILTERS = [
+  { key: 'municipal', label: 'Kommunal' },
+  { key: 'county', label: 'Fylkeskommunal' },
+  { key: 'state', label: 'Statlig' },
+  { key: 'private', label: 'Privat' },
+];
+function ownerKind(c) {
+  return classifyRoadAuthority({ road_owner: c.road_owner, road_category: c.road_category }).authorityKind;
+}
+
+const SPEED_FILTERS = [
+  { key: 'low', label: '≤30 km/t' },
+  { key: 'mid', label: '40–50 km/t' },
+  { key: 'high', label: '60+ km/t' },
+];
+function speedBucket(speed) {
+  const s = Number(speed);
+  if (!Number.isFinite(s)) return null;
+  if (s <= 30) return 'low';
+  if (s <= 50) return 'mid';
+  return 'high';
+}
 
 function isOverdueCase(c, today) {
   return Boolean(c.due_date) && c.status !== REPORT_STATUS.DONE && String(c.due_date).slice(0, 10) < today;
@@ -48,6 +75,14 @@ export default function Liste() {
   const agingFilter = agingQuery === 'over' || agingQuery === 'stale' ? agingQuery : '';
   const assigneeFilter = router.query.assignee === 'unassigned' ? 'unassigned' : '';
   const createdFilter = router.query.created === 'today' ? 'today' : '';
+  const ownerQuery = typeof router.query.owner === 'string' ? router.query.owner : '';
+  const ownerFilter = OWNER_FILTERS.some((o) => o.key === ownerQuery) ? ownerQuery : '';
+  const speedQuery = typeof router.query.speed === 'string' ? router.query.speed : '';
+  const speedFilter = SPEED_FILTERS.some((s) => s.key === speedQuery) ? speedQuery : '';
+  const categoryQuery = typeof router.query.category === 'string' ? router.query.category : '';
+  const categoryFilter = REPORT_CATEGORIES.includes(categoryQuery) ? categoryQuery : '';
+  const reporterQuery = typeof router.query.reporter === 'string' ? router.query.reporter : '';
+  const reporterFilter = Object.values(REPORTER_TYPES).includes(reporterQuery) ? reporterQuery : '';
 
   // Builds a query object for a link/push that keeps whichever of
   // status/sort/aging aren't being changed by this particular control.
@@ -99,7 +134,11 @@ export default function Liste() {
         return true;
       })
       .filter((c) => !assigneeFilter || !c.assignee_email)
-      .filter((c) => !createdFilter || String(c.created_at || '').slice(0, 10) === today);
+      .filter((c) => !createdFilter || String(c.created_at || '').slice(0, 10) === today)
+      .filter((c) => !ownerFilter || ownerKind(c) === ownerFilter)
+      .filter((c) => !speedFilter || speedBucket(c.speed_limit) === speedFilter)
+      .filter((c) => !categoryFilter || c.category === categoryFilter)
+      .filter((c) => !reporterFilter || c.reporter_type === reporterFilter);
     const byNew = (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0);
     const sorters = {
       new: byNew,
@@ -113,7 +152,7 @@ export default function Liste() {
       },
     };
     return list.sort(sorters[sort] || byNew);
-  }, [cases, active, q, sort, agingFilter, assigneeFilter, createdFilter]);
+  }, [cases, active, q, sort, agingFilter, assigneeFilter, createdFilter, ownerFilter, speedFilter, categoryFilter, reporterFilter]);
 
   const totalSupport = useMemo(() => (cases || []).reduce((n, c) => n + Number(c.support_count || 0), 0), [cases]);
 
@@ -151,6 +190,29 @@ export default function Liste() {
           {SORTS.map((s) => (
             <button key={s.key} type="button" aria-pressed={sort === s.key} className={sort === s.key ? 'liste-sort__btn liste-sort__btn--on' : 'liste-sort__btn'} onClick={() => router.push({ pathname: '/backoffice/liste', query: buildQuery({ sort: s.key === 'new' ? undefined : s.key }) })}>{s.label}</button>
           ))}
+        </div>
+
+        {/* Compact dropdowns rather than chip rows (like the status filter
+            above) — four filter dimensions as selects take the same small
+            strip of space regardless of how many options each holds. */}
+        <div className="liste-more-filters">
+          <select className="liste-more-filters__ctrl" aria-label="Filtrer på vegeier" value={ownerFilter} onChange={(e) => router.push({ pathname: '/backoffice/liste', query: buildQuery({ owner: e.target.value || undefined }) })}>
+            <option value="">Alle veier</option>
+            {OWNER_FILTERS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+          </select>
+          <select className="liste-more-filters__ctrl" aria-label="Filtrer på fartsgrense" value={speedFilter} onChange={(e) => router.push({ pathname: '/backoffice/liste', query: buildQuery({ speed: e.target.value || undefined }) })}>
+            <option value="">Alle fartsgrenser</option>
+            {SPEED_FILTERS.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+          </select>
+          <select className="liste-more-filters__ctrl" aria-label="Filtrer på type sak" value={categoryFilter} onChange={(e) => router.push({ pathname: '/backoffice/liste', query: buildQuery({ category: e.target.value || undefined }) })}>
+            <option value="">Alle typer</option>
+            {REPORT_CATEGORIES.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
+          </select>
+          <select className="liste-more-filters__ctrl" aria-label="Filtrer på hvem som meldte" value={reporterFilter} onChange={(e) => router.push({ pathname: '/backoffice/liste', query: buildQuery({ reporter: e.target.value || undefined }) })}>
+            <option value="">Barn og voksen</option>
+            <option value={REPORTER_TYPES.CHILD}>Meldt av barn</option>
+            <option value={REPORTER_TYPES.ADULT}>Meldt av voksen</option>
+          </select>
         </div>
 
         {!error && cases && cases.length > 0 && (
