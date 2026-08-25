@@ -30,7 +30,11 @@ function distMeters(lng1, lat1, lng2, lat2) {
 // where it was reported, not just its category.
 async function reverseGeocode(lat, lng, token) {
   try {
-    const r = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${token}&language=no&limit=1&types=address,street,neighborhood,locality,place`);
+    // NB: Mapbox geocoding has no "street" type — passing it makes the whole
+    // request 422 and the place label hangs on "Henter sted …" forever (see
+    // the same fix already applied in components/ReportSheet.js). Valid
+    // types only: address, neighborhood, locality, place, …
+    const r = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${token}&language=no&limit=1&types=address,neighborhood,locality,place`);
     if (!r.ok) return null;
     const d = await r.json();
     const f = (d.features || [])[0];
@@ -248,7 +252,10 @@ export default function SakDetalj() {
     if (!c || !mapboxToken || !Number.isFinite(Number(c.lat)) || !Number.isFinite(Number(c.lng))) return undefined;
     let cancelled = false;
     setPlace(null);
-    reverseGeocode(Number(c.lat), Number(c.lng), mapboxToken).then((p) => { if (!cancelled) setPlace(p); });
+    // Fall back to the coordinates so the label never hangs on "Henter sted …"
+    // if the geocode is empty or fails (same fallback as components/ReportSheet.js).
+    const fallback = `${Number(c.lat).toFixed(4)}, ${Number(c.lng).toFixed(4)}`;
+    reverseGeocode(Number(c.lat), Number(c.lng), mapboxToken).then((p) => { if (!cancelled) setPlace(p || fallback); });
     return () => { cancelled = true; };
   }, [c?.lat, c?.lng, mapboxToken]);
 
