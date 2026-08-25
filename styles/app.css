@@ -2791,6 +2791,21 @@
 }
 .liste-sort__btn--on { background: var(--color-primary-tint); border-color: var(--color-primary); color: var(--color-primary); }
 
+/* Saksliste extra filters (vegeier/fartsgrense/type/melder) — compact
+   selects instead of chip rows so four filter dimensions stay a single
+   small strip regardless of how many options each one holds. */
+.liste-more-filters { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.liste-more-filters__ctrl {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  font-weight: 650;
+  max-width: 100%;
+  padding: 0.28rem 0.55rem;
+}
+
 /* Saksliste aging summary: overdue/stale counts as clickable quick-filters */
 .liste-summary { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .liste-summary__chip {
