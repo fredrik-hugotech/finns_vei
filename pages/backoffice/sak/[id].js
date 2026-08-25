@@ -405,7 +405,7 @@ export default function SakDetalj() {
     return () => window.removeEventListener('paste', onPaste);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, uploadVis]);
-  const mapThumb = (c && mapboxToken && Number.isFinite(Number(c.lat)))
+  const mapThumb = (c && mapboxToken && Number.isFinite(Number(c.lat)) && Number.isFinite(Number(c.lng)))
     ? `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/pin-s+0b5d4d(${c.lng},${c.lat})/${c.lng},${c.lat},15,0/560x300@2x?access_token=${mapboxToken}`
     : null;
 
