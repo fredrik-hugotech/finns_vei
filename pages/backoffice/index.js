@@ -215,6 +215,21 @@ function Dashboard({ me, onLogout }) {
           </div>
         </section>
 
+        <section>
+          <h2 className="dash2__h2">Snarveier</h2>
+          <div className="dash2__grid">
+            <Link className="dash2-link" href="/">Kart</Link>
+            <Link className="dash2-link" href="/backoffice/liste">Alle saker</Link>
+            <Link className="dash2-link" href="/backoffice/hotteste">Hotteste saker</Link>
+            <Link className="dash2-link" href="/backoffice/gjentakende-steder">Gjentakende steder</Link>
+            <Link className="dash2-link" href="/backoffice/tetthet">Sykkelspor</Link>
+            <Link className="dash2-link" href="/backoffice/konkurranser">Konkurranser</Link>
+            <Link className="dash2-link" href="/backoffice/statistikk">Statistikk</Link>
+            {me.role === 'superuser' && <Link className="dash2-link" href="/backoffice/brukere">Brukere</Link>}
+            {boardUrl && <a className="dash2-link" href={boardUrl} target="_blank" rel="noopener noreferrer">Trello ↗</a>}
+          </div>
+        </section>
+
         {mine.length > 0 && (
           <section>
             <h2 className="dash2__h2">Mine saker <span className="dash2__hint">tildelt deg</span></h2>
@@ -240,21 +255,6 @@ function Dashboard({ me, onLogout }) {
           {cases === null && <p className="comp-muted">Laster …</p>}
           {cases && minDag.length === 0 && <p className="comp-muted">Ingen nye saker akkurat nå. Fint jobbet.</p>}
           <div className="admin-list">{minDag.map(renderCase)}</div>
-        </section>
-
-        <section>
-          <h2 className="dash2__h2">Snarveier</h2>
-          <div className="dash2__grid">
-            <Link className="dash2-link" href="/">Kart</Link>
-            <Link className="dash2-link" href="/backoffice/liste">Alle saker</Link>
-            <Link className="dash2-link" href="/backoffice/hotteste">Hotteste saker</Link>
-            <Link className="dash2-link" href="/backoffice/gjentakende-steder">Gjentakende steder</Link>
-            <Link className="dash2-link" href="/backoffice/tetthet">Sykkelspor</Link>
-            <Link className="dash2-link" href="/backoffice/konkurranser">Konkurranser</Link>
-            <Link className="dash2-link" href="/backoffice/statistikk">Statistikk</Link>
-            {me.role === 'superuser' && <Link className="dash2-link" href="/backoffice/brukere">Brukere</Link>}
-            {boardUrl && <a className="dash2-link" href={boardUrl} target="_blank" rel="noopener noreferrer">Trello ↗</a>}
-          </div>
         </section>
 
         <ChangePassword />
