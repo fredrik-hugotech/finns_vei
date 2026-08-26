@@ -447,7 +447,7 @@ export default function SakDetalj() {
                   <path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
                   <circle cx="12" cy="10" r="2.4" stroke="currentColor" strokeWidth="1.8" />
                 </svg>
-                <span>{place || (Number.isFinite(Number(c.lat)) ? 'Henter sted …' : 'Sted ukjent')}</span>
+                <span>{place || (Number.isFinite(Number(c.lat)) && Number.isFinite(Number(c.lng)) ? 'Henter sted …' : 'Sted ukjent')}</span>
               </p>
               {mapThumb && (
                 <Link href={`/?sak=${encodeURIComponent(c.id)}`} className="tkt-map sak-hero__map">
@@ -638,7 +638,7 @@ export default function SakDetalj() {
               )}
               <div className="sak-side__actions">
                 <Link className="big-button big-button--secondary" href={`/?sak=${encodeURIComponent(c.id)}`}>Vis på kart</Link>
-                {Number.isFinite(Number(c.lat)) && <a className="big-button big-button--secondary" href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${c.lat},${c.lng}`} target="_blank" rel="noopener noreferrer">Street View</a>}
+                {Number.isFinite(Number(c.lat)) && Number.isFinite(Number(c.lng)) && <a className="big-button big-button--secondary" href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${c.lat},${c.lng}`} target="_blank" rel="noopener noreferrer">Street View</a>}
                 <Link className="big-button big-button--secondary" href={`/backoffice/skilt/${encodeURIComponent(c.id)}`}>Skriv ut skilt</Link>
               </div>
             </section>
