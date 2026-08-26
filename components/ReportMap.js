@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { DEFAULT_CENTER, NEARBY_REPORT_RADIUS_M, REPORT_STATUS } from '../lib/config';
-import { caseProgress } from '../lib/processSteps';
+import { caseProgress, CASE_DONE_MESSAGE } from '../lib/processSteps';
 import {
   MAP_COLORS,
   MAP_STYLE,
@@ -328,7 +328,7 @@ function caseProgressHtml(status) {
       <div class="case-progress__row"><strong>Slik jobber vi videre</strong><span class="case-progress__count">Steg ${p.done} av ${p.total}</span></div>
       <div class="case-progress__track"><span class="case-progress__fill" style="width:${p.percent}%"></span></div>
       <p class="case-progress__now"><span class="case-progress__dot"></span>${escapeHtml(p.current)}</p>
-      ${p.next ? `<p class="case-progress__next">Neste: ${escapeHtml(p.next)}</p>` : '<p class="case-progress__next">Saken er ferdig behandlet.</p>'}
+      ${p.next ? `<p class="case-progress__next">Neste: ${escapeHtml(p.next)}</p>` : `<p class="case-progress__next">${escapeHtml(CASE_DONE_MESSAGE)}</p>`}
     </div>`;
 }
 

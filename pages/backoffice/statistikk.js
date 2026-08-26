@@ -189,7 +189,7 @@ export default function BackofficeStatistikk() {
               </div>
               <p className="stats-page__note">
                 {data.resolution.count > 0
-                  ? `Snitt ${data.resolution.avgDays} dager, median ${data.resolution.medianDays} dager fra melding til «Fullført» (${data.resolution.count} avsluttede saker).`
+                  ? `Snitt ${data.resolution.avgDays} dager, median ${data.resolution.medianDays} dager fra melding til «Avsluttet» (${data.resolution.count} avsluttede saker).`
                   : 'Ingen avsluttede saker i perioden ennå.'}
               </p>
             </section>

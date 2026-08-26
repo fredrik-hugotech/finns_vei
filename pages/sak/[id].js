@@ -5,7 +5,7 @@ import Icon from '../../components/Icon';
 import Logo from '../../components/Logo';
 import ReadAloudButton from '../../components/ReadAloudButton';
 import { reportStatusMeta } from '../../lib/reportStatusMeta';
-import { caseProgress } from '../../lib/processSteps';
+import { caseProgress, CASE_DONE_MESSAGE } from '../../lib/processSteps';
 import { getPublicReportById, listCaseAttachments, hasSupabaseConfig } from '../../lib/supabaseRest';
 
 export default function SakPage({ report, shareUrl, ogImageUrl, photos }) {
@@ -103,7 +103,7 @@ export default function SakPage({ report, shareUrl, ogImageUrl, photos }) {
                 </div>
                 <div className="case-progress__track"><span className="case-progress__fill" style={{ width: `${p.percent}%` }} /></div>
                 <p className="case-progress__now"><span className="case-progress__dot" aria-hidden="true" />{p.current}</p>
-                <p className="case-progress__next">{p.next ? `Neste: ${p.next}` : 'Saken er ferdig behandlet.'}</p>
+                <p className="case-progress__next">{p.next ? `Neste: ${p.next}` : CASE_DONE_MESSAGE}</p>
               </div>
             );
           })()}
