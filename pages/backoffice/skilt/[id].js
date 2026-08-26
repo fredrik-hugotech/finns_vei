@@ -4,10 +4,14 @@ import { useState } from 'react';
 import Logo from '../../../components/Logo';
 import { isAdminRequest } from '../../../lib/backofficeAuth';
 import { encodeQrSvg } from '../../../lib/qrEncode';
+import { checkRequestRateLimit } from '../../../lib/rateLimit';
 import { categoryGlyph } from '../../../lib/reportCategoryGlyphs';
 import { reportStatusMeta } from '../../../lib/reportStatusMeta';
 import { siteBaseUrl } from '../../../lib/reportWorkflow';
 import { getReportById, hasSupabaseConfig } from '../../../lib/supabaseRest';
+
+const RATE_LIMIT = 60;
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 
 const GREEN = '#0b5d4d';
 const GREEN_DARK = '#08463a';
@@ -196,8 +200,19 @@ export default function SkiltPage({ authorized, notFound, report, publicUrl, qrS
   );
 }
 
-export async function getServerSideProps({ params, req, query }) {
+export async function getServerSideProps({ params, req, res, query }) {
   const id = String(params?.id || '');
+  // Every other BACKOFFICE_SECRET-gated surface in this repo rate-limits
+  // before checking the secret, so a guessed/looping secret can't hammer it
+  // unthrottled. This page checks the secret itself (unlike other backoffice
+  // pages, which are client-rendered against the already rate-limited API
+  // layer), so it needs the same guard applied directly here.
+  const rateLimit = checkRequestRateLimit(req, 'backoffice-skilt', RATE_LIMIT, RATE_LIMIT_WINDOW_MS);
+  if (!rateLimit.allowed) {
+    res.statusCode = 429;
+    res.setHeader('Retry-After', Math.ceil(rateLimit.retryAfterMs / 1000));
+    return { props: { authorized: false } };
+  }
   // `context.req` (unlike an API route's request) doesn't come with `.query`
   // pre-parsed — Next.js exposes that separately as `context.query` — but
   // isAdminRequest()/isBackofficeAuthorized() expect `req.query.secret`.
