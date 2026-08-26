@@ -42,6 +42,7 @@ export default function Brukere() {
   const toggle = async (u) => {
     if (togglingId) return;
     if (u.active && !window.confirm(`Deaktivere ${u.name || u.email}? De mister tilgang umiddelbart.`)) return;
+    setMsg('');
     setTogglingId(u.id);
     try {
       const r = await fetch('/api/staff/users', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: u.id, active: !u.active }) });
