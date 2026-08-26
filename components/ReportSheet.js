@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { REPORT_CATEGORIES, REPORTER_TYPES, REPORT_STATUS } from '../lib/config';
+import { REPORT_CATEGORIES, CHILD_REPORT_CATEGORIES, REPORTER_TYPES, REPORT_STATUS } from '../lib/config';
 import { processStepsForStatus } from '../lib/processSteps';
 import { categoryGlyph } from '../lib/reportCategoryGlyphs';
 import { descriptionSuggestions } from '../lib/reportDescriptionSuggestions';
@@ -63,6 +63,10 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
   const drag = useRef({ y: 0, active: false, moved: false });
 
   const isAdult = reporterType === REPORTER_TYPES.ADULT;
+  // Barn ser et lite, konkret utvalg (kan hake av begge - de er checkboxer,
+  // ikke radioknapper - så det trengs ingen egen "begge"-kategori). Voksne
+  // ser hele listen.
+  const categoryOptions = isAdult ? REPORT_CATEGORIES : CHILD_REPORT_CATEGORIES;
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
   const mapThumb = (mapboxToken && point && Number.isFinite(Number(point.lat)))
     ? `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/pin-s+0b5d4d(${point.lng},${point.lat})/${point.lng},${point.lat},15,0/240x150@2x?access_token=${mapboxToken}`
@@ -136,6 +140,16 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
   const selectReporter = (type) => {
     haptic(6);
     setReporterType(type);
+    // Bytte til barn kan gjøre et allerede haket voksen-only-kategori-valg
+    // usynlig i rutenettet - fjern det fra utvalget i stedet for å la det
+    // henge igjen skjult (bytte til voksen trenger ikke dette, siden
+    // barn-utvalget alltid er en delmengde av voksen-utvalget).
+    if (type === REPORTER_TYPES.CHILD) {
+      setForm((current) => ({
+        ...current,
+        categories: current.categories.filter((c) => CHILD_REPORT_CATEGORIES.includes(c)),
+      }));
+    }
   };
 
   const resetAndClose = () => {
@@ -491,8 +505,8 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
 
               <fieldset className="sheet-field">
                 <legend>Hva føles utrygt? <span className="sheet-field__hint">Velg gjerne flere</span></legend>
-                <div className="category-grid">
-                  {REPORT_CATEGORIES.map((category) => {
+                <div className={isAdult ? 'category-grid' : 'category-grid category-grid--simple'}>
+                  {categoryOptions.map((category) => {
                     const checked = form.categories.includes(category);
                     return (
                       <label className={checked ? 'category-card category-card--active' : 'category-card'} key={category}>
