@@ -77,6 +77,7 @@ export default function SeedSpor() {
   }
 
   const generate = async () => {
+    setStatus('');
     if (!token) { setStatus('Mangler NEXT_PUBLIC_MAPBOX_TOKEN i nettleseren.'); return; }
     const competition = competitions.find((c) => c.id === competitionId);
     if (!competition) { setStatus('Velg en konkurranse.'); return; }
