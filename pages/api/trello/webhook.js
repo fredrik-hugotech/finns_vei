@@ -209,9 +209,12 @@ async function handleComment(action) {
   if (!cardId || !text) return { handled: false, reason: 'not_public_comment', hasText: Boolean(rawText), hasPublicPrefix: Boolean(text) };
 
   logWebhook('public_comment_detected', { cardId, noteLength: text.length });
-  await addCaseStatusUpdate({ trelloCardId: cardId, note: text, source: 'trello_comment', trelloActionId: action?.id || null });
   logWebhook('supabase_update_started', { cardId, matchField: 'trello_card_id' });
-  const updated = await setPublicStatusFromTrelloComment({ trelloCardId: cardId, publicStatusNote: text });
+  // Independent writes to different tables, no data dependency — run concurrently.
+  const [, updated] = await Promise.all([
+    addCaseStatusUpdate({ trelloCardId: cardId, note: text, source: 'trello_comment', trelloActionId: action?.id || null }),
+    setPublicStatusFromTrelloComment({ trelloCardId: cardId, publicStatusNote: text }),
+  ]);
   if (!updated?.id) {
     logWebhook('public_note_skipped_no_matching_report', { cardId });
     return { handled: true, reportId: null, updated: false, reason: 'no_matching_report' };

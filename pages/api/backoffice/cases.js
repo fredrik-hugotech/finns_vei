@@ -141,9 +141,12 @@ export default async function handler(req, res) {
         const note = String(text || '').trim();
         if (note.length < 2) return res.status(400).json({ error: 'Skriv en oppdatering' });
         if (!report.trello_card_id) return res.status(400).json({ error: 'Saken mangler Trello-kort, kan ikke publisere oppdatering' });
-        // Show it on the public case thread immediately…
-        await addCaseStatusUpdate({ trelloCardId: report.trello_card_id, note, source: 'dashboard' });
-        await setPublicStatusFromTrelloComment({ trelloCardId: report.trello_card_id, publicStatusNote: note });
+        // Show it on the public case thread immediately… (independent writes to
+        // different tables, no data dependency — run concurrently)
+        await Promise.all([
+          addCaseStatusUpdate({ trelloCardId: report.trello_card_id, note, source: 'dashboard' }),
+          setPublicStatusFromTrelloComment({ trelloCardId: report.trello_card_id, publicStatusNote: note }),
+        ]);
         // …and mirror it into Trello as a plain comment (no #public → no duplicate import).
         if (hasTrelloConfig()) {
           await addTrelloCardComment(report.trello_card_id, `Offentlig oppdatering (dashbord): ${note}`).catch(() => {});
