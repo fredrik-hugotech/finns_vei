@@ -14,6 +14,10 @@ const RATE_LIMIT = 60;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 const DAY_MS = 86400000;
 const RANGE_DAYS = { 30: 30, 90: 90, 365: 365 };
+// Same short per-instance TTL memo already proven on hot-cases.js/hotspots.js/
+// competition-trips.js, keyed by the one query param (range) this route takes.
+const TTL_MS = 5 * 60 * 1000;
+const cache = new Map();
 
 function sinceForRangeDays(days) {
   if (!days) return null;
@@ -154,6 +158,12 @@ export default async function handler(req, res) {
     const rangeParam = typeof req.query.range === 'string' ? req.query.range : '90';
     const rangeDays = RANGE_DAYS[rangeParam] || null; // null => "all"
     const range = rangeDays ? String(rangeDays) : 'all';
+
+    const cached = cache.get(range);
+    if (cached && Date.now() - cached.at < TTL_MS) {
+      return res.status(200).json(cached.data);
+    }
+
     const since = sinceForRangeDays(rangeDays);
 
     const rows = await listReportsForStats({ since, limit: MAX_ROWS });
@@ -180,7 +190,7 @@ export default async function handler(req, res) {
     const roadOwner = nullableFieldBreakdown(rows, 'road_owner');
     const roadCategory = nullableFieldBreakdown(rows, 'road_category');
 
-    return res.status(200).json({
+    const data = {
       range,
       rangeDays,
       rowCount: rows.length,
@@ -205,7 +215,9 @@ export default async function handler(req, res) {
         road_category: r.road_category,
         support_count: r.support_count,
       })),
-    });
+    };
+    cache.set(range, { at: Date.now(), data });
+    return res.status(200).json(data);
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: error?.message || 'Statistikk-feil' });
