@@ -136,7 +136,7 @@ export default function SeedSpor() {
         {competitions.length > 0 ? (
           <label className="admin-field">
             <span>Konkurranse</span>
-            <select className="comp-select" value={competitionId} onChange={(e) => setCompetitionId(e.target.value)}>
+            <select className="comp-select" value={competitionId} onChange={(e) => setCompetitionId(e.target.value)} disabled={running}>
               {competitions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </label>
