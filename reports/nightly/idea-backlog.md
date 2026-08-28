@@ -73,3 +73,12 @@ hvilken natt/kilde den først kom fra.
 
 Se `reports/nightly/2026-07-18.md`, seksjonen "Foreslått, ikke bygget", for
 full kontekst på alle punktene over pluss begrunnelser.
+
+## Fra 08-28-natten (sikkerhetsagentens observasjon)
+
+- **"Signed-URL-lekkasje-monitor."** Interne vedlegg serveres via
+  tidsbegrensede signerte URL-er (`getSignedStorageUrl`). En lett
+  revisjonslogg (hvilken stab-konto, hvilket vedlegg, når) ville gjort det
+  mulig å oppdage at en lekket/skjermbilde-tatt intern lenke gjenbrukes/
+  deles, ikke bare forhindre langvarig gjenbruk via utløpstiden. Rent
+  produktforslag, ikke vurdert for byggeomfang. Foreslått 08-28.
