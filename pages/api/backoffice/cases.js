@@ -129,11 +129,15 @@ export default async function handler(req, res) {
         // oppfølging >30 dager" staleness filter kept judging a case's last
         // touch by its Trello card history (or created_at) even for cases
         // staff were actively progressing right here.
-        await updateReport(id, { status, status_updated_at: new Date().toISOString() });
-        // Keep Trello informed (plain comment — not #public, so the webhook won't re-import it).
-        if (report.trello_card_id && hasTrelloConfig()) {
-          await addTrelloCardComment(report.trello_card_id, `Status endret til «${status}» fra dashbordet.`).catch(() => {});
-        }
+        // Independent writes to different systems (Supabase report row vs. Trello
+        // comment), no data dependency — run concurrently. The Trello call already
+        // swallows its own errors, so behavior is unchanged on both success and failure.
+        await Promise.all([
+          updateReport(id, { status, status_updated_at: new Date().toISOString() }),
+          report.trello_card_id && hasTrelloConfig()
+            ? addTrelloCardComment(report.trello_card_id, `Status endret til «${status}» fra dashbordet.`).catch(() => {})
+            : Promise.resolve(),
+        ]);
         return res.status(200).json({ ok: true, status });
       }
 
