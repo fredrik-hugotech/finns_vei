@@ -392,6 +392,14 @@ CREATE INDEX IF NOT EXISTS staff_sessions_staff_id_idx ON public.staff_sessions(
 CREATE INDEX IF NOT EXISTS case_attachments_report_idx ON public.case_attachments(report_id);
 ```
 
+`listHotCases` (`lib/supabaseRest.js`) filters `reports` on `status` and
+orders by `support_count DESC` (with a 300-row cap) — a composite index
+matching that query shape, applied 2026-08-29:
+
+```sql
+CREATE INDEX IF NOT EXISTS reports_status_support_count_idx ON public.reports(status, support_count DESC);
+```
+
 `reports_trello_card_id_idx` backs every Trello webhook delivery and grouped-report
 write (`countReportsByTrelloCard`, `updateReportByTrelloCardId`); `reports_created_at_idx`
 backs the `order=created_at.desc` used across most backoffice lists;
