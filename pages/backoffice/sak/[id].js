@@ -74,6 +74,7 @@ export default function SakDetalj() {
   const [noteMode, setNoteMode] = useState('public');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
+  const [savingField, setSavingField] = useState(null);
   const [flash, setFlash] = useState('');
   const [uploadVis, setUploadVis] = useState('internal');
   const [uploading, setUploading] = useState(false);
@@ -142,7 +143,9 @@ export default function SakDetalj() {
   }, []);
 
   const changeDue = async (v) => {
+    if (savingField) return;
     setDueDate(v);
+    setSavingField('due');
     try {
       const r = await fetch('/api/backoffice/cases', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'set-due', id, due_date: v || null }) });
       if (!r.ok) throw new Error('due');
@@ -150,10 +153,12 @@ export default function SakDetalj() {
     } catch (_e) {
       setFlash('Kunne ikke lagre frist');
       load();
-    }
+    } finally { setSavingField(null); }
   };
   const changeAssignee = async (v) => {
+    if (savingField) return;
     setAssignee(v);
+    setSavingField('assignee');
     try {
       const r = await fetch('/api/backoffice/cases', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'set-assignee', id, assignee_email: v || null }) });
       if (!r.ok) throw new Error('assignee');
@@ -161,7 +166,7 @@ export default function SakDetalj() {
     } catch (_e) {
       setFlash('Kunne ikke lagre tildeling');
       load();
-    }
+    } finally { setSavingField(null); }
   };
 
   const c = data?.case;
@@ -264,7 +269,9 @@ export default function SakDetalj() {
   }, [c?.lat, c?.lng, mapboxToken]);
 
   const changeStatus = async (next) => {
+    if (savingField) return;
     setStatus(next);
+    setSavingField('status');
     try {
       const r = await fetch('/api/backoffice/cases', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'set-status', id, status: next }) });
       if (!r.ok) throw new Error('status');
@@ -272,7 +279,7 @@ export default function SakDetalj() {
     } catch (_e) {
       setFlash('Kunne ikke endre status');
       load();
-    }
+    } finally { setSavingField(null); }
   };
 
   const deleteCase = async () => {
@@ -531,13 +538,13 @@ export default function SakDetalj() {
               <div className="tkt-props">
                 <label className="tkt-prop">
                   <span className="tkt-prop__k">Status</span>
-                  <select className="tkt-prop__ctrl" value={status} onChange={(e) => changeStatus(e.target.value)}>
+                  <select className="tkt-prop__ctrl" value={status} disabled={!!savingField} onChange={(e) => changeStatus(e.target.value)}>
                     {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </label>
                 <label className="tkt-prop">
                   <span className="tkt-prop__k">Ansvarlig</span>
-                  <select className="tkt-prop__ctrl" value={assignee || ''} onChange={(e) => changeAssignee(e.target.value)}>
+                  <select className="tkt-prop__ctrl" value={assignee || ''} disabled={!!savingField} onChange={(e) => changeAssignee(e.target.value)}>
                     <option value="">Ingen</option>
                     {/* If the case is assigned to someone no longer in the active staff
                         list (e.g. deactivated), keep them selectable so the dropdown
@@ -551,7 +558,7 @@ export default function SakDetalj() {
                 </label>
                 <label className="tkt-prop">
                   <span className="tkt-prop__k">Frist</span>
-                  <input type="date" className={dueDate && String(dueDate) < todayStr && status !== REPORT_STATUS.DONE ? 'tkt-prop__ctrl tkt-prop__ctrl--over' : 'tkt-prop__ctrl'} value={dueDate} onChange={(e) => changeDue(e.target.value)} />
+                  <input type="date" className={dueDate && String(dueDate) < todayStr && status !== REPORT_STATUS.DONE ? 'tkt-prop__ctrl tkt-prop__ctrl--over' : 'tkt-prop__ctrl'} value={dueDate} disabled={!!savingField} onChange={(e) => changeDue(e.target.value)} />
                 </label>
                 <div className="tkt-prop">
                   <span className="tkt-prop__k">Støtte</span>
