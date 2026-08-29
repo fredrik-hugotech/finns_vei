@@ -50,7 +50,7 @@ function supportButtonInner(alreadySupported) {
 
 const NEARBY_RADIUS_M = NEARBY_REPORT_RADIUS_M;
 
-function distanceMeters([lng1, lat1], [lng2, lat2]) {
+function haversineMeters([lng1, lat1], [lng2, lat2]) {
   const R = 6371000;
   const toRad = (deg) => (deg * Math.PI) / 180;
   const dLat = toRad(lat2 - lat1);
@@ -70,7 +70,7 @@ function countNearbyReports(data, center, radiusM) {
   let count = 0;
   for (const feature of features) {
     const coords = feature.geometry?.coordinates;
-    if (Array.isArray(coords) && distanceMeters(center, coords) <= radiusM) count += 1;
+    if (Array.isArray(coords) && haversineMeters(center, coords) <= radiusM) count += 1;
   }
   return count;
 }
@@ -85,7 +85,7 @@ function findNearbyReportFeatures(data, center, radiusM, limit = 5) {
   for (const feature of features) {
     const coords = feature.geometry?.coordinates;
     if (!Array.isArray(coords)) continue;
-    const dist = distanceMeters(center, coords);
+    const dist = haversineMeters(center, coords);
     if (dist <= radiusM) nearby.push({ feature, dist });
   }
   nearby.sort((a, b) => a.dist - b.dist);
@@ -109,7 +109,7 @@ async function fetchAccidentsNear(center, radiusM) {
   return (geojson.features || [])
     .filter((feature) => feature.geometry?.type === 'Point' && Array.isArray(feature.geometry.coordinates))
     .map((feature) => ({
-      dist: distanceMeters(center, feature.geometry.coordinates),
+      dist: haversineMeters(center, feature.geometry.coordinates),
       year: feature.properties?.year || (feature.properties?.date ? String(feature.properties.date).slice(0, 4) : ''),
       type: feature.properties?.accident_type || '',
       severity: feature.properties?.severity || '',
