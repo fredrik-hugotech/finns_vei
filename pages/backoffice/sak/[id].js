@@ -335,6 +335,7 @@ export default function SakDetalj() {
   };
 
   const doUpload = async (fileList) => {
+    if (uploading) return;
     const files = Array.from(fileList || []);
     if (!files.length) return;
     setUploading(true); setFlash('');
