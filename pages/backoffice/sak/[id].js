@@ -78,6 +78,7 @@ export default function SakDetalj() {
   const [flash, setFlash] = useState('');
   const [uploadVis, setUploadVis] = useState('internal');
   const [uploading, setUploading] = useState(false);
+  const [attBusyId, setAttBusyId] = useState(null);
   const [accidents, setAccidents] = useState(null);
   const [showAcc, setShowAcc] = useState(false);
   const [lightbox, setLightbox] = useState(null);
@@ -372,11 +373,13 @@ export default function SakDetalj() {
     } finally { setUploading(false); }
   };
   const toggleAtt = async (att) => {
+    if (attBusyId) return;
     const nextVis = att.visibility === 'public' ? 'internal' : 'public';
     if (nextVis === 'public' && !window.confirm('Gjøre dette vedlegget offentlig? Alle som ser saken kan da se det, inkludert på delte lenker.')) {
       return;
     }
     setFlash('');
+    setAttBusyId(att.id);
     setData((d) => (d ? { ...d, attachments: (d.attachments || []).map((a) => (a.id === att.id ? { ...a, visibility: nextVis } : a)) } : d));
     try {
       const r = await fetch('/api/backoffice/attachment', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: att.id, visibility: nextVis }) });
@@ -388,11 +391,13 @@ export default function SakDetalj() {
     } catch (_e) {
       setFlash('Kunne ikke oppdatere vedlegg');
       load();
-    }
+    } finally { setAttBusyId(null); }
   };
   const deleteAtt = async (att) => {
+    if (attBusyId) return;
     if (!window.confirm('Slette dette vedlegget permanent? Dette kan ikke angres.')) return;
     setFlash('');
+    setAttBusyId(att.id);
     setData((d) => (d ? { ...d, attachments: (d.attachments || []).filter((a) => a.id !== att.id) } : d));
     try {
       const r = await fetch('/api/backoffice/attachment', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: att.id }) });
@@ -400,7 +405,7 @@ export default function SakDetalj() {
     } catch (_e) {
       setFlash('Kunne ikke slette vedlegg');
       load();
-    }
+    } finally { setAttBusyId(null); }
   };
   const isImage = (a) => String(a.content_type || '').startsWith('image/');
 
@@ -681,8 +686,8 @@ export default function SakDetalj() {
                       <div className="sak-att__meta">
                         <span className={a.visibility === 'public' ? 'sak-att__badge sak-att__badge--public' : 'sak-att__badge'}>{a.visibility === 'public' ? 'Offentlig' : 'Internt'}</span>
                         <div className="sak-att__row">
-                          <button type="button" onClick={() => toggleAtt(a)}>{a.visibility === 'public' ? 'Gjør intern' : 'Gjør offentlig'}</button>
-                          <button type="button" onClick={() => deleteAtt(a)}>Slett</button>
+                          <button type="button" onClick={() => toggleAtt(a)} disabled={attBusyId === a.id}>{a.visibility === 'public' ? 'Gjør intern' : 'Gjør offentlig'}</button>
+                          <button type="button" onClick={() => deleteAtt(a)} disabled={attBusyId === a.id}>Slett</button>
                         </div>
                       </div>
                     </div>
