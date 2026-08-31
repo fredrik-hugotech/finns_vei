@@ -88,14 +88,20 @@ export default async function handler(req, res) {
       const path = `cases/${reportId}/${Date.now()}-${index + 1}-${safeName}`;
       const bucket = bucketForVisibility(visibility);
       const result = await uploadReportImage({ path, buffer: file.buffer, contentType: resolvedType, bucket });
-      const row = await createCaseAttachment({
-        reportId, url: result.url, path: result.path, contentType: resolvedType, filename: file.filename || safeName, visibility, size: file.buffer.length,
-      });
-      // The stored row's url is null for internal attachments (see
-      // createCaseAttachment) — sign one now so the response the uploader
-      // sees immediately can still preview the file, without waiting for a
-      // page reload to hit listCaseAttachments' signing path.
-      const previewUrl = visibility === 'public' ? result.url : await getSignedStorageUrl(path, bucket);
+      // Once the upload has completed, the DB row insert and the preview-URL
+      // signing are independent of each other's result (the signed URL only
+      // needs path/bucket, not the created row) — run them concurrently
+      // instead of sequentially. The stored row's url is null for internal
+      // attachments (see createCaseAttachment); signing one now lets the
+      // response the uploader sees immediately still preview the file,
+      // without waiting for a page reload to hit listCaseAttachments'
+      // signing path.
+      const [row, previewUrl] = await Promise.all([
+        createCaseAttachment({
+          reportId, url: result.url, path: result.path, contentType: resolvedType, filename: file.filename || safeName, visibility, size: file.buffer.length,
+        }),
+        visibility === 'public' ? Promise.resolve(result.url) : getSignedStorageUrl(path, bucket),
+      ]);
       return { id: row?.id, url: previewUrl, filename: file.filename || safeName, content_type: resolvedType, visibility };
     }));
     return res.status(201).json({ attachments: created });
