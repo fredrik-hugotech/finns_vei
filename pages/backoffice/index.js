@@ -307,6 +307,13 @@ function FirstSetup({ onDone }) {
       const r = await fetch('/api/staff/bootstrap', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-backoffice-secret': secret }, body: JSON.stringify({ email, password, name }) });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) { setMsg(d.error || 'Kunne ikke opprette bruker.'); return; }
+      // Clear the two credential fields on success, same as login()'s
+      // setPassword('') above and ChangePassword's clear below — this form
+      // was the one place in this file that left a just-used secret/password
+      // sitting in a still-mounted input after a successful submit
+      // (setupOpen stays true, so nothing else clears them until a full
+      // page reload).
+      setSecret(''); setPassword('');
       setMsg('Superbruker opprettet. Logg inn med e-post og passord.');
       onDone?.();
     } catch (_e) { setMsg('Noe gikk galt.'); } finally { setBusy(false); }
