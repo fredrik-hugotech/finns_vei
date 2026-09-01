@@ -78,6 +78,12 @@ export default function SakDetalj() {
   const [flash, setFlash] = useState('');
   const [uploadVis, setUploadVis] = useState('internal');
   const [uploading, setUploading] = useState(false);
+  // doUpload is redefined every render, so a stale closure over `uploading`
+  // (e.g. the paste listener below, whose effect only re-runs on [id,
+  // uploadVis]) can read an outdated value. A ref is mutated in place, so
+  // every closure sees the current busy state regardless of when it was
+  // captured.
+  const uploadingRef = useRef(false);
   const [attBusyId, setAttBusyId] = useState(null);
   const [accidents, setAccidents] = useState(null);
   const [showAcc, setShowAcc] = useState(false);
@@ -336,9 +342,10 @@ export default function SakDetalj() {
   };
 
   const doUpload = async (fileList) => {
-    if (uploading) return;
+    if (uploadingRef.current) return;
     const files = Array.from(fileList || []);
     if (!files.length) return;
+    uploadingRef.current = true;
     setUploading(true); setFlash('');
     // Attempt every file even if an earlier one fails, so one bad photo
     // doesn't silently swallow the rest of the batch.
@@ -370,7 +377,7 @@ export default function SakDetalj() {
         setFlash(`${okCount} av ${files.length} lastet opp — ${failures.map((f) => `${f.name}: ${f.reason}`).join(', ')}`);
       }
       load();
-    } finally { setUploading(false); }
+    } finally { uploadingRef.current = false; setUploading(false); }
   };
   const toggleAtt = async (att) => {
     if (attBusyId) return;
