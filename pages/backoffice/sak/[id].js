@@ -679,7 +679,7 @@ export default function SakDetalj() {
                 onDragLeave={() => setDragOver(false)}
                 onDrop={(e) => { e.preventDefault(); setDragOver(false); doUpload(e.dataTransfer.files); }}
               >
-                <input type="file" accept="image/*,application/pdf" multiple onChange={(e) => doUpload(e.target.files)} disabled={uploading} hidden />
+                <input type="file" accept="image/*,application/pdf" multiple onChange={(e) => { doUpload(e.target.files); e.target.value = ''; }} disabled={uploading} hidden />
                 <strong>{uploading ? 'Laster opp …' : `+ Legg til ${uploadVis === 'public' ? 'offentlig' : 'internt'} vedlegg`}</strong>
                 <span className="sak-upload__hint">Dra hit, eller lim inn bilde (Ctrl/Cmd + V)</span>
               </label>
