@@ -104,6 +104,13 @@ export default function SakDetalj() {
   // case's data when navigating quickly between cases (prev/next, arrow keys).
   const requestIdRef = useRef(0);
 
+  // activeIdRef tracks whichever case is currently displayed. changeStatus/
+  // changeDue/changeAssignee below close over the `id` of the case they were
+  // started on; if the user navigates to a different case before a delayed
+  // request settles, its error handler must not act on stale data (see the
+  // guards inside those handlers).
+  const activeIdRef = useRef(id);
+
   const load = useCallback(async () => {
     if (!id) return;
     const requestId = ++requestIdRef.current;
@@ -132,6 +139,7 @@ export default function SakDetalj() {
   // across cases, most importantly an armed delete confirmation and an
   // unsent note draft (either could otherwise be applied to the wrong case).
   useEffect(() => {
+    activeIdRef.current = id;
     setDeleteArmed(false);
     setDeleteConfirm('');
     setNote('');
@@ -139,6 +147,15 @@ export default function SakDetalj() {
     setDescOpen(false);
     setShowAcc(false);
     setLightbox(null);
+    // Cosmetic-only: a stale busy/saving flag from the case navigated away
+    // from would otherwise show this case's controls as disabled/spinning
+    // for no reason. `uploading`/`uploadingRef` are deliberately left alone —
+    // an in-flight upload for the old case is still genuinely running, and
+    // resetting the ref here would let a new upload start concurrently with
+    // it and race on the shared flag.
+    setSavingField(null);
+    setBusy(false);
+    setAttBusyId(null);
   }, [id]);
 
   useEffect(() => {
@@ -158,9 +175,10 @@ export default function SakDetalj() {
       if (!r.ok) throw new Error('due');
       setFlash('Frist oppdatert'); setTimeout(() => setFlash(''), 1500);
     } catch (_e) {
+      if (activeIdRef.current !== id) return; // navigated away; stale error, drop it
       setFlash('Kunne ikke lagre frist');
       load();
-    } finally { setSavingField(null); }
+    } finally { if (activeIdRef.current === id) setSavingField(null); }
   };
   const changeAssignee = async (v) => {
     if (savingField) return;
@@ -171,9 +189,10 @@ export default function SakDetalj() {
       if (!r.ok) throw new Error('assignee');
       setFlash('Tildeling oppdatert'); setTimeout(() => setFlash(''), 1500);
     } catch (_e) {
+      if (activeIdRef.current !== id) return; // navigated away; stale error, drop it
       setFlash('Kunne ikke lagre tildeling');
       load();
-    } finally { setSavingField(null); }
+    } finally { if (activeIdRef.current === id) setSavingField(null); }
   };
 
   const c = data?.case;
@@ -284,9 +303,10 @@ export default function SakDetalj() {
       if (!r.ok) throw new Error('status');
       setFlash('Status oppdatert'); setTimeout(() => setFlash(''), 1600);
     } catch (_e) {
+      if (activeIdRef.current !== id) return; // navigated away; stale error, drop it
       setFlash('Kunne ikke endre status');
       load();
-    } finally { setSavingField(null); }
+    } finally { if (activeIdRef.current === id) setSavingField(null); }
   };
 
   const deleteCase = async () => {
