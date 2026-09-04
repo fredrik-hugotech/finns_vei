@@ -105,10 +105,11 @@ export default function SakDetalj() {
   const requestIdRef = useRef(0);
 
   // activeIdRef tracks whichever case is currently displayed. changeStatus/
-  // changeDue/changeAssignee below close over the `id` of the case they were
-  // started on; if the user navigates to a different case before a delayed
-  // request settles, its error handler must not act on stale data (see the
-  // guards inside those handlers).
+  // changeDue/changeAssignee/addNote/doUpload/toggleAtt/deleteAtt below close
+  // over the `id` of the case they were started on; if the user navigates to
+  // a different case before a delayed request settles, its completion
+  // handler (success or error) must not act on stale data (see the guards
+  // inside those handlers).
   const activeIdRef = useRef(id);
 
   const load = useCallback(async () => {
@@ -346,11 +347,14 @@ export default function SakDetalj() {
       const action = noteMode === 'internal' ? 'add-internal' : 'add-update';
       const r = await fetch('/api/backoffice/cases', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, id, text }) });
       const d = await r.json().catch(() => ({}));
+      if (activeIdRef.current !== id) return; // navigated away; stale response, drop it
       if (!r.ok) { setFlash(d.error || 'Kunne ikke lagre.'); return; }
       setNote('');
       setFlash(noteMode === 'internal' ? 'Internt notat lagt til' : 'Oppdatering publisert');
       load();
-    } catch (_e) { setFlash('Noe gikk galt.'); } finally { setBusy(false); }
+    } catch (_e) {
+      if (activeIdRef.current === id) setFlash('Noe gikk galt.');
+    } finally { if (activeIdRef.current === id) setBusy(false); }
   };
 
   // Prefills the public-update textarea from a canned phrase. If staff haven't
@@ -389,14 +393,19 @@ export default function SakDetalj() {
           failures.push({ name: file.name, reason: 'nettverksfeil' });
         }
       }
-      if (failures.length === 0) {
-        setFlash(files.length === 1 ? 'Vedlegg lagt til' : `${okCount} av ${files.length} lastet opp`);
-      } else if (okCount === 0) {
-        setFlash(files.length === 1 ? (failures[0].reason || 'Opplasting feilet') : `Opplasting feilet — ${failures.map((f) => `${f.name}: ${f.reason}`).join(', ')}`);
-      } else {
-        setFlash(`${okCount} av ${files.length} lastet opp — ${failures.map((f) => `${f.name}: ${f.reason}`).join(', ')}`);
+      if (activeIdRef.current === id) {
+        if (failures.length === 0) {
+          setFlash(files.length === 1 ? 'Vedlegg lagt til' : `${okCount} av ${files.length} lastet opp`);
+        } else if (okCount === 0) {
+          setFlash(files.length === 1 ? (failures[0].reason || 'Opplasting feilet') : `Opplasting feilet — ${failures.map((f) => `${f.name}: ${f.reason}`).join(', ')}`);
+        } else {
+          setFlash(`${okCount} av ${files.length} lastet opp — ${failures.map((f) => `${f.name}: ${f.reason}`).join(', ')}`);
+        }
+        load();
       }
-      load();
+      // uploadingRef/uploading are deliberately left alone here even when
+      // navigated away — the shared upload lock for the old case is still
+      // genuinely in flight; see the per-case reset effect above.
     } finally { uploadingRef.current = false; setUploading(false); }
   };
   const toggleAtt = async (att) => {
@@ -414,11 +423,13 @@ export default function SakDetalj() {
       // Toggling moves the file between buckets and changes its URL (a fresh
       // signed URL for 'internal', a permanent one for 'public') — reload so
       // the thumbnail/link doesn't keep pointing at the old location.
-      load();
+      if (activeIdRef.current === id) load();
     } catch (_e) {
-      setFlash('Kunne ikke oppdatere vedlegg');
-      load();
-    } finally { setAttBusyId(null); }
+      if (activeIdRef.current === id) {
+        setFlash('Kunne ikke oppdatere vedlegg');
+        load();
+      }
+    } finally { if (activeIdRef.current === id) setAttBusyId(null); }
   };
   const deleteAtt = async (att) => {
     if (attBusyId) return;
@@ -430,9 +441,11 @@ export default function SakDetalj() {
       const r = await fetch('/api/backoffice/attachment', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: att.id }) });
       if (!r.ok) throw new Error('delete');
     } catch (_e) {
-      setFlash('Kunne ikke slette vedlegg');
-      load();
-    } finally { setAttBusyId(null); }
+      if (activeIdRef.current === id) {
+        setFlash('Kunne ikke slette vedlegg');
+        load();
+      }
+    } finally { if (activeIdRef.current === id) setAttBusyId(null); }
   };
   const isImage = (a) => String(a.content_type || '').startsWith('image/');
 
