@@ -234,7 +234,14 @@ export default async function handler(req) {
   const { pathname } = new URL(req.url);
   // .../konkurranse/<id>/sertifikat — id is the second-to-last segment.
   const parts = pathname.split('/').filter(Boolean);
-  const id = decodeURIComponent(parts[parts.length - 2] || '');
+  const rawId = parts[parts.length - 2] || '';
+  let id = '';
+  try {
+    id = decodeURIComponent(rawId);
+  } catch {
+    // Malformed percent-encoding in the path segment — fall through to the
+    // fallback card below instead of a 500.
+  }
 
   if (!id || !hasSupabaseConfig()) {
     return fallbackCard();

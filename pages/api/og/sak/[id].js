@@ -176,7 +176,14 @@ export default async function handler(req) {
   }
 
   const { pathname } = new URL(req.url);
-  const id = decodeURIComponent(pathname.split('/').filter(Boolean).pop() || '');
+  const rawId = pathname.split('/').filter(Boolean).pop() || '';
+  let id = '';
+  try {
+    id = decodeURIComponent(rawId);
+  } catch {
+    // Malformed percent-encoding in the path segment — fall through to the
+    // not-found/fallback card below instead of a 500.
+  }
 
   let report = null;
   if (id && hasSupabaseConfig()) {
