@@ -320,9 +320,11 @@ export default function SakDetalj() {
         body: JSON.stringify({ action: 'delete', id, confirm: true }),
       });
       const d = await r.json().catch(() => ({}));
+      if (activeIdRef.current !== id) return; // navigated away; stale response, drop it
       if (!r.ok) { setFlash(d.error || 'Kunne ikke slette saken.'); setDeleting(false); return; }
       router.replace('/backoffice/liste');
     } catch (_e) {
+      if (activeIdRef.current !== id) return;
       setFlash('Kunne ikke slette saken.');
       setDeleting(false);
     }
