@@ -148,6 +148,11 @@ export default function SakDetalj() {
     setDescOpen(false);
     setShowAcc(false);
     setLightbox(null);
+    // A flash banner or "Kopiert!" label from the case navigated away from
+    // has no bearing on this case and would otherwise read as feedback for
+    // an action just taken here.
+    setFlash('');
+    setReferralCopied(false);
     // Cosmetic-only: a stale busy/saving flag from the case navigated away
     // from would otherwise show this case's controls as disabled/spinning
     // for no reason. `uploading`/`uploadingRef` are deliberately left alone —
