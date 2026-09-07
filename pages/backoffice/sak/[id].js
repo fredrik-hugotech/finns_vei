@@ -698,6 +698,19 @@ export default function SakDetalj() {
                   )}
                 </div>
               )}
+              {/* accidents === 'error' means the NVDB fetch itself failed (see
+                  fetchAccidents()'s .catch above) — distinct from a genuine
+                  zero-accidents result (Array.isArray(accidents) with length
+                  0, which the toggle button above already shows as "0").
+                  Without this, a failed fetch silently rendered nothing at
+                  all, which read exactly like "ingen ulykker" to staff even
+                  though the data was never actually retrieved. Reuses
+                  .case-admin__accidents-err, an existing style already
+                  defined in app.css for this exact case but never wired up
+                  in this file. */}
+              {accidents === 'error' && (
+                <p className="case-admin__accidents-err">Kunne ikke hente ulykkesdata for dette stedet.</p>
+              )}
               <div className="sak-side__actions">
                 <Link className="big-button big-button--secondary" href={`/?sak=${encodeURIComponent(c.id)}`}>Vis på kart</Link>
                 {Number.isFinite(Number(c.lat)) && Number.isFinite(Number(c.lng)) && <a className="big-button big-button--secondary" href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${c.lat},${c.lng}`} target="_blank" rel="noopener noreferrer">Street View</a>}
