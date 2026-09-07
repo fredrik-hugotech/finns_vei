@@ -9,6 +9,11 @@ const ReportMap = dynamic(() => import('../../components/ReportMap'), {
   loading: () => <div className="map-missing">Laster kart …</div>,
 });
 
+// Same gold/silver/bronze + leader-row styling as the citizen-facing
+// leaderboard in components/CompetitionSheet.js — this internal leaderboard
+// renders the same shape of data (rank/club/trips/km) but previously showed
+// plain numbers with none of that styling.
+const RANK_CLASS = ['comp-row__rank--gold', 'comp-row__rank--silver', 'comp-row__rank--bronze'];
 
 // Internal-only admin map: the tracks (density) left by competition rides.
 export default function Sykkelspor() {
@@ -123,8 +128,8 @@ export default function Sykkelspor() {
               {stats?.leaderboard?.length > 0 && (
                 <ol className="comp-board__list spor-panel__leaderboard">
                   {stats.leaderboard.map((row, index) => (
-                    <li key={row.club} className="comp-row">
-                      <span className="comp-row__rank">{index + 1}</span>
+                    <li key={row.club} className={index === 0 && row.trips > 0 ? 'comp-row comp-row--lead' : 'comp-row'}>
+                      <span className={`comp-row__rank ${row.trips > 0 ? (RANK_CLASS[index] || '') : ''}`}>{index + 1}</span>
                       <span className="comp-row__club">{row.club}</span>
                       <span className="comp-row__stats">
                         <span className="comp-row__helmet">Hjelm {row.helmetPct}%</span>
