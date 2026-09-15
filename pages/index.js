@@ -7,6 +7,7 @@ import CompetitionSheet from '../components/CompetitionSheet';
 import TripTracker from '../components/TripTracker';
 import TripCelebration from '../components/TripCelebration';
 import InstallHint from '../components/InstallHint';
+import PlaceSearch from '../components/PlaceSearch';
 import { NEARBY_REPORT_RADIUS_M } from '../lib/config';
 import { QUEUE_CHANGED_EVENT, flushQueue, getPendingCount } from '../lib/offlineReportQueue';
 import { TRIP_QUEUE_CHANGED_EVENT, addPendingTrip, flushTripQueue, getPendingTripCount } from '../lib/offlineTripQueue';
@@ -416,6 +417,10 @@ export default function Home() {
               Installer app
             </button>
           )}
+          <PlaceSearch
+            onPick={(pt) => mapApiRef.current?.flyTo?.(pt)}
+            getProximity={() => mapApiRef.current?.getCenter?.() || null}
+          />
           <div className="app-menu">
             <button
               type="button"
