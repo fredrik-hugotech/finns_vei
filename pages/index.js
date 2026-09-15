@@ -453,9 +453,6 @@ export default function Home() {
               const hasActiveComp = Array.isArray(activeCompetitions) && activeCompetitions.length > 0;
               return (
                 <div className={hasActiveComp ? 'fab-konk-wrap' : 'fab-konk-wrap fab-konk-wrap--idle'}>
-                  {!hasActiveComp && activeCompetitions !== null && (
-                    <span className="fab-konk__caption">Ingen aktiv konkurranse</span>
-                  )}
                   <button
                     type="button"
                     className={hasActiveComp ? 'fab-konk' : 'fab-konk fab-konk--idle'}

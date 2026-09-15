@@ -252,34 +252,31 @@
   z-index: var(--z-map-control);
 }
 
-/* Public "Flyfoto ⇄ Kart" base-style toggle — bottom-left, raised above the
-   Mapbox logo. */
+/* Public "Flyfoto ⇄ Kart" toggle — a round icon button on the same line as
+   the Meld fra / trophy FABs, bottom-left, mirroring the trophy on the right. */
 .map-style-toggle {
   align-items: center;
   background: var(--color-surface);
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-pill);
-  bottom: calc(max(0.6rem, env(safe-area-inset-bottom)) + 1.9rem);
-  box-shadow: var(--shadow-control);
-  color: var(--color-text);
+  border: none;
+  border-radius: 50%;
+  bottom: max(4.25rem, calc(env(safe-area-inset-bottom) + 3.6rem));
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.9), 0 8px 20px -6px rgba(16, 32, 28, 0.45);
+  color: var(--color-primary);
   display: inline-flex;
-  font-size: 0.8rem;
-  font-weight: 700;
-  gap: 0.34rem;
-  left: max(0.6rem, env(safe-area-inset-left));
-  min-height: 36px;
-  padding: 0.34rem 0.72rem 0.34rem 0.58rem;
+  height: 54px;
+  justify-content: center;
+  left: max(0.9rem, env(safe-area-inset-left));
   position: absolute;
-  z-index: var(--z-map-control);
+  transition: transform 110ms ease;
+  width: 54px;
+  z-index: 24;
 }
-.map-style-toggle svg { color: var(--color-primary); flex: none; }
-.map-style-toggle:active { transform: scale(0.97); }
+.map-style-toggle svg { flex: none; }
+.map-style-toggle:active { transform: scale(0.94); }
 .map-style-toggle--sat {
   background: #16201c;
-  border-color: #16201c;
   color: #fff;
 }
-.map-style-toggle--sat svg { color: var(--color-accent); }
 
 /* Map legend (status colours + support sizing) */
 .map-legend {
