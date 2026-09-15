@@ -380,6 +380,12 @@
   grid-template-columns: 1fr 1fr;
 }
 
+/* A lone button (e.g. "Del sak" without Street View) fills the row instead
+   of sitting in the left half with an empty slot beside it. */
+.popup-share-actions > :only-child {
+  grid-column: 1 / -1;
+}
+
 .popup-action {
   align-items: center;
   background: var(--color-surface-muted);
