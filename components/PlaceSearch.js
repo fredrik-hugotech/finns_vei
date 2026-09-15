@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 
 // Place/city search for people who'd rather type than pan the map or use GPS.
 // A single search icon in the topbar expands into a field; results come from
-// Mapbox forward geocoding (same API family as the reverse geocode already used
-// in the report flow — no new key, and api.mapbox.com is already allowlisted in
-// the CSP). Picking a result flies the map there; the user still confirms the
-// exact spot on the map.
+// our /api/geocode proxy (Kartverket place names + addresses, so schools,
+// kindergartens and sports grounds are searchable, with Mapbox as fallback).
+// Picking a result flies the map there; the user still confirms the exact spot
+// on the map.
 export default function PlaceSearch({ onPick, getProximity }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -24,8 +24,9 @@ export default function PlaceSearch({ onPick, getProximity }) {
     return undefined;
   }, [open]);
 
-  // Debounced forward geocoding, biased to Norway and to what's currently on
-  // screen so "Skoleveien" finds the nearby one first.
+  // Debounced search, biased to what's currently on screen so "Skoleveien"
+  // finds the nearby one first. Proximity is rounded to ~1 km so the edge
+  // cache on /api/geocode gets hits while the map is nudged around.
   useEffect(() => {
     const q = query.trim();
     if (!open || !token || q.length < 2) { setResults([]); setLoading(false); return undefined; }
@@ -34,19 +35,15 @@ export default function PlaceSearch({ onPick, getProximity }) {
     const timer = setTimeout(async () => {
       try {
         const prox = getProximity?.();
-        const proximity = prox && Number.isFinite(prox.lng) ? `&proximity=${prox.lng},${prox.lat}` : '';
-        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json`
-          + `?access_token=${token}&country=no&language=no&limit=6&autocomplete=true`
-          + `&types=place,locality,neighborhood,address,poi,postcode${proximity}`;
-        const r = await fetch(url);
+        const proximity = prox && Number.isFinite(prox.lng) && Number.isFinite(prox.lat)
+          ? `&lng=${prox.lng.toFixed(2)}&lat=${prox.lat.toFixed(2)}`
+          : '';
+        const r = await fetch(`/api/geocode?q=${encodeURIComponent(q)}${proximity}`);
         const d = r.ok ? await r.json() : null;
         if (reqId !== reqIdRef.current) return; // a newer keystroke won
-        const feats = (d?.features || []).map((f) => ({
-          id: f.id,
-          primary: f.text || (f.place_name || '').split(',')[0],
-          secondary: (f.place_name || '').split(',').slice(1).join(',').trim(),
-          center: f.center,
-        })).filter((f) => Array.isArray(f.center) && Number.isFinite(f.center[0]));
+        const feats = (d?.results || [])
+          .filter((f) => Number.isFinite(f.lng) && Number.isFinite(f.lat))
+          .map((f) => ({ id: f.id, primary: f.primary, secondary: f.secondary, center: [f.lng, f.lat] }));
         setResults(feats);
       } catch (_e) {
         if (reqId === reqIdRef.current) setResults([]);
