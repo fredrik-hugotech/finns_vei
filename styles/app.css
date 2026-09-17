@@ -4034,3 +4034,45 @@ select.tkt-prop__ctrl { padding-right: 1.7rem; background-image: url("data:image
 @media (max-width: 600px) {
   .demo-board .comp-row__count--muted { display: none; }
 }
+
+/* Venue markers on /demo (football pitches + sports halls) */
+.demo-venue {
+  align-items: center;
+  background: #fff;
+  border: 2px solid var(--color-primary);
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(16, 32, 28, 0.28);
+  color: var(--color-primary);
+  cursor: default;
+  display: inline-flex;
+  gap: 0.25rem;
+  height: 26px;
+  justify-content: center;
+  padding: 0 0.3rem;
+  pointer-events: auto;
+}
+.demo-venue--hall { border-color: #1d4ed8; color: #1d4ed8; }
+.demo-venue__label {
+  display: none;
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.demo-shell--labels .demo-venue__label { display: inline; }
+.demo-toggles { display: grid; gap: 0.3rem; grid-template-columns: 1fr 1fr 1fr; }
+.demo-toggle {
+  align-items: center;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  color: var(--color-muted);
+  display: inline-flex;
+  font-size: 0.74rem;
+  font-weight: 700;
+  gap: 0.3rem;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0.2rem 0.4rem;
+}
+.demo-toggle--on { background: var(--color-primary-tint); border-color: var(--color-primary); color: var(--color-primary); }
+.demo-toggle__dot { border-radius: 50%; display: inline-block; height: 8px; width: 8px; }

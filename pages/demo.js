@@ -46,6 +46,9 @@ export default function Demo() {
   const [mode, setMode] = useState(''); // '' | sykkel | gange
   const [replay, setReplay] = useState(null); // { index, running } | null
   const [panelOpen, setPanelOpen] = useState(true);
+  // Live context layers on top of the demo trips: real reported cases, NVDB
+  // accidents (fetched at zoom >= 12) and the club venues.
+  const [layers, setLayers] = useState({ saker: true, ulykker: true, anlegg: true });
   const fittedRef = useRef(false);
   const timerRef = useRef(null);
 
@@ -76,19 +79,29 @@ export default function Demo() {
   // Draw whatever the current view/filter/replay says, once map + data exist.
   useEffect(() => {
     if (!mapApi || !data) return;
+    const opts = { keepReports: true };
     if (view === 'tetthet') {
-      mapApi.clearRouteLines?.();
-      mapApi.showHeatLines?.(data.geojson);
+      mapApi.clearRouteLines?.(opts);
+      mapApi.showHeatLines?.(data.geojson, opts);
     } else {
-      mapApi.clearHeatLines?.();
+      mapApi.clearHeatLines?.(opts);
       const shown = replay ? tripsToGeoJson(trips.slice(0, replay.index)) : allGeo;
-      mapApi.showRouteLines?.(shown);
+      mapApi.showRouteLines?.(shown, opts);
     }
     if (!fittedRef.current && allGeo.features.length) {
       fittedRef.current = true;
       mapApi.fitCompetition?.(allGeo);
     }
   }, [mapApi, data, view, replay, trips, allGeo]);
+
+  // Context layers follow the toggles.
+  useEffect(() => {
+    if (!mapApi) return;
+    mapApi.setReportsVisible?.(layers.saker);
+    mapApi.setAccidentsVisible?.(layers.ulykker);
+    mapApi.showVenues?.(layers.anlegg ? (data?.venues || []) : []);
+  }, [mapApi, data, layers]);
+  const toggleLayer = (key) => setLayers((l) => ({ ...l, [key]: !l[key] }));
 
   // Replay: add trips in logged order over ~REPLAY_MS.
   const startReplay = () => {
@@ -128,8 +141,8 @@ export default function Demo() {
         <meta name="robots" content="noindex" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
       </Head>
-      <main className="app-shell demo-shell">
-        <ReportMap className="map-canvas" showReports={false} onMapReady={setMapApi} mapStyle="mapbox://styles/mapbox/dark-v11" />
+      <main className="app-shell demo-shell demo-shell--labels">
+        <ReportMap className="map-canvas" showReports onMapReady={setMapApi} mapStyle="mapbox://styles/mapbox/light-v11" enableNvdbLayers initialNvdbLayers={['accidents']} />
 
         <div className={panelOpen ? 'demo-panel' : 'demo-panel demo-panel--collapsed'}>
           <div className="demo-panel__head">
@@ -163,6 +176,12 @@ export default function Demo() {
                   <button type="button" className={mode === 'sykkel' ? 'demo-seg__btn demo-seg__btn--on' : 'demo-seg__btn'} onClick={() => changeMode('sykkel')}>Sykkel</button>
                   <button type="button" className={mode === 'gange' ? 'demo-seg__btn demo-seg__btn--on' : 'demo-seg__btn'} onClick={() => changeMode('gange')}>Gange</button>
                 </div>
+              </div>
+
+              <div className="demo-toggles" role="group" aria-label="Lag">
+                <button type="button" className={layers.saker ? 'demo-toggle demo-toggle--on' : 'demo-toggle'} onClick={() => toggleLayer('saker')} aria-pressed={layers.saker}><i className="demo-toggle__dot" style={{ background: '#0b5d4d' }} aria-hidden="true" />Meldte saker</button>
+                <button type="button" className={layers.ulykker ? 'demo-toggle demo-toggle--on' : 'demo-toggle'} onClick={() => toggleLayer('ulykker')} aria-pressed={layers.ulykker}><i className="demo-toggle__dot" style={{ background: '#6D233F' }} aria-hidden="true" />Ulykker</button>
+                <button type="button" className={layers.anlegg ? 'demo-toggle demo-toggle--on' : 'demo-toggle'} onClick={() => toggleLayer('anlegg')} aria-pressed={layers.anlegg}><i className="demo-toggle__dot" style={{ background: '#1d4ed8' }} aria-hidden="true" />Anlegg</button>
               </div>
 
               <button type="button" className={replay?.running ? 'big-button big-button--secondary demo-play' : 'big-button big-button--primary demo-play'} onClick={replay?.running ? stopReplay : startReplay}>

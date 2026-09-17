@@ -1,6 +1,7 @@
 import { getCompetitionStats, listCompetitions, listCompetitionTripRoutes, hasSupabaseConfig } from '../../../lib/supabaseRest';
 import { checkRequestRateLimit } from '../../../lib/rateLimit';
 import { simplifyPath } from '../../../lib/geoPrivacy';
+import venues from '../../../data/demo-venues.json';
 
 // Public data for /demo — the presentation page that shows how a cycling
 // competition builds up a picture of where children ride.
@@ -118,7 +119,7 @@ export default async function handler(req, res) {
 
     res.setHeader('Cache-Control', 's-maxage=120, stale-while-revalidate=600');
     const { geojson: _g, ...rest } = stats;
-    return res.status(200).json({ ...rest, geojson: heat, trips: withColor });
+    return res.status(200).json({ ...rest, geojson: heat, trips: withColor, venues });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: 'Kunne ikke hente demo-data' });

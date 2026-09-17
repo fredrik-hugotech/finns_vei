@@ -1,0 +1,152 @@
+[
+ {
+  "name": "Karuss stadion",
+  "type": "bane",
+  "lat": 58.1282,
+  "lng": 7.9575
+ },
+ {
+  "name": "Vågsbygdhallen",
+  "type": "hall",
+  "lat": 58.129,
+  "lng": 7.9705
+ },
+ {
+  "name": "Flekkerøy stadion",
+  "type": "bane",
+  "lat": 58.073,
+  "lng": 7.999
+ },
+ {
+  "name": "Flekkerøyhallen",
+  "type": "hall",
+  "lat": 58.0735,
+  "lng": 7.9985
+ },
+ {
+  "name": "Randesund idrettspark",
+  "type": "bane",
+  "lat": 58.1616,
+  "lng": 8.0868
+ },
+ {
+  "name": "Randesund idrettshall",
+  "type": "hall",
+  "lat": 58.158,
+  "lng": 8.0785
+ },
+ {
+  "name": "Hånes idrettsplass",
+  "type": "bane",
+  "lat": 58.1745,
+  "lng": 8.0765
+ },
+ {
+  "name": "Håneshallen",
+  "type": "hall",
+  "lat": 58.1745,
+  "lng": 8.077
+ },
+ {
+  "name": "Vigør stadion",
+  "type": "bane",
+  "lat": 58.154,
+  "lng": 8.0255
+ },
+ {
+  "name": "Kristiansand stadion",
+  "type": "bane",
+  "lat": 58.1566,
+  "lng": 8.0019
+ },
+ {
+  "name": "Gimlehallen",
+  "type": "hall",
+  "lat": 58.1612,
+  "lng": 8.029
+ },
+ {
+  "name": "Gimletroll idrettspark",
+  "type": "bane",
+  "lat": 58.166,
+  "lng": 8.034
+ },
+ {
+  "name": "Justvik idrettsplass",
+  "type": "bane",
+  "lat": 58.1895,
+  "lng": 8.0505
+ },
+ {
+  "name": "Justvikhallen",
+  "type": "hall",
+  "lat": 58.1898,
+  "lng": 8.051
+ },
+ {
+  "name": "Torridal idrettsplass",
+  "type": "bane",
+  "lat": 58.2265,
+  "lng": 7.9725
+ },
+ {
+  "name": "Torridalhallen",
+  "type": "hall",
+  "lat": 58.2262,
+  "lng": 7.974
+ },
+ {
+  "name": "Tveit idrettsplass",
+  "type": "bane",
+  "lat": 58.211,
+  "lng": 8.144
+ },
+ {
+  "name": "Tveithallen",
+  "type": "hall",
+  "lat": 58.2115,
+  "lng": 8.1435
+ },
+ {
+  "name": "Hellemyr idrettsplass",
+  "type": "bane",
+  "lat": 58.1585,
+  "lng": 7.9525
+ },
+ {
+  "name": "Søgne idrettspark",
+  "type": "bane",
+  "lat": 58.0885,
+  "lng": 7.7965
+ },
+ {
+  "name": "Søgnehallen",
+  "type": "hall",
+  "lat": 58.088,
+  "lng": 7.799
+ },
+ {
+  "name": "Greipstad idrettspark",
+  "type": "bane",
+  "lat": 58.167,
+  "lng": 7.832
+ },
+ {
+  "name": "Songdalshallen",
+  "type": "hall",
+  "lat": 58.1665,
+  "lng": 7.834
+ },
+ {
+  "name": "Idda Arena",
+  "type": "hall",
+  "lat": 58.1447,
+  "lng": 7.9897
+ },
+ {
+  "name": "Aquarama",
+  "type": "hall",
+  "lat": 58.143,
+  "lng": 8.0036
+ }
+]

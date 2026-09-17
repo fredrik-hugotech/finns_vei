@@ -554,9 +554,9 @@ function showCompetitionTrips(map, geojson) {
 // glowing orange lines that turn yellow, then white, where many trips share
 // the same road. Three layers — a wide blurred glow, a coloured core and a
 // thin hot centre — over the same weighted segment data the density view uses.
-function showHeatLines(map, geojson) {
+function showHeatLines(map, geojson, { keepReports = false } = {}) {
   if (!map || !map.isStyleLoaded?.()) {
-    if (map) setTimeout(() => showHeatLines(map, geojson), 200);
+    if (map) setTimeout(() => showHeatLines(map, geojson, { keepReports }), 200);
     return;
   }
   const data = geojson && geojson.type ? geojson : { type: 'FeatureCollection', features: [] };
@@ -573,8 +573,8 @@ function showHeatLines(map, geojson) {
       source: 'heat-lines',
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'line-color': ['interpolate', ['linear'], w, 1, '#c2410c', 6, '#f97316', 20, '#fbbf24', 50, '#fde68a'],
-        'line-opacity': ['interpolate', ['linear'], w, 1, 0.22, 6, 0.4, 20, 0.55, 50, 0.7],
+        'line-color': ['interpolate', ['linear'], w, 1, '#fdba74', 6, '#fb923c', 20, '#ef4444', 50, '#b91c1c'],
+        'line-opacity': ['interpolate', ['linear'], w, 1, 0.25, 6, 0.4, 20, 0.5, 50, 0.6],
         'line-width': ['interpolate', ['linear'], ['zoom'], 10, ['interpolate', ['linear'], w, 1, 2, 10, 6, 40, 12], 14, ['interpolate', ['linear'], w, 1, 5, 10, 12, 40, 22]],
         'line-blur': ['interpolate', ['linear'], ['zoom'], 10, 2, 14, 6],
       },
@@ -585,8 +585,8 @@ function showHeatLines(map, geojson) {
       source: 'heat-lines',
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'line-color': ['interpolate', ['linear'], w, 1, '#ea580c', 4, '#f97316', 10, '#fb923c', 20, '#fcd34d', 40, '#fef3c7', 70, '#ffffff'],
-        'line-opacity': ['interpolate', ['linear'], w, 1, 0.55, 5, 0.85, 15, 1],
+        'line-color': ['interpolate', ['linear'], w, 1, '#fb923c', 4, '#f97316', 10, '#ea580c', 20, '#dc2626', 40, '#b91c1c', 70, '#7f1d1d'],
+        'line-opacity': ['interpolate', ['linear'], w, 1, 0.6, 5, 0.85, 15, 1],
         'line-width': ['interpolate', ['linear'], ['zoom'], 10, ['interpolate', ['linear'], w, 1, 0.8, 10, 1.8, 40, 3], 14, ['interpolate', ['linear'], w, 1, 1.6, 10, 3.2, 40, 5.5]],
       },
     });
@@ -594,26 +594,29 @@ function showHeatLines(map, geojson) {
       id: 'heat-lines-hot',
       type: 'line',
       source: 'heat-lines',
-      filter: ['>=', ['get', 'weight'], 12],
+      filter: ['>=', ['get', 'weight'], 15],
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'line-color': '#ffffff',
-        'line-opacity': ['interpolate', ['linear'], w, 12, 0.35, 40, 0.9],
+        'line-color': '#fff7ed',
+        'line-opacity': ['interpolate', ['linear'], w, 15, 0.3, 45, 0.85],
         'line-width': ['interpolate', ['linear'], ['zoom'], 10, 0.6, 14, 1.6],
       },
     });
   }
-  for (const id of REPORT_LAYER_IDS) {
-    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', hasData ? 'none' : 'visible');
+  restoreMapLayerOrder(map);
+  if (!keepReports) {
+    for (const id of REPORT_LAYER_IDS) {
+      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', hasData ? 'none' : 'visible');
+    }
   }
 }
 
 // Individual route lines coloured per club (property `color`) — used by the
 // public /demo page for synthetic demo competitions only. Same "hide report
 // markers while lines are showing" behaviour as the density layer.
-function showRouteLines(map, geojson) {
+function showRouteLines(map, geojson, { keepReports = false } = {}) {
   if (!map || !map.isStyleLoaded?.()) {
-    if (map) setTimeout(() => showRouteLines(map, geojson), 200);
+    if (map) setTimeout(() => showRouteLines(map, geojson, { keepReports }), 200);
     return;
   }
   const data = geojson && geojson.type ? geojson : { type: 'FeatureCollection', features: [] };
@@ -642,8 +645,31 @@ function showRouteLines(map, geojson) {
       },
     });
   }
-  for (const id of REPORT_LAYER_IDS) {
-    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', hasData ? 'none' : 'visible');
+  restoreMapLayerOrder(map);
+  if (!keepReports) {
+    for (const id of REPORT_LAYER_IDS) {
+      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', hasData ? 'none' : 'visible');
+    }
+  }
+}
+
+// Venue markers (football pitches / sports halls) for the demo page.
+const VENUE_ICON = {
+  bane: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.2l4.2 3-1.6 5H9.4l-1.6-5z"/><path d="M12 3v4.2M3.4 10.2l4 .1M20.6 10.2l-4 .1M6.4 19.4l3-3.2M17.6 19.4l-3-3.2"/></svg>',
+  hall: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 20V10l9-6 9 6v10z"/><path d="M3 20h18M9 20v-6h6v6"/></svg>',
+};
+function showVenueMarkers(map, markersRef, venues) {
+  for (const m of markersRef.current) { try { m.remove(); } catch (_e) { /* ignore */ } }
+  markersRef.current = [];
+  if (!map) return;
+  for (const v of venues || []) {
+    if (!Number.isFinite(v.lng) || !Number.isFinite(v.lat)) continue;
+    const el = document.createElement('div');
+    el.className = `demo-venue demo-venue--${v.type === 'hall' ? 'hall' : 'bane'}`;
+    el.title = v.name || '';
+    el.innerHTML = `${VENUE_ICON[v.type === 'hall' ? 'hall' : 'bane']}<span class="demo-venue__label">${escapeHtml(v.name || '')}</span>`;
+    const marker = new mapboxgl.Marker({ element: el, anchor: 'center' }).setLngLat([v.lng, v.lat]).addTo(map);
+    markersRef.current.push(marker);
   }
 }
 
@@ -697,7 +723,8 @@ function fitToGeoJson(map, geojson) {
   }
 }
 
-export default function ReportMap({ selectable = false, point, onPointChange, className = 'map-canvas', showReports = true, enableNvdbLayers = false, pickMode = false, pinnedPoint = null, onMapReady, onPickCenterChange, mapStyle = null }) {
+export default function ReportMap({ selectable = false, point, onPointChange, className = 'map-canvas', showReports = true, enableNvdbLayers = false, pickMode = false, pinnedPoint = null, onMapReady, onPickCenterChange, mapStyle = null, initialNvdbLayers = [] }) {
+  const venueMarkersRef = useRef([]);
   // Optional fixed style URL (e.g. the dark basemap on /demo). When set, the
   // Flyfoto/Kart toggle is hidden and the aerial treatment is skipped.
   const mapStyleRef = useRef(mapStyle);
@@ -729,7 +756,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     const timer = setTimeout(() => setMessage(''), 4000);
     return () => clearTimeout(timer);
   }, [message]);
-  const [activeNvdbLayers, setActiveNvdbLayers] = useState([]);
+  const [activeNvdbLayers, setActiveNvdbLayers] = useState(initialNvdbLayers);
   const [legendOpen, setLegendOpen] = useState(() => (typeof window !== 'undefined' ? window.innerWidth > 720 : false));
   const [supportTarget, setSupportTarget] = useState(null);
   const [caseData, setCaseData] = useState(null);
@@ -1027,6 +1054,10 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       });
     }));
   }, [enableNvdbLayers]);
+
+  useEffect(() => {
+    refreshNvdbLayers().catch(() => { /* surfaced via map message elsewhere */ });
+  }, [activeNvdbLayers, refreshNvdbLayers]);
 
   const toggleNvdbLayer = (layerType) => {
     setActiveNvdbLayers((current) => (
@@ -1454,8 +1485,15 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         openCaseById: (id) => openCaseById(id),
         showCompetitionTrips: (geojson) => showCompetitionTrips(map, geojson),
         showRouteLines: (geojson) => showRouteLines(map, geojson),
-        showHeatLines: (geojson) => showHeatLines(map, geojson),
-        clearHeatLines: () => showHeatLines(map, { type: 'FeatureCollection', features: [] }),
+        showHeatLines: (geojson, opts) => showHeatLines(map, geojson, opts),
+        clearHeatLines: (opts) => showHeatLines(map, { type: 'FeatureCollection', features: [] }, opts),
+        setReportsVisible: (visible) => {
+          for (const id of REPORT_LAYER_IDS) {
+            if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none');
+          }
+        },
+        setAccidentsVisible: (visible) => setActiveNvdbLayers(visible ? ['accidents'] : []),
+        showVenues: (venues) => showVenueMarkers(map, venueMarkersRef, venues),
         clearRouteLines: () => showRouteLines(map, { type: 'FeatureCollection', features: [] }),
         clearCompetitionTrips: () => showCompetitionTrips(map, { type: 'FeatureCollection', features: [] }),
         showLivePath: (geojson) => showLivePath(map, geojson),
