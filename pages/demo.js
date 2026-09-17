@@ -42,7 +42,7 @@ export default function Demo() {
   const [mapApi, setMapApi] = useState(null);
   const [data, setData] = useState(null);
   const [status, setStatus] = useState('Henter …');
-  const [view, setView] = useState('turer'); // turer | tetthet
+  const [view, setView] = useState('tetthet'); // tetthet | turer
   const [mode, setMode] = useState(''); // '' | sykkel | gange
   const [replay, setReplay] = useState(null); // { index, running } | null
   const [panelOpen, setPanelOpen] = useState(true);
@@ -78,9 +78,9 @@ export default function Demo() {
     if (!mapApi || !data) return;
     if (view === 'tetthet') {
       mapApi.clearRouteLines?.();
-      mapApi.showCompetitionTrips?.(data.geojson);
+      mapApi.showHeatLines?.(data.geojson);
     } else {
-      mapApi.clearCompetitionTrips?.();
+      mapApi.clearHeatLines?.();
       const shown = replay ? tripsToGeoJson(trips.slice(0, replay.index)) : allGeo;
       mapApi.showRouteLines?.(shown);
     }
@@ -129,7 +129,7 @@ export default function Demo() {
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
       </Head>
       <main className="app-shell demo-shell">
-        <ReportMap className="map-canvas" showReports={false} onMapReady={setMapApi} />
+        <ReportMap className="map-canvas" showReports={false} onMapReady={setMapApi} mapStyle="mapbox://styles/mapbox/dark-v11" />
 
         <div className={panelOpen ? 'demo-panel' : 'demo-panel demo-panel--collapsed'}>
           <div className="demo-panel__head">
@@ -155,8 +155,8 @@ export default function Demo() {
 
               <div className="demo-controls">
                 <div className="demo-seg" role="group" aria-label="Visning">
-                  <button type="button" className={view === 'turer' ? 'demo-seg__btn demo-seg__btn--on' : 'demo-seg__btn'} onClick={() => { stopReplay(); setView('turer'); }}>Turer</button>
-                  <button type="button" className={view === 'tetthet' ? 'demo-seg__btn demo-seg__btn--on' : 'demo-seg__btn'} onClick={() => { stopReplay(); setView('tetthet'); }}>Tetthet</button>
+                  <button type="button" className={view === 'tetthet' ? 'demo-seg__btn demo-seg__btn--on' : 'demo-seg__btn'} onClick={() => { stopReplay(); setView('tetthet'); }}>Varmekart</button>
+                  <button type="button" className={view === 'turer' ? 'demo-seg__btn demo-seg__btn--on' : 'demo-seg__btn'} onClick={() => { stopReplay(); setView('turer'); }}>Per klubb</button>
                 </div>
                 <div className="demo-seg" role="group" aria-label="Type">
                   <button type="button" className={mode === '' ? 'demo-seg__btn demo-seg__btn--on' : 'demo-seg__btn'} onClick={() => changeMode('')}>Alle</button>

@@ -1,0 +1,29 @@
+name: Generer demo-ruter
+
+# Manual: builds data/demo-routes.json (synthetic, road-following trips to
+# Kristiansand club venues) with Mapbox Directions and commits it to the
+# branch the workflow was started from. Import into Supabase afterwards with
+# GET /api/demo/import?competitionId=<demo-konkurranse>.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Generer ruter
+        run: node scripts/generate-demo-routes.mjs
+      - name: Commit resultat
+        run: |
+          git config user.name "demo-routes-bot"
+          git config user.email "noreply@finnsvei.no"
+          git add data/demo-routes.json
+          git commit -m "Demo-ruter generert $(date -u +%Y-%m-%dT%H:%MZ)" || echo "Ingen endring"
+          git push

@@ -550,6 +550,64 @@ function showCompetitionTrips(map, geojson) {
   }
 }
 
+// Strava-style heat lines for the public /demo page: a dark basemap with
+// glowing orange lines that turn yellow, then white, where many trips share
+// the same road. Three layers — a wide blurred glow, a coloured core and a
+// thin hot centre — over the same weighted segment data the density view uses.
+function showHeatLines(map, geojson) {
+  if (!map || !map.isStyleLoaded?.()) {
+    if (map) setTimeout(() => showHeatLines(map, geojson), 200);
+    return;
+  }
+  const data = geojson && geojson.type ? geojson : { type: 'FeatureCollection', features: [] };
+  const hasData = (data.features || []).length > 0;
+  const source = map.getSource('heat-lines');
+  if (source) {
+    source.setData(data);
+  } else {
+    map.addSource('heat-lines', { type: 'geojson', data });
+    const w = ['get', 'weight'];
+    map.addLayer({
+      id: 'heat-lines-glow',
+      type: 'line',
+      source: 'heat-lines',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': ['interpolate', ['linear'], w, 1, '#c2410c', 6, '#f97316', 20, '#fbbf24', 50, '#fde68a'],
+        'line-opacity': ['interpolate', ['linear'], w, 1, 0.22, 6, 0.4, 20, 0.55, 50, 0.7],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 10, ['interpolate', ['linear'], w, 1, 2, 10, 6, 40, 12], 14, ['interpolate', ['linear'], w, 1, 5, 10, 12, 40, 22]],
+        'line-blur': ['interpolate', ['linear'], ['zoom'], 10, 2, 14, 6],
+      },
+    });
+    map.addLayer({
+      id: 'heat-lines-core',
+      type: 'line',
+      source: 'heat-lines',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': ['interpolate', ['linear'], w, 1, '#ea580c', 4, '#f97316', 10, '#fb923c', 20, '#fcd34d', 40, '#fef3c7', 70, '#ffffff'],
+        'line-opacity': ['interpolate', ['linear'], w, 1, 0.55, 5, 0.85, 15, 1],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 10, ['interpolate', ['linear'], w, 1, 0.8, 10, 1.8, 40, 3], 14, ['interpolate', ['linear'], w, 1, 1.6, 10, 3.2, 40, 5.5]],
+      },
+    });
+    map.addLayer({
+      id: 'heat-lines-hot',
+      type: 'line',
+      source: 'heat-lines',
+      filter: ['>=', ['get', 'weight'], 12],
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': '#ffffff',
+        'line-opacity': ['interpolate', ['linear'], w, 12, 0.35, 40, 0.9],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 10, 0.6, 14, 1.6],
+      },
+    });
+  }
+  for (const id of REPORT_LAYER_IDS) {
+    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', hasData ? 'none' : 'visible');
+  }
+}
+
 // Individual route lines coloured per club (property `color`) — used by the
 // public /demo page for synthetic demo competitions only. Same "hide report
 // markers while lines are showing" behaviour as the density layer.
@@ -639,7 +697,10 @@ function fitToGeoJson(map, geojson) {
   }
 }
 
-export default function ReportMap({ selectable = false, point, onPointChange, className = 'map-canvas', showReports = true, enableNvdbLayers = false, pickMode = false, pinnedPoint = null, onMapReady, onPickCenterChange }) {
+export default function ReportMap({ selectable = false, point, onPointChange, className = 'map-canvas', showReports = true, enableNvdbLayers = false, pickMode = false, pinnedPoint = null, onMapReady, onPickCenterChange, mapStyle = null }) {
+  // Optional fixed style URL (e.g. the dark basemap on /demo). When set, the
+  // Flyfoto/Kart toggle is hidden and the aerial treatment is skipped.
+  const mapStyleRef = useRef(mapStyle);
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const markerRef = useRef(null);
@@ -1340,7 +1401,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: satelliteRef.current ? 'mapbox://styles/mapbox/satellite-streets-v12' : 'mapbox://styles/mapbox/streets-v12',
+      style: mapStyleRef.current || (satelliteRef.current ? 'mapbox://styles/mapbox/satellite-streets-v12' : 'mapbox://styles/mapbox/streets-v12'),
       center: pointRef.current ? [pointRef.current.lng, pointRef.current.lat] : DEFAULT_CENTER,
       zoom: selectable ? 13 : 11,
       attributionControl: false,
@@ -1358,7 +1419,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right');
 
     map.on('load', async () => {
-      if (satelliteRef.current) applyAerialTreatment(map);
+      if (satelliteRef.current && !mapStyleRef.current) applyAerialTreatment(map);
       if (pointRef.current) placeMarker(pointRef.current);
       onMapReadyRef.current?.({
         getCenter: () => {
@@ -1393,6 +1454,8 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         openCaseById: (id) => openCaseById(id),
         showCompetitionTrips: (geojson) => showCompetitionTrips(map, geojson),
         showRouteLines: (geojson) => showRouteLines(map, geojson),
+        showHeatLines: (geojson) => showHeatLines(map, geojson),
+        clearHeatLines: () => showHeatLines(map, { type: 'FeatureCollection', features: [] }),
         clearRouteLines: () => showRouteLines(map, { type: 'FeatureCollection', features: [] }),
         clearCompetitionTrips: () => showCompetitionTrips(map, { type: 'FeatureCollection', features: [] }),
         showLivePath: (geojson) => showLivePath(map, geojson),
@@ -1420,7 +1483,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     let initialStyleSeen = false;
     map.on('style.load', () => {
       if (!initialStyleSeen) { initialStyleSeen = true; return; }
-      if (satelliteRef.current) applyAerialTreatment(map);
+      if (satelliteRef.current && !mapStyleRef.current) applyAerialTreatment(map);
       if (pointRef.current) placeMarker(pointRef.current);
       loadReports().catch((error) => console.error(error));
       refreshNvdbLayers().catch((error) => console.error(error));
@@ -1496,7 +1559,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   return (
     <div className="map-wrap">
       <div ref={containerRef} className={className} />
-      {showReports && !pickMode && (
+      {showReports && !pickMode && !mapStyle && (
         <button
           type="button"
           className={satellite ? 'map-style-toggle map-style-toggle--sat' : 'map-style-toggle'}
