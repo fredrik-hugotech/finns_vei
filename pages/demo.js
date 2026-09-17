@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Logo from '../components/Logo';
 import Icon from '../components/Icon';
+import ReportSheet from '../components/ReportSheet';
 
 const ReportMap = dynamic(() => import('../components/ReportMap'), {
   ssr: false,
@@ -50,6 +51,13 @@ export default function Demo() {
   // (heat map / per club), NVDB accidents (fetched at zoom >= 12) and the club
   // venues are switched on one by one while presenting.
   const [layers, setLayers] = useState({ turer: false, saker: true, ulykker: false, anlegg: false });
+  // In-page walkthrough of the report flow (pick a spot → form → receipt).
+  // Nothing is sent: ReportSheet runs in demo mode.
+  const [report, setReport] = useState('none'); // none | pick | form
+  const [pickedPoint, setPickedPoint] = useState(null);
+  const startReport = () => { setPanelOpen(false); setPickedPoint(null); setReport('pick'); };
+  const confirmSpot = () => { const c = mapApi?.getCenter?.(); if (!c) return; setPickedPoint(c); setReport('form'); };
+  const endReport = () => { setReport('none'); setPickedPoint(null); setPanelOpen(true); };
   const fittedRef = useRef(false);
   const timerRef = useRef(null);
 
@@ -154,20 +162,43 @@ export default function Demo() {
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
       </Head>
       <main className="app-shell demo-shell demo-shell--labels">
-        <ReportMap className="map-canvas" showReports onMapReady={setMapApi} mapStyle="mapbox://styles/mapbox/light-v11" enableNvdbLayers initialNvdbLayers={[]} />
+        <ReportMap className="map-canvas" showReports onMapReady={setMapApi} mapStyle="mapbox://styles/mapbox/light-v11" enableNvdbLayers initialNvdbLayers={[]} pickMode={report === 'pick'} />
 
+        {report === 'pick' && (
+          <>
+            <div className="pick-hint">Dra kartet til stedet det gjelder</div>
+            <div className="pick-bar">
+              <button type="button" className="big-button big-button--primary pick-bar__confirm" onClick={confirmSpot}>Velg dette stedet</button>
+              <div className="pick-bar__row">
+                <button type="button" className="big-button big-button--secondary" onClick={endReport}>Avbryt</button>
+              </div>
+            </div>
+          </>
+        )}
+        {report === 'form' && pickedPoint && (
+          <ReportSheet
+            demo
+            point={pickedPoint}
+            onClose={endReport}
+            onChangeLocation={() => setReport('pick')}
+            onViewCase={endReport}
+          />
+        )}
+
+        {report === 'none' && (
         <div className="demo-actions">
           <Link href="/backoffice" className="demo-backoffice">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
             Backoffice
           </Link>
-          <Link href="/?meld=1" className="fab-meld demo-fab">
+          <button type="button" className="fab-meld demo-fab" onClick={startReport}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" /></svg>
             Meld fra
-          </Link>
+          </button>
         </div>
+        )}
 
-        <div className={panelOpen ? 'demo-panel' : 'demo-panel demo-panel--collapsed'}>
+        <div className={panelOpen ? 'demo-panel' : 'demo-panel demo-panel--collapsed'} hidden={report !== 'none'}>
           <div className="demo-panel__head">
             <Link href="/" className="demo-panel__brand" aria-label="Til appen"><Logo size="sm" /></Link>
             <div className="demo-panel__title">

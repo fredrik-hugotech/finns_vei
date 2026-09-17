@@ -48,7 +48,8 @@ function haptic(ms = 8) {
   if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(ms);
 }
 
-export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocation, onViewCase }) {
+// `demo`: walk through every step without sending anything (used on /demo).
+export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocation, onViewCase, demo = false }) {
   const [reporterType, setReporterType] = useState(REPORTER_TYPES.ADULT);
   const [form, setForm] = useState(INITIAL_FORM);
   const [images, setImages] = useState([]);
@@ -280,6 +281,19 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
 
     if (!form.categories.length) {
       setStatus({ type: 'error', message: 'Velg minst én ting som føles utrygt.' });
+      return;
+    }
+
+    if (demo) {
+      // Presentation mode: same screens, nothing leaves the device.
+      setIsSubmitting(true);
+      setStatus({ type: 'idle', message: 'Sender meldingen …' });
+      await new Promise((r) => setTimeout(r, 900));
+      setSubmitted(true);
+      haptic([10, 40, 14]);
+      setStatus({ type: 'success', message: '' });
+      setSubmittedId('demo');
+      setIsSubmitting(false);
       return;
     }
 
