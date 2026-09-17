@@ -166,6 +166,27 @@ async function kvSearch(q, types) {
       || list.find((e) => types.includes(e.type)) || null;
   } catch (_e) { return null; }
 }
+// OpenStreetMap (Overpass): named pitches, stadiums, sports centres and
+// sports halls inside the Kristiansand box — the most complete source for
+// club pitches, which Kartverket rarely names.
+async function osmVenues() {
+  const bbox = `${BOX.minLat},${BOX.minLng},${BOX.maxLat},${BOX.maxLng}`;
+  const q = `[out:json][timeout:60];(nwr["leisure"~"^(pitch|stadium|sports_centre|sports_hall|track)$"]["name"](${bbox});nwr["building"~"^(sports_hall|stadium)$"]["name"](${bbox});nwr["amenity"="sports_centre"]["name"](${bbox}););out center tags;`;
+  try {
+    const r = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': KV_UA }, body: `data=${encodeURIComponent(q)}` });
+    if (!r.ok) { console.log(`Overpass svarte ${r.status}`); return []; }
+    const els = (await r.json()).elements || [];
+    const out = [];
+    for (const el of els) {
+      const lat = Number(el.lat ?? el.center?.lat); const lng = Number(el.lon ?? el.center?.lon);
+      const name = el.tags?.name; if (!name || !Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+      const e = { names: [name, el.tags?.['name:no'], el.tags?.alt_name, el.tags?.official_name].filter(Boolean), type: `OSM ${el.tags?.leisure || el.tags?.building || el.tags?.amenity}${el.tags?.sport ? ' ' + el.tags.sport : ''}`, lat, lng };
+      if (inBox(e)) out.push(e);
+    }
+    return out;
+  } catch (e) { console.log('Overpass feilet:', e.message); return []; }
+}
+
 async function mbSearch(token, q) {
   const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json`
     + `?access_token=${token}&country=no&language=no&limit=5&types=poi`
@@ -175,8 +196,7 @@ async function mbSearch(token, q) {
     if (!r.ok) return null;
     const feats = (await r.json()).features || [];
     const nq = norm(q);
-    const f = feats.find((x) => norm(x.text).includes(nq) || nq.includes(norm(x.text)))
-      || feats.find((x) => /stadium|pitch|sports|arena|gym|idrett|hall/i.test(`${x.properties?.category || ''} ${x.text || ''}`));
+    const f = feats.find((x) => norm(x.text) === nq || norm(x.text).includes(nq));
     if (!f || !Array.isArray(f.center)) return null;
     const e = { names: [f.text || q], type: `Mapbox ${f.properties?.category || 'poi'}`, lng: Number(f.center[0]), lat: Number(f.center[1]) };
     return inBox(e) ? e : null;
@@ -194,44 +214,47 @@ function findIn(list, aliases) {
 const VENUE_TYPES = ['Idrettsanlegg', 'Idrettshall', 'Stadion', 'Svømmehall', 'Idrettsplass'];
 const HOOD_TYPES = ['Bydel', 'Tettbebyggelse', 'Boligfelt', 'Tettsted', 'Grend', 'Tettsteddel', 'Bebyggelse'];
 const VENUE_ALIASES = {
-  'Karuss stadion': ['Karuss stadion', 'Karuss idrettspark', 'Karuss kunstgress', 'Karuss'],
-  'Flekkerøy stadion': ['Flekkerøy stadion', 'Flekkerøy idrettspark', 'Fløy stadion', 'Flekkerøy'],
-  'Randesund idrettspark': ['Randesund idrettspark', 'Dvergsnes idrettspark', 'Dvergsnes kunstgress', 'Randesund stadion', 'Dvergsnes'],
+  'Karuss stadion': ['Karuss stadion', 'Karuss idrettspark', 'Karuss kunstgress', 'Karuss kunstgressbane', 'Karuss'],
+  'Flekkerøy stadion': ['Flekkerøy stadion', 'Flekkerøy idrettspark', 'Fløy stadion', 'Fløy kunstgress', 'Flekkerøy kunstgress', 'Flekkerøy'],
+  'Randesund idrettspark': ['Randesund idrettspark', 'Randesund stadion', 'Randesund kunstgress', 'Dvergsnes idrettspark', 'Dvergsnes kunstgress', 'Sukkevann', 'Dvergsnes'],
   'Randesund idrettshall': ['Randesundhallen', 'Randesund idrettshall', 'Dvergsneshallen', 'Strømmehallen', 'Sømhallen'],
   'Hånes idrettsplass': ['Hånes idrettsplass', 'Hånes stadion', 'Hånes kunstgress', 'Hånes'],
-  Håneshallen: ['Håneshallen', 'Hånes idrettshall', 'Hånes'],
+  Håneshallen: ['Håneshallen', 'Hånes idrettshall'],
   'Vigør stadion': ['Vigør stadion', 'Kongsgård idrettspark', 'Vigørbanen', 'Kongsgård'],
   'Kristiansand stadion': ['Kristiansand stadion', 'Kristiansand Stadion'],
   Gimlehallen: ['Gimlehallen', 'Gimle idrettshall'],
   'Gimletroll idrettspark': ['Gimletroll idrettspark', 'Gimlekollen idrettspark', 'Gimletroll', 'Gimlekollen kunstgress', 'Gimlekollen'],
   'Justvik idrettsplass': ['Justvik idrettsplass', 'Justvik stadion', 'Justvik kunstgress', 'Justvik'],
-  Justvikhallen: ['Justvikhallen', 'Justvik idrettshall', 'Justvik'],
+  Justvikhallen: ['Justvikhallen', 'Justvik idrettshall'],
   'Torridal idrettsplass': ['Torridal idrettsplass', 'Mosby idrettsplass', 'Torridal stadion', 'Mosby'],
-  Torridalhallen: ['Torridalhallen', 'Torridal idrettshall', 'Mosbyhallen', 'Mosby'],
+  Torridalhallen: ['Torridalhallen', 'Torridalshallen', 'Torridal idrettshall', 'Mosbyhallen'],
   'Tveit idrettsplass': ['Tveit idrettsplass', 'Tveit stadion', 'Ryen idrettsplass', 'Tveit'],
-  Tveithallen: ['Tveithallen', 'Tveit idrettshall', 'Tveit'],
+  Tveithallen: ['Tveithallen', 'Tveit idrettshall'],
   'Hellemyr idrettsplass': ['Hellemyr idrettsplass', 'Hellemyr kunstgress', 'Hellemyr stadion', 'Hellemyr'],
   'Søgne idrettspark': ['Søgne idrettspark', 'Søgne stadion', 'Tangvall idrettspark', 'Tangvall stadion', 'Tangvall'],
-  Søgnehallen: ['Søgnehallen', 'Søgne idrettshall', 'Tangvallhallen', 'Søgne'],
+  Søgnehallen: ['Søgnehallen', 'Søgne idrettshall', 'Tangvallhallen', 'Tangvall idrettshall'],
   'Greipstad idrettspark': ['Greipstad idrettspark', 'Nodeland idrettspark', 'Greipstad stadion', 'Nodeland'],
-  Songdalshallen: ['Songdalshallen', 'Songdalen idrettshall', 'Nodelandshallen', 'Nodeland'],
+  Songdalshallen: ['Songdalshallen', 'Songdalen idrettshall', 'Nodelandshallen', 'Greipstadhallen'],
   'Idda Arena': ['Idda Arena', 'Idda'],
   Aquarama: ['Aquarama', 'Aquarama Kristiansand'],
   Vågsbygdhallen: ['Vågsbygdhallen', 'Vågsbygd idrettshall'],
-  Flekkerøyhallen: ['Flekkerøyhallen', 'Flekkerøy idrettshall', 'Flekkerøy'],
+  Flekkerøyhallen: ['Flekkerøyhallen', 'Flekkerøy idrettshall'],
 };
 
 async function resolvePlaces(token) {
   const venueList = (await Promise.all(VENUE_TYPES.map(kvList))).flat();
   const hoodList = (await Promise.all(HOOD_TYPES.map(kvList))).flat();
   const schoolList = await kvList('Skole');
-  console.log(`Kartverket: ${venueList.length} anlegg/haller, ${hoodList.length} bydeler/boligfelt, ${schoolList.length} skoler i kommune ${KOMMUNE}`);
+  const osmList = await osmVenues();
+  console.log(`Kartverket: ${venueList.length} anlegg/haller, ${hoodList.length} bydeler/boligfelt, ${schoolList.length} skoler i kommune ${KOMMUNE}; OSM: ${osmList.length} navngitte baner/haller i boksen`);
+  if (osmList.length) console.log('  OSM-navn: ' + osmList.map((e) => e.names[0]).sort().join(' | '));
   const venues = [];
   for (const [name, fallback] of Object.entries(VENUES)) {
     const aliases = VENUE_ALIASES[name] || [name];
-    let hit = findIn(venueList, aliases);
-    let how = 'liste';
-    if (!hit) { hit = await kvSearch(aliases[0], VENUE_TYPES); how = 'søk'; }
+    let hit = findIn(osmList, aliases);
+    let how = 'OSM';
+    if (!hit) { hit = findIn(venueList, aliases); how = 'Kartverket liste'; }
+    if (!hit) { hit = await kvSearch(aliases[0], VENUE_TYPES); how = 'Kartverket søk'; }
     if (!hit) {
       for (const a of aliases) { hit = await mbSearch(token, a); if (hit) { how = 'Mapbox POI'; break; } }
     }
