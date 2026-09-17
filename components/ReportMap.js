@@ -1492,7 +1492,15 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
             if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none');
           }
         },
-        setAccidentsVisible: (visible) => setActiveNvdbLayers(visible ? ['accidents'] : []),
+        setAccidentsVisible: (visible) => {
+          setActiveNvdbLayers(visible ? ['accidents'] : []);
+          // NVDB accidents are only fetched from zoom 12 (bbox size), so
+          // switching the layer on from a city-wide view zooms in to where
+          // they can actually appear instead of showing an empty layer.
+          if (visible && map.getZoom() < MIN_ACCIDENT_FETCH_ZOOM) {
+            map.easeTo({ zoom: MIN_ACCIDENT_FETCH_ZOOM + 0.2, duration: 700 });
+          }
+        },
         showVenues: (venues) => showVenueMarkers(map, venueMarkersRef, venues),
         clearRouteLines: () => showRouteLines(map, { type: 'FeatureCollection', features: [] }),
         clearCompetitionTrips: () => showCompetitionTrips(map, { type: 'FeatureCollection', features: [] }),

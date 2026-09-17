@@ -4059,7 +4059,7 @@ select.tkt-prop__ctrl { padding-right: 1.7rem; background-image: url("data:image
   white-space: nowrap;
 }
 .demo-shell--labels .demo-venue__label { display: inline; }
-.demo-toggles { display: grid; gap: 0.3rem; grid-template-columns: 1fr 1fr 1fr; }
+.demo-toggles { display: grid; gap: 0.3rem; grid-template-columns: 1fr 1fr; }
 .demo-toggle {
   align-items: center;
   background: var(--color-surface-muted);

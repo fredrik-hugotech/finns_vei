@@ -46,9 +46,10 @@ export default function Demo() {
   const [mode, setMode] = useState(''); // '' | sykkel | gange
   const [replay, setReplay] = useState(null); // { index, running } | null
   const [panelOpen, setPanelOpen] = useState(true);
-  // Live context layers on top of the demo trips: real reported cases, NVDB
-  // accidents (fetched at zoom >= 12) and the club venues.
-  const [layers, setLayers] = useState({ saker: true, ulykker: true, anlegg: true });
+  // Layers. The demo starts with only real reported cases on the map; trips
+  // (heat map / per club), NVDB accidents (fetched at zoom >= 12) and the club
+  // venues are switched on one by one while presenting.
+  const [layers, setLayers] = useState({ turer: false, saker: true, ulykker: false, anlegg: false });
   const fittedRef = useRef(false);
   const timerRef = useRef(null);
 
@@ -80,6 +81,11 @@ export default function Demo() {
   useEffect(() => {
     if (!mapApi || !data) return;
     const opts = { keepReports: true };
+    if (!layers.turer) {
+      mapApi.clearRouteLines?.(opts);
+      mapApi.clearHeatLines?.(opts);
+      return;
+    }
     if (view === 'tetthet') {
       mapApi.clearRouteLines?.(opts);
       mapApi.showHeatLines?.(data.geojson, opts);
@@ -92,7 +98,7 @@ export default function Demo() {
       fittedRef.current = true;
       mapApi.fitCompetition?.(allGeo);
     }
-  }, [mapApi, data, view, replay, trips, allGeo]);
+  }, [mapApi, data, view, replay, trips, allGeo, layers.turer]);
 
   // Context layers follow the toggles.
   useEffect(() => {
@@ -101,12 +107,17 @@ export default function Demo() {
     mapApi.setAccidentsVisible?.(layers.ulykker);
     mapApi.showVenues?.(layers.anlegg ? (data?.venues || []) : []);
   }, [mapApi, data, layers]);
-  const toggleLayer = (key) => setLayers((l) => ({ ...l, [key]: !l[key] }));
+  const toggleLayer = (key) => {
+    if (key === 'turer' && layers.turer) stopReplayRef.current?.();
+    setLayers((l) => ({ ...l, [key]: !l[key] }));
+  };
+  const stopReplayRef = useRef(null);
 
   // Replay: add trips in logged order over ~REPLAY_MS.
   const startReplay = () => {
     if (!trips.length) return;
     clearInterval(timerRef.current);
+    setLayers((l) => ({ ...l, turer: true }));
     setView('turer');
     const stepMs = Math.max(30, Math.floor(REPLAY_MS / trips.length));
     setReplay({ index: 0, running: true });
@@ -120,6 +131,7 @@ export default function Demo() {
     }, stepMs);
   };
   const stopReplay = () => { clearInterval(timerRef.current); setReplay(null); };
+  stopReplayRef.current = stopReplay;
   useEffect(() => () => clearInterval(timerRef.current), []);
 
   const changeMode = (next) => {
@@ -142,7 +154,7 @@ export default function Demo() {
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
       </Head>
       <main className="app-shell demo-shell demo-shell--labels">
-        <ReportMap className="map-canvas" showReports onMapReady={setMapApi} mapStyle="mapbox://styles/mapbox/light-v11" enableNvdbLayers initialNvdbLayers={['accidents']} />
+        <ReportMap className="map-canvas" showReports onMapReady={setMapApi} mapStyle="mapbox://styles/mapbox/light-v11" enableNvdbLayers initialNvdbLayers={[]} />
 
         <div className="demo-actions">
           <Link href="/backoffice" className="demo-backoffice">
@@ -171,6 +183,14 @@ export default function Demo() {
 
           {data && panelOpen && (
             <>
+              <div className="demo-toggles" role="group" aria-label="Lag">
+                <button type="button" className={layers.saker ? 'demo-toggle demo-toggle--on' : 'demo-toggle'} onClick={() => toggleLayer('saker')} aria-pressed={layers.saker}><i className="demo-toggle__dot" style={{ background: '#0b5d4d' }} aria-hidden="true" />Meldte saker</button>
+                <button type="button" className={layers.ulykker ? 'demo-toggle demo-toggle--on' : 'demo-toggle'} onClick={() => toggleLayer('ulykker')} aria-pressed={layers.ulykker}><i className="demo-toggle__dot" style={{ background: '#6D233F' }} aria-hidden="true" />Ulykker</button>
+                <button type="button" className={layers.turer ? 'demo-toggle demo-toggle--on' : 'demo-toggle'} onClick={() => toggleLayer('turer')} aria-pressed={layers.turer}><i className="demo-toggle__dot" style={{ background: '#ef4444' }} aria-hidden="true" />Sykkelturer</button>
+                <button type="button" className={layers.anlegg ? 'demo-toggle demo-toggle--on' : 'demo-toggle'} onClick={() => toggleLayer('anlegg')} aria-pressed={layers.anlegg}><i className="demo-toggle__dot" style={{ background: '#1d4ed8' }} aria-hidden="true" />Anlegg</button>
+              </div>
+
+              {layers.turer && (<>
               <div className="comp-totals demo-totals">
                 <div><strong>{replay ? shownTrips.length : totals.trips}</strong><span>turer</span></div>
                 <div><strong>{fmtKm(replay ? shownKm : totals.distanceM)}</strong><span>km</span></div>
@@ -187,12 +207,6 @@ export default function Demo() {
                   <button type="button" className={mode === 'sykkel' ? 'demo-seg__btn demo-seg__btn--on' : 'demo-seg__btn'} onClick={() => changeMode('sykkel')}>Sykkel</button>
                   <button type="button" className={mode === 'gange' ? 'demo-seg__btn demo-seg__btn--on' : 'demo-seg__btn'} onClick={() => changeMode('gange')}>Gange</button>
                 </div>
-              </div>
-
-              <div className="demo-toggles" role="group" aria-label="Lag">
-                <button type="button" className={layers.saker ? 'demo-toggle demo-toggle--on' : 'demo-toggle'} onClick={() => toggleLayer('saker')} aria-pressed={layers.saker}><i className="demo-toggle__dot" style={{ background: '#0b5d4d' }} aria-hidden="true" />Meldte saker</button>
-                <button type="button" className={layers.ulykker ? 'demo-toggle demo-toggle--on' : 'demo-toggle'} onClick={() => toggleLayer('ulykker')} aria-pressed={layers.ulykker}><i className="demo-toggle__dot" style={{ background: '#6D233F' }} aria-hidden="true" />Ulykker</button>
-                <button type="button" className={layers.anlegg ? 'demo-toggle demo-toggle--on' : 'demo-toggle'} onClick={() => toggleLayer('anlegg')} aria-pressed={layers.anlegg}><i className="demo-toggle__dot" style={{ background: '#1d4ed8' }} aria-hidden="true" />Anlegg</button>
               </div>
 
               <button type="button" className={replay?.running ? 'big-button big-button--secondary demo-play' : 'big-button big-button--primary demo-play'} onClick={replay?.running ? stopReplay : startReplay}>
@@ -229,6 +243,8 @@ export default function Demo() {
                   </li>
                 ))}
               </ol>
+
+              </>)}
 
               <p className="demo-note">Syntetiske turer for demonstrasjon – ingen ekte barn. Ekte ruter vises aldri enkeltvis, kun som tetthet for kommunen, og de første 50 m fra hjemmet fjernes før noe lagres.</p>
             </>
