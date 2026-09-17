@@ -12,7 +12,7 @@
   "lng": 7.95698
  },
  {
-  "name": "Flekkerøy stadion",
+  "name": "Modena stadion",
   "type": "bane",
   "lat": 58.0896,
   "lng": 7.99774
@@ -24,22 +24,22 @@
   "lng": 7.99955
  },
  {
-  "name": "Randesund idrettspark",
+  "name": "Sukkevann kunstgressbane",
   "type": "bane",
-  "lat": 58.1312,
-  "lng": 8.07027
+  "lat": 58.15156,
+  "lng": 8.08777
  },
  {
-  "name": "Randesund idrettshall",
+  "name": "Sukkevannshallen",
   "type": "hall",
-  "lat": 58.158,
-  "lng": 8.0785
+  "lat": 58.15251,
+  "lng": 8.0891
  },
  {
-  "name": "Hånes idrettsplass",
+  "name": "Havlimyra kunstgressbane",
   "type": "bane",
-  "lat": 58.17623,
-  "lng": 8.08739
+  "lat": 58.19127,
+  "lng": 8.03242
  },
  {
   "name": "Håneshallen",
@@ -48,7 +48,7 @@
   "lng": 8.09328
  },
  {
-  "name": "Vigør stadion",
+  "name": "Kongsgårdjordene kunstgressbane",
   "type": "bane",
   "lat": 58.16111,
   "lng": 8.02416
@@ -66,40 +66,40 @@
   "lng": 8.00739
  },
  {
-  "name": "Gimletroll idrettspark",
+  "name": "Presteheia kunstgressbane",
   "type": "bane",
-  "lat": 58.166,
-  "lng": 8.034
+  "lat": 58.16808,
+  "lng": 8.01297
  },
  {
-  "name": "Justvik idrettsplass",
+  "name": "Justvik Fotballbane",
   "type": "bane",
   "lat": 58.20094,
   "lng": 8.03191
  },
  {
-  "name": "Justvikhallen",
+  "name": "Justvikbanen",
   "type": "hall",
   "lat": 58.20092,
   "lng": 8.03191
  },
  {
-  "name": "Torridal idrettsplass",
+  "name": "Mosby kunstgressbane",
   "type": "bane",
   "lat": 58.22077,
   "lng": 7.92274
  },
  {
-  "name": "Torridalhallen",
+  "name": "Torridalshallen",
   "type": "hall",
   "lat": 58.20162,
   "lng": 7.92458
  },
  {
-  "name": "Tveit idrettsplass",
+  "name": "Kjevik stadion",
   "type": "bane",
-  "lat": 58.20801,
-  "lng": 8.10894
+  "lat": 58.20874,
+  "lng": 8.08573
  },
  {
   "name": "Tveithallen",
@@ -108,31 +108,31 @@
   "lng": 8.10894
  },
  {
-  "name": "Hellemyr idrettsplass",
+  "name": "Hellemyr kunstgressbane",
   "type": "bane",
   "lat": 58.14724,
   "lng": 7.9331
  },
  {
-  "name": "Søgne idrettspark",
+  "name": "Søgne stadion kunstgressbane",
   "type": "bane",
   "lat": 58.09714,
   "lng": 7.80861
  },
  {
-  "name": "Søgnehallen",
+  "name": "Tangvallhallen",
   "type": "hall",
   "lat": 58.09722,
   "lng": 7.81003
  },
  {
-  "name": "Greipstad idrettspark",
+  "name": "Hortemo stadion",
   "type": "bane",
-  "lat": 58.1559,
-  "lng": 7.83026
+  "lat": 58.17472,
+  "lng": 7.82889
  },
  {
-  "name": "Songdalshallen",
+  "name": "Nodelandshallen",
   "type": "hall",
   "lat": 58.1559,
   "lng": 7.83026
