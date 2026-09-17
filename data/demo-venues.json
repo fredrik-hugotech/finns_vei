@@ -2,20 +2,20 @@
  {
   "name": "Karuss stadion",
   "type": "bane",
-  "lat": 58.1282,
-  "lng": 7.9575
+  "lat": 58.13027,
+  "lng": 7.9452
  },
  {
   "name": "Vågsbygdhallen",
   "type": "hall",
-  "lat": 58.12534,
-  "lng": 7.95674
+  "lat": 58.12536,
+  "lng": 7.95698
  },
  {
   "name": "Flekkerøy stadion",
   "type": "bane",
-  "lat": 58.073,
-  "lng": 7.999
+  "lat": 58.0896,
+  "lng": 7.99774
  },
  {
   "name": "Flekkerøyhallen",
@@ -26,8 +26,8 @@
  {
   "name": "Randesund idrettspark",
   "type": "bane",
-  "lat": 58.1616,
-  "lng": 8.0868
+  "lat": 58.1312,
+  "lng": 8.07027
  },
  {
   "name": "Randesund idrettshall",
@@ -38,20 +38,20 @@
  {
   "name": "Hånes idrettsplass",
   "type": "bane",
-  "lat": 58.1745,
-  "lng": 8.0765
+  "lat": 58.17623,
+  "lng": 8.08739
  },
  {
   "name": "Håneshallen",
   "type": "hall",
   "lat": 58.1757,
-  "lng": 8.09327
+  "lng": 8.09328
  },
  {
   "name": "Vigør stadion",
   "type": "bane",
-  "lat": 58.154,
-  "lng": 8.0255
+  "lat": 58.16111,
+  "lng": 8.02416
  },
  {
   "name": "Kristiansand stadion",
@@ -62,8 +62,8 @@
  {
   "name": "Gimlehallen",
   "type": "hall",
-  "lat": 58.16107,
-  "lng": 8.00903
+  "lat": 58.16034,
+  "lng": 8.00739
  },
  {
   "name": "Gimletroll idrettspark",
@@ -74,8 +74,8 @@
  {
   "name": "Justvik idrettsplass",
   "type": "bane",
-  "lat": 58.1895,
-  "lng": 8.0505
+  "lat": 58.20094,
+  "lng": 8.03191
  },
  {
   "name": "Justvikhallen",
@@ -86,67 +86,67 @@
  {
   "name": "Torridal idrettsplass",
   "type": "bane",
-  "lat": 58.2265,
-  "lng": 7.9725
+  "lat": 58.22077,
+  "lng": 7.92274
  },
  {
   "name": "Torridalhallen",
   "type": "hall",
-  "lat": 58.2015,
-  "lng": 7.92518
+  "lat": 58.20162,
+  "lng": 7.92458
  },
  {
   "name": "Tveit idrettsplass",
   "type": "bane",
-  "lat": 58.211,
-  "lng": 8.144
+  "lat": 58.20801,
+  "lng": 8.10894
  },
  {
   "name": "Tveithallen",
   "type": "hall",
-  "lat": 58.20807,
-  "lng": 8.10957
+  "lat": 58.20801,
+  "lng": 8.10894
  },
  {
   "name": "Hellemyr idrettsplass",
   "type": "bane",
-  "lat": 58.1585,
-  "lng": 7.9525
+  "lat": 58.14724,
+  "lng": 7.9331
  },
  {
   "name": "Søgne idrettspark",
   "type": "bane",
-  "lat": 58.0885,
-  "lng": 7.7965
+  "lat": 58.09714,
+  "lng": 7.80861
  },
  {
   "name": "Søgnehallen",
   "type": "hall",
-  "lat": 58.14673,
-  "lng": 8.00656
+  "lat": 58.09722,
+  "lng": 7.81003
  },
  {
   "name": "Greipstad idrettspark",
   "type": "bane",
-  "lat": 58.167,
-  "lng": 7.832
+  "lat": 58.1559,
+  "lng": 7.83026
  },
  {
   "name": "Songdalshallen",
   "type": "hall",
-  "lat": 58.2015,
-  "lng": 7.92518
+  "lat": 58.1559,
+  "lng": 7.83026
  },
  {
   "name": "Idda Arena",
   "type": "hall",
-  "lat": 58.14658,
-  "lng": 7.97273
+  "lat": 58.14656,
+  "lng": 7.97262
  },
  {
   "name": "Aquarama",
   "type": "hall",
-  "lat": 58.14673,
-  "lng": 8.00656
+  "lat": 58.14729,
+  "lng": 8.00572
  }
 ]
