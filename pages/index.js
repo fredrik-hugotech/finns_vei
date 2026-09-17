@@ -74,6 +74,13 @@ export default function Home() {
 
   const handleMapReady = useCallback((api) => {
     mapApiRef.current = api;
+    // /?meld=1 (e.g. the "Meld fra" button on /demo) jumps straight into the
+    // pick-a-spot step once the map is up.
+    try {
+      if (new URLSearchParams(window.location.search).get('meld') === '1') {
+        setTimeout(() => setMode('pick'), 250);
+      }
+    } catch (_e) { /* ignore */ }
   }, []);
 
   useEffect(() => {

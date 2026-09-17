@@ -144,6 +144,17 @@ export default function Demo() {
       <main className="app-shell demo-shell demo-shell--labels">
         <ReportMap className="map-canvas" showReports onMapReady={setMapApi} mapStyle="mapbox://styles/mapbox/light-v11" enableNvdbLayers initialNvdbLayers={['accidents']} />
 
+        <div className="demo-actions">
+          <Link href="/backoffice" className="demo-backoffice">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
+            Backoffice
+          </Link>
+          <Link href="/?meld=1" className="fab-meld demo-fab">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" /></svg>
+            Meld fra
+          </Link>
+        </div>
+
         <div className={panelOpen ? 'demo-panel' : 'demo-panel demo-panel--collapsed'}>
           <div className="demo-panel__head">
             <Link href="/" className="demo-panel__brand" aria-label="Til appen"><Logo size="sm" /></Link>

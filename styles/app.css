@@ -4076,3 +4076,38 @@ select.tkt-prop__ctrl { padding-right: 1.7rem; background-image: url("data:image
 }
 .demo-toggle--on { background: var(--color-primary-tint); border-color: var(--color-primary); color: var(--color-primary); }
 .demo-toggle__dot { border-radius: 50%; display: inline-block; height: 8px; width: 8px; }
+
+/* /demo: report + backoffice shortcuts, bottom-right above the attribution */
+.demo-actions {
+  align-items: flex-end;
+  bottom: calc(max(0.9rem, env(safe-area-inset-bottom)) + 1.9rem);
+  display: grid;
+  gap: 0.5rem;
+  justify-items: end;
+  position: absolute;
+  right: max(0.9rem, env(safe-area-inset-right));
+  z-index: 24;
+}
+.demo-actions .demo-fab {
+  animation: none;
+  bottom: auto;
+  left: auto;
+  position: static;
+  text-decoration: none;
+  transform: none;
+}
+.demo-backoffice {
+  align-items: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-control);
+  color: var(--color-primary);
+  display: inline-flex;
+  font-size: 0.8rem;
+  font-weight: 700;
+  gap: 0.35rem;
+  min-height: 34px;
+  padding: 0.3rem 0.75rem;
+  text-decoration: none;
+}
