@@ -216,24 +216,24 @@ const HOOD_TYPES = ['Bydel', 'Tettbebyggelse', 'Boligfelt', 'Tettsted', 'Grend',
 const VENUE_ALIASES = {
   'Karuss stadion': ['Karuss stadion', 'Karuss idrettspark', 'Karuss kunstgress', 'Karuss kunstgressbane', 'Karuss'],
   'Flekkerøy stadion': ['Flekkerøy stadion', 'Flekkerøy idrettspark', 'Fløy stadion', 'Fløy kunstgress', 'Flekkerøy kunstgress', 'Flekkerøy'],
-  'Randesund idrettspark': ['Randesund idrettspark', 'Randesund stadion', 'Randesund kunstgress', 'Dvergsnes idrettspark', 'Dvergsnes kunstgress', 'Sukkevann', 'Dvergsnes'],
-  'Randesund idrettshall': ['Randesundhallen', 'Randesund idrettshall', 'Dvergsneshallen', 'Strømmehallen', 'Sømhallen'],
-  'Hånes idrettsplass': ['Hånes idrettsplass', 'Hånes stadion', 'Hånes kunstgress', 'Hånes'],
+  'Randesund idrettspark': ['Sukkevann kunstgressbane', 'Sukkevann idrettspark', 'Randesund idrettspark', 'Dvergsnes kunstgressbane'],
+  'Randesund idrettshall': ['Sukkevannshallen', 'Randesundhallen', 'Randesund idrettshall'],
+  'Hånes idrettsplass': ['Hånes idrettsplass', 'Hånes kunstgressbane', 'Havlimyra kunstgressbane', 'Hånes Skatepark'],
   Håneshallen: ['Håneshallen', 'Hånes idrettshall'],
   'Vigør stadion': ['Vigør stadion', 'Kongsgård idrettspark', 'Vigørbanen', 'Kongsgård'],
   'Kristiansand stadion': ['Kristiansand stadion', 'Kristiansand Stadion'],
   Gimlehallen: ['Gimlehallen', 'Gimle idrettshall'],
-  'Gimletroll idrettspark': ['Gimletroll idrettspark', 'Gimlekollen idrettspark', 'Gimletroll', 'Gimlekollen kunstgress', 'Gimlekollen'],
+  'Gimletroll idrettspark': ['Presteheia kunstgressbane', 'Gimletroll idrettspark', 'Kringsjå kunstgressbane', 'Gimlekollen kunstgress'],
   'Justvik idrettsplass': ['Justvik idrettsplass', 'Justvik stadion', 'Justvik kunstgress', 'Justvik'],
   Justvikhallen: ['Justvikhallen', 'Justvik idrettshall'],
   'Torridal idrettsplass': ['Torridal idrettsplass', 'Mosby idrettsplass', 'Torridal stadion', 'Mosby'],
   Torridalhallen: ['Torridalhallen', 'Torridalshallen', 'Torridal idrettshall', 'Mosbyhallen'],
-  'Tveit idrettsplass': ['Tveit idrettsplass', 'Tveit stadion', 'Ryen idrettsplass', 'Tveit'],
+  'Tveit idrettsplass': ['Kjevik stadion', 'Tveit idrettsplass', 'Tveit stadion', 'Kjevik grusbane'],
   Tveithallen: ['Tveithallen', 'Tveit idrettshall'],
   'Hellemyr idrettsplass': ['Hellemyr idrettsplass', 'Hellemyr kunstgress', 'Hellemyr stadion', 'Hellemyr'],
   'Søgne idrettspark': ['Søgne idrettspark', 'Søgne stadion', 'Tangvall idrettspark', 'Tangvall stadion', 'Tangvall'],
   Søgnehallen: ['Søgnehallen', 'Søgne idrettshall', 'Tangvallhallen', 'Tangvall idrettshall'],
-  'Greipstad idrettspark': ['Greipstad idrettspark', 'Nodeland idrettspark', 'Greipstad stadion', 'Nodeland'],
+  'Greipstad idrettspark': ['Hortemo stadion', 'Hortemo kunstgressbane', 'Greipstad idrettspark', 'Nodeland idrettspark'],
   Songdalshallen: ['Songdalshallen', 'Songdalen idrettshall', 'Nodelandshallen', 'Greipstadhallen'],
   'Idda Arena': ['Idda Arena', 'Idda'],
   Aquarama: ['Aquarama', 'Aquarama Kristiansand'],
@@ -261,7 +261,8 @@ async function resolvePlaces(token) {
     if (!hit) { hit = findIn(schoolList, aliases.map((a) => a.replace(/ (stadion|idrettspark|idrettsplass|idrettshall|hallen)$/i, '') + ' skole')); how = 'skole ved siden av'; }
     if (!hit) { hit = { lat: fallback[0], lng: fallback[1], names: [name], type: '?' }; how = 'FALLBACK (håndskrevet)'; }
     const type = /hall|arena|aquarama/i.test(name) ? 'hall' : 'bane';
-    venues.push({ name, type, lat: Number(hit.lat.toFixed(5)), lng: Number(hit.lng.toFixed(5)) });
+    const shown = hit.names?.[0] && how !== 'FALLBACK (håndskrevet)' && !/skatepark/i.test(hit.names[0]) ? hit.names[0] : name;
+    venues.push({ name: shown, type, lat: Number(hit.lat.toFixed(5)), lng: Number(hit.lng.toFixed(5)) });
     VENUES[name] = [hit.lat, hit.lng];
     console.log(`  anlegg ${name.padEnd(24)} -> ${hit.lat.toFixed(5)}, ${hit.lng.toFixed(5)}  [${how}: ${hit.names[0]} / ${hit.type}]`);
   }
