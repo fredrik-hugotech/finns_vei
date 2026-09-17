@@ -218,7 +218,7 @@ const VENUE_ALIASES = {
   'Flekkerøy stadion': ['Flekkerøy stadion', 'Flekkerøy idrettspark', 'Fløy stadion', 'Fløy kunstgress', 'Flekkerøy kunstgress', 'Flekkerøy'],
   'Randesund idrettspark': ['Sukkevann kunstgressbane', 'Sukkevann idrettspark', 'Randesund idrettspark', 'Dvergsnes kunstgressbane'],
   'Randesund idrettshall': ['Sukkevannshallen', 'Randesundhallen', 'Randesund idrettshall'],
-  'Hånes idrettsplass': ['Hånes idrettsplass', 'Hånes kunstgressbane', 'Havlimyra kunstgressbane', 'Hånes Skatepark'],
+  'Hånes idrettsplass': ['Hånes idrettsplass', 'Hånes kunstgressbane', 'Hånes Skatepark'],
   Håneshallen: ['Håneshallen', 'Hånes idrettshall'],
   'Vigør stadion': ['Vigør stadion', 'Kongsgård idrettspark', 'Vigørbanen', 'Kongsgård'],
   'Kristiansand stadion': ['Kristiansand stadion', 'Kristiansand Stadion'],
