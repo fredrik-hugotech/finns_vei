@@ -550,6 +550,45 @@ function showCompetitionTrips(map, geojson) {
   }
 }
 
+// Individual route lines coloured per club (property `color`) — used by the
+// public /demo page for synthetic demo competitions only. Same "hide report
+// markers while lines are showing" behaviour as the density layer.
+function showRouteLines(map, geojson) {
+  if (!map || !map.isStyleLoaded?.()) {
+    if (map) setTimeout(() => showRouteLines(map, geojson), 200);
+    return;
+  }
+  const data = geojson && geojson.type ? geojson : { type: 'FeatureCollection', features: [] };
+  const hasData = (data.features || []).length > 0;
+  const source = map.getSource('route-lines');
+  if (source) {
+    source.setData(data);
+  } else {
+    map.addSource('route-lines', { type: 'geojson', data });
+    map.addLayer({
+      id: 'route-lines-casing',
+      type: 'line',
+      source: 'route-lines',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#ffffff', 'line-opacity': 0.5, 'line-width': 5 },
+    });
+    map.addLayer({
+      id: 'route-lines-line',
+      type: 'line',
+      source: 'route-lines',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': ['coalesce', ['get', 'color'], '#0b5d4d'],
+        'line-opacity': 0.82,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 11, 1.6, 14, 2.8, 16, 4],
+      },
+    });
+  }
+  for (const id of REPORT_LAYER_IDS) {
+    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', hasData ? 'none' : 'visible');
+  }
+}
+
 // Local-only live route while tracking: shown on the rider's own device so it// feels like Strava. This is never uploaded — only clipped, snapped cells are.
 function showLivePath(map, geojson) {
   if (!map || !map.isStyleLoaded?.()) {
@@ -1353,6 +1392,8 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         },
         openCaseById: (id) => openCaseById(id),
         showCompetitionTrips: (geojson) => showCompetitionTrips(map, geojson),
+        showRouteLines: (geojson) => showRouteLines(map, geojson),
+        clearRouteLines: () => showRouteLines(map, { type: 'FeatureCollection', features: [] }),
         clearCompetitionTrips: () => showCompetitionTrips(map, { type: 'FeatureCollection', features: [] }),
         showLivePath: (geojson) => showLivePath(map, geojson),
         clearLivePath: () => showLivePath(map, { type: 'FeatureCollection', features: [] }),
