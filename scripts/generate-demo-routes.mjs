@@ -143,16 +143,35 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // there so the workflow needs no secrets at all.
 async function findToken() {
   if (process.env.MAPBOX_TOKEN) return process.env.MAPBOX_TOKEN;
-  const html = await (await fetch(SITE)).text();
-  const srcs = [...html.matchAll(/src="([^"]+\/_next\/static\/[^"]+\.js)"/g)].map((m) => m[1]);
   const re = /pk\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}/;
-  for (const src of srcs) {
-    const url = src.startsWith('http') ? src : `${SITE}${src}`;
-    const js = await (await fetch(url)).text();
-    const m = js.match(re);
-    if (m) return m[0];
+  const abs = (u) => (u.startsWith('http') ? u : `${SITE}${u.startsWith('/') ? '' : '/'}${u}`);
+  const seen = new Set();
+  const queue = [];
+  const html = await (await fetch(SITE)).text();
+  for (const m of html.matchAll(/src="([^"]+\.js[^"]*)"/g)) queue.push(m[1]);
+  // Turbopack loads page chunks through the build manifest rather than
+  // <script src> tags — pull every chunk path it references too.
+  const manifest = queue.find((u) => u.includes('_buildManifest'));
+  if (manifest) {
+    const txt = await (await fetch(abs(manifest))).text();
+    for (const m of txt.matchAll(/"(static\/[^"]+\.js)"/g)) queue.push(`/_next/${m[1]}`);
   }
-  throw new Error('Fant ikke Mapbox-token i bundle — sett MAPBOX_TOKEN.');
+  for (const src of queue) {
+    const url = abs(src);
+    if (seen.has(url)) continue;
+    seen.add(url);
+    try {
+      const js = await (await fetch(url)).text();
+      const m = js.match(re);
+      if (m) return m[0];
+      // Chunks can import further chunks; follow one level of those too.
+      for (const c of js.matchAll(/"(static\/immutable\/chunks\/[^"]+\.js)"/g)) {
+        const cu = abs(`/_next/${c[1]}`);
+        if (!seen.has(cu)) queue.push(cu);
+      }
+    } catch (_e) { /* skip */ }
+  }
+  throw new Error(`Fant ikke Mapbox-token i ${seen.size} bundle-filer — sett MAPBOX_TOKEN.`);
 }
 
 async function route(token, profile, from, to) {

@@ -6,6 +6,11 @@ name: Generer demo-ruter
 # GET /api/demo/import?competitionId=<demo-konkurranse>.
 on:
   workflow_dispatch:
+    inputs:
+      mapbox_token:
+        description: 'Valgfritt: Mapbox public token (pk.…) hvis den ikke finnes i bundle'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -19,6 +24,8 @@ jobs:
         with:
           node-version: 20
       - name: Generer ruter
+        env:
+          MAPBOX_TOKEN: ${{ github.event.inputs.mapbox_token }}
         run: node scripts/generate-demo-routes.mjs
       - name: Commit resultat
         run: |
