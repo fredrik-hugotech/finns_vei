@@ -132,6 +132,10 @@ const KOMMUNE = '4204';
 const KV = 'https://ws.geonorge.no/stedsnavn/v1';
 const KV_UA = 'FinnsFairway/1.0 (https://finnsvei.no; fredrik@hugo.as)';
 const norm = (x) => String(x || '').toLowerCase().replace(/[^a-zæøå0-9]+/g, ' ').trim();
+// Kartverket's kommune filter is not reliably honoured, so every candidate is
+// also checked against a bounding box around Kristiansand kommune.
+const BOX = { minLat: 57.98, maxLat: 58.36, minLng: 7.62, maxLng: 8.32 };
+const inBox = (e) => e && e.lat >= BOX.minLat && e.lat <= BOX.maxLat && e.lng >= BOX.minLng && e.lng <= BOX.maxLng;
 
 function kvEntries(json) {
   const out = [];
@@ -142,7 +146,9 @@ function kvEntries(json) {
     const rp = n?.representasjonspunkt || {};
     const lng = Number(rp.øst ?? rp.lon); const lat = Number(rp.nord ?? rp.lat);
     if (!names.length || !Number.isFinite(lng) || !Number.isFinite(lat)) continue;
-    out.push({ names, type: n?.navneobjekttype || '', lat, lng });
+    const kommune = (n?.kommuner || []).map((k) => String(k?.kommunenummer || ''));
+    const e = { names, type: n?.navneobjekttype || '', lat, lng, kommune };
+    if (inBox(e) || kommune.includes(KOMMUNE)) out.push(e);
   }
   return out;
 }
@@ -160,6 +166,23 @@ async function kvSearch(q, types) {
       || list.find((e) => types.includes(e.type)) || null;
   } catch (_e) { return null; }
 }
+async function mbSearch(token, q) {
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json`
+    + `?access_token=${token}&country=no&language=no&limit=5&types=poi`
+    + `&bbox=${BOX.minLng},${BOX.minLat},${BOX.maxLng},${BOX.maxLat}&proximity=8.0,58.15`;
+  try {
+    const r = await fetch(url);
+    if (!r.ok) return null;
+    const feats = (await r.json()).features || [];
+    const nq = norm(q);
+    const f = feats.find((x) => norm(x.text).includes(nq) || nq.includes(norm(x.text)))
+      || feats.find((x) => /stadium|pitch|sports|arena|gym|idrett|hall/i.test(`${x.properties?.category || ''} ${x.text || ''}`));
+    if (!f || !Array.isArray(f.center)) return null;
+    const e = { names: [f.text || q], type: `Mapbox ${f.properties?.category || 'poi'}`, lng: Number(f.center[0]), lat: Number(f.center[1]) };
+    return inBox(e) ? e : null;
+  } catch (_e) { return null; }
+}
+
 function findIn(list, aliases) {
   for (const a of aliases) {
     const na = norm(a);
@@ -198,7 +221,7 @@ const VENUE_ALIASES = {
   Flekkerøyhallen: ['Flekkerøyhallen', 'Flekkerøy idrettshall', 'Flekkerøy'],
 };
 
-async function resolvePlaces() {
+async function resolvePlaces(token) {
   const venueList = (await Promise.all(VENUE_TYPES.map(kvList))).flat();
   const hoodList = (await Promise.all(HOOD_TYPES.map(kvList))).flat();
   const schoolList = await kvList('Skole');
@@ -209,6 +232,9 @@ async function resolvePlaces() {
     let hit = findIn(venueList, aliases);
     let how = 'liste';
     if (!hit) { hit = await kvSearch(aliases[0], VENUE_TYPES); how = 'søk'; }
+    if (!hit) {
+      for (const a of aliases) { hit = await mbSearch(token, a); if (hit) { how = 'Mapbox POI'; break; } }
+    }
     if (!hit) { hit = findIn(schoolList, aliases.map((a) => a.replace(/ (stadion|idrettspark|idrettsplass|idrettshall|hallen)$/i, '') + ' skole')); how = 'skole ved siden av'; }
     if (!hit) { hit = { lat: fallback[0], lng: fallback[1], names: [name], type: '?' }; how = 'FALLBACK (håndskrevet)'; }
     const type = /hall|arena|aquarama/i.test(name) ? 'hall' : 'bane';
@@ -319,7 +345,7 @@ function makeWeather() {
 async function main() {
   const token = await findToken();
   console.log('Token funnet. Slår opp anlegg og boligområder i Kartverket …');
-  const venues = await resolvePlaces();
+  const venues = await resolvePlaces(token);
   mkdirSync('data', { recursive: true });
   writeFileSync('data/demo-venues.json', JSON.stringify(venues, null, 1));
   console.log('Genererer …');
@@ -377,7 +403,7 @@ async function main() {
 
   const out = {
     generatedAt: new Date().toISOString(),
-    clubs: CLUBS.map((c) => ({ name: c.name, sport: c.sport })),
+    clubs: Object.values(CLUBS.reduce((acc, c) => { acc[c.name] = acc[c.name] ? { name: c.name, sport: 'fotball og håndball' } : { name: c.name, sport: c.sport }; return acc; }, {})),
     trips,
   };
   mkdirSync('data', { recursive: true });
