@@ -211,6 +211,37 @@ function findIn(list, aliases) {
   }
   return null;
 }
+// Verified positions (OpenStreetMap, checked 2026-09-17). These win over any
+// live lookup so a flaky Overpass/Kartverket answer can never move a venue.
+// `shown` is the real facility name displayed on the map.
+const VENUE_FIXED = {
+  'Karuss stadion': { lat: 58.13027, lng: 7.94520, shown: 'Karuss stadion' },
+  Vågsbygdhallen: { lat: 58.12536, lng: 7.95698, shown: 'Vågsbygdhallen' },
+  'Flekkerøy stadion': { lat: 58.08960, lng: 7.99774, shown: 'Modena stadion' },
+  Flekkerøyhallen: { lat: 58.08931, lng: 7.99955, shown: 'Flekkerøyhallen' },
+  'Randesund idrettspark': { lat: 58.15156, lng: 8.08777, shown: 'Sukkevann kunstgressbane' },
+  'Randesund idrettshall': { lat: 58.15251, lng: 8.08910, shown: 'Sukkevannshallen' },
+  'Hånes idrettsplass': { lat: 58.17623, lng: 8.08739, shown: 'Hånes idrettsplass' },
+  Håneshallen: { lat: 58.17570, lng: 8.09328, shown: 'Håneshallen' },
+  'Vigør stadion': { lat: 58.16111, lng: 8.02416, shown: 'Kongsgårdjordene kunstgressbane' },
+  'Kristiansand stadion': { lat: 58.14762, lng: 8.02169, shown: 'Kristiansand stadion' },
+  Gimlehallen: { lat: 58.16034, lng: 8.00739, shown: 'Gimlehallen' },
+  'Gimletroll idrettspark': { lat: 58.16808, lng: 8.01297, shown: 'Presteheia kunstgressbane' },
+  'Justvik idrettsplass': { lat: 58.20094, lng: 8.03191, shown: 'Justvik fotballbane' },
+  Justvikhallen: { lat: 58.20092, lng: 8.03191, shown: 'Justvikhallen' },
+  'Torridal idrettsplass': { lat: 58.22077, lng: 7.92274, shown: 'Mosby kunstgressbane' },
+  Torridalhallen: { lat: 58.20162, lng: 7.92458, shown: 'Torridalshallen' },
+  'Tveit idrettsplass': { lat: 58.20874, lng: 8.08573, shown: 'Kjevik stadion' },
+  Tveithallen: { lat: 58.20801, lng: 8.10894, shown: 'Tveithallen' },
+  'Hellemyr idrettsplass': { lat: 58.14724, lng: 7.93310, shown: 'Hellemyr kunstgressbane' },
+  'Søgne idrettspark': { lat: 58.09714, lng: 7.80861, shown: 'Søgne stadion' },
+  Søgnehallen: { lat: 58.09722, lng: 7.81003, shown: 'Tangvallhallen' },
+  'Greipstad idrettspark': { lat: 58.17472, lng: 7.82889, shown: 'Hortemo stadion' },
+  Songdalshallen: { lat: 58.15590, lng: 7.83026, shown: 'Nodelandshallen' },
+  'Idda Arena': { lat: 58.14656, lng: 7.97262, shown: 'Idda Arena' },
+  Aquarama: { lat: 58.14729, lng: 8.00572, shown: 'Aquarama' },
+};
+
 const VENUE_TYPES = ['Idrettsanlegg', 'Idrettshall', 'Stadion', 'Svømmehall', 'Idrettsplass'];
 const HOOD_TYPES = ['Bydel', 'Tettbebyggelse', 'Boligfelt', 'Tettsted', 'Grend', 'Tettsteddel', 'Bebyggelse'];
 const VENUE_ALIASES = {
@@ -251,8 +282,10 @@ async function resolvePlaces(token) {
   const venues = [];
   for (const [name, fallback] of Object.entries(VENUES)) {
     const aliases = VENUE_ALIASES[name] || [name];
-    let hit = findIn(osmList, aliases);
+    let hit = null;
     let how = 'OSM';
+    if (VENUE_FIXED[name]) { hit = { ...VENUE_FIXED[name], names: [VENUE_FIXED[name].shown], type: 'fast' }; how = 'verifisert'; }
+    if (!hit) { hit = findIn(osmList, aliases); how = 'OSM'; }
     if (!hit) { hit = findIn(venueList, aliases); how = 'Kartverket liste'; }
     if (!hit) { hit = await kvSearch(aliases[0], VENUE_TYPES); how = 'Kartverket søk'; }
     if (!hit) {
