@@ -13,8 +13,9 @@ import { checkRequestRateLimit } from '../../../lib/rateLimit';
 // Safe to expose: it takes no data from the caller beyond a competition id,
 // only writes into competitions flagged "demo", is idempotent (each trip
 // carries a stable trip_token, already-imported ones are skipped) and is
-// rate-limited. `?replace=1` additionally removes trips in that competition
-// that did not come from an import (older seed runs).
+// rate-limited. `?replace=1` additionally removes every trip in that
+// competition that is not part of the current dataset (older seed runs and
+// earlier generations).
 export const config = { maxDuration: 120 };
 
 const RATE_LIMIT = 6;
@@ -82,7 +83,7 @@ export default async function handler(req, res) {
 
     let deleted = false;
     if (req.query.replace === '1') {
-      await deleteNonImportedBikeTrips(competitionId);
+      await deleteNonImportedBikeTrips(competitionId, `demo-import:${routes.generatedAt}`);
       deleted = true;
     }
     const existing = await listBikeTripTokens(competitionId);

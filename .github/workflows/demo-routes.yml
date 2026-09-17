@@ -31,6 +31,6 @@ jobs:
         run: |
           git config user.name "demo-routes-bot"
           git config user.email "noreply@finnsvei.no"
-          git add data/demo-routes.json
+          git add data/demo-routes.json data/demo-venues.json
           git commit -m "Demo-ruter generert $(date -u +%Y-%m-%dT%H:%MZ)" || echo "Ingen endring"
           git push

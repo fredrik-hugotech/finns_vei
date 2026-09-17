@@ -122,6 +122,112 @@ const CLUBS = [
   { name: 'Greipstad IL', sport: 'håndball', venues: ['Songdalshallen'], hoods: ['Nodeland', 'Brennåsen', 'Kilen'], trips: 20 },
 ];
 
+// ---------------------------------------------------------------------------
+// Real coordinates from Kartverket (Sentralt stedsnavnregister). The hand-typed
+// coordinates in VENUES/HOODS are only a last-resort fallback: we list every
+// sports facility / hall / neighbourhood in Kristiansand kommune (4204) and
+// match by name, then fall back to a name search, then to the school of the
+// same name (pitches usually sit next to the school), then to the fallback.
+const KOMMUNE = '4204';
+const KV = 'https://ws.geonorge.no/stedsnavn/v1';
+const KV_UA = 'FinnsFairway/1.0 (https://finnsvei.no; fredrik@hugo.as)';
+const norm = (x) => String(x || '').toLowerCase().replace(/[^a-zæøå0-9]+/g, ' ').trim();
+
+function kvEntries(json) {
+  const out = [];
+  for (const n of json?.navn || []) {
+    const names = [];
+    if (n?.skrivemåte) names.push(n.skrivemåte);
+    for (const sn of n?.stedsnavn || []) if (sn?.skrivemåte) names.push(sn.skrivemåte);
+    const rp = n?.representasjonspunkt || {};
+    const lng = Number(rp.øst ?? rp.lon); const lat = Number(rp.nord ?? rp.lat);
+    if (!names.length || !Number.isFinite(lng) || !Number.isFinite(lat)) continue;
+    out.push({ names, type: n?.navneobjekttype || '', lat, lng });
+  }
+  return out;
+}
+async function kvList(type) {
+  const url = `${KV}/sted?kommunenummer=${KOMMUNE}&navneobjekttype=${encodeURIComponent(type)}&utkoordsys=4258&treffPerSide=500&side=1`;
+  try { const r = await fetch(url, { headers: { 'User-Agent': KV_UA, Accept: 'application/json' } }); return r.ok ? kvEntries(await r.json()) : []; } catch (_e) { return []; }
+}
+async function kvSearch(q, types) {
+  const url = `${KV}/navn?sok=${encodeURIComponent(q + '*')}&kommunenummer=${KOMMUNE}&fuzzy=true&utkoordsys=4258&treffPerSide=20&side=1`;
+  try {
+    const r = await fetch(url, { headers: { 'User-Agent': KV_UA, Accept: 'application/json' } });
+    if (!r.ok) return null;
+    const list = kvEntries(await r.json());
+    return list.find((e) => types.includes(e.type) && e.names.some((n) => norm(n).startsWith(norm(q))))
+      || list.find((e) => types.includes(e.type)) || null;
+  } catch (_e) { return null; }
+}
+function findIn(list, aliases) {
+  for (const a of aliases) {
+    const na = norm(a);
+    const hit = list.find((e) => e.names.some((n) => norm(n) === na)) || list.find((e) => e.names.some((n) => norm(n).includes(na)));
+    if (hit) return hit;
+  }
+  return null;
+}
+const VENUE_TYPES = ['Idrettsanlegg', 'Idrettshall', 'Stadion', 'Svømmehall', 'Idrettsplass'];
+const HOOD_TYPES = ['Bydel', 'Tettbebyggelse', 'Boligfelt', 'Tettsted', 'Grend', 'Tettsteddel', 'Bebyggelse'];
+const VENUE_ALIASES = {
+  'Karuss stadion': ['Karuss stadion', 'Karuss idrettspark', 'Karuss kunstgress', 'Karuss'],
+  'Flekkerøy stadion': ['Flekkerøy stadion', 'Flekkerøy idrettspark', 'Fløy stadion', 'Flekkerøy'],
+  'Randesund idrettspark': ['Randesund idrettspark', 'Dvergsnes idrettspark', 'Dvergsnes kunstgress', 'Randesund stadion', 'Dvergsnes'],
+  'Randesund idrettshall': ['Randesundhallen', 'Randesund idrettshall', 'Dvergsneshallen', 'Strømmehallen', 'Sømhallen'],
+  'Hånes idrettsplass': ['Hånes idrettsplass', 'Hånes stadion', 'Hånes kunstgress', 'Hånes'],
+  Håneshallen: ['Håneshallen', 'Hånes idrettshall', 'Hånes'],
+  'Vigør stadion': ['Vigør stadion', 'Kongsgård idrettspark', 'Vigørbanen', 'Kongsgård'],
+  'Kristiansand stadion': ['Kristiansand stadion', 'Kristiansand Stadion'],
+  Gimlehallen: ['Gimlehallen', 'Gimle idrettshall'],
+  'Gimletroll idrettspark': ['Gimletroll idrettspark', 'Gimlekollen idrettspark', 'Gimletroll', 'Gimlekollen kunstgress', 'Gimlekollen'],
+  'Justvik idrettsplass': ['Justvik idrettsplass', 'Justvik stadion', 'Justvik kunstgress', 'Justvik'],
+  Justvikhallen: ['Justvikhallen', 'Justvik idrettshall', 'Justvik'],
+  'Torridal idrettsplass': ['Torridal idrettsplass', 'Mosby idrettsplass', 'Torridal stadion', 'Mosby'],
+  Torridalhallen: ['Torridalhallen', 'Torridal idrettshall', 'Mosbyhallen', 'Mosby'],
+  'Tveit idrettsplass': ['Tveit idrettsplass', 'Tveit stadion', 'Ryen idrettsplass', 'Tveit'],
+  Tveithallen: ['Tveithallen', 'Tveit idrettshall', 'Tveit'],
+  'Hellemyr idrettsplass': ['Hellemyr idrettsplass', 'Hellemyr kunstgress', 'Hellemyr stadion', 'Hellemyr'],
+  'Søgne idrettspark': ['Søgne idrettspark', 'Søgne stadion', 'Tangvall idrettspark', 'Tangvall stadion', 'Tangvall'],
+  Søgnehallen: ['Søgnehallen', 'Søgne idrettshall', 'Tangvallhallen', 'Søgne'],
+  'Greipstad idrettspark': ['Greipstad idrettspark', 'Nodeland idrettspark', 'Greipstad stadion', 'Nodeland'],
+  Songdalshallen: ['Songdalshallen', 'Songdalen idrettshall', 'Nodelandshallen', 'Nodeland'],
+  'Idda Arena': ['Idda Arena', 'Idda'],
+  Aquarama: ['Aquarama', 'Aquarama Kristiansand'],
+  Vågsbygdhallen: ['Vågsbygdhallen', 'Vågsbygd idrettshall'],
+  Flekkerøyhallen: ['Flekkerøyhallen', 'Flekkerøy idrettshall', 'Flekkerøy'],
+};
+
+async function resolvePlaces() {
+  const venueList = (await Promise.all(VENUE_TYPES.map(kvList))).flat();
+  const hoodList = (await Promise.all(HOOD_TYPES.map(kvList))).flat();
+  const schoolList = await kvList('Skole');
+  console.log(`Kartverket: ${venueList.length} anlegg/haller, ${hoodList.length} bydeler/boligfelt, ${schoolList.length} skoler i kommune ${KOMMUNE}`);
+  const venues = [];
+  for (const [name, fallback] of Object.entries(VENUES)) {
+    const aliases = VENUE_ALIASES[name] || [name];
+    let hit = findIn(venueList, aliases);
+    let how = 'liste';
+    if (!hit) { hit = await kvSearch(aliases[0], VENUE_TYPES); how = 'søk'; }
+    if (!hit) { hit = findIn(schoolList, aliases.map((a) => a.replace(/ (stadion|idrettspark|idrettsplass|idrettshall|hallen)$/i, '') + ' skole')); how = 'skole ved siden av'; }
+    if (!hit) { hit = { lat: fallback[0], lng: fallback[1], names: [name], type: '?' }; how = 'FALLBACK (håndskrevet)'; }
+    const type = /hall|arena|aquarama/i.test(name) ? 'hall' : 'bane';
+    venues.push({ name, type, lat: Number(hit.lat.toFixed(5)), lng: Number(hit.lng.toFixed(5)) });
+    VENUES[name] = [hit.lat, hit.lng];
+    console.log(`  anlegg ${name.padEnd(24)} -> ${hit.lat.toFixed(5)}, ${hit.lng.toFixed(5)}  [${how}: ${hit.names[0]} / ${hit.type}]`);
+  }
+  for (const [name, [flat, flng, r]] of Object.entries(HOODS)) {
+    const base = name.replace(/^Flekkerøy /, '').replace(/ senter$/, '');
+    let hit = findIn(hoodList, [name, base]);
+    let how = 'liste';
+    if (!hit) { hit = await kvSearch(base, HOOD_TYPES); how = 'søk'; }
+    if (!hit) { hit = { lat: flat, lng: flng, names: [name], type: '?' }; how = 'FALLBACK (håndskrevet)'; }
+    HOODS[name] = [hit.lat, hit.lng, r];
+    console.log(`  område ${name.padEnd(24)} -> ${hit.lat.toFixed(5)}, ${hit.lng.toFixed(5)}  [${how}: ${hit.names[0]} / ${hit.type}]`);
+  }
+  return venues;
+}
+
 const rnd = (a, b) => a + Math.random() * (b - a);
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const gauss = () => (Math.random() + Math.random() + Math.random() - 1.5) / 1.5; // ~[-1,1], centre-heavy
@@ -212,7 +318,11 @@ function makeWeather() {
 
 async function main() {
   const token = await findToken();
-  console.log('Token funnet, genererer …');
+  console.log('Token funnet. Slår opp anlegg og boligområder i Kartverket …');
+  const venues = await resolvePlaces();
+  mkdirSync('data', { recursive: true });
+  writeFileSync('data/demo-venues.json', JSON.stringify(venues, null, 1));
+  console.log('Genererer …');
   const jobs = [];
   for (const club of CLUBS) {
     for (let i = 0; i < club.trips; i++) {
