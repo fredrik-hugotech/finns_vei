@@ -169,9 +169,7 @@ export default function Demo() {
             <div className="pick-hint">Dra kartet til stedet det gjelder</div>
             <div className="pick-bar">
               <button type="button" className="big-button big-button--primary pick-bar__confirm" onClick={confirmSpot}>Velg dette stedet</button>
-              <div className="pick-bar__row">
-                <button type="button" className="big-button big-button--secondary" onClick={endReport}>Avbryt</button>
-              </div>
+              <button type="button" className="big-button big-button--secondary" onClick={endReport}>Avbryt</button>
             </div>
           </>
         )}
@@ -198,7 +196,8 @@ export default function Demo() {
         </div>
         )}
 
-        <div className={panelOpen ? 'demo-panel' : 'demo-panel demo-panel--collapsed'} hidden={report !== 'none'}>
+        {report === 'none' && (
+        <div className={panelOpen ? 'demo-panel' : 'demo-panel demo-panel--collapsed'}>
           <div className="demo-panel__head">
             <Link href="/" className="demo-panel__brand" aria-label="Til appen"><Logo size="sm" /></Link>
             <div className="demo-panel__title">
@@ -281,6 +280,7 @@ export default function Demo() {
             </>
           )}
         </div>
+        )}
       </main>
     </>
   );
