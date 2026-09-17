@@ -572,10 +572,19 @@ The Finns Fairway brand mark (three dots) used for the favicon lives at `public/
 
 ## Demo page (`/demo`)
 
-`/demo` is a public presentation page for a **DEMO competition**: club-coloured
-route lines per trip, a replay that adds trips in logged order, and the
-aggregated density view the municipality uses. It reads `GET /api/demo/spor`
-(`?id=` optional, `?mode=sykkel|gange`), which refuses to serve anything but
-competitions whose name/description contains "demo" — those hold synthetic,
-road-following routes only (see `/backoffice/seed-spor`). Real children's
-trips are never exposed per trip anywhere; the page says so in its footer.
+`/demo` is a public presentation page for a **DEMO competition**: a dark
+basemap with Strava-style heat lines (orange → yellow → white where many trips
+share a road), a per-club view with a replay that adds trips in logged order,
+totals, Værhelt and the leaderboard. It reads `GET /api/demo/spor` (`?id=`
+optional, `?mode=sykkel|gange`), which refuses to serve anything but
+competitions whose name/description contains "demo". Real children's trips
+are never exposed per trip anywhere; the page says so in its footer.
+
+The dataset is synthetic: `scripts/generate-demo-routes.mjs` routes trips
+(Mapbox Directions, cycling/walking) from residential areas to the football
+pitches and sports halls of real grassroots clubs in Kristiansand. It runs in
+the manual GitHub workflow **Generer demo-ruter** (`.github/workflows/
+demo-routes.yml`), which commits `data/demo-routes.json`; then
+`GET /api/demo/import?competitionId=<demo-id>&replace=1` loads it into the
+demo competition (idempotent via `trip_token`, same home-clipping as real
+uploads, demo competitions only).
