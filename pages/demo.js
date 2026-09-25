@@ -45,7 +45,7 @@ export default function Demo() {
   const [mapApi, setMapApi] = useState(null);
   const [data, setData] = useState(null);
   const [status, setStatus] = useState('Henter …');
-  const [view, setView] = useState('tetthet'); // tetthet | turer
+  const [view, setView] = useState('tetthet'); // tetthet | turer | paint
   const [mode, setMode] = useState(''); // '' | sykkel | gange
   const [replay, setReplay] = useState(null); // { index, running } | null
   const [open, setOpen] = useState(true);
@@ -92,6 +92,9 @@ export default function Demo() {
     if (view === 'tetthet') {
       mapApi.clearRouteLines?.(opts);
       mapApi.showHeatLines?.(data.geojson, opts);
+    } else if (view === 'paint') {
+      mapApi.clearHeatLines?.(opts);
+      mapApi.showRouteLines?.(data.paint || { type: 'FeatureCollection', features: [] }, opts);
     } else {
       mapApi.clearHeatLines?.(opts);
       const shown = replay ? tripsToGeoJson(trips.slice(0, replay.index)) : allGeo;
@@ -228,6 +231,7 @@ export default function Demo() {
                       <nav className="dp__tabs" aria-label="Visning">
                         <button type="button" className={view === 'tetthet' ? 'dp__tab dp__tab--on' : 'dp__tab'} onClick={() => { stopReplay(); setView('tetthet'); }}>Varmekart</button>
                         <button type="button" className={view === 'turer' ? 'dp__tab dp__tab--on' : 'dp__tab'} onClick={() => { stopReplay(); setView('turer'); }}>Per klubb</button>
+                        <button type="button" className={view === 'paint' ? 'dp__tab dp__tab--on' : 'dp__tab'} onClick={() => { stopReplay(); setView('paint'); }}>Mal kartet</button>
                       </nav>
                       <nav className="dp__tabs dp__tabs--filter" aria-label="Type">
                         <button type="button" className={mode === '' ? 'dp__tab dp__tab--on' : 'dp__tab'} onClick={() => changeMode('')}>Alle</button>
@@ -244,7 +248,25 @@ export default function Demo() {
                       )}
                     </button>
 
-                    <h2 className="dp__h">Stilling <span className="dp__h-meta">flest turer vinner</span></h2>
+                    {view === 'paint' && (
+                      <p className="dp__lede dp__paintnote">Klubbene maler veiene de bruker. En vei blir malt når minst to fra samme klubb har syklet eller gått der, og klubben med flest malte veibiter vinner. {fmtInt(data.paintedEdges)} veibiter er malt.</p>
+                    )}
+                    <h2 className="dp__h">Stilling <span className="dp__h-meta">{view === 'paint' ? 'flest malte veibiter vinner' : 'flest turer vinner'}</span></h2>
+                    {view === 'paint' ? (
+                      <table className="dp__table">
+                        <thead><tr><th className="dp__num">#</th><th>Klubb</th><th className="dp__num">Veibiter</th><th className="dp__num">Andel</th></tr></thead>
+                        <tbody>
+                          {(data.paintBoard || []).map((row, index) => (
+                            <tr key={row.club} className={index === 0 ? 'dp__lead' : undefined}>
+                              <td className="dp__num">{index + 1}</td>
+                              <td className="dp__club"><i style={{ background: (data.leaderboard.find((r) => r.club === row.club) || {}).color }} aria-hidden="true" />{row.club}</td>
+                              <td className="dp__num">{fmtInt(row.edges)}</td>
+                              <td className="dp__num dp__pct">{row.percent} %</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
                     <table className="dp__table">
                       <thead>
                         <tr><th className="dp__num">#</th><th>Klubb</th><th className="dp__num">Turer</th><th className="dp__num">Km</th><th className="dp__num">Hjelm</th></tr>
@@ -261,6 +283,7 @@ export default function Demo() {
                         ))}
                       </tbody>
                     </table>
+                    )}
                   </section>
                 )}
 

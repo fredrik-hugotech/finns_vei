@@ -25,7 +25,7 @@ const CONFETTI = Array.from({ length: 18 }, (_, i) => ({
 // `queued` is true when the trip couldn't reach the server right away and was
 // parked in lib/offlineTripQueue.js for automatic resend. The trip still
 // counts, so only a small, calm note is added.
-export default function TripCelebration({ km, mode = 'sykkel', weatherKind = null, queued = false, progress = null, newBadges = [], onDone }) {
+export default function TripCelebration({ km, mode = 'sykkel', weatherKind = null, queued = false, progress = null, newBadges = [], painted = null, club = '', onDone }) {
   const verb = mode === 'gange' ? 'gikk' : 'syklet';
   const isPrecip = isPrecipKind(weatherKind);
   const weatherWord = weatherKind === 'snow' ? 'snøen' : weatherKind === 'sleet' ? 'sluddet' : 'regnet';
@@ -50,6 +50,15 @@ export default function TripCelebration({ km, mode = 'sykkel', weatherKind = nul
         <p className="trip-cheer__queued">
           Turen er lagret på enheten – sendes automatisk når du får dekning igjen.
         </p>
+      )}
+
+      {painted !== null && (
+        <div className={painted > 0 ? 'cheer-paint cheer-paint--hit' : 'cheer-paint'}>
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20c4-1 4-5 7-8s7-3 9-6-2-6-5-3-3 6-6 9-7 3-8 7z" /><path d="M14 6l4 4" /></svg>
+          {painted > 0
+            ? <span>Du malte <strong>{painted} {painted === 1 ? 'veibit' : 'veibiter'}</strong>{club ? ` for ${club}` : ''}!</span>
+            : <span>Ingen nye veibiter denne gangen. En vei males når to fra {club || 'klubben'} har brukt den – ta med en lagkamerat!</span>}
+        </div>
       )}
 
       {newBadges.length > 0 && (

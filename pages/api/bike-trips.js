@@ -1,4 +1,6 @@
-import { createBikeTrip, getCompetition, hasSupabaseConfig } from '../../lib/supabaseRest';
+import { createBikeTrip, getCompetition, hasSupabaseConfig, listClubTripPaths } from '../../lib/supabaseRest';
+import { paintDeltaForTrip } from '../../lib/paintMap';
+import { clipPath, randomOffsetPoint } from '../../lib/geoPrivacy';
 import { checkRequestRateLimit } from '../../lib/rateLimit';
 
 // ~15 trip logs per 10 minutes per IP hash - a class of kids sharing one
@@ -69,6 +71,19 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Velg en klubb fra listen' });
     }
 
+    // «Mal kartet»: count how many road edges this trip pushes over the
+    // "two trips from the club" line, using the club's earlier routes.
+    let painted = null;
+    if (competition.metric === 'paint' && clubName && Array.isArray(path) && path.length > 1) {
+      try {
+        const earlier = await listClubTripPaths(competitionId, clubName);
+        const pts = path.map((pt) => (Array.isArray(pt) ? { lng: Number(pt[0]), lat: Number(pt[1]) } : { lng: Number(pt?.lng), lat: Number(pt?.lat) }))
+          .filter((pt) => Number.isFinite(pt.lat) && Number.isFinite(pt.lng));
+        const clean = pts.length ? clipPath(pts, { homeRef: randomOffsetPoint(pts[0]) }) : [];
+        painted = paintDeltaForTrip(earlier, clean).painted;
+      } catch (_e) { painted = null; }
+    }
+
     await createBikeTrip({
       competitionId,
       club: clubName,
@@ -83,7 +98,7 @@ export default async function handler(req, res) {
       tripToken: tripToken || null,
     });
 
-    return res.status(201).json({ ok: true });
+    return res.status(201).json({ ok: true, painted });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: 'Kunne ikke lagre sykkelturen' });

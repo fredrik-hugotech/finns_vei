@@ -143,7 +143,7 @@ export default function KonkurranserAdmin() {
                     <span className="comp-card__meta">
                       {competition.clubs.length} klubb{competition.clubs.length === 1 ? '' : 'er'}
                       {period ? ` · ${period}` : ''}
-                      {competition.metric === 'distance' ? ' · flest km' : ' · flest turer'}
+                      {competition.metric === 'paint' ? ' · mal kartet' : competition.metric === 'distance' ? ' · flest km' : ' · flest turer'}
                     </span>
                   </div>
                   <button type="button" className="comp-toggle" disabled={togglingId === competition.id} onClick={() => toggleActive(competition)}>
@@ -181,6 +181,7 @@ export default function KonkurranserAdmin() {
               <select className="comp-select" value={metric} onChange={(event) => setMetric(event.target.value)}>
                 <option value="trips">Flest turer</option>
                 <option value="distance">Flest kilometer</option>
+                <option value="paint">Mal kartet – flest malte veibiter</option>
               </select>
             </label>
 

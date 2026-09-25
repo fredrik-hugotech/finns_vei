@@ -54,7 +54,7 @@ function readMyClub() {
   try { return window.localStorage.getItem('finns-vei-my-club') || ''; } catch (_e) { return ''; }
 }
 
-export default function CompetitionSheet({ onClose, onPickStart, initialCompetitionId = null }) {
+export default function CompetitionSheet({ onClose, onPickStart, onShowPaint = null, initialCompetitionId = null }) {
   const [view, setView] = useState('list'); // list | detail | log
   const [competitions, setCompetitions] = useState(null);
   const [stats, setStats] = useState(null);
@@ -185,6 +185,14 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
                 <div><strong>{stats.totals.trips ? Math.round((stats.totals.helmetTrips / stats.totals.trips) * 100) : 0}%</strong><span>med hjelm</span></div>
               </div>
               {distanceFact && <p className="comp-fact-line">{distanceFact}</p>}
+              {stats.metric === 'paint' && (
+                <div className="comp-paint">
+                  <p className="comp-paint__text"><strong>{(stats.paintedEdges || 0).toLocaleString('nb-NO')}</strong> veibiter er malt så langt. En vei blir malt når minst to fra samme klubb har brukt den – sykle sammen!</p>
+                  {onShowPaint && stats.paint && (
+                    <button type="button" className="big-button big-button--secondary comp-paint__btn" onClick={() => onShowPaint(stats.paint)}>Vis klubbkartet</button>
+                  )}
+                </div>
+              )}
               {stats.weatherHero && (
                 <p className="comp-weather-note">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 14a5 5 0 0 1 1.4-9.8A6 6 0 0 1 17 6a4 4 0 0 1 1 7.9" /><path d="M8 19l-1 2M12 19l-1 2M16 19l-1 2" /></svg>
@@ -195,7 +203,7 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
               <div className="comp-board">
                 <div className="comp-board__head">
                   <h3 className="comp-board__title">Stilling</h3>
-                  <span className="comp-board__metric">Vinner: {stats.metric === 'distance' ? 'flest km' : 'flest turer'}</span>
+                  <span className="comp-board__metric">Vinner: {stats.metric === 'paint' ? 'flest malte veibiter' : stats.metric === 'distance' ? 'flest km' : 'flest turer'}</span>
                 </div>
                 {stats.leaderboard.length === 0 && <p className="comp-muted">Ingen turer logget ennå – bli den første!</p>}
                 <ol className="comp-board__list">
@@ -205,7 +213,7 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
                       <span className="comp-row__club">
                         {row.club}
                         {myClub === row.club && <span className="comp-row__mine">din klubb</span>}
-                        <span className="comp-row__track" aria-hidden="true"><span style={{ width: `${stats.leaderboard[0]?.[stats.metric === 'distance' ? 'distanceM' : 'trips'] ? Math.round((row[stats.metric === 'distance' ? 'distanceM' : 'trips'] / stats.leaderboard[0][stats.metric === 'distance' ? 'distanceM' : 'trips']) * 100) : 0}%` }} /></span>
+                        <span className="comp-row__track" aria-hidden="true"><span style={{ width: `${(() => { const k = stats.metric === 'paint' ? 'edges' : stats.metric === 'distance' ? 'distanceM' : 'trips'; const top = stats.leaderboard[0]?.[k]; return top ? Math.round((row[k] / top) * 100) : 0; })()}%` }} /></span>
                         {stats.weatherHero?.club === row.club && (
                           <span className="comp-row__hero" title={`Værhelt – ${row.bonusTrips} tur${row.bonusTrips === 1 ? '' : 'er'} i regn eller snø`}>
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 14a5 5 0 0 1 1.4-9.8A6 6 0 0 1 17 6a4 4 0 0 1 1 7.9" /><path d="M8 19l-1 2M12 19l-1 2M16 19l-1 2" /></svg>
@@ -215,8 +223,17 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
                       </span>
                       <span className="comp-row__stats">
                         <span className="comp-row__helmet" title="Andel med hjelm"><Icon name="helmet" size={14} /> {row.helmetPct}%</span>
-                        <span className={stats.metric === 'distance' ? 'comp-row__count comp-row__count--muted' : 'comp-row__count'}>{row.trips} turer</span>
-                        <span className={stats.metric === 'distance' ? 'comp-row__count' : 'comp-row__count comp-row__count--muted'}>{formatKm(row.distanceM)} km</span>
+                        {stats.metric === 'paint' ? (
+                          <>
+                            <span className="comp-row__count">{(row.edges || 0).toLocaleString('nb-NO')} veibiter</span>
+                            <span className="comp-row__count comp-row__count--muted">{row.paintPct || 0} %</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className={stats.metric === 'distance' ? 'comp-row__count comp-row__count--muted' : 'comp-row__count'}>{row.trips} turer</span>
+                            <span className={stats.metric === 'distance' ? 'comp-row__count' : 'comp-row__count comp-row__count--muted'}>{formatKm(row.distanceM)} km</span>
+                          </>
+                        )}
                       </span>
                     </li>
                   ))}

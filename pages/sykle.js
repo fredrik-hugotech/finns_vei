@@ -61,7 +61,7 @@ export default function Sykle() {
     // /sykle?vis=feiring previews the celebration screen (for demos).
     try {
       if (new URLSearchParams(window.location.search).get('vis') === 'feiring') {
-        setResult({ km: '2,4', weatherKind: 'rain' });
+        setResult({ km: '2,4', weatherKind: 'rain', painted: 14 });
         setUnlocked(p.badges.filter((b) => ['regn', 'forste'].includes(b.id)));
         setView('done');
       }
@@ -102,6 +102,7 @@ export default function Sykle() {
 
   const finishTrip = async ({ distanceM, durationS, cells, path, weather }) => {
     setBusy(true);
+    let painted = null;
     try {
       if (competition) {
         const response = await fetch('/api/bike-trips', {
@@ -113,6 +114,8 @@ export default function Sykle() {
           const payload = await response.json().catch(() => ({}));
           throw new Error(payload.error || 'Kunne ikke lagre turen');
         }
+        const saved = await response.json().catch(() => ({}));
+        painted = Number.isFinite(Number(saved?.painted)) ? Number(saved.painted) : null;
       }
       // Local-only record for /mine-turer — no server identity, just a
       // convenience list on this device.
@@ -121,7 +124,7 @@ export default function Sykle() {
       if (club) setMyClub(club);
       const after = refreshProgress();
       setUnlocked(diffBadges(before, after));
-      setResult({ km: (distanceM / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 2 }), weatherKind: weather?.kind || null });
+      setResult({ km: (distanceM / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 2 }), weatherKind: weather?.kind || null, painted });
       setBusy(false);
       setView('done');
     } catch (error) {
@@ -257,7 +260,7 @@ export default function Sykle() {
         )}
 
         {view === 'done' && (
-          <TripCelebration km={result?.km} mode={mode} weatherKind={result?.weatherKind} progress={progress} newBadges={unlocked} onDone={() => { setUnlocked([]); resetToHub(); }} />
+          <TripCelebration km={result?.km} mode={mode} weatherKind={result?.weatherKind} painted={result?.painted} club={club} progress={progress} newBadges={unlocked} onDone={() => { setUnlocked([]); resetToHub(); }} />
         )}
 
         {view === 'trip-error' && (

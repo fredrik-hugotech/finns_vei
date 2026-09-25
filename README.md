@@ -588,3 +588,16 @@ demo-routes.yml`), which commits `data/demo-routes.json`; then
 `GET /api/demo/import?competitionId=<demo-id>&replace=1` loads it into the
 demo competition (idempotent via `trip_token`, same home-clipping as real
 uploads, demo competitions only).
+
+## «Mal kartet» competition type
+
+`competitions.metric = 'paint'`. Every stored route is snapped to a ~30 m grid
+and cut into road edges (`lib/paintMap.js`). An edge counts as painted for a
+club once at least **two** different trips from that club have used it (so a
+single child's route is never shown), the club with most trips on an edge owns
+it (ties to the first), and the club owning the most edges wins. Stats add
+`edges`/`paintPct` per club plus a club-coloured `paint` GeoJSON, which the
+competition sheet can draw on the map («Vis klubbkartet»). `POST /api/bike-trips`
+returns `painted` (edges the trip just pushed over the two-trip line) so the
+celebration can say «Du malte 14 veibiter for Vågsbygd IL». Routes stay
+home-clipped as before; nothing new is stored.

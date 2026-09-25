@@ -34,6 +34,8 @@ export default function Home() {
   const [tripContext, setTripContext] = useState(null);
   const [tripResult, setTripResult] = useState(null); // { km, mode, weatherKind }
   const [menuOpen, setMenuOpen] = useState(false);
+  // «Mal kartet»: club-coloured painted roads shown from the competition sheet.
+  const [paintShown, setPaintShown] = useState(false);
   // Show the "Installer app" call-to-action only when the app isn't already
   // running as an installed PWA — no point nagging people who've installed it.
   const [canInstall, setCanInstall] = useState(false);
@@ -300,12 +302,13 @@ export default function Home() {
         const payload = await response.json().catch(() => ({}));
         throw new Error(payload.error || 'Kunne ikke lagre sykkelturen');
       }
+      const saved = await response.json().catch(() => ({}));
       // Local-only record for /mine-turer — no server identity, just a
       // convenience list on this device.
-      addMyTrip({ distanceM, mode: tripMode, routeType, weather });
+      addMyTrip({ distanceM, mode: tripMode, routeType, weather, helmet, club });
       haptic([10, 40, 14]);
       // Celebrate with the child instead of dropping them into the standings.
-      setTripResult({ km, mode: tripMode, weatherKind: weather?.kind || null, queued: false });
+      setTripResult({ km, mode: tripMode, weatherKind: weather?.kind || null, queued: false, painted: Number.isFinite(Number(saved?.painted)) ? Number(saved.painted) : null, club });
       setTripContext(null);
       setMode('trip-done');
       mapApiRef.current?.refreshReports?.();
@@ -433,6 +436,12 @@ export default function Home() {
           </>
         )}
 
+        {paintShown && mode === 'browse' && (
+          <button type="button" className="paint-chip" onClick={() => { mapApiRef.current?.clearRouteLines?.({ keepReports: true }); setPaintShown(false); }}>
+            Klubbkartet vises · <u>skjul</u>
+          </button>
+        )}
+
         {mode === 'pick' && (
           <>
             <div className="pick-hint">Dra kartet til stedet det gjelder</div>
@@ -486,6 +495,8 @@ export default function Home() {
             km={tripResult.km}
             mode={tripResult.mode}
             weatherKind={tripResult.weatherKind}
+            painted={tripResult.painted}
+            club={tripResult.club}
             queued={tripResult.queued}
             onDone={() => { setTripResult(null); setMode('browse'); }}
           />
@@ -506,6 +517,7 @@ export default function Home() {
             initialCompetitionId={competitionFocusId}
             onClose={closeCompetitions}
             onPickStart={startTrip}
+            onShowPaint={(geo) => { mapApiRef.current?.showRouteLines?.(geo, { keepReports: true }); setPaintShown(true); setShowCompetitions(false); }}
           />
         )}
 
