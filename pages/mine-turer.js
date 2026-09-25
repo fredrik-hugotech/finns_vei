@@ -3,6 +3,9 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import Logo from '../components/Logo';
 import { getMyTrips } from '../lib/myTrips';
+import { computeProgress } from '../lib/kidsProgress';
+import { getSolvedBud } from '../lib/budProgress';
+import { LevelBar, BadgeGrid } from '../components/KidProgress';
 import { TRIP_QUEUE_CHANGED_EVENT, flushTripQueue, getPendingTrips } from '../lib/offlineTripQueue';
 
 function formatDate(iso) {
@@ -53,6 +56,7 @@ export default function MineTurer() {
   const isLoading = trips === null;
   const isEmpty = trips !== null && trips.length === 0 && pendingTrips.length === 0;
   const totalM = (trips || []).reduce((sum, entry) => sum + (Number(entry?.distanceM) || 0), 0);
+  const progress = trips ? computeProgress(trips, { budSolved: getSolvedBud().length }) : null;
 
   return (
     <>
@@ -88,6 +92,14 @@ export default function MineTurer() {
           )}
 
           {isLoading && <p className="ui-small-text">Laster …</p>}
+
+          {progress && (
+            <section className="my-progress" id="merker">
+              <LevelBar progress={progress} />
+              <h2 className="my-progress__h">Merker <span>{progress.earnedCount} av {progress.badges.length}</span></h2>
+              <BadgeGrid progress={progress} />
+            </section>
+          )}
 
           {isEmpty && (
             <p className="my-reports-empty">Ingen turer registrert ennå. Start en tur fra konkurransen på forsiden — trykk på pokal-knappen på kartet — så dukker turene dine opp her.</p>

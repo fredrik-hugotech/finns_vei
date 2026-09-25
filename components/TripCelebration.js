@@ -3,6 +3,7 @@ import Icon from './Icon';
 import BudTip from './BudTip';
 import BudQuiz from './BudQuiz';
 import { isPrecipKind } from '../lib/weather';
+import { BadgeIcon, LevelBar } from './KidProgress';
 
 // Roughly one trip in three, swap the passive bud tip for a quick interactive
 // "sant eller usant" mini-quiz (BudQuiz) instead. Kept low-frequency on purpose
@@ -10,24 +11,36 @@ import { isPrecipKind } from '../lib/weather';
 // a quiz every single time — the tip still teaches a bud the rest of the time.
 const QUIZ_CHANCE = 1 / 3;
 
+const CONFETTI = Array.from({ length: 18 }, (_, i) => ({
+  left: `${(i * 37) % 100}%`,
+  delay: `${(i % 6) * 0.12}s`,
+  hue: ['#0b5d4d', '#d99a12', '#e8590c', '#1d4ed8', '#c2185b'][i % 5],
+  rot: `${(i * 53) % 360}deg`,
+}));
+
 // Shown to a child right after they log a trip. Praises the effort, shows how
-// far they went, calls out the weather bonus, and teaches one of Finns 10 bud
-// — instead of dropping them into the competition standings.
+// far they went, unlocks badges / levels, calls out the weather bonus, and
+// teaches one of Finns 10 bud — instead of dropping them into the standings.
 //
-// `queued` is true when the trip couldn't reach the server right away (e.g. a
-// tunnel/fjord dead zone right as tracking stopped) and was parked in
-// lib/offlineTripQueue.js for automatic resend instead. The trip still
-// happened and still counts, so the celebration itself doesn't change — only
-// a small, calm note is added so nobody mistakenly believes it's already on
-// the leaderboard when it's actually still waiting to sync.
-export default function TripCelebration({ km, mode = 'sykkel', weatherKind = null, queued = false, onDone }) {
+// `queued` is true when the trip couldn't reach the server right away and was
+// parked in lib/offlineTripQueue.js for automatic resend. The trip still
+// counts, so only a small, calm note is added.
+export default function TripCelebration({ km, mode = 'sykkel', weatherKind = null, queued = false, progress = null, newBadges = [], onDone }) {
   const verb = mode === 'gange' ? 'gikk' : 'syklet';
   const isPrecip = isPrecipKind(weatherKind);
   const weatherWord = weatherKind === 'snow' ? 'snøen' : weatherKind === 'sleet' ? 'sluddet' : 'regnet';
   const [showQuiz] = useState(() => Math.random() < QUIZ_CHANCE);
+  const levelledUp = progress?.level && progress.level.index > 0 && progress.level.percent === 0;
 
   return (
     <section className="kid-screen kid-done trip-cheer">
+      <div className="cheer-confetti" aria-hidden="true">
+        {CONFETTI.map((c, i) => (
+          // eslint-disable-next-line react/no-array-index-key
+          <i key={i} style={{ left: c.left, animationDelay: c.delay, background: c.hue, '--rot': c.rot }} />
+        ))}
+      </div>
+
       <div className="kid-done__badge"><Icon name="check" size={56} strokeWidth={2.2} /></div>
       <h1 className="kid-title">Bra jobba!</h1>
       <p className="kid-big-number">{km} km</p>
@@ -38,6 +51,27 @@ export default function TripCelebration({ km, mode = 'sykkel', weatherKind = nul
           Turen er lagret på enheten – sendes automatisk når du får dekning igjen.
         </p>
       )}
+
+      {newBadges.length > 0 && (
+        <div className="cheer-unlock">
+          <span className="cheer-unlock__label">{newBadges.length === 1 ? 'Nytt merke!' : `${newBadges.length} nye merker!`}</span>
+          <ul className="cheer-unlock__list">
+            {newBadges.map((b) => (
+              <li key={b.id} className="cheer-unlock__badge">
+                <span className="cheer-unlock__icon"><BadgeIcon icon={b.icon} /></span>
+                <strong>{b.name}</strong>
+                <span>{b.how}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {levelledUp && (
+        <p className="cheer-level">Nytt nivå: <strong>{progress.level.name}</strong></p>
+      )}
+
+      {progress && <LevelBar progress={progress} compact />}
 
       {isPrecip && (
         <div className="trip-cheer__weather">

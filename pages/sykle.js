@@ -6,7 +6,10 @@ import Logo from '../components/Logo';
 import Icon from '../components/Icon';
 import TripTracker from '../components/TripTracker';
 import TripCelebration from '../components/TripCelebration';
-import { addMyTrip } from '../lib/myTrips';
+import { addMyTrip, getMyTrips, setMyClub } from '../lib/myTrips';
+import { computeProgress, newBadges as diffBadges } from '../lib/kidsProgress';
+import { getSolvedBud } from '../lib/budProgress';
+import { LevelBar } from '../components/KidProgress';
 
 const ReportMap = dynamic(() => import('../components/ReportMap'), {
   ssr: false,
@@ -45,6 +48,25 @@ export default function Sykle() {
   const [dangerError, setDangerError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [tripError, setTripError] = useState('');
+  // Local progression (levels, badges, streak) — read on the device only.
+  const [progress, setProgress] = useState(null);
+  const [unlocked, setUnlocked] = useState([]);
+  const refreshProgress = () => {
+    const next = computeProgress(getMyTrips(), { budSolved: getSolvedBud().length });
+    setProgress(next);
+    return next;
+  };
+  useEffect(() => {
+    const p = refreshProgress();
+    // /sykle?vis=feiring previews the celebration screen (for demos).
+    try {
+      if (new URLSearchParams(window.location.search).get('vis') === 'feiring') {
+        setResult({ km: '2,4', weatherKind: 'rain' });
+        setUnlocked(p.badges.filter((b) => ['regn', 'forste'].includes(b.id)));
+        setView('done');
+      }
+    } catch (_e) { /* ignore */ }
+  }, []);
 
   useEffect(() => {
     fetch('/api/competitions')
@@ -94,7 +116,11 @@ export default function Sykle() {
       }
       // Local-only record for /mine-turer — no server identity, just a
       // convenience list on this device.
-      addMyTrip({ distanceM, mode, routeType, weather });
+      const before = computeProgress(getMyTrips(), { budSolved: getSolvedBud().length });
+      addMyTrip({ distanceM, mode, routeType, weather, helmet, club });
+      if (club) setMyClub(club);
+      const after = refreshProgress();
+      setUnlocked(diffBadges(before, after));
       setResult({ km: (distanceM / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 2 }), weatherKind: weather?.kind || null });
       setBusy(false);
       setView('done');
@@ -171,6 +197,12 @@ export default function Sykle() {
               <Icon name="flag" size={40} strokeWidth={1.8} />
               <span>Meld farlig sted</span>
             </button>
+            {progress && (
+              <Link href="/mine-turer" className="kid-progress-card" aria-label="Se nivå og merker">
+                <LevelBar progress={progress} compact />
+                <span className="kid-progress-card__more">{progress.earnedCount} av {progress.badges.length} merker · Se alle ›</span>
+              </Link>
+            )}
             <Link href="/mine-turer" className="kid-budlink">Mine turer ›</Link>
             <Link href="/bud" className="kid-budlink">Finns 10 bud for trygg ferdsel ›</Link>
           </section>
@@ -225,7 +257,7 @@ export default function Sykle() {
         )}
 
         {view === 'done' && (
-          <TripCelebration km={result?.km} mode={mode} weatherKind={result?.weatherKind} onDone={resetToHub} />
+          <TripCelebration km={result?.km} mode={mode} weatherKind={result?.weatherKind} progress={progress} newBadges={unlocked} onDone={() => { setUnlocked([]); resetToHub(); }} />
         )}
 
         {view === 'trip-error' && (

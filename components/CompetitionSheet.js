@@ -48,6 +48,12 @@ function isCompetitionEnded(competition) {
 
 const RANK_CLASS = ['comp-row__rank--gold', 'comp-row__rank--silver', 'comp-row__rank--bronze'];
 
+// The club this device last logged a trip for (lib/myTrips.js) — highlighted
+// as «din klubb» so a child instantly finds their own team.
+function readMyClub() {
+  try { return window.localStorage.getItem('finns-vei-my-club') || ''; } catch (_e) { return ''; }
+}
+
 export default function CompetitionSheet({ onClose, onPickStart, initialCompetitionId = null }) {
   const [view, setView] = useState('list'); // list | detail | log
   const [competitions, setCompetitions] = useState(null);
@@ -58,6 +64,8 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
   const [helmet, setHelmet] = useState(true);
   const [routeType, setRouteType] = useState('fritid');
   const [mode, setMode] = useState('sykkel'); // sykkel | gange
+  const [myClub, setMyClub] = useState('');
+  useEffect(() => { setMyClub(readMyClub()); }, []);
   const [isAdmin, setIsAdmin] = useState(false);
   const sheetDrag = useSheetDrag(onClose);
   const distanceFact = stats ? pickDistanceFact(stats.totals?.distanceM) : null;
@@ -192,10 +200,12 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
                 {stats.leaderboard.length === 0 && <p className="comp-muted">Ingen turer logget ennå – bli den første!</p>}
                 <ol className="comp-board__list">
                   {stats.leaderboard.map((row, index) => (
-                    <li key={row.club} className={index === 0 && row.trips > 0 ? 'comp-row comp-row--lead' : 'comp-row'}>
+                    <li key={row.club} className={`comp-row${index === 0 && row.trips > 0 ? ' comp-row--lead' : ''}${myClub === row.club ? ' comp-row--mine' : ''}`}>
                       <span className={`comp-row__rank ${row.trips > 0 ? (RANK_CLASS[index] || '') : ''}`}>{index + 1}</span>
                       <span className="comp-row__club">
                         {row.club}
+                        {myClub === row.club && <span className="comp-row__mine">din klubb</span>}
+                        <span className="comp-row__track" aria-hidden="true"><span style={{ width: `${stats.leaderboard[0]?.[stats.metric === 'distance' ? 'distanceM' : 'trips'] ? Math.round((row[stats.metric === 'distance' ? 'distanceM' : 'trips'] / stats.leaderboard[0][stats.metric === 'distance' ? 'distanceM' : 'trips']) * 100) : 0}%` }} /></span>
                         {stats.weatherHero?.club === row.club && (
                           <span className="comp-row__hero" title={`Værhelt – ${row.bonusTrips} tur${row.bonusTrips === 1 ? '' : 'er'} i regn eller snø`}>
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 14a5 5 0 0 1 1.4-9.8A6 6 0 0 1 17 6a4 4 0 0 1 1 7.9" /><path d="M8 19l-1 2M12 19l-1 2M16 19l-1 2" /></svg>
