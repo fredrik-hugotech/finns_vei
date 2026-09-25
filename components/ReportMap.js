@@ -611,6 +611,49 @@ function showHeatLines(map, geojson, { keepReports = false } = {}) {
   }
 }
 
+// «Klubber»: which clubs use which roads. One feature per club; clubs that
+// share a road are drawn as parallel strands via line-offset so none of them
+// hides the others.
+function showClubUsage(map, geojson, { keepReports = true } = {}) {
+  if (!map || !map.isStyleLoaded?.()) {
+    if (map) setTimeout(() => showClubUsage(map, geojson, { keepReports }), 200);
+    return;
+  }
+  const data = geojson && geojson.type ? geojson : { type: 'FeatureCollection', features: [] };
+  const hasData = (data.features || []).length > 0;
+  const source = map.getSource('club-usage');
+  if (source) {
+    source.setData(data);
+  } else {
+    map.addSource('club-usage', { type: 'geojson', data });
+    map.addLayer({
+      id: 'club-usage-casing',
+      type: 'line',
+      source: 'club-usage',
+      layout: { 'line-cap': 'butt', 'line-join': 'round' },
+      paint: { 'line-color': '#ffffff', 'line-opacity': 0.9, 'line-width': 4.5, 'line-offset': ['get', 'offset'] },
+    });
+    map.addLayer({
+      id: 'club-usage-line',
+      type: 'line',
+      source: 'club-usage',
+      layout: { 'line-cap': 'butt', 'line-join': 'round' },
+      paint: {
+        'line-color': ['coalesce', ['get', 'color'], '#0b5d4d'],
+        'line-opacity': 0.95,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 11, 2, 15, 3.2],
+        'line-offset': ['get', 'offset'],
+      },
+    });
+  }
+  restoreMapLayerOrder(map);
+  if (!keepReports) {
+    for (const id of REPORT_LAYER_IDS) {
+      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', hasData ? 'none' : 'visible');
+    }
+  }
+}
+
 // Individual route lines coloured per club (property `color`) — used by the
 // public /demo page for synthetic demo competitions only. Same "hide report
 // markers while lines are showing" behaviour as the density layer.

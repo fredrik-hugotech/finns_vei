@@ -1,7 +1,7 @@
 import { getCompetitionStats, listCompetitions, listCompetitionTripRoutes, hasSupabaseConfig } from '../../../lib/supabaseRest';
 import { checkRequestRateLimit } from '../../../lib/rateLimit';
 import { simplifyPath } from '../../../lib/geoPrivacy';
-import { buildPaint } from '../../../lib/paintMap';
+import { buildPaint, buildClubUsage } from '../../../lib/paintMap';
 import venues from '../../../data/demo-venues.json';
 
 // Public data for /demo — the presentation page that shows how a cycling
@@ -112,6 +112,7 @@ export default async function handler(req, res) {
     const colorByClub = new Map(stats.leaderboard.map((row) => [row.club, row.color]));
     // «Mal kartet» preview: club-owned roads (>= 2 trips from the club).
     const paint = buildPaint(filtered, { colorFor: (c) => colorByClub.get(c) || '#0b5d4d' });
+    const usage = buildClubUsage(filtered, { minTrips: 2, colorFor: (c) => colorByClub.get(c) || '#0b5d4d' });
     // Per-trip lines only need city-scale shape: Douglas-Peucker each route
     // down to a few dozen points so ~800 trips stay a small download. The
     // density geojson above is still built from the full paths.
@@ -123,7 +124,7 @@ export default async function handler(req, res) {
 
     res.setHeader('Cache-Control', 's-maxage=120, stale-while-revalidate=600');
     const { geojson: _g, ...rest } = stats;
-    return res.status(200).json({ ...rest, geojson: heat, trips: withColor, venues, paint: paint.geojson, paintBoard: paint.leaderboard, paintedEdges: paint.paintedEdges });
+    return res.status(200).json({ ...rest, geojson: heat, trips: withColor, venues, paint: paint.geojson, paintBoard: paint.leaderboard, paintedEdges: paint.paintedEdges, clubUsage: usage.geojson, clubList: usage.clubs });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: 'Kunne ikke hente demo-data' });

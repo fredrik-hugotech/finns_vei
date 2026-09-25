@@ -45,7 +45,8 @@ export default function Demo() {
   const [mapApi, setMapApi] = useState(null);
   const [data, setData] = useState(null);
   const [status, setStatus] = useState('Henter …');
-  const [view, setView] = useState('tetthet'); // tetthet | turer | paint
+  const [view, setView] = useState('tetthet'); // tetthet | turer | paint | klubber
+  const [onlyClub, setOnlyClub] = useState(''); // «Klubber»: isolate one club
   const [mode, setMode] = useState(''); // '' | sykkel | gange
   const [replay, setReplay] = useState(null); // { index, running } | null
   const [open, setOpen] = useState(true);
@@ -87,16 +88,28 @@ export default function Demo() {
     if (!layers.turer) {
       mapApi.clearRouteLines?.(opts);
       mapApi.clearHeatLines?.(opts);
+      mapApi.clearClubUsage?.(opts);
       return;
     }
     if (view === 'tetthet') {
       mapApi.clearRouteLines?.(opts);
+      mapApi.clearClubUsage?.(opts);
       mapApi.showHeatLines?.(data.geojson, opts);
     } else if (view === 'paint') {
       mapApi.clearHeatLines?.(opts);
+      mapApi.clearClubUsage?.(opts);
       mapApi.showRouteLines?.(data.paint || { type: 'FeatureCollection', features: [] }, opts);
+    } else if (view === 'klubber') {
+      mapApi.clearHeatLines?.(opts);
+      mapApi.clearRouteLines?.(opts);
+      const all = data.clubUsage || { type: 'FeatureCollection', features: [] };
+      const shown = onlyClub
+        ? { type: 'FeatureCollection', features: all.features.filter((f) => f.properties.club === onlyClub).map((f) => ({ ...f, properties: { ...f.properties, offset: 0 } })) }
+        : all;
+      mapApi.showClubUsage?.(shown, opts);
     } else {
       mapApi.clearHeatLines?.(opts);
+      mapApi.clearClubUsage?.(opts);
       const shown = replay ? tripsToGeoJson(trips.slice(0, replay.index)) : allGeo;
       mapApi.showRouteLines?.(shown, opts);
     }
@@ -104,7 +117,7 @@ export default function Demo() {
       fittedRef.current = true;
       mapApi.fitCompetition?.(allGeo);
     }
-  }, [mapApi, data, view, replay, trips, allGeo, layers.turer]);
+  }, [mapApi, data, view, replay, trips, allGeo, layers.turer, onlyClub]);
 
   // Context layers follow the checkboxes.
   useEffect(() => {
@@ -230,8 +243,7 @@ export default function Demo() {
                     <div className="dp__tabsrow">
                       <nav className="dp__tabs" aria-label="Visning">
                         <button type="button" className={view === 'tetthet' ? 'dp__tab dp__tab--on' : 'dp__tab'} onClick={() => { stopReplay(); setView('tetthet'); }}>Varmekart</button>
-                        <button type="button" className={view === 'turer' ? 'dp__tab dp__tab--on' : 'dp__tab'} onClick={() => { stopReplay(); setView('turer'); }}>Per klubb</button>
-                        <button type="button" className={view === 'paint' ? 'dp__tab dp__tab--on' : 'dp__tab'} onClick={() => { stopReplay(); setView('paint'); }}>Mal kartet</button>
+                        <button type="button" className={view === 'klubber' ? 'dp__tab dp__tab--on' : 'dp__tab'} onClick={() => { stopReplay(); setView('klubber'); }}>Klubber</button>
                       </nav>
                       <nav className="dp__tabs dp__tabs--filter" aria-label="Type">
                         <button type="button" className={mode === '' ? 'dp__tab dp__tab--on' : 'dp__tab'} onClick={() => changeMode('')}>Alle</button>
@@ -248,6 +260,20 @@ export default function Demo() {
                       )}
                     </button>
 
+                    {view === 'klubber' && (
+                      <>
+                        <p className="dp__lede dp__paintnote">Hver vei får én stripe per klubb som bruker den, i klubbens farge. Trykk på en klubb for å se bare den.</p>
+                        <ul className="dp__clubs">
+                          {(data.clubList || []).map((c) => (
+                            <li key={c.club}>
+                              <button type="button" className={onlyClub === c.club ? 'dp__clubbtn dp__clubbtn--on' : (onlyClub ? 'dp__clubbtn dp__clubbtn--dim' : 'dp__clubbtn')} onClick={() => setOnlyClub(onlyClub === c.club ? '' : c.club)}>
+                                <i style={{ background: c.color }} aria-hidden="true" />{c.club}<span>{fmtInt(c.edges)}</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
                     {view === 'paint' && (
                       <p className="dp__lede dp__paintnote">Klubbene maler veiene de bruker. En vei blir malt når minst to fra samme klubb har syklet eller gått der, og klubben med flest malte veibiter vinner. {fmtInt(data.paintedEdges)} veibiter er malt.</p>
                     )}

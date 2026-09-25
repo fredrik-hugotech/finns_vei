@@ -4472,3 +4472,28 @@ select.tkt-prop__ctrl { padding-right: 1.7rem; background-image: url("data:image
 .cheer-paint--hit { background: var(--color-primary-tint); border-color: var(--color-primary); }
 .cheer-paint strong { color: var(--color-primary); }
 .dp__paintnote { margin-bottom: 0.5rem; }
+
+/* «Klubber»: club legend with isolate-on-click (demo + backoffice) */
+.dp__clubs, .spor-clubs { display: grid; gap: 0.15rem; list-style: none; margin: 0 0 0.6rem; padding: 0; }
+.dp__clubs { grid-template-columns: 1fr 1fr; }
+.dp__clubbtn, .spor-club {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  display: flex;
+  font-size: 0.8rem;
+  font-weight: 650;
+  gap: 0.4rem;
+  min-height: 28px;
+  padding: 0.15rem 0.3rem;
+  text-align: left;
+  width: 100%;
+}
+.dp__clubbtn i, .spor-club i { border-radius: 2px; display: inline-block; flex: none; height: 10px; width: 14px; }
+.dp__clubbtn span, .spor-club span { color: var(--color-muted); font-size: 0.7rem; font-variant-numeric: tabular-nums; margin-left: auto; }
+.dp__clubbtn--on, .spor-club--on { background: var(--color-primary-tint); }
+.dp__clubbtn--dim, .spor-club--dim { opacity: 0.45; }
+.spor-club { font-size: 0.76rem; min-height: 26px; }
+.spor-clubs { max-height: 34vh; overflow-y: auto; }

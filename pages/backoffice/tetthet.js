@@ -21,6 +21,8 @@ export default function Sykkelspor() {
   const [competitions, setCompetitions] = useState([]);
   const [competitionId, setCompetitionId] = useState('');
   const [mode, setMode] = useState('');
+  const [layer, setLayer] = useState('tetthet'); // tetthet | klubber
+  const [onlyClub, setOnlyClub] = useState('');
   const [stats, setStats] = useState(null);
   const [status, setStatus] = useState('');
   const [loaded, setLoaded] = useState(false);
@@ -70,13 +72,24 @@ export default function Sykkelspor() {
   // Draw whenever BOTH the map and the data are ready (order-independent).
   useEffect(() => {
     if (!mapApi) return;
+    if (layer === 'klubber' && stats?.clubUsage) {
+      mapApi.clearCompetitionTrips?.();
+      const all = stats.clubUsage;
+      const shown = onlyClub
+        ? { type: 'FeatureCollection', features: all.features.filter((f) => f.properties.club === onlyClub).map((f) => ({ ...f, properties: { ...f.properties, offset: 0 } })) }
+        : all;
+      mapApi.showClubUsage?.(shown, { keepReports: false });
+      if (all.features?.length) mapApi.fitCompetition?.(all);
+      return;
+    }
+    mapApi.clearClubUsage?.({ keepReports: false });
     if (stats?.geojson) {
       mapApi.showCompetitionTrips?.(stats.geojson);
       if (stats.geojson.features?.length) mapApi.fitCompetition?.(stats.geojson);
     } else {
       mapApi.clearCompetitionTrips?.();
     }
-  }, [mapApi, stats]);
+  }, [mapApi, stats, layer, onlyClub]);
 
   const onSelect = (id) => { setCompetitionId(id); load(id, mode); };
   const onModeChange = (nextMode) => { setMode(nextMode); load(competitionId, nextMode); };
@@ -120,6 +133,23 @@ export default function Sykkelspor() {
               )}
               {stats && (
                 <span className="spor-panel__meta">{stats.totals.trips} turer · {(stats.totals.distanceM / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 0 })} km</span>
+              )}
+              {stats?.clubUsage?.features?.length > 0 && (
+                <div className="spor-modes" role="group" aria-label="Visning">
+                  <button type="button" className={layer === 'tetthet' ? 'spor-mode spor-mode--on' : 'spor-mode'} onClick={() => setLayer('tetthet')}>Tetthet</button>
+                  <button type="button" className={layer === 'klubber' ? 'spor-mode spor-mode--on' : 'spor-mode'} onClick={() => setLayer('klubber')}>Klubber</button>
+                </div>
+              )}
+              {layer === 'klubber' && stats?.clubUsage && (
+                <ul className="spor-clubs">
+                  {stats.clubUsage.features.map((f) => (
+                    <li key={f.properties.club}>
+                      <button type="button" className={onlyClub === f.properties.club ? 'spor-club spor-club--on' : (onlyClub ? 'spor-club spor-club--dim' : 'spor-club')} onClick={() => setOnlyClub(onlyClub === f.properties.club ? '' : f.properties.club)}>
+                        <i style={{ background: f.properties.color }} aria-hidden="true" />{f.properties.club}<span>{f.properties.edges}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               )}
               {stats && trackCount === 0 && (
                 <span className="spor-panel__meta">Ingen lagrede spor i denne konkurransen ennå. Velg en annen, eller logg en tur.</span>
