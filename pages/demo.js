@@ -3,7 +3,6 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Logo from '../components/Logo';
-import Icon from '../components/Icon';
 import ReportSheet from '../components/ReportSheet';
 
 const ReportMap = dynamic(() => import('../components/ReportMap'), {
@@ -11,17 +10,13 @@ const ReportMap = dynamic(() => import('../components/ReportMap'), {
   loading: () => <div className="map-missing">Laster kart …</div>,
 });
 
-// /demo — presentation page for a DEMO competition: how a school-run /
-// training-run competition builds up a picture of where children cycle and
-// walk. Reads /api/demo/spor, which only ever serves competitions flagged
-// "demo" (synthetic routes), so this page can be public and shared freely.
-//
-// Two views: "Turer" draws every trip as its own club-coloured line (with a
-// replay that adds them in the order they were logged), "Tetthet" shows the
-// aggregated density the municipality actually uses.
-const RANK_CLASS = ['comp-row__rank--gold', 'comp-row__rank--silver', 'comp-row__rank--bronze'];
+// /demo — presentation page. Starts with only real reported cases on the map;
+// NVDB accidents, the synthetic competition trips (heat map / per club) and
+// the club venues are switched on one by one while presenting. Reads
+// /api/demo/spor, which only ever serves competitions flagged "demo".
 const REPLAY_MS = 24000;
 
+const fmtInt = (n) => (Number(n) || 0).toLocaleString('nb-NO');
 const fmtKm = (m) => ((Number(m) || 0) / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 0 });
 const fmtDay = (iso) => {
   const d = new Date(iso);
@@ -39,6 +34,13 @@ function tripsToGeoJson(trips) {
   };
 }
 
+const LAYERS = [
+  { key: 'saker', label: 'Meldte saker', hint: 'live', swatch: 'saker' },
+  { key: 'ulykker', label: 'Ulykker', hint: 'NVDB', swatch: 'ulykker' },
+  { key: 'turer', label: 'Sykkel- og gåturer', hint: null, swatch: 'turer' },
+  { key: 'anlegg', label: 'Baner og haller', hint: null, swatch: 'anlegg' },
+];
+
 export default function Demo() {
   const [mapApi, setMapApi] = useState(null);
   const [data, setData] = useState(null);
@@ -46,18 +48,12 @@ export default function Demo() {
   const [view, setView] = useState('tetthet'); // tetthet | turer
   const [mode, setMode] = useState(''); // '' | sykkel | gange
   const [replay, setReplay] = useState(null); // { index, running } | null
-  const [panelOpen, setPanelOpen] = useState(true);
-  // Layers. The demo starts with only real reported cases on the map; trips
-  // (heat map / per club), NVDB accidents (fetched at zoom >= 12) and the club
-  // venues are switched on one by one while presenting.
+  const [open, setOpen] = useState(true);
   const [layers, setLayers] = useState({ turer: false, saker: true, ulykker: false, anlegg: false });
   // In-page walkthrough of the report flow (pick a spot → form → receipt).
   // Nothing is sent: ReportSheet runs in demo mode.
   const [report, setReport] = useState('none'); // none | pick | form
   const [pickedPoint, setPickedPoint] = useState(null);
-  const startReport = () => { setPanelOpen(false); setPickedPoint(null); setReport('pick'); };
-  const confirmSpot = () => { const c = mapApi?.getCenter?.(); if (!c) return; setPickedPoint(c); setReport('form'); };
-  const endReport = () => { setReport('none'); setPickedPoint(null); setPanelOpen(true); };
   const fittedRef = useRef(false);
   const timerRef = useRef(null);
 
@@ -82,7 +78,6 @@ export default function Demo() {
     const all = data?.trips || [];
     return mode ? all.filter((t) => t.mode === mode) : all;
   }, [data, mode]);
-
   const allGeo = useMemo(() => tripsToGeoJson(trips), [trips]);
 
   // Draw whatever the current view/filter/replay says, once map + data exist.
@@ -108,18 +103,20 @@ export default function Demo() {
     }
   }, [mapApi, data, view, replay, trips, allGeo, layers.turer]);
 
-  // Context layers follow the toggles.
+  // Context layers follow the checkboxes.
   useEffect(() => {
     if (!mapApi) return;
     mapApi.setReportsVisible?.(layers.saker);
     mapApi.setAccidentsVisible?.(layers.ulykker);
     mapApi.showVenues?.(layers.anlegg ? (data?.venues || []) : []);
   }, [mapApi, data, layers]);
+
+  const stopReplay = () => { clearInterval(timerRef.current); setReplay(null); };
   const toggleLayer = (key) => {
-    if (key === 'turer' && layers.turer) stopReplayRef.current?.();
+    if (key === 'turer' && layers.turer) stopReplay();
     setLayers((l) => ({ ...l, [key]: !l[key] }));
   };
-  const stopReplayRef = useRef(null);
+  useEffect(() => () => clearInterval(timerRef.current), []);
 
   // Replay: add trips in logged order over ~REPLAY_MS.
   const startReplay = () => {
@@ -138,30 +135,29 @@ export default function Demo() {
       });
     }, stepMs);
   };
-  const stopReplay = () => { clearInterval(timerRef.current); setReplay(null); };
-  stopReplayRef.current = stopReplay;
-  useEffect(() => () => clearInterval(timerRef.current), []);
 
-  const changeMode = (next) => {
-    stopReplay();
-    setMode(next);
-    load(next); // density geojson is filtered server-side
-  };
+  const changeMode = (next) => { stopReplay(); setMode(next); load(next); };
+
+  const startReport = () => { setOpen(false); setPickedPoint(null); setReport('pick'); };
+  const confirmSpot = () => { const c = mapApi?.getCenter?.(); if (!c) return; setPickedPoint(c); setReport('form'); };
+  const endReport = () => { setReport('none'); setPickedPoint(null); setOpen(true); };
 
   const shownTrips = replay ? trips.slice(0, replay.index) : trips;
   const shownKm = shownTrips.reduce((s, t) => s + (t.distanceM || 0), 0);
   const lastShown = shownTrips[shownTrips.length - 1];
   const totals = data?.totals;
   const helmetPct = totals?.trips ? Math.round((totals.helmetTrips / totals.trips) * 100) : 0;
+  const title = data?.competition?.name?.replace(/^DEMO\s*[–-]\s*/i, '') || 'Sykle til trening';
+  const layerCount = { turer: totals ? fmtInt(totals.trips) : null, anlegg: data?.venues?.length ? String(data.venues.length) : null };
 
   return (
     <>
       <Head>
-        <title>Demo – Sykkelspor · Finns Fairway</title>
+        <title>Demo · Finns Fairway</title>
         <meta name="robots" content="noindex" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
       </Head>
-      <main className="app-shell demo-shell demo-shell--labels">
+      <main className="app-shell demo-shell">
         <ReportMap className="map-canvas" showReports onMapReady={setMapApi} mapStyle="mapbox://styles/mapbox/light-v11" enableNvdbLayers initialNvdbLayers={[]} pickMode={report === 'pick'} />
 
         {report === 'pick' && (
@@ -174,112 +170,107 @@ export default function Demo() {
           </>
         )}
         {report === 'form' && pickedPoint && (
-          <ReportSheet
-            demo
-            point={pickedPoint}
-            onClose={endReport}
-            onChangeLocation={() => setReport('pick')}
-            onViewCase={endReport}
-          />
+          <ReportSheet demo point={pickedPoint} onClose={endReport} onChangeLocation={() => setReport('pick')} onViewCase={endReport} />
         )}
 
         {report === 'none' && (
-        <div className="demo-actions">
-          <Link href="/backoffice" className="demo-backoffice">
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
-            Backoffice
-          </Link>
-          <button type="button" className="fab-meld demo-fab" onClick={startReport}>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" /></svg>
-            Meld fra
-          </button>
-        </div>
-        )}
-
-        {report === 'none' && (
-        <div className={panelOpen ? 'demo-panel' : 'demo-panel demo-panel--collapsed'}>
-          <div className="demo-panel__head">
-            <Link href="/" className="demo-panel__brand" aria-label="Til appen"><Logo size="sm" /></Link>
-            <div className="demo-panel__title">
-              <strong>{data?.competition?.name?.replace(/^DEMO\s*[–-]\s*/i, '') || 'Sykkelspor'}</strong>
-              <span className="comp-demo">DEMO</span>
-            </div>
-            <button type="button" className="demo-panel__toggle" onClick={() => setPanelOpen((v) => !v)} aria-label={panelOpen ? 'Skjul panel' : 'Vis panel'}>
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">{panelOpen ? <path d="M6 9l6 6 6-6" /> : <path d="M6 15l6-6 6 6" />}</svg>
+          <div className="dp-actions">
+            <Link href="/backoffice" className="dp-actions__bo">Logg inn i backoffice</Link>
+            <button type="button" className="fab-meld dp-actions__meld" onClick={startReport}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" /></svg>
+              Meld fra
             </button>
           </div>
+        )}
 
-          {status && <p className="spor-panel__msg">{status}</p>}
-
-          {data && panelOpen && (
-            <>
-              <div className="demo-toggles" role="group" aria-label="Lag">
-                <button type="button" className={layers.saker ? 'demo-toggle demo-toggle--on' : 'demo-toggle'} onClick={() => toggleLayer('saker')} aria-pressed={layers.saker}><i className="demo-toggle__dot" style={{ background: '#0b5d4d' }} aria-hidden="true" />Meldte saker</button>
-                <button type="button" className={layers.ulykker ? 'demo-toggle demo-toggle--on' : 'demo-toggle'} onClick={() => toggleLayer('ulykker')} aria-pressed={layers.ulykker}><i className="demo-toggle__dot" style={{ background: '#6D233F' }} aria-hidden="true" />Ulykker</button>
-                <button type="button" className={layers.turer ? 'demo-toggle demo-toggle--on' : 'demo-toggle'} onClick={() => toggleLayer('turer')} aria-pressed={layers.turer}><i className="demo-toggle__dot" style={{ background: '#ef4444' }} aria-hidden="true" />Sykkelturer</button>
-                <button type="button" className={layers.anlegg ? 'demo-toggle demo-toggle--on' : 'demo-toggle'} onClick={() => toggleLayer('anlegg')} aria-pressed={layers.anlegg}><i className="demo-toggle__dot" style={{ background: '#1d4ed8' }} aria-hidden="true" />Anlegg</button>
-              </div>
-
-              {layers.turer && (<>
-              <div className="comp-totals demo-totals">
-                <div><strong>{replay ? shownTrips.length : totals.trips}</strong><span>turer</span></div>
-                <div><strong>{fmtKm(replay ? shownKm : totals.distanceM)}</strong><span>km</span></div>
-                <div><strong>{helmetPct}%</strong><span>med hjelm</span></div>
-              </div>
-
-              <div className="demo-controls">
-                <div className="demo-seg" role="group" aria-label="Visning">
-                  <button type="button" className={view === 'tetthet' ? 'demo-seg__btn demo-seg__btn--on' : 'demo-seg__btn'} onClick={() => { stopReplay(); setView('tetthet'); }}>Varmekart</button>
-                  <button type="button" className={view === 'turer' ? 'demo-seg__btn demo-seg__btn--on' : 'demo-seg__btn'} onClick={() => { stopReplay(); setView('turer'); }}>Per klubb</button>
-                </div>
-                <div className="demo-seg" role="group" aria-label="Type">
-                  <button type="button" className={mode === '' ? 'demo-seg__btn demo-seg__btn--on' : 'demo-seg__btn'} onClick={() => changeMode('')}>Alle</button>
-                  <button type="button" className={mode === 'sykkel' ? 'demo-seg__btn demo-seg__btn--on' : 'demo-seg__btn'} onClick={() => changeMode('sykkel')}>Sykkel</button>
-                  <button type="button" className={mode === 'gange' ? 'demo-seg__btn demo-seg__btn--on' : 'demo-seg__btn'} onClick={() => changeMode('gange')}>Gange</button>
-                </div>
-              </div>
-
-              <button type="button" className={replay?.running ? 'big-button big-button--secondary demo-play' : 'big-button big-button--primary demo-play'} onClick={replay?.running ? stopReplay : startReplay}>
-                {replay?.running ? (
-                  <>Stopp · {lastShown ? fmtDay(lastShown.createdAt) : ''}</>
-                ) : (
-                  <>
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M7 5v14l12-7z" /></svg>
-                    Spill av perioden
-                  </>
-                )}
+        {report === 'none' && (
+          <aside className={open ? 'dp' : 'dp dp--folded'} aria-label="Demo">
+            <header className="dp__head">
+              <Link href="/" className="dp__brand" aria-label="Til appen"><Logo size="sm" /></Link>
+              <span className="dp__muni">Kristiansand</span>
+              <span className="dp__stamp">Demo</span>
+              <button type="button" className="dp__fold" onClick={() => setOpen((v) => !v)} aria-label={open ? 'Skjul' : 'Vis'}>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">{open ? <path d="M5 12h14" /> : <path d="M12 5v14M5 12h14" />}</svg>
               </button>
+            </header>
 
-              {data.weatherHero && (
-                <p className="comp-weather-note demo-weather">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 14a5 5 0 0 1 1.4-9.8A6 6 0 0 1 17 6a4 4 0 0 1 1 7.9" /><path d="M8 19l-1 2M12 19l-1 2M16 19l-1 2" /></svg>
-                  <span><b>Værhelt:</b> {data.weatherHero.club} – {data.weatherHero.bonusTrips} turer i regn</span>
-                </p>
-              )}
+            {open && (
+              <div className="dp__body">
+                {status && <p className="dp__status">{status}</p>}
+                <h1 className="dp__title">{title}</h1>
+                <p className="dp__lede">Hvor barna sykler og går til trening, sett sammen med det innbyggerne melder inn og det som faktisk har skjedd på veiene.</p>
 
-              <ol className="comp-board__list demo-board">
-                {data.leaderboard.map((row, index) => (
-                  <li key={row.club} className={index === 0 && row.trips > 0 ? 'comp-row comp-row--lead' : 'comp-row'}>
-                    <span className={`comp-row__rank ${row.trips > 0 ? (RANK_CLASS[index] || '') : ''}`}>{index + 1}</span>
-                    <span className="comp-row__club">
-                      <i className="demo-dot" style={{ background: row.color }} aria-hidden="true" />
-                      {row.club}
-                    </span>
-                    <span className="comp-row__stats">
-                      <span className="comp-row__helmet" title="Andel med hjelm"><Icon name="helmet" size={14} /> {row.helmetPct}%</span>
-                      <span className="comp-row__count">{row.trips} turer</span>
-                      <span className="comp-row__count comp-row__count--muted">{fmtKm(row.distanceM)} km</span>
-                    </span>
-                  </li>
-                ))}
-              </ol>
+                <section className="dp__section">
+                  <h2 className="dp__h">Kartlag</h2>
+                  <ul className="dp__layers">
+                    {LAYERS.map((l) => (
+                      <li key={l.key}>
+                        <label className={layers[l.key] ? 'dp__layer dp__layer--on' : 'dp__layer'}>
+                          <input type="checkbox" checked={layers[l.key]} onChange={() => toggleLayer(l.key)} />
+                          <i className={`dp__swatch dp__swatch--${l.swatch}`} aria-hidden="true" />
+                          <span className="dp__layer-name">{l.label}</span>
+                          <span className="dp__layer-meta">{layerCount[l.key] || l.hint || ''}</span>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
 
-              </>)}
+                {data && layers.turer && (
+                  <section className="dp__section">
+                    <dl className="dp__figures">
+                      <div><dd>{fmtInt(replay ? shownTrips.length : totals.trips)}</dd><dt>turer</dt></div>
+                      <div><dd>{fmtKm(replay ? shownKm : totals.distanceM)}</dd><dt>km</dt></div>
+                      <div><dd>{helmetPct} %</dd><dt>med hjelm</dt></div>
+                    </dl>
 
-              <p className="demo-note">Syntetiske turer for demonstrasjon – ingen ekte barn. Ekte ruter vises aldri enkeltvis, kun som tetthet for kommunen, og de første 50 m fra hjemmet fjernes før noe lagres.</p>
-            </>
-          )}
-        </div>
+                    <div className="dp__tabsrow">
+                      <nav className="dp__tabs" aria-label="Visning">
+                        <button type="button" className={view === 'tetthet' ? 'dp__tab dp__tab--on' : 'dp__tab'} onClick={() => { stopReplay(); setView('tetthet'); }}>Varmekart</button>
+                        <button type="button" className={view === 'turer' ? 'dp__tab dp__tab--on' : 'dp__tab'} onClick={() => { stopReplay(); setView('turer'); }}>Per klubb</button>
+                      </nav>
+                      <nav className="dp__tabs dp__tabs--filter" aria-label="Type">
+                        <button type="button" className={mode === '' ? 'dp__tab dp__tab--on' : 'dp__tab'} onClick={() => changeMode('')}>Alle</button>
+                        <button type="button" className={mode === 'sykkel' ? 'dp__tab dp__tab--on' : 'dp__tab'} onClick={() => changeMode('sykkel')}>Sykkel</button>
+                        <button type="button" className={mode === 'gange' ? 'dp__tab dp__tab--on' : 'dp__tab'} onClick={() => changeMode('gange')}>Gange</button>
+                      </nav>
+                    </div>
+
+                    <button type="button" className={replay?.running ? 'dp__play dp__play--stop' : 'dp__play'} onClick={replay?.running ? stopReplay : startReplay}>
+                      {replay?.running ? (
+                        <>Stopp<span className="dp__play-meta">{lastShown ? fmtDay(lastShown.createdAt) : ''}</span></>
+                      ) : (
+                        <><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M7 5v14l12-7z" /></svg>Spill av september</>
+                      )}
+                    </button>
+
+                    <h2 className="dp__h">Stilling <span className="dp__h-meta">flest turer vinner</span></h2>
+                    <table className="dp__table">
+                      <thead>
+                        <tr><th className="dp__num">#</th><th>Klubb</th><th className="dp__num">Turer</th><th className="dp__num">Km</th><th className="dp__num">Hjelm</th></tr>
+                      </thead>
+                      <tbody>
+                        {data.leaderboard.map((row, index) => (
+                          <tr key={row.club} className={index === 0 && row.trips > 0 ? 'dp__lead' : undefined}>
+                            <td className="dp__num">{index + 1}</td>
+                            <td className="dp__club"><i style={{ background: row.color }} aria-hidden="true" />{row.club}{data.weatherHero?.club === row.club && <span className="dp__hero" title={`Værhelt – flest turer i regn (${row.bonusTrips})`}>værhelt</span>}</td>
+                            <td className="dp__num">{fmtInt(row.trips)}</td>
+                            <td className="dp__num">{fmtKm(row.distanceM)}</td>
+                            <td className="dp__num dp__pct">{row.helmetPct} %</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </section>
+                )}
+
+                <footer className="dp__foot">
+                  <p>Turene er syntetiske og laget for demonstrasjon. Ekte ruter vises aldri enkeltvis, bare som tetthet, og de første 50 m fra hjemmet fjernes før noe lagres.</p>
+                  <p className="dp__sources">Kilder: NVDB, Kartverket, OpenStreetMap, Mapbox og klubbene.</p>
+                </footer>
+              </div>
+            )}
+          </aside>
         )}
       </main>
     </>
