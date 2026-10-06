@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Icon from './Icon';
 import { useEffect, useState } from 'react';
 import { SAFETY_COMMANDMENTS, KID_COMMANDMENTS } from '../lib/safetyCommandments';
 import ReadAloudButton from './ReadAloudButton';
@@ -57,7 +58,7 @@ export default function BudTip({ audience = 'all' }) {
         <p>{bud.text}</p>
         <ReadAloudButton text={`Finns bud ${bud.n}. ${bud.title}. ${bud.text}`} />
       </div>
-      <Link href="/bud" className="trip-cheer__budlink">Se alle 10 bud ›</Link>
+      <Link href="/bud" className="trip-cheer__budlink">Se alle 10 bud<Icon name="chevronRight" size={16} strokeWidth={2.2} /></Link>
     </>
   );
 }

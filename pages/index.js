@@ -2,6 +2,7 @@ import Head from 'next/head';
 import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Logo from '../components/Logo';
+import Icon from '../components/Icon';
 import ReportSheet from '../components/ReportSheet';
 import CompetitionSheet from '../components/CompetitionSheet';
 import TripTracker from '../components/TripTracker';
@@ -34,6 +35,12 @@ export default function Home() {
   const [tripContext, setTripContext] = useState(null);
   const [tripResult, setTripResult] = useState(null); // { km, mode, weatherKind }
   const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') setMenuOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [menuOpen]);
   // Show the "Installer app" call-to-action only when the app isn't already
   // running as an installed PWA — no point nagging people who've installed it.
   const [canInstall, setCanInstall] = useState(false);
@@ -372,8 +379,8 @@ export default function Home() {
               className="app-install-cta"
               onClick={() => { if (typeof window !== 'undefined') window.dispatchEvent(new Event('ff-open-install')); }}
             >
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v12M8 11l4 4 4-4M5 21h14" /></svg>
-              Installer app
+              <Icon name="download" size={17} strokeWidth={2} />
+              Installer
             </button>
           )}
           <PlaceSearch
@@ -389,18 +396,20 @@ export default function Home() {
               aria-label="Meny"
               onClick={() => setMenuOpen((v) => !v)}
             >
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+              <Icon name={menuOpen ? 'close' : 'menu'} size={20} strokeWidth={2} />
             </button>
             {menuOpen && (
               <>
                 <button type="button" className="app-menu__backdrop" aria-hidden="true" tabIndex={-1} onClick={() => setMenuOpen(false)} />
-                <div className="app-menu__panel" role="menu">
-                  <a role="menuitem" className="app-menu__item" href="/aktuelt">Aktuelt</a>
-                  <a role="menuitem" className="app-menu__item" href="/mine-meldinger">Mine meldinger</a>
-                  <a role="menuitem" className="app-menu__item" href="/mine-turer">Mine turer</a>
-                  <a role="menuitem" className="app-menu__item" href="/personvern">Personvern</a>
-                  <a role="menuitem" className="app-menu__item app-menu__item--admin" href="/backoffice">Admin</a>
-                </div>
+                <nav className="app-menu__panel" role="menu" aria-label="Meny">
+                  <a role="menuitem" className="app-menu__item" href="/mine-meldinger"><Icon name="inbox" size={20} />Mine meldinger</a>
+                  <a role="menuitem" className="app-menu__item" href="/mine-turer"><Icon name="bike" size={20} />Mine turer</a>
+                  <a role="menuitem" className="app-menu__item" href="/aktuelt"><Icon name="news" size={20} />Aktuelt</a>
+                  <a role="menuitem" className="app-menu__item" href="/bud"><Icon name="bud" size={20} />Finns 10 bud</a>
+                  <span className="app-menu__rule" aria-hidden="true" />
+                  <a role="menuitem" className="app-menu__item app-menu__item--quiet" href="/personvern"><Icon name="shield" size={18} />Personvern</a>
+                  <a role="menuitem" className="app-menu__item app-menu__item--quiet" href="/backoffice"><Icon name="lock" size={18} />For kommunen</a>
+                </nav>
               </>
             )}
           </div>
@@ -416,7 +425,7 @@ export default function Home() {
                     type="button"
                     className={hasActiveComp ? 'fab-konk' : 'fab-konk fab-konk--idle'}
                     onClick={openCompetitions}
-                    aria-label={hasActiveComp ? 'Konkurranser' : 'Konkurranser – ingen aktiv nå'}
+                    aria-label={hasActiveComp ? 'Konkurranser' : 'Konkurranser, ingen aktive nå'}
                   >
                     <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4Z" />

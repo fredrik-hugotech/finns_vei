@@ -198,7 +198,7 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mode =
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
       addPendingReport(queuePayload);
       setUnsafeCount((n) => n + 1);
-      setFlash('Lagret på enheten – sendes automatisk når du får dekning');
+      setFlash('Lagret på telefonen. Sendes når du får dekning.');
       setTimeout(() => setFlash(''), 2200);
       return;
     }
@@ -219,7 +219,7 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mode =
       // automatic resend rather than losing the point.
       addPendingReport(queuePayload);
       setUnsafeCount((n) => n + 1);
-      setFlash('Lagret på enheten – sendes automatisk når du får dekning');
+      setFlash('Lagret på telefonen. Sendes når du får dekning.');
     }
     setTimeout(() => setFlash(''), 2200);
   };

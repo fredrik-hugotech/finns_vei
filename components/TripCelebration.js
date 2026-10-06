@@ -35,14 +35,14 @@ export default function TripCelebration({ km, mode = 'sykkel', weatherKind = nul
 
       {queued && (
         <p className="trip-cheer__queued">
-          Turen er lagret på enheten – sendes automatisk når du får dekning igjen.
+          Turen er lagret på telefonen og sendes når du får dekning.
         </p>
       )}
 
       {isPrecip && (
         <div className="trip-cheer__weather">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 14a5 5 0 0 1 1.4-9.8A6 6 0 0 1 17 6a4 4 0 0 1 1 7.9" /><path d="M8 19l-1 2M12 19l-1 2M16 19l-1 2" /></svg>
-          Værhelt! Du var ute i {weatherWord} – ekstra tøft.
+          Værhelt! Du var ute i {weatherWord}. Det er tøft.
         </div>
       )}
 

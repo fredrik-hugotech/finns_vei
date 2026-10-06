@@ -1,7 +1,6 @@
 import Head from 'next/head';
+import PageHeader from '../components/PageHeader';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
-import Logo from '../components/Logo';
 import Icon from '../components/Icon';
 import ReadAloudButton from '../components/ReadAloudButton';
 import { SAFETY_COMMANDMENTS, KID_QUIZ } from '../lib/safetyCommandments';
@@ -28,7 +27,6 @@ function Group({ label, items }) {
 }
 
 export default function Bud() {
-  const router = useRouter();
   const barn = SAFETY_COMMANDMENTS.filter((b) => b.audience === 'barn');
   const voksne = SAFETY_COMMANDMENTS.filter((b) => b.audience === 'voksen');
 
@@ -51,17 +49,12 @@ export default function Bud() {
         <meta name="description" content="Finns Fairways ti bud for trygg ferdsel til og fra idrettsaktiviteter." />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
       </Head>
-      <main className="page bud-page">
-        <button type="button" className="bud-back" onClick={() => (window.history.length > 1 ? router.back() : router.push('/'))}>‹ Tilbake</button>
-        <header className="bud-hero">
-          <div className="bud-hero__brand"><Logo size="sm" /></div>
-          <h1>Finns 10 bud</h1>
-          <p>for trygg ferdsel til og fra idrett</p>
-        </header>
+      <main className="page sub bud-page">
+        <PageHeader title="Finns 10 bud" intro="For trygg ferdsel til og fra idrett." />
         {allSolved && (
           <div className="bud-badge" role="status">
             <Icon name="trophy" size={18} strokeWidth={2} />
-            <span>{solvedCount}/{totalQuiz} riktige — Trafikkhelt!</span>
+            <span>{solvedCount}/{totalQuiz} riktige. Trafikkhelt!</span>
           </div>
         )}
         <Group label="For barn" items={barn} />

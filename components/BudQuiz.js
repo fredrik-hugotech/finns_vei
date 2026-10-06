@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Icon from './Icon';
 import { useEffect, useState } from 'react';
 import { KID_QUIZ } from '../lib/safetyCommandments';
 import { markBudCorrect } from '../lib/budProgress';
@@ -56,7 +57,7 @@ export default function BudQuiz() {
         </p>
       )}
 
-      <Link href="/bud" className="trip-cheer__budlink">Se alle 10 bud ›</Link>
+      <Link href="/bud" className="trip-cheer__budlink">Se alle 10 bud<Icon name="chevronRight" size={16} strokeWidth={2.2} /></Link>
     </div>
   );
 }

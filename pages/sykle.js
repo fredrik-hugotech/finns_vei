@@ -171,14 +171,16 @@ export default function Sykle() {
               <Icon name="flag" size={40} strokeWidth={1.8} />
               <span>Meld farlig sted</span>
             </button>
-            <Link href="/mine-turer" className="kid-budlink">Mine turer ›</Link>
-            <Link href="/bud" className="kid-budlink">Finns 10 bud for trygg ferdsel ›</Link>
+            <nav className="kid-links">
+              <Link href="/mine-turer" className="kid-link"><Icon name="bike" size={20} />Mine turer<Icon name="chevronRight" size={18} strokeWidth={2} /></Link>
+              <Link href="/bud" className="kid-link"><Icon name="bud" size={20} />Finns 10 bud<Icon name="chevronRight" size={18} strokeWidth={2} /></Link>
+            </nav>
           </section>
         )}
 
         {view === 'setup' && (
           <section className="kid-screen">
-            <button type="button" className="kid-back" onClick={() => setView('hub')}>‹ Tilbake</button>
+            <button type="button" className="kid-back" onClick={() => setView('hub')}><Icon name="chevronLeft" size={20} strokeWidth={2.2} />Tilbake</button>
             <h1 className="kid-title">Klar for tur?</h1>
 
             {compChecked && (
@@ -187,26 +189,31 @@ export default function Sykle() {
                   <Icon name="trophy" size={16} /> Turen teller i <strong>{competition.name}</strong>
                 </p>
               ) : (
-                <p className="kid-comp-note">Ingen aktiv konkurranse akkurat nå. Turen lagres bare på din enhet under «Mine turer».</p>
+                <p className="kid-comp-note">Ingen konkurranse akkurat nå. Turen lagres under «Mine turer».</p>
               )
             )}
 
+            <span className="kid-label">Hvordan?</span>
             <div className="kid-choice">
               <button type="button" className={mode === 'sykkel' ? 'kid-pick kid-pick--on' : 'kid-pick'} onClick={() => { haptic(6); setMode('sykkel'); }}><Icon name="bike" size={26} /><span>Sykle</span></button>
-              <button type="button" className={mode === 'gange' ? 'kid-pick kid-pick--on' : 'kid-pick'} onClick={() => { haptic(6); setMode('gange'); }}><Icon name="activity" size={26} /><span>Gå</span></button>
+              <button type="button" className={mode === 'gange' ? 'kid-pick kid-pick--on' : 'kid-pick'} onClick={() => { haptic(6); setMode('gange'); }}><Icon name="walk" size={26} /><span>Gå</span></button>
             </div>
 
+            <span className="kid-label">Hvor skal du?</span>
             <div className="kid-choice">
-              <button type="button" className={routeType === 'fritid' ? 'kid-pick kid-pick--on' : 'kid-pick'} onClick={() => { haptic(6); setRouteType('fritid'); }}><Icon name="activity" size={26} /><span>Fritid</span></button>
+              <button type="button" className={routeType === 'fritid' ? 'kid-pick kid-pick--on' : 'kid-pick'} onClick={() => { haptic(6); setRouteType('fritid'); }}><Icon name="ball" size={26} /><span>Fritid</span></button>
               <button type="button" className={routeType === 'skole' ? 'kid-pick kid-pick--on' : 'kid-pick'} onClick={() => { haptic(6); setRouteType('skole'); }}><Icon name="school" size={26} /><span>Skole</span></button>
             </div>
 
             {competition?.clubs?.length > 1 && (
-              <div className="kid-clubs">
-                {competition.clubs.map((c) => (
-                  <button type="button" key={c.name} className={club === c.name ? 'kid-club kid-club--on' : 'kid-club'} onClick={() => { haptic(6); setClub(c.name); }}>{c.name}</button>
-                ))}
-              </div>
+              <>
+                <span className="kid-label">Laget ditt</span>
+                <div className="kid-clubs">
+                  {competition.clubs.map((c) => (
+                    <button type="button" key={c.name} className={club === c.name ? 'kid-club kid-club--on' : 'kid-club'} onClick={() => { haptic(6); setClub(c.name); }}>{c.name}</button>
+                  ))}
+                </div>
+              </>
             )}
 
             <button type="button" className={helmet ? 'kid-helmet kid-helmet--on' : 'kid-helmet'} onClick={() => { haptic(6); setHelmet((v) => !v); }}>
@@ -239,7 +246,7 @@ export default function Sykle() {
 
         {view === 'danger' && (
           <section className="kid-screen">
-            <button type="button" className="kid-back" onClick={resetToHub}>‹ Tilbake</button>
+            <button type="button" className="kid-back" onClick={resetToHub}><Icon name="chevronLeft" size={20} strokeWidth={2.2} />Tilbake</button>
             <h1 className="kid-title">Hva er farlig her?</h1>
             {dangerStatus && dangerStatus !== 'ready' && <p className="kid-hint">{dangerStatus}</p>}
             {dangerError && <button type="button" className="kid-back" onClick={openDanger}>Prøv igjen</button>}
