@@ -48,7 +48,7 @@ export default function TripCelebration({ km, mode = 'sykkel', weatherKind = nul
 
       {queued && (
         <p className="trip-cheer__queued">
-          Turen er lagret på enheten – sendes automatisk når du får dekning igjen.
+          Turen er lagret på telefonen og sendes når du får dekning.
         </p>
       )}
 
@@ -57,7 +57,7 @@ export default function TripCelebration({ km, mode = 'sykkel', weatherKind = nul
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20c4-1 4-5 7-8s7-3 9-6-2-6-5-3-3 6-6 9-7 3-8 7z" /><path d="M14 6l4 4" /></svg>
           {painted > 0
             ? <span>Du malte <strong>{painted} {painted === 1 ? 'veibit' : 'veibiter'}</strong>{club ? ` for ${club}` : ''}!</span>
-            : <span>Ingen nye veibiter denne gangen. En vei males når to fra {club || 'klubben'} har brukt den – ta med en lagkamerat!</span>}
+            : <span>Ingen nye veibiter denne gangen. En vei males når to fra {club || 'klubben'} har brukt den. Ta med en lagkamerat neste gang!</span>}
         </div>
       )}
 
@@ -85,7 +85,7 @@ export default function TripCelebration({ km, mode = 'sykkel', weatherKind = nul
       {isPrecip && (
         <div className="trip-cheer__weather">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 14a5 5 0 0 1 1.4-9.8A6 6 0 0 1 17 6a4 4 0 0 1 1 7.9" /><path d="M8 19l-1 2M12 19l-1 2M16 19l-1 2" /></svg>
-          Værhelt! Du var ute i {weatherWord} – ekstra tøft.
+          Værhelt! Du var ute i {weatherWord}. Det er tøft.
         </div>
       )}
 

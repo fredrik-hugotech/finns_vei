@@ -1,7 +1,6 @@
 import Head from 'next/head';
-import Link from 'next/link';
+import PageHeader from '../components/PageHeader';
 import { useEffect, useState } from 'react';
-import Logo from '../components/Logo';
 import BudTip from '../components/BudTip';
 
 function fmtNewsDate(iso) {
@@ -43,10 +42,9 @@ export default function Aktuelt() {
         <title>Aktuelt – Finns Fairway</title>
         <meta name="description" content="Siste nytt, arrangementer og trygg ferdsel fra Finns Fairway." />
       </Head>
-      <main className="page">
-        <section className="hero-card aktuelt-card">
-          <Logo size="md" />
-          <h1>Aktuelt</h1>
+      <main className="page sub">
+        <PageHeader title="Aktuelt" />
+        <section className="sub__body aktuelt-card">
 
           {loading && <p className="ui-small-text">Laster …</p>}
 
@@ -119,7 +117,6 @@ export default function Aktuelt() {
             </>
           )}
 
-          <Link className="back-link" href="/">← Til forsiden</Link>
         </section>
       </main>
     </>

@@ -53,11 +53,12 @@ export default function SupportSheet({ reportId, supportToken, onClose, onDone }
         <form className="sheet-form" onSubmit={submit}>
           <div className="sheet-scroll">
             <div className="support-intro">
-              <h2>Støtt denne saken</h2>
+              <h2 className="sheet-title">Støtt saken</h2>
+              <p className="sheet-lede">Jo flere som støtter, jo høyere opp kommer saken hos kommunen.</p>
             </div>
 
             <fieldset className="sheet-field">
-              <legend>Hva bekymrer deg? <em>(valgfritt)</em></legend>
+              <legend>Hva bekymrer deg? <span className="sheet-field__hint">Valgfritt</span></legend>
               <div className="category-grid">
                 {REPORT_CATEGORIES.map((value) => (
                   <button
@@ -74,7 +75,7 @@ export default function SupportSheet({ reportId, supportToken, onClose, onDone }
             </fieldset>
 
             <label className="sheet-field">
-              <span className="sheet-field__label">Ditt innspill <em>(valgfritt)</em></span>
+              <span className="sheet-field__label">Ditt innspill <span className="sheet-field__hint">Valgfritt</span></span>
               <textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={600} placeholder="F.eks. mangler nedsenket fortauskant for syklister …" />
             </label>
 

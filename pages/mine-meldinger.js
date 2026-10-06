@@ -1,7 +1,7 @@
 import Head from 'next/head';
+import PageHeader from '../components/PageHeader';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import Logo from '../components/Logo';
 import { reportStatusMeta } from '../lib/reportStatusMeta';
 import { getMyReports, removeMyReport, getReportLastSeenAt, markReportSeen } from '../lib/myReports';
 import { QUEUE_CHANGED_EVENT, flushQueue, getPendingReports } from '../lib/offlineReportQueue';
@@ -112,13 +112,9 @@ export default function MineMeldinger() {
         <meta name="description" content="Se meldinger du har sendt inn fra denne enheten." />
         <meta name="robots" content="noindex" />
       </Head>
-      <main className="page">
-        <section className="hero-card my-reports-card">
-          <Logo size="md" />
-          <h1>Mine meldinger</h1>
-          <p className="lede">
-            Meldinger du har sendt fra denne enheten. Listen lagres kun i denne nettleseren — den er ikke knyttet til deg og forsvinner om du tømmer nettleserdata.
-          </p>
+      <main className="page sub">
+        <PageHeader title="Mine meldinger" intro="Meldingene du har sendt fra denne telefonen. Lista ligger bare her, ikke hos oss." />
+        <section className="sub__body">
 
           {pendingReports.length > 0 && (
             <ul className="my-reports-list my-reports-list--pending">
@@ -128,7 +124,7 @@ export default function MineMeldinger() {
                     <span className="status-pill status-pill--ukjent">Venter på nett</span>
                   </div>
                   <strong className="my-reports-item__title">{entry.payload?.category || 'Melding'}</strong>
-                  <p className="ui-small-text">Lagret på enheten – sendes automatisk når du får dekning igjen.</p>
+                  <p className="ui-small-text">Lagret på telefonen. Sendes når du får dekning.</p>
                 </li>
               ))}
             </ul>
@@ -218,7 +214,6 @@ export default function MineMeldinger() {
             </ul>
           )}
 
-          <Link className="back-link" href="/">← Til forsiden</Link>
         </section>
       </main>
     </>

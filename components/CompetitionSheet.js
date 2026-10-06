@@ -161,7 +161,7 @@ export default function CompetitionSheet({ onClose, onPickStart, onShowPaint = n
                       {formatPeriod(competition) && <span className="comp-card__period">{formatPeriod(competition)}</span>}
                       {competition.description && <span className="comp-card__desc">{competition.description}</span>}
                     </span>
-                    <span className="comp-card__chev" aria-hidden="true">›</span>
+                    <span className="comp-card__chev" aria-hidden="true"><Icon name="chevronRight" size={18} strokeWidth={2} /></span>
                   </button>
                 ))}
               </div>
@@ -171,7 +171,7 @@ export default function CompetitionSheet({ onClose, onPickStart, onShowPaint = n
 
           {view === 'detail' && stats && (
             <>
-              <button type="button" className="comp-back" onClick={backToList}>‹ Alle konkurranser</button>
+              <button type="button" className="comp-back" onClick={backToList}><Icon name="chevronLeft" size={18} strokeWidth={2.2} />Alle konkurranser</button>
               <div className="support-intro">
                 <h2>{stats.competition.name}{isDemoComp(stats.competition) && <span className="comp-demo">DEMO</span>}</h2>
                 {isDemoComp(stats.competition) && <p className="comp-demo-note">Dette er en demo-konkurranse for å vise hvordan det fungerer.</p>}
@@ -187,7 +187,7 @@ export default function CompetitionSheet({ onClose, onPickStart, onShowPaint = n
               {distanceFact && <p className="comp-fact-line">{distanceFact}</p>}
               {stats.metric === 'paint' && (
                 <div className="comp-paint">
-                  <p className="comp-paint__text"><strong>{(stats.paintedEdges || 0).toLocaleString('nb-NO')}</strong> veibiter er malt så langt. En vei blir malt når minst to fra samme klubb har brukt den – sykle sammen!</p>
+                  <p className="comp-paint__text"><strong>{(stats.paintedEdges || 0).toLocaleString('nb-NO')}</strong> veibiter er malt så langt. En vei blir malt når minst to fra samme klubb har brukt den, så sykle sammen!</p>
                   {onShowPaint && stats.paint && (
                     <button type="button" className="big-button big-button--secondary comp-paint__btn" onClick={() => onShowPaint(stats.paint)}>Vis klubbkartet</button>
                   )}
@@ -196,7 +196,7 @@ export default function CompetitionSheet({ onClose, onPickStart, onShowPaint = n
               {stats.weatherHero && (
                 <p className="comp-weather-note">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 14a5 5 0 0 1 1.4-9.8A6 6 0 0 1 17 6a4 4 0 0 1 1 7.9" /><path d="M8 19l-1 2M12 19l-1 2M16 19l-1 2" /></svg>
-                  <span><b>Værhelt:</b> {stats.weatherHero.club} – flest turer i regn og snø. Avgjør ved likt antall.</span>
+                  <span><b>Værhelt:</b> {stats.weatherHero.club} har flest turer i regn og snø.</span>
                 </p>
               )}
 
@@ -205,7 +205,7 @@ export default function CompetitionSheet({ onClose, onPickStart, onShowPaint = n
                   <h3 className="comp-board__title">Stilling</h3>
                   <span className="comp-board__metric">Vinner: {stats.metric === 'paint' ? 'flest malte veibiter' : stats.metric === 'distance' ? 'flest km' : 'flest turer'}</span>
                 </div>
-                {stats.leaderboard.length === 0 && <p className="comp-muted">Ingen turer logget ennå – bli den første!</p>}
+                {stats.leaderboard.length === 0 && <p className="comp-muted">Ingen turer ennå. Bli den første!</p>}
                 <ol className="comp-board__list">
                   {stats.leaderboard.map((row, index) => (
                     <li key={row.club} className={`comp-row${index === 0 && row.trips > 0 ? ' comp-row--lead' : ''}${myClub === row.club ? ' comp-row--mine' : ''}`}>
@@ -255,7 +255,7 @@ export default function CompetitionSheet({ onClose, onPickStart, onShowPaint = n
 
           {view === 'log' && stats && (
             <>
-              <button type="button" className="comp-back" onClick={() => setView('detail')}>‹ Tilbake</button>
+              <button type="button" className="comp-back" onClick={() => setView('detail')}><Icon name="chevronLeft" size={18} strokeWidth={2.2} />Tilbake</button>
               <div className="support-intro">
                 <h2>Logg tur</h2>
               </div>

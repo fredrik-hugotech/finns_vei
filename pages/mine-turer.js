@@ -1,7 +1,7 @@
 import Head from 'next/head';
-import Link from 'next/link';
+import PageHeader from '../components/PageHeader';
+import Icon from '../components/Icon';
 import { useEffect, useState } from 'react';
-import Logo from '../components/Logo';
 import { getMyTrips } from '../lib/myTrips';
 import { computeProgress } from '../lib/kidsProgress';
 import { getSolvedBud } from '../lib/budProgress';
@@ -12,7 +12,7 @@ function formatDate(iso) {
   if (!iso) return '';
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleDateString('nb-NO', { day: 'numeric', month: 'short', year: 'numeric' });
+  return date.toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' });
 }
 
 function formatKm(meters) {
@@ -65,13 +65,9 @@ export default function MineTurer() {
         <meta name="description" content="Se turer du har registrert fra denne enheten." />
         <meta name="robots" content="noindex" />
       </Head>
-      <main className="page">
-        <section className="hero-card my-reports-card">
-          <Logo size="md" />
-          <h1>Mine turer</h1>
-          <p className="lede">
-            Turer du har registrert fra denne enheten. Listen lagres kun i denne nettleseren — den er ikke knyttet til deg og forsvinner om du tømmer nettleserdata.
-          </p>
+      <main className="page sub">
+        <PageHeader title="Mine turer" intro="Turene, nivået og merkene dine. Alt ligger bare på denne telefonen." />
+        <section className="sub__body">
 
           {pendingTrips.length > 0 && (
             <ul className="my-reports-list my-reports-list--pending">
@@ -84,7 +80,7 @@ export default function MineTurer() {
                       <span className="status-pill status-pill--ukjent">Venter på nett</span>
                     </div>
                     <strong className="my-reports-item__title">{km} km · {modeLabel}</strong>
-                    <p className="ui-small-text">Lagret på enheten – sendes automatisk når du får dekning igjen.</p>
+                    <p className="ui-small-text">Lagret på telefonen. Sendes når du får dekning.</p>
                   </li>
                 );
               })}
@@ -102,7 +98,7 @@ export default function MineTurer() {
           )}
 
           {isEmpty && (
-            <p className="my-reports-empty">Ingen turer registrert ennå. Start en tur fra konkurransen på forsiden — trykk på pokal-knappen på kartet — så dukker turene dine opp her.</p>
+            <p className="my-reports-empty">Ingen turer ennå. Trykk på pokalen på kartet og velg en konkurranse for å starte din første tur.</p>
           )}
 
           {!isLoading && trips.length > 0 && (
@@ -111,23 +107,20 @@ export default function MineTurer() {
                 <strong>{formatKm(totalM)} km</strong>
                 <span>{trips.length === 1 ? '1 tur registrert' : `${trips.length} turer registrert`}</span>
               </div>
-              <ul className="my-reports-list">
+              <ul className="trip-rows">
                 {trips.map((entry, index) => {
                   const dateLabel = formatDate(entry.createdAt);
                   const modeLabel = entry.mode === 'gange' ? 'Gikk' : 'Syklet';
                   const routeLabel = entry.routeType === 'skole' ? 'Skolerute' : 'Fritidsrute';
                   return (
                     // eslint-disable-next-line react/no-array-index-key
-                    <li className="my-reports-item" key={`${entry.createdAt || 'ukjent'}-${index}`}>
-                      <div className="my-reports-item__head">
-                        <span className="my-trips-badge">{modeLabel}</span>
-                        {dateLabel && <span className="my-reports-item__date">{dateLabel}</span>}
-                      </div>
-                      <strong className="my-reports-item__title">{formatKm(entry.distanceM)} km</strong>
-                      <p className="ui-small-text">
-                        {routeLabel}
-                        {entry.weatherBonus ? ' · Værhelt' : ''}
-                      </p>
+                    <li className="trip-row" key={`${entry.createdAt || 'ukjent'}-${index}`}>
+                      <span className="trip-row__icon" aria-hidden="true"><Icon name={entry.mode === 'gange' ? 'walk' : 'bike'} size={20} /></span>
+                      <span className="trip-row__main">
+                        <strong>{formatKm(entry.distanceM)} km</strong>
+                        <span>{modeLabel} · {routeLabel}{entry.weatherBonus ? ' · Værhelt' : ''}</span>
+                      </span>
+                      {dateLabel && <span className="trip-row__date">{dateLabel}</span>}
                     </li>
                   );
                 })}
@@ -135,7 +128,6 @@ export default function MineTurer() {
             </>
           )}
 
-          <Link className="back-link" href="/">← Til forsiden</Link>
         </section>
       </main>
     </>

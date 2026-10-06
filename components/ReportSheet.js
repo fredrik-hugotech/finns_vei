@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import Icon from './Icon';
 import { REPORT_CATEGORIES, REPORTER_TYPES, REPORT_STATUS } from '../lib/config';
 import { processStepsForStatus } from '../lib/processSteps';
 import { categoryGlyph } from '../lib/reportCategoryGlyphs';
@@ -266,13 +267,13 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
   // being silently queued or lost.
   const handleOfflineSubmit = (queuePayload) => {
     if (images.length) {
-      setStatus({ type: 'error', message: 'Ingen nettforbindelse akkurat nå. Meldinger med bilde kan ikke lagres for senere sending — bildene dine ligger fortsatt klare her, prøv igjen når du har dekning.' });
+      setStatus({ type: 'error', message: 'Ingen dekning akkurat nå. Meldinger med bilde kan ikke lagres til senere, men bildene ligger klare her. Prøv igjen når du har dekning.' });
       return;
     }
     addPendingReport(queuePayload);
     setSubmitted(true);
     haptic([10, 40, 14]);
-    setStatus({ type: 'queued', message: 'Lagret på enheten – sendes automatisk når du får dekning igjen.' });
+    setStatus({ type: 'queued', message: 'Lagret på telefonen. Sendes når du får dekning.' });
   };
 
   const submitReport = async (event) => {
@@ -420,7 +421,7 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
             <h2>{status.type === 'queued' ? 'Lagret på enheten' : 'Takk for at du sier fra!'}</h2>
 
             {status.type === 'queued' ? (
-              <p>Ingen nett akkurat nå — meldingen sendes automatisk så snart enheten får dekning igjen.</p>
+              <p>Ingen dekning akkurat nå. Meldingen sendes av seg selv når telefonen får dekning igjen.</p>
             ) : (
               <>
                 <p>Din tilbakemelding blir prioritert, og behandlet slik:</p>
@@ -486,25 +487,27 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
         ) : (
           <form className="sheet-form" onSubmit={submitReport}>
             <div className="sheet-scroll">
+              <h2 className="sheet-title">Meld fra om et utrygt sted</h2>
               <div className="report-loc">
                 {mapThumb && <span className="report-loc__map"><img src={mapThumb} alt="Kart over valgt sted" /></span>}
                 <span className="report-loc__text">
                   <span className="report-loc__label">Stedet du melder fra</span>
                   <span className="report-loc__place">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round" /><circle cx="12" cy="10" r="2.4" stroke="currentColor" strokeWidth="1.9" /></svg>
+                    <Icon name="pin" size={15} strokeWidth={2} />
                     {place || 'Henter sted …'}
                   </span>
                 </span>
                 <button type="button" className="report-loc__change" onClick={() => { haptic(6); onChangeLocation?.(); }}>Endre</button>
               </div>
 
+              <span className="sheet-field__label">Hvem melder?</span>
               <div className="segmented" role="tablist" aria-label="Hvem melder">
                 <button type="button" role="tab" aria-selected={!isAdult} className={!isAdult ? 'segmented__option segmented__option--active' : 'segmented__option'} onClick={() => selectReporter(REPORTER_TYPES.CHILD)}>Barn</button>
                 <button type="button" role="tab" aria-selected={isAdult} className={isAdult ? 'segmented__option segmented__option--active' : 'segmented__option'} onClick={() => selectReporter(REPORTER_TYPES.ADULT)}>Voksen</button>
               </div>
 
               <fieldset className="sheet-field">
-                <legend>Hva føles utrygt? <span className="sheet-field__hint">Velg gjerne flere</span></legend>
+                <legend>Hva føles utrygt? <span className="sheet-field__hint">Velg én eller flere</span></legend>
                 <div className="category-grid">
                   {REPORT_CATEGORIES.map((category) => {
                     const checked = form.categories.includes(category);
@@ -537,7 +540,7 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
               </div>
 
               <div className="sheet-field">
-                <label htmlFor="report-description" className="sheet-field__label">Fortell kort</label>
+                <label htmlFor="report-description" className="sheet-field__label">Beskriv stedet</label>
                 {primaryCategory && (
                   <div className="suggestion-chips" role="group" aria-label="Forslag til beskrivelse">
                     {descriptionSuggestions(primaryCategory).map((phrase) => {
@@ -556,19 +559,21 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
                     })}
                   </div>
                 )}
-                <textarea id="report-description" name="description" value={form.description} onChange={updateField} required minLength={3} maxLength={1200} placeholder="Hva gjør stedet utrygt?" />
+                <textarea id="report-description" name="description" value={form.description} onChange={updateField} required minLength={3} maxLength={1200} placeholder="Hva skjer her, og når er det verst?" />
               </div>
 
               <div className="sheet-field">
                 <div className="image-row">
-                  <span className="sheet-field__label">Legg til bilde <em>(valgfritt)</em></span>
+                  <span className="sheet-field__label">Bilde <span className="sheet-field__hint">Valgfritt</span></span>
                   <div className="image-row__actions">
                     <label className="ui-button ui-button-secondary image-pick">
-                      Kamera
+                      <Icon name="camera" size={19} />
+                      Ta bilde
                       <input type="file" accept="image/*" capture="environment" onChange={addImages} disabled={isSubmitting || images.length >= REPORT_IMAGE_MAX_COUNT} />
                     </label>
                     <label className="ui-button ui-button-secondary image-pick">
-                      Galleri
+                      <Icon name="image" size={19} />
+                      Velg bilde
                       <input type="file" accept="image/*,.heic,.heif" multiple onChange={addImages} disabled={isSubmitting || images.length >= REPORT_IMAGE_MAX_COUNT} />
                     </label>
                   </div>
@@ -579,7 +584,7 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
                       <figure className="image-preview" key={image.id}>
                         <img src={image.previewUrl} alt={`Valgt bilde ${index + 1}`} />
                         {image.compressing && <span className="image-preview__status">Komprimerer …</span>}
-                        <button type="button" onClick={() => removeImage(image.id)} aria-label="Fjern bilde">×</button>
+                        <button type="button" onClick={() => removeImage(image.id)} aria-label="Fjern bilde"><Icon name="close" size={14} strokeWidth={2.4} /></button>
                       </figure>
                     ))}
                   </div>
@@ -588,13 +593,13 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
 
               {isAdult ? (
                 <div className="sheet-field optional-contact">
-                  <span className="sheet-field__label">Kontaktinfo <em>(frivillig)</em></span>
+                  <span className="sheet-field__label">Kontaktinfo <span className="sheet-field__hint">Frivillig, hvis du vil at vi tar kontakt</span></span>
                   <input name="contact_name" value={form.contact_name} onChange={updateField} autoComplete="name" placeholder="Navn" />
                   <input name="contact_email" value={form.contact_email} onChange={updateField} type="email" autoComplete="email" placeholder="E-post" />
                   <input name="contact_phone" value={form.contact_phone} onChange={updateField} type="tel" autoComplete="tel" placeholder="Telefon" />
                 </div>
               ) : (
-                <p className="privacy-note">Du melder som barn. Vi spør ikke om navn, e-post eller telefon.</p>
+                <p className="privacy-note"><Icon name="shield" size={16} />Du melder som barn, så vi spør ikke om navn eller telefon.</p>
               )}
 
               {status.type === 'error' && <div className="notice notice--error" role="status">{status.message}</div>}

@@ -1,6 +1,5 @@
 import Head from 'next/head';
-import Link from 'next/link';
-import Logo from '../components/Logo';
+import PageHeader from '../components/PageHeader';
 
 const POINTS = [
   {
@@ -9,15 +8,15 @@ const POINTS = [
   },
   {
     title: 'Voksne bestemmer selv',
-    body: 'En voksen kan legge igjen kontaktinfo hvis de vil bli kontaktet om saken – men det er helt frivillig. Uten det er også voksnes meldinger anonyme.',
+    body: 'Voksne kan legge igjen kontaktinfo hvis de vil bli kontaktet om saken. Det er frivillig, og uten kontaktinfo er meldingen anonym.',
   },
   {
     title: 'Området rundt hjemmet skjules',
-    body: 'Når du logger en gå- eller sykkeltur, beskyttes de første ~50 meterne fra der du starter (ofte hjemme). Det punktet lagres aldri nøyaktig – det rundes av til et grovt rutenett før noe sendes.',
+    body: 'Når du logger en tur, fjernes de første 50 meterne fra der du starter, som ofte er hjemme. Startpunktet lagres aldri.',
   },
   {
     title: 'Ruten bearbeides på telefonen din',
-    body: 'Selve ruten klippes og avrundes lokalt på enheten før den sendes. Vi lagrer bare grove, anonyme spor som viser hvor mange som sykler og går – ikke hvem, og ikke nøyaktig hvor du bor.',
+    body: 'Ruten klippes og avrundes på telefonen før den sendes. Vi ser hvor mange som sykler og går, ikke hvem.',
   },
   {
     title: 'Ingen sporing og ingen deling',
@@ -32,11 +31,9 @@ export default function Personvern() {
         <title>Personvern – Finns Fairway</title>
         <meta name="description" content="Slik tar Finns Fairway vare på personvernet: anonyme meldinger, ingen personopplysninger om barn, og hjemmeområdet skjules ved turlogging." />
       </Head>
-      <main className="page">
-        <section className="hero-card personvern-card">
-          <Logo size="md" />
-          <h1>Personvern</h1>
-          <p className="lede">Kort og enkelt om hvordan vi tar vare på personvernet ditt – og barna sitt.</p>
+      <main className="page sub">
+        <PageHeader title="Personvern" intro="Slik tar vi vare på personvernet ditt og barnas." />
+        <section className="sub__body personvern-card">
 
           <ul className="personvern-list">
             {POINTS.map((point) => (
@@ -56,7 +53,6 @@ export default function Personvern() {
             Har du spørsmål om personvern, ta kontakt på <a href="mailto:post@finnsfairway.no">post@finnsfairway.no</a>.
           </p>
 
-          <Link className="back-link" href="/">← Til forsiden</Link>
         </section>
       </main>
     </>

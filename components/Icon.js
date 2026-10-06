@@ -72,6 +72,77 @@ const ICONS = {
       <path d="M9 18h6M12 14v4M8 22h8" />
     </>
   ),
+  walk: (
+    <>
+      <circle cx="13" cy="4" r="1.8" />
+      <path d="M10.5 21l2-6-2.5-2.5 1-5 3.5 3 3 1" />
+      <path d="M10.5 7.5 7 9.5 6 13" />
+      <path d="M12.5 15l3 6" />
+    </>
+  ),
+  ball: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="m12 7.2 4.2 3-1.6 5H9.4l-1.6-5z" />
+      <path d="M12 3v4.2M3.4 10.2l4.4.1M20.6 10.2l-4.4.1M6.4 19.4l3-4.2M17.6 19.4l-3-4.2" />
+    </>
+  ),
+  chevronLeft: <path d="m15 18-6-6 6-6" />,
+  chevronRight: <path d="m9 18 6-6-6-6" />,
+  close: <path d="M6 6l12 12M18 6 6 18" />,
+  news: (
+    <>
+      <path d="M4 5h13v14a2 2 0 0 0 2 2H6a2 2 0 0 1-2-2z" />
+      <path d="M17 9h3v10a2 2 0 0 1-2 2" />
+      <path d="M8 9h5M8 13h5M8 17h3" />
+    </>
+  ),
+  calendar: (
+    <>
+      <rect x="3.5" y="5" width="17" height="15.5" rx="2" />
+      <path d="M3.5 10h17M8 3v4M16 3v4" />
+    </>
+  ),
+  inbox: (
+    <>
+      <path d="M3 13h5l1.5 3h5L16 13h5" />
+      <path d="M5.5 5h13L21 13v5.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5V13z" />
+    </>
+  ),
+  shield: (
+    <>
+      <path d="M12 3 4.5 6v6c0 4.6 3.2 7.7 7.5 9 4.3-1.3 7.5-4.4 7.5-9V6z" />
+      <path d="m9 12 2 2 4-4" />
+    </>
+  ),
+  lock: (
+    <>
+      <rect x="4.5" y="10.5" width="15" height="10" rx="2" />
+      <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" />
+    </>
+  ),
+  camera: (
+    <>
+      <path d="M4 8h3l2-2.5h6L17 8h3a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" />
+      <circle cx="12" cy="13" r="3.5" />
+    </>
+  ),
+  image: (
+    <>
+      <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
+      <circle cx="9" cy="10" r="1.6" />
+      <path d="m20.5 16-5-5-8.5 8.5" />
+    </>
+  ),
+  download: <path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 20h14" />,
+  menu: <path d="M4 7h16M4 12h16M4 17h16" />,
+  plus: <path d="M12 5v14M5 12h14" />,
+  bud: (
+    <>
+      <path d="M6 3.5h9.5L19 7v13.5H6z" />
+      <path d="M15.5 3.5V7H19M9 11h7M9 14.5h7M9 18h4" />
+    </>
+  ),
   check: <polyline points="20 6 9 17 4 12" />,
   share: (
     <>
