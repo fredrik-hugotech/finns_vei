@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Logo from '../components/Logo';
 import ReportSheet from '../components/ReportSheet';
+import DemoKidPhone from '../components/DemoKidPhone';
 
 const ReportMap = dynamic(() => import('../components/ReportMap'), {
   ssr: false,
@@ -56,11 +57,11 @@ const TOUR = [
   { title: 'Hva er utrygt?', text: 'Velg én eller flere kategorier, skriv kort og legg ved et bilde om du vil.', report: 'form', place: 'top' },
   { title: 'Melderen ser veien videre', text: 'Kvitteringen viser hva som skjer nå, og saken kan deles så flere kan støtte den.', report: 'success', place: 'top' },
   { title: 'Ulykker fra NVDB', text: 'Registrerte trafikkulykker vises sammen med meldingene, så mønstrene blir tydelige.', layers: { saker: true, ulykker: true }, map: VIEW_ACCIDENTS },
-  { title: 'Der barna faktisk ferdes', text: 'Barna logger turene til trening. Varmekartet viser veiene de bruker mest.', layers: { saker: false, ulykker: false, turer: true }, view: 'tetthet', fit: true },
-  { title: 'Baner og haller', text: 'Turene ender ved klubbenes baner og haller. Her trengs trygge veier mest.', layers: { turer: true, anlegg: true }, view: 'tetthet' },
-  { title: 'En måned på 25 sekunder', text: 'Hver linje er én tur. Slik bygges bildet opp gjennom september.', layers: { turer: true, anlegg: false }, replay: true },
-  { title: 'Klubbene konkurrerer', text: 'Flest turer vinner. Hjelmbruk og turer i regn telles med.', layers: { turer: true }, view: 'tetthet', panel: true },
-  { title: 'Personvern først', text: 'Ingen enkeltruter vises, og de første 50 meterne fra hjemmet fjernes før noe lagres.', layers: { turer: true, saker: true }, view: 'tetthet' },
+  { title: 'Barna er med i konkurransen', text: 'Barnet velger laget sitt, krysser av for hjelm og starter turen.', layers: { saker: false, ulykker: false }, phone: 'setup', map: VIEW_CITY },
+  { title: 'Turen logges underveis', text: 'Telefonen ligger i lomma. Utrygge punkter kan markeres med ett trykk.', phone: 'tracking' },
+  { title: 'Bra jobba!', text: 'Etter turen får barnet ros, og lærer ett av Finns 10 bud.', phone: 'done' },
+  { title: 'Der barna faktisk ferdes', text: 'Alle turene samlet. Varmekartet viser veiene barna bruker mest til klubbenes baner og haller.', layers: { saker: false, ulykker: false, turer: true, anlegg: true }, view: 'tetthet', fit: true },
+  { title: 'Personvern først', text: 'Ingen enkeltruter vises, og de første 50 meterne fra hjemmet fjernes før noe lagres.', layers: { turer: true, saker: true, anlegg: false }, view: 'tetthet' },
   { title: 'Trygg vei for alle barn', text: 'finnsvei.no', layers: { turer: true, saker: true, anlegg: true }, view: 'tetthet', end: true },
 ];
 
@@ -182,13 +183,18 @@ export default function Demo() {
       setOpen(false);
     } else {
       setReport('none');
-      setOpen(step.panel ? true : !narrow());
+      setOpen(step.phone ? false : (step.panel ? true : !narrow()));
     }
     if (step.map) mapApi?.flyToView?.(step.map);
     if (step.fit && allGeo.features.length) mapApi?.fitCompetition?.(allGeo);
     if (step.replay) replayDelayRef.current = setTimeout(() => startReplayRef.current?.(), 900);
   };
   const startReplayRef = useRef(null);
+  // A 2–3 km bike trip from the demo data for the phone's tracking screen.
+  const kidTrip = useMemo(() => {
+    const all = data?.trips || [];
+    return all.find((t) => t.mode === 'sykkel' && t.distanceM > 1800 && t.distanceM < 3200 && (t.path || []).length > 8) || all[0] || null;
+  }, [data]);
   const replayDelayRef = useRef(null);
   startReplayRef.current = startReplay;
   const goStep = (index) => {
@@ -372,6 +378,15 @@ export default function Demo() {
             )}
           </aside>
         )}
+        {tourStep >= 0 && TOUR[tourStep]?.phone && (
+          <DemoKidPhone
+            screen={TOUR[tourStep].phone}
+            competitionName={title}
+            clubs={(data?.leaderboard || []).map((r) => r.club)}
+            path={kidTrip?.path || null}
+          />
+        )}
+
         {tourStep >= 0 && TOUR[tourStep] && (
           <div className={`tour tour--${TOUR[tourStep].place || 'bottom'}`} role="dialog" aria-live="polite" aria-label="Demo">
             <div className="tour__card" key={tourStep}>

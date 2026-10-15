@@ -20,11 +20,12 @@ const QUIZ_CHANCE = 1 / 3;
 // happened and still counts, so the celebration itself doesn't change — only
 // a small, calm note is added so nobody mistakenly believes it's already on
 // the leaderboard when it's actually still waiting to sync.
-export default function TripCelebration({ km, mode = 'sykkel', weatherKind = null, queued = false, onDone }) {
+// `quiz`: true/false forces the quiz or the tip (demo tour); default random.
+export default function TripCelebration({ km, mode = 'sykkel', weatherKind = null, queued = false, onDone, quiz }) {
   const verb = mode === 'gange' ? 'gikk' : 'syklet';
   const isPrecip = isPrecipKind(weatherKind);
   const weatherWord = weatherKind === 'snow' ? 'snøen' : weatherKind === 'sleet' ? 'sluddet' : 'regnet';
-  const [showQuiz] = useState(() => Math.random() < QUIZ_CHANCE);
+  const [showQuiz] = useState(() => (typeof quiz === 'boolean' ? quiz : Math.random() < QUIZ_CHANCE));
 
   return (
     <section className="kid-screen kid-done trip-cheer">

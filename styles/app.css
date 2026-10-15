@@ -4746,3 +4746,65 @@ a:focus-visible, button:focus-visible, label:focus-within { outline: 2px solid v
   .tour--top { bottom: max(1.2rem, calc(env(safe-area-inset-bottom) + 0.8rem)); top: auto; }
   .tour__card { max-width: 380px; }
 }
+
+/* ---------- /demo tour: the children's app in a phone frame ---------- */
+.dk {
+  align-items: center;
+  animation: fade-in 260ms ease;
+  background: rgba(14, 30, 26, 0.38);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  position: fixed;
+  z-index: 50;
+}
+.dk__phone { position: relative; }
+.dk__bezel {
+  background: #101614;
+  border-radius: 54px;
+  box-shadow: 0 0 0 2px #2b3532, 0 30px 70px -20px rgba(0, 0, 0, 0.6);
+  height: 872px;
+  left: 0;
+  padding: 14px;
+  position: absolute;
+  top: 0;
+  transform-origin: top left;
+  width: 418px;
+}
+.dk__screen {
+  animation: fade-in 320ms ease;
+  background: var(--color-bg);
+  border-radius: 42px;
+  height: 844px;
+  overflow: hidden;
+  position: relative;
+  transform: translateZ(0); /* fixed-position children stay inside the screen */
+  width: 390px;
+}
+.dk__status {
+  align-items: center;
+  color: #16201c;
+  display: flex;
+  font-size: 15px;
+  font-weight: 700;
+  height: 46px;
+  justify-content: space-between;
+  left: 0;
+  padding: 0 30px;
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: 40;
+}
+.dk__notch { background: #101614; border-radius: 20px; height: 30px; width: 112px; }
+.dk__app { inset: 46px 0 0; position: absolute; }
+.dk__app .kid-screen { padding-top: 0.6rem; }
+.dk__app .kid-back { pointer-events: none; }
+.dk__app .trip-cheer { padding-top: 0.6rem; }
+.dk-track { inset: -46px 0 0; position: absolute; }
+.dk-track__map { height: 100%; inset: 0; object-fit: cover; position: absolute; width: 100%; }
+.dk-track__map--empty { background: #e8ece9; }
+.dk__app .trip-tracker { bottom: 18px; width: calc(100% - 1.4rem); }
+@media (max-width: 719px) {
+  .dk { align-items: flex-start; padding-top: max(1rem, env(safe-area-inset-top)); }
+}

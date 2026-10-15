@@ -261,7 +261,7 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mode =
 
     <div className="trip-tracker" role="dialog" aria-modal="true" aria-label="Sykkeltur pågår">
       <div className="trip-tracker__head">
-        <span className="trip-tracker__pill"><Icon name={routeType === 'skole' ? 'school' : 'activity'} size={15} />{routeType === 'skole' ? 'Skolerute' : 'Fritidsrute'}</span>
+        <span className="trip-tracker__pill"><Icon name={routeType === 'skole' ? 'school' : 'ball'} size={15} />{routeType === 'skole' ? 'Skolerute' : 'Fritidsrute'}</span>
         {helmet && <span className="trip-tracker__pill trip-tracker__pill--ok"><Icon name="helmet" size={15} />Hjelm</span>}
       </div>
 
