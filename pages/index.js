@@ -386,7 +386,7 @@ export default function Home() {
                   <a role="menuitem" className="app-menu__item" href="/bud"><Icon name="bud" size={20} />Finns 10 bud</a>
                   <span className="app-menu__rule" aria-hidden="true" />
                   <a role="menuitem" className="app-menu__item app-menu__item--quiet" href="/personvern"><Icon name="shield" size={18} />Personvern</a>
-                  <a role="menuitem" className="app-menu__item app-menu__item--quiet" href="/backoffice"><Icon name="lock" size={18} />For kommunen</a>
+                  <a role="menuitem" className="app-menu__item app-menu__item--quiet" href="/backoffice"><Icon name="lock" size={18} />Admin</a>
                 </nav>
               </>
             )}
