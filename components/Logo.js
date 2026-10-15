@@ -1,22 +1,18 @@
-const SIZE_CLASS = {
-  sm: 'logo--sm',
-  md: 'logo--md',
-  lg: 'logo--lg',
-};
+import { LOGO_PATHS, LOGO_VIEWBOX, SYMBOL_PATHS, SYMBOL_VIEWBOX } from '../lib/brandArtwork';
 
-export default function Logo({ size = 'md', className = '' }) {
-  const classes = ['logo', SIZE_CLASS[size] || SIZE_CLASS.md, className].filter(Boolean).join(' ');
+// The official Finns Fairway logo (or the symbol alone), drawn from the
+// original artwork. Height is set by size; colour follows `currentColor`
+// (brand green by default via .logo).
+const SIZE_CLASS = { sm: 'logo--sm', md: 'logo--md', lg: 'logo--lg', xl: 'logo--xl' };
+
+export default function Logo({ size = 'md', variant = 'full', className = '' }) {
+  const symbol = variant === 'symbol';
+  const classes = ['logo', symbol ? 'logo--symbol' : 'logo--full', SIZE_CLASS[size] || SIZE_CLASS.md, className].filter(Boolean).join(' ');
   return (
     <span className={classes}>
-      <svg className="logo__mark" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
-        <circle cx="33.5" cy="14.5" r="5.5" fill="none" stroke="var(--color-primary)" strokeWidth="3" />
-        <circle cx="14.5" cy="33.5" r="7" fill="var(--color-primary)" />
-        <circle cx="33.5" cy="33.5" r="7" fill="var(--color-primary)" />
+      <svg viewBox={symbol ? SYMBOL_VIEWBOX : LOGO_VIEWBOX} role="img" aria-label="Finns Fairway" focusable="false">
+        {(symbol ? SYMBOL_PATHS : LOGO_PATHS).map((d) => <path key={d.slice(0, 24)} d={d} fill="currentColor" />)}
       </svg>
-      <span className="logo__word">
-        <span className="logo__word-top">Finns</span>
-        <span className="logo__word-bottom">Fairway</span>
-      </span>
     </span>
   );
 }

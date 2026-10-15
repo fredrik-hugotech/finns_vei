@@ -1,4 +1,5 @@
 import { ImageResponse } from 'next/og';
+import { LOGO_PATHS, LOGO_VIEWBOX } from '../../../../lib/brandArtwork';
 import { STATUS_COLORS } from '../../../../lib/config';
 import { reportStatusMeta } from '../../../../lib/reportStatusMeta';
 import { getPublicReportById, hasSupabaseConfig } from '../../../../lib/supabaseRest';
@@ -36,53 +37,13 @@ function truncate(text, max) {
   return `${clean.slice(0, max).trimEnd()}…`;
 }
 
-function BrandMark({ size = 44 }) {
-  // Faithful redraw of the official three-circle mark (public/brand/
-  // finns-fairway-mark.svg, viewBox 48): a small outline ring top-right with
-  // two filled dots along the bottom — an L / triangle, NOT a horizontal row.
-  const s = size / 48;
-  const ring = 11 * s;
-  const dot = 14 * s;
-  const border = Math.max(2, Math.round(3 * s));
+// The official logo (lib/brandArtwork.js), drawn as SVG paths in cream.
+function BrandLogo({ height = 56 }) {
+  const [, , vw, vh] = LOGO_VIEWBOX.split(' ').map(Number);
   return (
-    <div style={{ display: 'flex', position: 'relative', width: size, height: Math.round(42 * s) }}>
-      <div
-        style={{
-          display: 'flex',
-          position: 'absolute',
-          left: Math.round(28 * s),
-          top: Math.round(9 * s),
-          width: ring,
-          height: ring,
-          borderRadius: '50%',
-          border: `${border}px solid ${CREAM}`,
-        }}
-      />
-      <div
-        style={{
-          display: 'flex',
-          position: 'absolute',
-          left: Math.round(7.5 * s),
-          top: Math.round(26.5 * s),
-          width: dot,
-          height: dot,
-          borderRadius: '50%',
-          background: CREAM,
-        }}
-      />
-      <div
-        style={{
-          display: 'flex',
-          position: 'absolute',
-          left: Math.round(26.5 * s),
-          top: Math.round(26.5 * s),
-          width: dot,
-          height: dot,
-          borderRadius: '50%',
-          background: CREAM,
-        }}
-      />
-    </div>
+    <svg width={Math.round((height * vw) / vh)} height={height} viewBox={LOGO_VIEWBOX}>
+      {LOGO_PATHS.map((d) => <path key={d.slice(0, 24)} d={d} fill={CREAM} />)}
+    </svg>
   );
 }
 
@@ -113,8 +74,7 @@ function renderCard({ category, statusLabel, statusColor, description, footer })
        >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
-            <BrandMark size={44} />
-            <div style={{ display: 'flex', fontSize: 32, fontWeight: 700, letterSpacing: -0.5, marginLeft: 18 }}>Finns Fairway</div>
+            <BrandLogo height={56} />
           </div>
           <div style={{ display: 'flex', width: 46, height: 12, borderRadius: 999, background: OCHRE }} />
         </div>

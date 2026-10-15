@@ -8,7 +8,7 @@ export default function Document() {
         <link rel="icon" href="/brand/finns-fairway-mark.svg" type="image/svg+xml" />
         <link rel="manifest" href="/manifest.webmanifest" />
         <link rel="apple-touch-icon" href="/brand/icon-180.png" />
-        <meta name="theme-color" content="#0b5d4d" />
+        <meta name="theme-color" content="#02594f" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />

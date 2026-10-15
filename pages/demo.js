@@ -6,6 +6,7 @@ import Logo from '../components/Logo';
 import ReportSheet from '../components/ReportSheet';
 import DemoKidPhone from '../components/DemoKidPhone';
 import DemoLaptop from '../components/DemoLaptop';
+import DemoFinale from '../components/DemoFinale';
 
 const ReportMap = dynamic(() => import('../components/ReportMap'), {
   ssr: false,
@@ -67,7 +68,8 @@ const TOUR = [
   { title: 'Kartet vokser fram', text: 'Hver tur barna logger blir en strek. Slik bygges en måned opp.', layers: { saker: false, turer: true, anlegg: false }, replay: true, map: VIEW_REPLAY },
   { title: 'Der barna faktisk ferdes', text: 'Varmekartet viser veiene barna bruker mest til klubbenes baner og haller.', layers: { saker: false, turer: true, anlegg: true }, view: 'tetthet', mapSeq: [VIEW_VENUE_A, VIEW_VENUE_B] },
   { title: 'Personvernet er ivaretatt', text: 'Startstedet fjernes automatisk, og ingen enkeltruter vises.', layers: { turer: true, saker: true, anlegg: true }, view: 'tetthet', map: VIEW_REPLAY },
-  { title: 'Alt samlet for oppfølging', text: 'Sakene følges opp i backoffice, med status, kart og historikk på ett sted.', laptop: true, end: true },
+  { title: 'Alt samlet for oppfølging', text: 'Sakene følges opp i backoffice, med status, kart og historikk på ett sted.', laptop: true },
+  { title: 'Hvert kvartal', text: 'Kart og historikk legges fram for veisjefen.', finale: true, layers: { saker: true, turer: true, anlegg: false }, view: 'tetthet', map: VIEW_REPLAY, end: true },
 ];
 
 export default function Demo() {
@@ -308,7 +310,7 @@ export default function Demo() {
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
       </Head>
       <main className="app-shell demo-shell">
-        <ReportMap className="map-canvas" showReports onMapReady={setMapApi} mapStyle="mapbox://styles/mapbox/light-v11" enableNvdbLayers initialNvdbLayers={[]} pickMode={report === 'pick'} />
+        <ReportMap className="map-canvas" showReports onMapReady={setMapApi} mapStyle="mapbox://styles/mapbox/light-v11" enableNvdbLayers initialNvdbLayers={[]} pickMode={report === 'pick'} adminChrome={false} />
 
         {report === 'pick' && (
           <>
@@ -434,6 +436,9 @@ export default function Demo() {
         )}
 
         {tourStep >= 0 && TOUR[tourStep]?.laptop && <DemoLaptop src="/backoffice" />}
+        {tourStep >= 0 && TOUR[tourStep]?.finale && (
+          <DemoFinale trips={data?.totals?.trips || 0} hotspots={hotspots?.features?.length || 0} onRestart={() => goStep(0)} onDone={endTour} />
+        )}
 
         {tourStep >= 0 && TOUR[tourStep]?.phone && (
           <DemoKidPhone
@@ -444,7 +449,7 @@ export default function Demo() {
           />
         )}
 
-        {tourStep >= 0 && TOUR[tourStep] && (
+        {tourStep >= 0 && TOUR[tourStep] && !TOUR[tourStep].finale && (
           <div className={`tour tour--${TOUR[tourStep].place || 'bottom'}`} role="dialog" aria-live="polite" aria-label="Demo">
             <div className="tour__card" key={tourStep}>
               <span className="tour__bar" style={{ width: `${Math.round(((tourStep + 1) / TOUR.length) * 100)}%` }} aria-hidden="true" />

@@ -849,7 +849,7 @@ function fitToGeoJson(map, geojson) {
   }
 }
 
-export default function ReportMap({ selectable = false, point, onPointChange, className = 'map-canvas', showReports = true, enableNvdbLayers = false, pickMode = false, pinnedPoint = null, onMapReady, onPickCenterChange, mapStyle = null, initialNvdbLayers = [] }) {
+export default function ReportMap({ selectable = false, point, onPointChange, className = 'map-canvas', showReports = true, enableNvdbLayers = false, pickMode = false, pinnedPoint = null, onMapReady, onPickCenterChange, mapStyle = null, initialNvdbLayers = [], adminChrome = true }) {
   const venueMarkersRef = useRef([]);
   // Optional fixed style URL (e.g. the dark basemap on /demo). When set, the
   // Flyfoto/Kart toggle is hidden and the aerial treatment is skipped.
@@ -1754,7 +1754,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           )}
         </button>
       )}
-      {showReports && adminSecret && (
+      {showReports && adminSecret && adminChrome && (
         <div className="admin-mode-badge" aria-label="Admin">
           <span className="admin-mode-badge__dot" aria-hidden="true" />
           <a className="admin-mode-badge__link" href="/backoffice">Dashbord</a>
@@ -1770,7 +1770,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           <span className="map-crosshair__dot" />
         </div>
       )}
-      {adminSecret && (
+      {adminSecret && adminChrome && (
         <div className={layersOpen ? 'layer-control nvdb-toggle-card nvdb-toggle-card--open' : 'layer-control nvdb-toggle-card'} aria-label="Kartlag">
           <button
             type="button"
@@ -1836,7 +1836,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           )}
         </div>
       )}
-      {adminSecret && showReports && concernHeatmapOn && (
+      {adminSecret && adminChrome && showReports && concernHeatmapOn && (
         <div className="weight-tuning-card" aria-label="Bekymringsgrad-vekting">
           <button
             type="button"
