@@ -8,11 +8,16 @@ import { resolveReportImageContentType, REPORT_IMAGE_MAX_BYTES, REPORT_IMAGE_MAX
 import { matchesFileSignature } from '../../lib/fileSignature';
 import { checkRequestRateLimit } from '../../lib/rateLimit';
 import { parseMultipartRequest } from '../../lib/multipart';
+import { waitUntil } from '@vercel/functions';
 
 export const config = {
   api: {
     bodyParser: false,
   },
+  // The citizen gets an answer as soon as the report is stored; NVDB
+  // enrichment, the Trello card and the notification email then run in the
+  // background (waitUntil) and can take up to a minute when NVDB is slow.
+  maxDuration: 120,
 };
 
 // ~8 reports per 10 minutes per IP hash - generous enough for one household
@@ -227,30 +232,35 @@ export default async function handler(req, res) {
       }
     }
 
-    // Vercel serverless functions can stop after the response is returned, so the
-    // Trello + NVDB workflow is awaited best-effort instead of fire-and-forget.
-    const workflow = await runReportWorkflowBestEffort(reportWithImages);
-    const report = workflow.report || reportWithImages;
-    const warning = imageWarning || workflow.trelloWarning || null;
-
-    // Instant notification to the team, in addition to the daily digest
-    // (pages/api/cron/daily-summary.js) — best-effort, never blocks the
-    // citizen's submission.
-    if (emailTransportConfigured()) {
-      try {
-        const { subject, html } = buildNewReportEmail({ report, baseUrl: siteBaseUrl() });
-        await sendNotificationEmail({ subject, html });
-        logApi('new_report_email_sent', { reportId: report.id });
-      } catch (error) {
-        logApi('new_report_email_failed', { reportId: report.id, message: String(error?.message || '').slice(0, 240) });
+    // Answer the reporter right away. NVDB lookups (with retries), the
+    // Trello card and the notification email used to run before the
+    // response and took 25–65 s in production, so phones sat on «Sender
+    // meldingen …» and people re-submitted (duplicate reports). They now run
+    // after the response; waitUntil keeps the Vercel function alive until
+    // they finish (bounded by maxDuration above).
+    const followUp = (async () => {
+      const workflow = await runReportWorkflowBestEffort(reportWithImages);
+      const report = workflow.report || reportWithImages;
+      if (workflow.trelloWarning) logApi('trello_warning', { reportId: report.id, warning: String(workflow.trelloWarning).slice(0, 240) });
+      if (emailTransportConfigured()) {
+        try {
+          const { subject, html } = buildNewReportEmail({ report, baseUrl: siteBaseUrl() });
+          await sendNotificationEmail({ subject, html });
+          logApi('new_report_email_sent', { reportId: report.id });
+        } catch (error) {
+          logApi('new_report_email_failed', { reportId: report.id, message: String(error?.message || '').slice(0, 240) });
+        }
       }
-    }
+    })().catch((error) => {
+      logApi('follow_up_failed', { reportId: insertedReport.id, message: String(error?.message || '').slice(0, 240) });
+    });
+    waitUntil(followUp);
 
     return res.status(201).json({
-      id: report.id,
-      status: report.status || REPORT_STATUS.NEW,
-      nvdb_status: workflow.nvdbStatus || report.nvdb_status || 'failed',
-      warning,
+      id: insertedReport.id,
+      status: insertedReport.status || REPORT_STATUS.NEW,
+      nvdb_status: 'pending',
+      warning: imageWarning,
       image_count: uploadedImages.length,
     });
   } catch (error) {

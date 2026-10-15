@@ -322,10 +322,17 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
     body.set('nettside', queuePayload.nettside);
     images.forEach((image) => body.append('images', image.file));
 
+    // If the answer is slow (bad coverage, big image), say so instead of a
+    // silent spinner — people otherwise re-send and create duplicates.
+    const slowTimer = setTimeout(() => {
+      setStatus({ type: 'idle', message: 'Venter på svar … ikke send på nytt' });
+    }, 12000);
+
     let response;
     try {
       response = await fetch('/api/report', { method: 'POST', body });
     } catch (networkError) {
+      clearTimeout(slowTimer);
       // fetch() never got a response at all — a real connectivity failure,
       // not a server-side rejection. Safe to queue (retrying the exact same
       // payload later is the right move) rather than surface as an error.
@@ -334,6 +341,7 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
       return;
     }
 
+    clearTimeout(slowTimer);
     try {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || 'Kunne ikke sende meldingen');
