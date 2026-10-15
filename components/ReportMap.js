@@ -1508,6 +1508,8 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         clearLivePath: () => showLivePath(map, { type: 'FeatureCollection', features: [] }),
         fitCompetition: (geojson) => fitToGeoJson(map, geojson),
         flyToLngLat: ({ lng, lat }) => map.easeTo({ center: [lng, lat], duration: 600 }),
+        // Guided demo tour: fly to an exact view.
+        flyToView: ({ lng, lat, zoom, duration = 1400 }) => map.flyTo({ center: [lng, lat], zoom, duration, essential: true }),
       });
       try {
         await loadReports();

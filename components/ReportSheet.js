@@ -50,14 +50,15 @@ function haptic(ms = 8) {
 }
 
 // `demo`: walk through every step without sending anything (used on /demo).
-export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocation, onViewCase, demo = false }) {
+// `demoView='success'` opens straight on the receipt (guided demo tour).
+export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocation, onViewCase, demo = false, demoView = 'form' }) {
   const [reporterType, setReporterType] = useState(REPORTER_TYPES.ADULT);
   const [form, setForm] = useState(INITIAL_FORM);
   const [images, setImages] = useState([]);
-  const [status, setStatus] = useState({ type: 'idle', message: '' });
+  const [status, setStatus] = useState(() => (demo && demoView === 'success' ? { type: 'success', message: '' } : { type: 'idle', message: '' }));
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [submittedId, setSubmittedId] = useState(null);
+  const [submitted, setSubmitted] = useState(() => demo && demoView === 'success');
+  const [submittedId, setSubmittedId] = useState(() => (demo && demoView === 'success' ? 'demo' : null));
   const [place, setPlace] = useState(null);
   const [shareFlash, setShareFlash] = useState('');
 

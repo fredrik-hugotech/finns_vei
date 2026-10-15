@@ -41,6 +41,29 @@ const LAYERS = [
   { key: 'anlegg', label: 'Baner og haller', hint: null, swatch: 'anlegg' },
 ];
 
+// Guided tour for screen recordings / presentations. Each step sets the
+// whole page state (so «Tilbake» works too) and shows one short caption.
+// Arrow keys, PageUp/PageDown and space work, so a presentation clicker
+// drives it like a slide deck. /demo?tur=1 starts it straight away.
+const VIEW_CITY = { lng: 8.0, lat: 58.152, zoom: 11.3 };
+const VIEW_CASES = { lng: 8.017, lat: 58.156, zoom: 13.2 };
+const VIEW_SPOT = { lng: 8.012, lat: 58.1525, zoom: 16.6 };
+const VIEW_ACCIDENTS = { lng: 8.006, lat: 58.151, zoom: 13.6 };
+const TOUR = [
+  { title: 'Finns Fairway', text: 'Trygg vei til skole og trening. Innbyggerne melder fra, barna logger turene, og kommunen ser helheten.', layers: { saker: false, ulykker: false, turer: false, anlegg: false }, map: VIEW_CITY },
+  { title: 'Meldte saker', text: 'Innbyggere melder fra om utrygge steder. Hver melding havner på kartet og hos kommunen.', layers: { saker: true }, map: VIEW_CASES },
+  { title: 'Meld fra på sekunder', text: 'Dra kartet til stedet og trykk «Velg dette stedet». Ingen innlogging.', report: 'pick', map: VIEW_SPOT, place: 'top' },
+  { title: 'Hva er utrygt?', text: 'Velg én eller flere kategorier, skriv kort og legg ved et bilde om du vil.', report: 'form', place: 'top' },
+  { title: 'Melderen ser veien videre', text: 'Kvitteringen viser hva som skjer nå, og saken kan deles så flere kan støtte den.', report: 'success', place: 'top' },
+  { title: 'Ulykker fra NVDB', text: 'Registrerte trafikkulykker vises sammen med meldingene, så mønstrene blir tydelige.', layers: { saker: true, ulykker: true }, map: VIEW_ACCIDENTS },
+  { title: 'Der barna faktisk ferdes', text: 'Barna logger turene til trening. Varmekartet viser veiene de bruker mest.', layers: { saker: false, ulykker: false, turer: true }, view: 'tetthet', fit: true },
+  { title: 'Baner og haller', text: 'Turene ender ved klubbenes baner og haller. Her trengs trygge veier mest.', layers: { turer: true, anlegg: true }, view: 'tetthet' },
+  { title: 'En måned på 25 sekunder', text: 'Hver linje er én tur. Slik bygges bildet opp gjennom september.', layers: { turer: true, anlegg: false }, replay: true },
+  { title: 'Klubbene konkurrerer', text: 'Flest turer vinner. Hjelmbruk og turer i regn telles med.', layers: { turer: true }, view: 'tetthet', panel: true },
+  { title: 'Personvern først', text: 'Ingen enkeltruter vises, og de første 50 meterne fra hjemmet fjernes før noe lagres.', layers: { turer: true, saker: true }, view: 'tetthet' },
+  { title: 'Trygg vei for alle barn', text: 'finnsvei.no', layers: { turer: true, saker: true, anlegg: true }, view: 'tetthet', end: true },
+];
+
 export default function Demo() {
   const [mapApi, setMapApi] = useState(null);
   const [data, setData] = useState(null);
@@ -54,6 +77,8 @@ export default function Demo() {
   // Nothing is sent: ReportSheet runs in demo mode.
   const [report, setReport] = useState('none'); // none | pick | form
   const [pickedPoint, setPickedPoint] = useState(null);
+  const [demoView, setDemoView] = useState('form'); // form | success (tour)
+  const [tourStep, setTourStep] = useState(-1); // -1 = tour off
   const fittedRef = useRef(false);
   const timerRef = useRef(null);
 
@@ -138,9 +163,80 @@ export default function Demo() {
 
   const changeMode = (next) => { stopReplay(); setMode(next); load(next); };
 
+  // --- Guided tour ---
+  const narrow = () => typeof window !== 'undefined' && window.innerWidth < 720;
+  const applyStep = (index) => {
+    const step = TOUR[index];
+    if (!step) return;
+    clearInterval(timerRef.current);
+    clearTimeout(replayDelayRef.current);
+    setReplay(null);
+    setLayers((l) => ({ ...l, ...(step.layers || {}) }));
+    if (step.view) setView(step.view);
+    if (step.report === 'pick') { setReport('pick'); setPickedPoint(null); setOpen(false); }
+    else if (step.report === 'form' || step.report === 'success') {
+      const c = mapApi?.getCenter?.() || { lng: VIEW_SPOT.lng, lat: VIEW_SPOT.lat };
+      setPickedPoint(c);
+      setDemoView(step.report);
+      setReport('form');
+      setOpen(false);
+    } else {
+      setReport('none');
+      setOpen(step.panel ? true : !narrow());
+    }
+    if (step.map) mapApi?.flyToView?.(step.map);
+    if (step.fit && allGeo.features.length) mapApi?.fitCompetition?.(allGeo);
+    if (step.replay) replayDelayRef.current = setTimeout(() => startReplayRef.current?.(), 900);
+  };
+  const startReplayRef = useRef(null);
+  const replayDelayRef = useRef(null);
+  startReplayRef.current = startReplay;
+  const goStep = (index) => {
+    const next = Math.max(0, Math.min(TOUR.length - 1, index));
+    setTourStep(next);
+    applyStep(next);
+  };
+  const startTour = () => goStep(0);
+  const endTour = () => {
+    clearInterval(timerRef.current);
+    clearTimeout(replayDelayRef.current);
+    setReplay(null);
+    setTourStep(-1);
+    setReport('none');
+    setDemoView('form');
+    setOpen(true);
+  };
+  const tourRef = useRef({});
+  tourRef.current = { tourStep, goStep, endTour };
+  useEffect(() => {
+    const onKey = (e) => {
+      const { tourStep: i, goStep: go, endTour: end } = tourRef.current;
+      if (i < 0) return;
+      const tag = (e.target?.tagName || '').toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+      if (['ArrowRight', 'PageDown', ' ', 'Enter'].includes(e.key)) { e.preventDefault(); if (i < TOUR.length - 1) go(i + 1); }
+      else if (['ArrowLeft', 'PageUp', 'Backspace'].includes(e.key)) { e.preventDefault(); if (i > 0) go(i - 1); }
+      else if (e.key === 'Escape') end();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+  // /demo?tur=1 starts the tour once the map and data are ready.
+  const autoStartedRef = useRef(false);
+  useEffect(() => {
+    if (autoStartedRef.current || !mapApi || !data) return;
+    try {
+      if (new URLSearchParams(window.location.search).get('tur') === '1') {
+        autoStartedRef.current = true;
+        setTimeout(() => goStep(0), 400);
+      }
+    } catch (_e) { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapApi, data]);
+
   const startReport = () => { setOpen(false); setPickedPoint(null); setReport('pick'); };
   const confirmSpot = () => { const c = mapApi?.getCenter?.(); if (!c) return; setPickedPoint(c); setReport('form'); };
-  const endReport = () => { setReport('none'); setPickedPoint(null); setOpen(true); };
+  const endReport = () => { setReport('none'); setPickedPoint(null); setDemoView('form'); setOpen(true); };
 
   const shownTrips = replay ? trips.slice(0, replay.index) : trips;
   const shownKm = shownTrips.reduce((s, t) => s + (t.distanceM || 0), 0);
@@ -164,17 +260,21 @@ export default function Demo() {
           <>
             <div className="pick-hint">Dra kartet til stedet det gjelder</div>
             <div className="pick-bar">
-              <button type="button" className="big-button big-button--primary pick-bar__confirm" onClick={confirmSpot}>Velg dette stedet</button>
+              <button type="button" className="big-button big-button--primary pick-bar__confirm" onClick={tourStep >= 0 ? () => goStep(tourStep + 1) : confirmSpot}>Velg dette stedet</button>
               <button type="button" className="big-button big-button--secondary" onClick={endReport}>Avbryt</button>
             </div>
           </>
         )}
         {report === 'form' && pickedPoint && (
-          <ReportSheet demo point={pickedPoint} onClose={endReport} onChangeLocation={() => setReport('pick')} onViewCase={endReport} />
+          <ReportSheet key={demoView} demo demoView={demoView} point={pickedPoint} onClose={endReport} onChangeLocation={() => setReport('pick')} onViewCase={endReport} />
         )}
 
-        {report === 'none' && (
+        {report === 'none' && tourStep < 0 && (
           <div className="dp-actions">
+            <button type="button" className="dp-actions__tour" onClick={startTour} disabled={!data}>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M7 5v14l12-7z" /></svg>
+              Start demo
+            </button>
             <Link href="/backoffice" className="dp-actions__bo">Logg inn i backoffice</Link>
             <button type="button" className="fab-meld dp-actions__meld" onClick={startReport}>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" /></svg>
@@ -271,6 +371,37 @@ export default function Demo() {
               </div>
             )}
           </aside>
+        )}
+        {tourStep >= 0 && TOUR[tourStep] && (
+          <div className={`tour tour--${TOUR[tourStep].place || 'bottom'}`} role="dialog" aria-live="polite" aria-label="Demo">
+            <div className="tour__card" key={tourStep}>
+              <span className="tour__bar" style={{ width: `${Math.round(((tourStep + 1) / TOUR.length) * 100)}%` }} aria-hidden="true" />
+              <div className="tour__top">
+                <span className="tour__count">{tourStep + 1} / {TOUR.length}</span>
+                <button type="button" className="tour__close" onClick={endTour} aria-label="Avslutt demo">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+                </button>
+              </div>
+              <h2 className="tour__title">{TOUR[tourStep].title}</h2>
+              <p className="tour__text">{TOUR[tourStep].text}</p>
+              <div className="tour__nav">
+                <button type="button" className="tour__back" onClick={() => goStep(tourStep - 1)} disabled={tourStep === 0} aria-label="Forrige">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+                </button>
+                {TOUR[tourStep].end ? (
+                  <>
+                    <button type="button" className="tour__again" onClick={() => goStep(0)}>Start på nytt</button>
+                    <button type="button" className="tour__next" onClick={endTour}>Ferdig</button>
+                  </>
+                ) : (
+                  <button type="button" className="tour__next" onClick={() => goStep(tourStep + 1)}>
+                    Neste
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
         )}
       </main>
     </>
