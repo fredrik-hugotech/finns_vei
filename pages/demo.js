@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Logo from '../components/Logo';
 import ReportSheet from '../components/ReportSheet';
 import DemoKidPhone from '../components/DemoKidPhone';
+import DemoLaptop from '../components/DemoLaptop';
 
 const ReportMap = dynamic(() => import('../components/ReportMap'), {
   ssr: false,
@@ -15,7 +16,7 @@ const ReportMap = dynamic(() => import('../components/ReportMap'), {
 // NVDB accidents, the synthetic competition trips (heat map / per club) and
 // the club venues are switched on one by one while presenting. Reads
 // /api/demo/spor, which only ever serves competitions flagged "demo".
-const REPLAY_MS = 24000;
+const REPLAY_MS = 15000;
 
 const fmtInt = (n) => (Number(n) || 0).toLocaleString('nb-NO');
 const fmtKm = (m) => ((Number(m) || 0) / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 0 });
@@ -49,20 +50,24 @@ const LAYERS = [
 const VIEW_CITY = { lng: 8.0, lat: 58.152, zoom: 11.3 };
 const VIEW_CASES = { lng: 8.017, lat: 58.156, zoom: 13.2 };
 const VIEW_SPOT = { lng: 8.012, lat: 58.1525, zoom: 16.6 };
-const VIEW_ACCIDENTS = { lng: 8.006, lat: 58.151, zoom: 13.6 };
+const VIEW_HOT = { lng: 8.008, lat: 58.153, zoom: 12.7 };
+const VIEW_REPLAY = { lng: 7.995, lat: 58.155, zoom: 11.15 };
+const VIEW_VENUE_A = { lng: 8.0185, lat: 58.1545, zoom: 14.3 }; // Kristiansand stadion · Gimlehallen
+const VIEW_VENUE_B = { lng: 8.0855, lat: 58.1535, zoom: 14.4 }; // Sukkevann
 const TOUR = [
-  { title: 'Finns Fairway', text: 'Trygg vei til skole og trening. Innbyggerne melder fra, barna logger turene, og kommunen ser helheten.', layers: { saker: false, ulykker: false, turer: false, anlegg: false }, map: VIEW_CITY },
-  { title: 'Meldte saker', text: 'Innbyggere melder fra om utrygge steder. Hver melding havner på kartet og hos kommunen.', layers: { saker: true }, map: VIEW_CASES },
+  { title: 'Finns Fairway', text: 'Barn og voksne melder fra om utrygge steder. Finns Fairway følger opp.', layers: { saker: false, ulykker: false, turer: false, anlegg: false }, map: VIEW_CITY },
+  { title: 'Meldte steder', text: 'Kartet viser alle stedene det er meldt fra om, så alle ser hvor det føles utrygt.', layers: { saker: true }, map: VIEW_CASES },
   { title: 'Meld fra på sekunder', text: 'Dra kartet til stedet og trykk «Velg dette stedet». Ingen innlogging.', report: 'pick', map: VIEW_SPOT, place: 'top' },
-  { title: 'Hva er utrygt?', text: 'Velg én eller flere kategorier, skriv kort og legg ved et bilde om du vil.', report: 'form', place: 'top' },
+  { title: 'Hva er utrygt?', text: 'Velg hvem som melder og hva som er utrygt, og beskriv stedet med noen ord.', report: 'form', place: 'top' },
   { title: 'Melderen ser veien videre', text: 'Kvitteringen viser hva som skjer nå, og saken kan deles så flere kan støtte den.', report: 'success', place: 'top' },
-  { title: 'Ulykker fra NVDB', text: 'Registrerte trafikkulykker vises sammen med meldingene, så mønstrene blir tydelige.', layers: { saker: true, ulykker: true }, map: VIEW_ACCIDENTS },
-  { title: 'Barna er med i konkurransen', text: 'Barnet velger laget sitt, krysser av for hjelm og starter turen.', layers: { saker: false, ulykker: false }, phone: 'setup', map: VIEW_CITY },
+  { title: 'Der ulykkene skjer', text: 'Steder med flere registrerte trafikkulykker (NVDB) vises sammen med meldingene.', layers: { saker: true, ulykker: false }, hotspots: true, map: VIEW_HOT },
+  { title: 'Barna er med i konkurransen', text: 'Barnet velger laget sitt, krysser av for hjelm og starter turen.', layers: { saker: false }, phone: 'setup', map: VIEW_REPLAY },
   { title: 'Turen logges underveis', text: 'Telefonen ligger i lomma. Utrygge punkter kan markeres med ett trykk.', phone: 'tracking' },
   { title: 'Bra jobba!', text: 'Etter turen får barnet ros, og lærer ett av Finns 10 bud.', phone: 'done' },
-  { title: 'Der barna faktisk ferdes', text: 'Alle turene samlet. Varmekartet viser veiene barna bruker mest til klubbenes baner og haller.', layers: { saker: false, ulykker: false, turer: true, anlegg: true }, view: 'tetthet', fit: true },
-  { title: 'Personvern først', text: 'Ingen enkeltruter vises, og de første 50 meterne fra hjemmet fjernes før noe lagres.', layers: { turer: true, saker: true, anlegg: false }, view: 'tetthet' },
-  { title: 'Trygg vei for alle barn', text: 'finnsvei.no', layers: { turer: true, saker: true, anlegg: true }, view: 'tetthet', end: true },
+  { title: 'Kartet vokser fram', text: 'Hver tur barna logger blir en strek. Slik bygges en måned opp.', layers: { saker: false, turer: true, anlegg: false }, replay: true, map: VIEW_REPLAY },
+  { title: 'Der barna faktisk ferdes', text: 'Varmekartet viser veiene barna bruker mest til klubbenes baner og haller.', layers: { saker: false, turer: true, anlegg: true }, view: 'tetthet', mapSeq: [VIEW_VENUE_A, VIEW_VENUE_B] },
+  { title: 'Personvernet er ivaretatt', text: 'Startstedet fjernes automatisk, og ingen enkeltruter vises.', layers: { turer: true, saker: true, anlegg: true }, view: 'tetthet', map: VIEW_REPLAY },
+  { title: 'Alt samlet for oppfølging', text: 'Sakene følges opp i backoffice, med status, kart og historikk på ett sted.', laptop: true, end: true },
 ];
 
 export default function Demo() {
@@ -71,7 +76,8 @@ export default function Demo() {
   const [status, setStatus] = useState('Henter …');
   const [view, setView] = useState('tetthet'); // tetthet | turer
   const [mode, setMode] = useState(''); // '' | sykkel | gange
-  const [replay, setReplay] = useState(null); // { index, running } | null
+  const [replay, setReplay] = useState(null); // { T, running } | null — T is 0..1
+  const [hotspots, setHotspots] = useState(null);
   const [open, setOpen] = useState(true);
   const [layers, setLayers] = useState({ turer: false, saker: true, ulykker: false, anlegg: false });
   // In-page walkthrough of the report flow (pick a spot → form → receipt).
@@ -99,12 +105,28 @@ export default function Demo() {
   }, []);
 
   useEffect(() => { load(''); }, [load]);
+  // Accident hot spots for the tour (edge-cached, so ready when needed).
+  useEffect(() => {
+    fetch('/api/demo/ulykker').then((r) => (r.ok ? r.json() : null)).then((d) => { if (d) setHotspots(d); }).catch(() => {});
+  }, []);
 
   const trips = useMemo(() => {
     const all = data?.trips || [];
     return mode ? all.filter((t) => t.mode === mode) : all;
   }, [data, mode]);
   const allGeo = useMemo(() => tripsToGeoJson(trips), [trips]);
+  // Trips in logged order with a normalised time t (0..1) for the replay.
+  const replayTrips = useMemo(() => {
+    const list = trips.map((t) => ({ ...t, ms: Date.parse(t.createdAt) || 0 })).sort((a, b) => a.ms - b.ms);
+    const min = list[0]?.ms || 0;
+    const span = Math.max(1, (list[list.length - 1]?.ms || 0) - min);
+    return list.map((t) => ({ ...t, t: (t.ms - min) / span }));
+  }, [trips]);
+  const replayGeo = useMemo(() => ({
+    type: 'FeatureCollection',
+    features: replayTrips.map((t) => ({ type: 'Feature', properties: { t: Number(t.t.toFixed(4)) }, geometry: { type: 'LineString', coordinates: t.path } })),
+  }), [replayTrips]);
+  const replayOn = Boolean(replay);
 
   // Draw whatever the current view/filter/replay says, once map + data exist.
   useEffect(() => {
@@ -113,21 +135,28 @@ export default function Demo() {
     if (!layers.turer) {
       mapApi.clearRouteLines?.(opts);
       mapApi.clearHeatLines?.(opts);
+      mapApi.clearReplay?.();
       return;
     }
+    if (replayOn) {
+      mapApi.clearRouteLines?.(opts);
+      mapApi.clearHeatLines?.(opts);
+      mapApi.showReplay?.(replayGeo);
+      return;
+    }
+    mapApi.clearReplay?.();
     if (view === 'tetthet') {
       mapApi.clearRouteLines?.(opts);
       mapApi.showHeatLines?.(data.geojson, opts);
     } else {
       mapApi.clearHeatLines?.(opts);
-      const shown = replay ? tripsToGeoJson(trips.slice(0, replay.index)) : allGeo;
-      mapApi.showRouteLines?.(shown, opts);
+      mapApi.showRouteLines?.(allGeo, opts);
     }
     if (!fittedRef.current && allGeo.features.length) {
       fittedRef.current = true;
       mapApi.fitCompetition?.(allGeo);
     }
-  }, [mapApi, data, view, replay, trips, allGeo, layers.turer]);
+  }, [mapApi, data, view, replayOn, replayGeo, allGeo, layers.turer]);
 
   // Context layers follow the checkboxes.
   useEffect(() => {
@@ -137,42 +166,49 @@ export default function Demo() {
     mapApi.showVenues?.(layers.anlegg ? (data?.venues || []) : []);
   }, [mapApi, data, layers]);
 
-  const stopReplay = () => { clearInterval(timerRef.current); setReplay(null); };
+  const rafRef = useRef(0);
+  const stopReplay = () => { cancelAnimationFrame(rafRef.current); clearInterval(timerRef.current); setReplay(null); };
   const toggleLayer = (key) => {
     if (key === 'turer' && layers.turer) stopReplay();
     setLayers((l) => ({ ...l, [key]: !l[key] }));
   };
   useEffect(() => () => clearInterval(timerRef.current), []);
 
-  // Replay: add trips in logged order over ~REPLAY_MS.
+  // Replay: a smooth sweep through the month. The map only gets a new paint
+  // expression per frame (no re-adding data), and the HUD updates ~10×/s.
   const startReplay = () => {
     if (!trips.length) return;
-    clearInterval(timerRef.current);
+    cancelAnimationFrame(rafRef.current);
     setLayers((l) => ({ ...l, turer: true }));
-    setView('turer');
-    const stepMs = Math.max(30, Math.floor(REPLAY_MS / trips.length));
-    setReplay({ index: 0, running: true });
-    timerRef.current = setInterval(() => {
-      setReplay((r) => {
-        if (!r) return r;
-        const next = r.index + 1;
-        if (next >= trips.length) { clearInterval(timerRef.current); return { index: trips.length, running: false }; }
-        return { index: next, running: true };
-      });
-    }, stepMs);
+    setReplay({ T: 0, running: true });
+    const t0 = performance.now();
+    let lastHud = 0;
+    const tick = (now) => {
+      const T = Math.min(1.08, (now - t0) / REPLAY_MS);
+      mapApi?.setReplayProgress?.(T);
+      if (now - lastHud > 100 || T >= 1.08) { lastHud = now; setReplay({ T, running: T < 1.08 }); }
+      if (T < 1.08) rafRef.current = requestAnimationFrame(tick);
+    };
+    // Let the source be added before the first frame.
+    setTimeout(() => { rafRef.current = requestAnimationFrame(tick); }, 250);
   };
+  useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
 
   const changeMode = (next) => { stopReplay(); setMode(next); load(next); };
 
   // --- Guided tour ---
-  const narrow = () => typeof window !== 'undefined' && window.innerWidth < 720;
   const applyStep = (index) => {
     const step = TOUR[index];
     if (!step) return;
     clearInterval(timerRef.current);
     clearTimeout(replayDelayRef.current);
+    cancelAnimationFrame(rafRef.current);
+    mapSeqRef.current.forEach(clearTimeout);
+    mapSeqRef.current = [];
     setReplay(null);
     setLayers((l) => ({ ...l, ...(step.layers || {}) }));
+    if (step.hotspots) mapApi?.showHotspots?.(hotspots || { type: 'FeatureCollection', features: [] });
+    else mapApi?.clearHotspots?.();
     if (step.view) setView(step.view);
     if (step.report === 'pick') { setReport('pick'); setPickedPoint(null); setOpen(false); }
     else if (step.report === 'form' || step.report === 'success') {
@@ -183,11 +219,19 @@ export default function Demo() {
       setOpen(false);
     } else {
       setReport('none');
-      setOpen(step.phone ? false : (step.panel ? true : !narrow()));
+      // Keep the side panel folded during the tour: the map, phone and
+      // laptop carry the story, and the bubble carries the words.
+      setOpen(false);
     }
     if (step.map) mapApi?.flyToView?.(step.map);
+    if (step.mapSeq) {
+      mapApi?.flyToView?.({ ...step.mapSeq[0], duration: 2200 });
+      step.mapSeq.slice(1).forEach((v, k) => {
+        mapSeqRef.current.push(setTimeout(() => mapApi?.flyToView?.({ ...v, duration: 3200 }), 5200 * (k + 1)));
+      });
+    }
     if (step.fit && allGeo.features.length) mapApi?.fitCompetition?.(allGeo);
-    if (step.replay) replayDelayRef.current = setTimeout(() => startReplayRef.current?.(), 900);
+    if (step.replay) replayDelayRef.current = setTimeout(() => startReplayRef.current?.(), 1500);
   };
   const startReplayRef = useRef(null);
   // A 2–3 km bike trip from the demo data for the phone's tracking screen.
@@ -196,6 +240,7 @@ export default function Demo() {
     return all.find((t) => t.mode === 'sykkel' && t.distanceM > 1800 && t.distanceM < 3200 && (t.path || []).length > 8) || all[0] || null;
   }, [data]);
   const replayDelayRef = useRef(null);
+  const mapSeqRef = useRef([]);
   startReplayRef.current = startReplay;
   const goStep = (index) => {
     const next = Math.max(0, Math.min(TOUR.length - 1, index));
@@ -206,6 +251,9 @@ export default function Demo() {
   const endTour = () => {
     clearInterval(timerRef.current);
     clearTimeout(replayDelayRef.current);
+    cancelAnimationFrame(rafRef.current);
+    mapSeqRef.current.forEach(clearTimeout);
+    mapApi?.clearHotspots?.();
     setReplay(null);
     setTourStep(-1);
     setReport('none');
@@ -244,7 +292,7 @@ export default function Demo() {
   const confirmSpot = () => { const c = mapApi?.getCenter?.(); if (!c) return; setPickedPoint(c); setReport('form'); };
   const endReport = () => { setReport('none'); setPickedPoint(null); setDemoView('form'); setOpen(true); };
 
-  const shownTrips = replay ? trips.slice(0, replay.index) : trips;
+  const shownTrips = replay ? replayTrips.filter((t) => t.t <= replay.T) : trips;
   const shownKm = shownTrips.reduce((s, t) => s + (t.distanceM || 0), 0);
   const lastShown = shownTrips[shownTrips.length - 1];
   const totals = data?.totals;
@@ -272,7 +320,7 @@ export default function Demo() {
           </>
         )}
         {report === 'form' && pickedPoint && (
-          <ReportSheet key={demoView} demo demoView={demoView} point={pickedPoint} onClose={endReport} onChangeLocation={() => setReport('pick')} onViewCase={endReport} />
+          <ReportSheet key={`${demoView}-${tourStep}`} demo demoView={demoView} demoScript={tourStep >= 0} point={pickedPoint} onClose={endReport} onChangeLocation={() => setReport('pick')} onViewCase={endReport} />
         )}
 
         {report === 'none' && tourStep < 0 && (
@@ -378,6 +426,15 @@ export default function Demo() {
             )}
           </aside>
         )}
+        {replay && (
+          <div className="replay-hud" aria-live="off">
+            <strong>{lastShown ? new Date(lastShown.createdAt).toLocaleDateString('nb-NO', { day: 'numeric', month: 'long' }) : '\u00a0'}</strong>
+            <span>{fmtInt(shownTrips.length)} turer · {fmtKm(shownKm)} km</span>
+          </div>
+        )}
+
+        {tourStep >= 0 && TOUR[tourStep]?.laptop && <DemoLaptop src="/backoffice" />}
+
         {tourStep >= 0 && TOUR[tourStep]?.phone && (
           <DemoKidPhone
             screen={TOUR[tourStep].phone}

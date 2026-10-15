@@ -51,7 +51,7 @@ function haptic(ms = 8) {
 
 // `demo`: walk through every step without sending anything (used on /demo).
 // `demoView='success'` opens straight on the receipt (guided demo tour).
-export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocation, onViewCase, demo = false, demoView = 'form' }) {
+export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocation, onViewCase, demo = false, demoView = 'form', demoScript = false }) {
   const [reporterType, setReporterType] = useState(REPORTER_TYPES.ADULT);
   const [form, setForm] = useState(INITIAL_FORM);
   const [images, setImages] = useState([]);
@@ -140,6 +140,25 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
     haptic(6);
     setReporterType(type);
   };
+
+  // Demo tour: fill the form in by itself so a recording shows how it is
+  // used — reporter «Barn», one category, and a short description typed out.
+  useEffect(() => {
+    if (!demo || !demoScript || demoView !== 'form') return undefined;
+    const text = 'Bilene kommer fort rundt svingen, og det er vanskelig å se dem når vi skal over veien til trening.';
+    const timers = [];
+    const at = (ms, fn) => timers.push(setTimeout(fn, ms));
+    at(900, () => setReporterType(REPORTER_TYPES.CHILD));
+    at(1900, () => setForm((f) => ({ ...f, categories: ['Utrygt kryss'] })));
+    at(2900, () => {
+      const el = typeof document !== 'undefined' ? document.getElementById('report-description') : null;
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    for (let i = 1; i <= text.length; i += 1) {
+      at(3500 + i * 38, () => setForm((f) => ({ ...f, description: text.slice(0, i) })));
+    }
+    return () => timers.forEach(clearTimeout);
+  }, [demo, demoScript, demoView]);
 
   const resetAndClose = () => {
     images.forEach((image) => URL.revokeObjectURL(image.previewUrl));

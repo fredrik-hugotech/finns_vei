@@ -4808,3 +4808,52 @@ a:focus-visible, button:focus-visible, label:focus-within { outline: 2px solid v
 @media (max-width: 719px) {
   .dk { align-items: flex-start; padding-top: max(1rem, env(safe-area-inset-top)); }
 }
+
+/* /demo replay HUD: big date + running totals, top centre */
+.replay-hud {
+  background: rgba(22, 32, 28, 0.86);
+  border-radius: 14px;
+  color: #fff;
+  display: grid;
+  gap: 0.1rem;
+  justify-items: center;
+  left: 50%;
+  padding: 0.55rem 1.1rem 0.6rem;
+  pointer-events: none;
+  position: fixed;
+  top: max(1rem, env(safe-area-inset-top));
+  transform: translateX(-50%);
+  z-index: 45;
+}
+.replay-hud strong { font-family: var(--font-display), Georgia, serif; font-size: 1.7rem; font-variant-numeric: tabular-nums; font-weight: 600; letter-spacing: -0.01em; line-height: 1.1; min-width: 8ch; text-align: center; }
+.replay-hud span { color: rgba(255, 255, 255, 0.75); font-size: 0.85rem; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+/* /demo closing step: backoffice dashboard in a laptop frame */
+.dl {
+  align-items: center;
+  animation: fade-in 300ms ease;
+  background: rgba(14, 30, 26, 0.42);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  position: fixed;
+  z-index: 50;
+}
+@media (min-width: 900px) { .dl { justify-content: flex-start; padding-left: 3vw; } }
+.dl__frame { position: relative; }
+.dl__lid { left: 0; position: absolute; top: 0; transform-origin: top left; width: 1316px; }
+.dl__screen {
+  background: #0f1513;
+  border-radius: 22px 22px 6px 6px;
+  box-shadow: 0 0 0 2px #2b3532;
+  padding: 18px 18px 22px;
+}
+.dl__iframe { background: #fff; border: 0; border-radius: 6px; display: block; height: 800px; width: 1280px; }
+.dl__base {
+  background: linear-gradient(#cfd5d2, #9aa39f);
+  border-radius: 0 0 18px 18px;
+  height: 20px;
+  margin: 0 -40px;
+  box-shadow: 0 24px 50px -18px rgba(0, 0, 0, 0.55);
+}
+@media (min-width: 900px) { .tour .tour__card { max-width: 360px; } }

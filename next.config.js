@@ -69,16 +69,18 @@ const nextConfig = {
       `connect-src 'self' https://api.mapbox.com https://events.mapbox.com${supabaseHost ? ` https://${supabaseHost}` : ''}`,
       "worker-src 'self' blob:",
       "child-src blob:",
+      // The /demo tour shows our own /backoffice in a frame.
+      "frame-src 'self'",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
-      "frame-ancestors 'none'",
+      "frame-ancestors 'self'",
     ].join('; ');
     return [
       {
         source: '/:path*',
         headers: [
-          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'Content-Security-Policy', value: csp },

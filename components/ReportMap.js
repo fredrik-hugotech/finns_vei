@@ -611,7 +611,91 @@ function showHeatLines(map, geojson, { keepReports = false } = {}) {
   }
 }
 
-// Individual route lines coloured per club (property `color`) — used by the
+// /demo tour: accident hot spots (only places with several accidents), as
+// red discs sized by count with the count printed in the middle.
+function showHotspots(map, geojson) {
+  if (!map || !map.isStyleLoaded?.()) {
+    if (map) setTimeout(() => showHotspots(map, geojson), 200);
+    return;
+  }
+  const data = geojson && geojson.type ? geojson : { type: 'FeatureCollection', features: [] };
+  const source = map.getSource('demo-hotspots');
+  if (source) { source.setData(data); return; }
+  map.addSource('demo-hotspots', { type: 'geojson', data });
+  map.addLayer({
+    id: 'demo-hotspots-halo',
+    type: 'circle',
+    source: 'demo-hotspots',
+    paint: {
+      'circle-color': '#b91c1c',
+      'circle-opacity': 0.18,
+      'circle-radius': ['interpolate', ['linear'], ['get', 'count'], 4, 22, 12, 34, 30, 48],
+    },
+  });
+  map.addLayer({
+    id: 'demo-hotspots-dot',
+    type: 'circle',
+    source: 'demo-hotspots',
+    paint: {
+      'circle-color': '#b91c1c',
+      'circle-radius': ['interpolate', ['linear'], ['get', 'count'], 4, 12, 12, 17, 30, 24],
+      'circle-stroke-color': '#ffffff',
+      'circle-stroke-width': 2.5,
+    },
+  });
+  map.addLayer({
+    id: 'demo-hotspots-count',
+    type: 'symbol',
+    source: 'demo-hotspots',
+    layout: {
+      'text-field': ['to-string', ['get', 'count']],
+      'text-font': ['DIN Pro Bold', 'Arial Unicode MS Bold'],
+      'text-size': 13,
+      'text-allow-overlap': true,
+    },
+    paint: { 'text-color': '#ffffff' },
+  });
+}
+
+// /demo replay: every trip as a line with a normalised time `t` (0..1).
+// setReplayProgress(T) only rewrites paint expressions, so the animation is
+// smooth: trips fade in as T passes them, the newest glow bright yellow and
+// cool to orange, and overlapping trips build up like a heat map.
+function showReplay(map, geojson) {
+  if (!map || !map.isStyleLoaded?.()) {
+    if (map) setTimeout(() => showReplay(map, geojson), 200);
+    return;
+  }
+  const data = geojson && geojson.type ? geojson : { type: 'FeatureCollection', features: [] };
+  const source = map.getSource('demo-replay');
+  if (source) { source.setData(data); return; }
+  map.addSource('demo-replay', { type: 'geojson', data });
+  map.addLayer({
+    id: 'demo-replay-glow',
+    type: 'line',
+    source: 'demo-replay',
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': '#fde68a', 'line-blur': 4, 'line-opacity': 0, 'line-width': 9 },
+  });
+  map.addLayer({
+    id: 'demo-replay-line',
+    type: 'line',
+    source: 'demo-replay',
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': '#f97316', 'line-opacity': 0, 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1.6, 14, 3] },
+  });
+  setReplayProgress(map, 0);
+}
+
+function setReplayProgress(map, T) {
+  if (!map || !map.getLayer?.('demo-replay-line')) return;
+  const age = ['-', T, ['get', 't']];
+  map.setPaintProperty('demo-replay-line', 'line-opacity', ['interpolate', ['linear'], age, -0.0001, 0, 0, 0.15, 0.025, 0.55]);
+  map.setPaintProperty('demo-replay-line', 'line-color', ['interpolate', ['linear'], age, 0, '#fff7cc', 0.02, '#fbbf24', 0.06, '#f97316']);
+  map.setPaintProperty('demo-replay-glow', 'line-opacity', ['interpolate', ['linear'], age, -0.0001, 0, 0, 0.9, 0.03, 0]);
+}
+
+// Individual route lines coloured per club// Individual route lines coloured per club (property `color`) — used by the
 // public /demo page for synthetic demo competitions only. Same "hide report
 // markers while lines are showing" behaviour as the density layer.
 function showRouteLines(map, geojson, { keepReports = false } = {}) {
@@ -1510,6 +1594,11 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         flyToLngLat: ({ lng, lat }) => map.easeTo({ center: [lng, lat], duration: 600 }),
         // Guided demo tour: fly to an exact view.
         flyToView: ({ lng, lat, zoom, duration = 1400 }) => map.flyTo({ center: [lng, lat], zoom, duration, essential: true }),
+        showHotspots: (geojson) => showHotspots(map, geojson),
+        clearHotspots: () => showHotspots(map, { type: 'FeatureCollection', features: [] }),
+        showReplay: (geojson) => showReplay(map, geojson),
+        clearReplay: () => showReplay(map, { type: 'FeatureCollection', features: [] }),
+        setReplayProgress: (T) => setReplayProgress(map, T),
       });
       try {
         await loadReports();
