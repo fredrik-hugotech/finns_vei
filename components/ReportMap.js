@@ -658,41 +658,83 @@ function showHotspots(map, geojson) {
 }
 
 // /demo replay: every trip as a line with a normalised time `t` (0..1).
-// setReplayProgress(T) only rewrites paint expressions, so the animation is
-// smooth: trips fade in as T passes them, the newest glow bright yellow and
-// cool to orange, and overlapping trips build up like a heat map.
+// Trips are split into REPLAY_SLICES time slices, each its own pair of
+// layers with a fixed filter. The animation only changes constant paint
+// values (opacity, colour) per slice — changing a data-driven expression
+// every frame makes Mapbox rebuild the layer each time, and nothing shows
+// until the animation stops. Fresh trips flash red and cool to
+// orange; overlapping trips build up like a heat map.
+const REPLAY_SLICES = 48;
+const REPLAY_FRESH = '#e11d48';
+const REPLAY_WARM = '#f43f5e';
+const REPLAY_DONE = '#f97316';
+
+function mixHex(a, b, f) {
+  const pa = [1, 3, 5].map((i) => parseInt(a.slice(i, i + 2), 16));
+  const pb = [1, 3, 5].map((i) => parseInt(b.slice(i, i + 2), 16));
+  return `#${pa.map((v, i) => Math.round(v + (pb[i] - v) * f).toString(16).padStart(2, '0')).join('')}`;
+}
+
 function showReplay(map, geojson) {
   if (!map || !map.isStyleLoaded?.()) {
     if (map) setTimeout(() => showReplay(map, geojson), 200);
     return;
   }
-  const data = geojson && geojson.type ? geojson : { type: 'FeatureCollection', features: [] };
+  const features = (geojson?.features || []).map((f) => ({
+    ...f,
+    properties: { ...f.properties, s: Math.min(REPLAY_SLICES - 1, Math.floor((Number(f.properties?.t) || 0) * REPLAY_SLICES)) },
+  }));
+  const data = { type: 'FeatureCollection', features };
+  map.__replayState = {};
   const source = map.getSource('demo-replay');
-  if (source) { source.setData(data); return; }
+  if (source) { source.setData(data); setReplayProgress(map, 0); return; }
   map.addSource('demo-replay', { type: 'geojson', data });
-  map.addLayer({
-    id: 'demo-replay-glow',
-    type: 'line',
-    source: 'demo-replay',
-    layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-color': '#fde68a', 'line-blur': 4, 'line-opacity': 0, 'line-width': 9 },
-  });
-  map.addLayer({
-    id: 'demo-replay-line',
-    type: 'line',
-    source: 'demo-replay',
-    layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-color': '#f97316', 'line-opacity': 0, 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1.6, 14, 3] },
-  });
+  for (let k = 0; k < REPLAY_SLICES; k += 1) {
+    map.addLayer({
+      id: `demo-replay-glow-${k}`,
+      type: 'line',
+      source: 'demo-replay',
+      filter: ['==', ['get', 's'], k],
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#fb7185', 'line-blur': 5, 'line-opacity': 0, 'line-width': 10 },
+    });
+    map.addLayer({
+      id: `demo-replay-line-${k}`,
+      type: 'line',
+      source: 'demo-replay',
+      filter: ['==', ['get', 's'], k],
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': REPLAY_DONE, 'line-opacity': 0, 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1.6, 14, 3] },
+    });
+  }
   setReplayProgress(map, 0);
 }
 
 function setReplayProgress(map, T) {
-  if (!map || !map.getLayer?.('demo-replay-line')) return;
-  const age = ['-', T, ['get', 't']];
-  map.setPaintProperty('demo-replay-line', 'line-opacity', ['interpolate', ['linear'], age, -0.0001, 0, 0, 0.15, 0.025, 0.55]);
-  map.setPaintProperty('demo-replay-line', 'line-color', ['interpolate', ['linear'], age, 0, '#fff7cc', 0.02, '#fbbf24', 0.06, '#f97316']);
-  map.setPaintProperty('demo-replay-glow', 'line-opacity', ['interpolate', ['linear'], age, -0.0001, 0, 0, 0.9, 0.03, 0]);
+  if (!map || !map.getLayer?.('demo-replay-line-0')) return;
+  const cache = map.__replayState || (map.__replayState = {});
+  const set = (id, prop, value) => {
+    const key = `${id}|${prop}`;
+    if (cache[key] === value) return;
+    cache[key] = value;
+    map.setPaintProperty(id, prop, value);
+  };
+  for (let k = 0; k < REPLAY_SLICES; k += 1) {
+    const age = T - (k + 1) / REPLAY_SLICES; // slice fully reached once T passes its end
+    const started = T >= k / REPLAY_SLICES;
+    let opacity = 0;
+    let glow = 0;
+    let color = REPLAY_DONE;
+    if (started) {
+      const a = Math.max(0, age + 1 / REPLAY_SLICES); // 0 when the slice starts
+      opacity = Math.round(Math.min(0.6, 0.18 + a * 14) * 100) / 100;
+      glow = Math.round(Math.max(0, 0.85 - a * 22) * 100) / 100;
+      color = a < 0.02 ? mixHex(REPLAY_FRESH, REPLAY_WARM, a / 0.02) : (a < 0.06 ? mixHex(REPLAY_WARM, REPLAY_DONE, (a - 0.02) / 0.04) : REPLAY_DONE);
+    }
+    set(`demo-replay-line-${k}`, 'line-opacity', opacity);
+    set(`demo-replay-line-${k}`, 'line-color', color);
+    set(`demo-replay-glow-${k}`, 'line-opacity', glow);
+  }
 }
 
 // Individual route lines coloured per club// Individual route lines coloured per club (property `color`) — used by the
