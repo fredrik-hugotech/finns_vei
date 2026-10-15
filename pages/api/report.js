@@ -1,6 +1,6 @@
 import { REPORT_CATEGORIES, REPORT_STATUS, REPORTER_TYPES } from '../../lib/config';
 import { runReportWorkflowBestEffort, siteBaseUrl } from '../../lib/reportWorkflow';
-import { createReport, hasSupabaseConfig, updateReportImages, uploadReportImage } from '../../lib/supabaseRest';
+import { createReport, findRecentDuplicateReport, hasSupabaseConfig, updateReportImages, uploadReportImage } from '../../lib/supabaseRest';
 import { distanceMeters, randomOffsetPoint, snapToGrid, CLIP_METERS } from '../../lib/geoPrivacy';
 import { buildNewReportEmail } from '../../lib/dailySummaryEmail';
 import { emailTransportConfigured, sendNotificationEmail } from '../../lib/emailTransport';
@@ -201,6 +201,18 @@ export default async function handler(req, res) {
 
     const reportInput = validatePayload(fields);
     const imageFiles = validateImages(files);
+
+    // Already stored a moment ago (re-tap, or an offline-queued copy of a
+    // report that actually went through)? Answer with that one instead of
+    // creating a duplicate case, Trello card and email.
+    if (!imageFiles.length) {
+      const existing = await findRecentDuplicateReport(reportInput).catch(() => null);
+      if (existing?.id) {
+        logApi('duplicate_ignored', { reportId: existing.id, category: reportInput.category });
+        return res.status(200).json({ id: existing.id, status: existing.status || REPORT_STATUS.NEW, nvdb_status: 'pending', warning: null, image_count: 0, duplicate: true });
+      }
+    }
+
     const insertedReport = await createReport(reportInput);
 
     if (!insertedReport?.id) {

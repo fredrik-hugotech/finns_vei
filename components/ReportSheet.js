@@ -432,7 +432,7 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
               <p>Ingen dekning akkurat nå. Meldingen sendes av seg selv når telefonen får dekning igjen.</p>
             ) : (
               <>
-                <p>Din tilbakemelding blir prioritert, og behandlet slik:</p>
+                <p>Slik jobber vi videre med meldingen:</p>
 
                 <ol className="process-steps">
                   {processStepsForStatus(REPORT_STATUS.NEW).map((step) => (
