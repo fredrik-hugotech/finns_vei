@@ -351,28 +351,6 @@ export default function Home() {
 
         <div className="app-topbar">
           <span className="app-brand"><Logo size="sm" /></span>
-          {pendingQueueCount > 0 && (
-            <a
-              className="offline-queue-badge"
-              href="/mine-meldinger"
-              role="status"
-              title="Meldinger lagret på denne enheten som ikke er sendt ennå"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v6l4 2" /></svg>
-              {pendingQueueCount === 1 ? '1 venter på å bli sendt' : `${pendingQueueCount} venter på å bli sendt`}
-            </a>
-          )}
-          {pendingTripQueueCount > 0 && (
-            <a
-              className="offline-queue-badge"
-              href="/mine-turer"
-              role="status"
-              title="Turer lagret på denne enheten som ikke er sendt ennå"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v6l4 2" /></svg>
-              {pendingTripQueueCount === 1 ? '1 tur venter på å bli sendt' : `${pendingTripQueueCount} turer venter på å bli sendt`}
-            </a>
-          )}
           {canInstall && (
             <button
               type="button"
