@@ -29,7 +29,10 @@ const LIVE_PATH_REDRAW_MS = 2500;
 // Live GPS tracker. Records the raw path ON THE DEVICE only — to draw the live
 // route and compute distance — then hands back distance, duration and the
 // clipped+snapped cells/path. Also lets the rider drop "unsafe point" reports.
-export default function TripTracker({ club, helmet, routeType = 'fritid', mode = 'sykkel', mapApiRef, onDone, onCancel }) {
+// `loggedBy`: 'barn13' (a child aged 13+ on their own phone) | 'voksen' (an
+// adult who is along on the trip, logging it for a younger child).
+export default function TripTracker({ club, helmet, routeType = 'fritid', mode = 'sykkel', loggedBy = 'barn13', mapApiRef, onDone, onCancel }) {
+  const adult = loggedBy === 'voksen';
   const [status, setStatus] = useState('starting'); // starting | tracking | error
   const [distanceM, setDistanceM] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
@@ -182,7 +185,7 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mode =
     // through, just without the extra server-side check.
     const tripStart = pointsRef.current[0] || null;
     const queuePayload = {
-      reporter_type: 'barn',
+      reporter_type: adult ? 'voksen' : 'barn',
       category,
       description: `Utrygt punkt markert under ${modeLabel} (${routeType === 'skole' ? 'skolerute' : 'fritidsrute'}).`,
       lat: point.lat,
@@ -251,8 +254,8 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mode =
           <span className="phone-away__ic" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="7" y="2.5" width="10" height="19" rx="2.4"/><path d="M10.5 5.5h3"/><path d="M5 12l-2 2 2 2M19 12l2 2-2 2" opacity=".5"/></svg>
           </span>
-          <strong className="phone-away__title">Legg telefonen i sekken eller lommen</strong>
-          <p className="phone-away__text">Ta den ikke opp før du er framme. Se og hør på trafikken.</p>
+          <strong className="phone-away__title">{adult ? 'Telefonen i lomma, blikket på veien' : 'Legg telefonen i sekken eller lommen'}</strong>
+          <p className="phone-away__text">{adult ? 'Turen logges av seg selv. Følg med på barna og trafikken.' : 'Ta den ikke opp før du er framme. Se og hør på trafikken.'}</p>
           <span className="phone-away__bud">Finns bud 2 · Vær oppmerksom</span>
           <button type="button" className="big-button big-button--primary phone-away__ok" onClick={() => setPhoneAway(false)}>Jeg er klar</button>
         </div>
@@ -263,6 +266,7 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mode =
       <div className="trip-tracker__head">
         <span className="trip-tracker__pill"><Icon name={routeType === 'skole' ? 'school' : 'ball'} size={15} />{routeType === 'skole' ? 'Skolerute' : 'Fritidsrute'}</span>
         {helmet && <span className="trip-tracker__pill trip-tracker__pill--ok"><Icon name="helmet" size={15} />Hjelm</span>}
+        {adult && <span className="trip-tracker__pill"><Icon name="user" size={15} />Voksen logger</span>}
       </div>
 
       <div className={acquiring ? 'bike-track bike-track--wait' : 'bike-track'} aria-hidden="true">

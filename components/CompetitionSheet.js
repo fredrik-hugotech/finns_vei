@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import Icon from './Icon';
+import TripWhoGate from './TripWhoGate';
 import useSheetDrag from '../hooks/useSheetDrag';
 import { pickDistanceFact } from '../lib/distanceFacts';
 
@@ -49,7 +50,11 @@ function isCompetitionEnded(competition) {
 const RANK_CLASS = ['comp-row__rank--gold', 'comp-row__rank--silver', 'comp-row__rank--bronze'];
 
 export default function CompetitionSheet({ onClose, onPickStart, initialCompetitionId = null }) {
-  const [view, setView] = useState('list'); // list | detail | log
+  const [view, setView] = useState('list'); // list | detail | who | log
+  // The competition the trip will count in — null for a trip outside any
+  // competition (still saved, still part of the map of where children go).
+  const [logComp, setLogComp] = useState(null);
+  const [loggedBy, setLoggedBy] = useState('barn13');
   const [competitions, setCompetitions] = useState(null);
   const [stats, setStats] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -107,9 +112,18 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
     setView('list');
   };
 
-  const startLog = () => {
+  // "Logg tur" always starts with "Hvem logger turen?" (components/TripWhoGate.js).
+  const openWho = (competition) => {
     haptic(8);
-    const sortedClubs = [...(stats?.competition?.clubs || [])].sort((a, b) => a.name.localeCompare(b.name, 'nb'));
+    setLogComp(competition || null);
+    setError('');
+    setView('who');
+  };
+
+  const pickWho = (choice) => {
+    if (choice === 'voksen-tegn') { window.location.href = '/tegn-rute?voksen=1'; return; }
+    setLoggedBy(choice === 'voksen-live' ? 'voksen' : 'barn13');
+    const sortedClubs = [...(logComp?.clubs || [])].sort((a, b) => a.name.localeCompare(b.name, 'nb'));
     setClub(sortedClubs[0]?.name || '');
     setHelmet(true);
     setError('');
@@ -117,13 +131,12 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
   };
 
   const goPickStart = () => {
-    if (!stats?.competition) return;
-    if (stats.competition.clubs.length && !club) {
-      setError('Velg klubben din.');
+    if (logComp?.clubs?.length && !club) {
+      setError('Velg klubben.');
       return;
     }
     haptic(12);
-    onPickStart?.({ competition: stats.competition, club, helmet, routeType, mode });
+    onPickStart?.({ competition: logComp, club: logComp ? club : '', helmet, routeType, mode, loggedBy });
   };
 
   return (
@@ -135,11 +148,19 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
           {view === 'list' && (
             <>
               <div className="support-intro">
-                <h2>Konkurranser</h2>
+                <h2>Turer og konkurranser</h2>
               </div>
               {isAdmin && (
                 <a className="comp-admin-link" href="/backoffice/konkurranser">+ Opprett / administrer konkurranser</a>
               )}
+              <button type="button" className="comp-card comp-card--log" onClick={() => openWho(null)}>
+                <span className="comp-card__icon" aria-hidden="true"><Icon name="route" size={22} /></span>
+                <span className="comp-card__body">
+                  <strong>Logg en tur</strong>
+                  <span className="comp-card__desc">Også uten konkurranse</span>
+                </span>
+                <span className="comp-card__chev" aria-hidden="true"><Icon name="chevronRight" size={18} strokeWidth={2} /></span>
+              </button>
               {competitions === null && <p className="comp-muted">Laster …</p>}
               {competitions && competitions.length === 0 && (
                 <p className="comp-muted">Ingen aktive konkurranser akkurat nå. Kom tilbake snart!</p>
@@ -226,11 +247,17 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
             </>
           )}
 
-          {view === 'log' && stats && (
+          {view === 'who' && (
+            <TripWhoGate variant="sheet" onPick={pickWho} onBack={() => setView(logComp ? 'detail' : 'list')} />
+          )}
+
+          {view === 'log' && (
             <>
-              <button type="button" className="comp-back" onClick={() => setView('detail')}><Icon name="chevronLeft" size={18} strokeWidth={2.2} />Tilbake</button>
+              <button type="button" className="comp-back" onClick={() => setView('who')}><Icon name="chevronLeft" size={18} strokeWidth={2.2} />Tilbake</button>
               <div className="support-intro">
                 <h2>Logg tur</h2>
+                <p>{logComp ? <>Turen teller i <strong>{logComp.name}</strong>.</> : 'Turen blir med i kartet over hvor barn ferdes, men teller ikke i en konkurranse.'}</p>
+                {loggedBy === 'voksen' && <p className="comp-voksen-note"><Icon name="user" size={15} /> Du logger som voksen og er med på turen.</p>}
               </div>
 
               <fieldset className="sheet-field">
@@ -249,12 +276,12 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
                 </div>
               </fieldset>
 
-              {stats.competition.clubs.length > 0 && (
+              {logComp?.clubs?.length > 0 && (
                 <label className="sheet-field">
-                  <span className="sheet-field__label">Klubben din</span>
+                  <span className="sheet-field__label">{loggedBy === 'voksen' ? 'Barnets klubb' : 'Klubben din'}</span>
                   <select className="comp-select" value={club} onChange={(event) => setClub(event.target.value)}>
                     <option value="">Velg klubb …</option>
-                    {[...stats.competition.clubs]
+                    {[...logComp.clubs]
                       .sort((a, b) => a.name.localeCompare(b.name, 'nb'))
                       .map((entry) => (
                         <option key={entry.name} value={entry.name}>{entry.name}</option>
@@ -270,7 +297,7 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
                 aria-pressed={helmet}
               >
                 <span className="helmet-toggle__icon" aria-hidden="true"><Icon name="helmet" size={20} /></span>
-                <span className="helmet-toggle__label">Jeg brukte hjelm</span>
+                <span className="helmet-toggle__label">{loggedBy === 'voksen' ? 'Barnet bruker hjelm' : 'Jeg bruker hjelm'}</span>
                 <span className="helmet-toggle__check" aria-hidden="true">{helmet ? <Icon name="check" size={18} /> : ''}</span>
               </button>
 
@@ -281,12 +308,12 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
 
         {view === 'detail' && stats && (
           <div className="sheet-footer">
-            <button className="big-button big-button--primary comp-action" type="button" onClick={startLog} disabled={loadingDetail}>
+            <button className="big-button big-button--primary comp-action" type="button" onClick={() => openWho(stats.competition)} disabled={loadingDetail}>
               <Icon name="bike" size={18} /> Logg tur
             </button>
           </div>
         )}
-        {view === 'log' && stats && (
+        {view === 'log' && (
           <div className="sheet-footer">
             <button className="big-button big-button--primary comp-action" type="button" onClick={goPickStart}>
               <Icon name="bike" size={18} /> Start tur

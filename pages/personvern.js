@@ -7,16 +7,24 @@ const POINTS = [
     body: 'Når et barn melder fra om et utrygt sted, spør vi aldri om navn, e-post eller telefon. Meldingen er anonym.',
   },
   {
+    title: 'Barn under 13 år logger ikke turer selv',
+    body: 'Barn under 13 år skal ikke registrere hvor de er på egen telefon, og skal ikke trenge egen smarttelefon for å være med. En voksen som er med på turen logger den på sin telefon, eller tegner ruten på kartet.',
+  },
+  {
+    title: 'Vi spør om alder, men lagrer den ikke',
+    body: 'Før en tur logges, spør vi hvem som logger den. Vi lagrer bare om det var et barn over 13 år eller en voksen, aldri alder eller navn.',
+  },
+  {
     title: 'Voksne bestemmer selv',
     body: 'Voksne kan legge igjen kontaktinfo hvis de vil bli kontaktet om saken. Det er frivillig, og uten kontaktinfo er meldingen anonym.',
   },
   {
     title: 'Området rundt hjemmet skjules',
-    body: 'Når du logger en tur, fjernes de første 50 meterne fra der du starter, som ofte er hjemme. Startpunktet lagres aldri.',
+    body: 'Når en tur logges eller en rute tegnes, fjernes de første 50 meterne fra der den starter, som ofte er hjemme. Startpunktet lagres aldri.',
   },
   {
     title: 'Ruten bearbeides på telefonen din',
-    body: 'Ruten klippes og avrundes på telefonen før den sendes. Vi ser hvor mange som sykler og går, ikke hvem.',
+    body: 'Ruten klippes og avrundes på telefonen før den sendes, og en gang til hos oss. Vi ser hvor mange som sykler og går, ikke hvem. Enkeltruter vises aldri offentlig.',
   },
   {
     title: 'Ingen sporing og ingen deling',
@@ -29,7 +37,7 @@ export default function Personvern() {
     <>
       <Head>
         <title>Personvern – Finns Fairway</title>
-        <meta name="description" content="Slik tar Finns Fairway vare på personvernet: anonyme meldinger, ingen personopplysninger om barn, og hjemmeområdet skjules ved turlogging." />
+        <meta name="description" content="Slik tar Finns Fairway vare på personvernet: anonyme meldinger, ingen personopplysninger om barn, hjemmeområdet skjules ved turlogging, og barn under 13 år logger ikke turer selv." />
       </Head>
       <main className="page sub">
         <PageHeader title="Personvern" intro="Slik tar vi vare på personvernet ditt og barnas." />

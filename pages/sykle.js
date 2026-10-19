@@ -1,12 +1,15 @@
 import Head from 'next/head';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Logo from '../components/Logo';
 import Icon from '../components/Icon';
 import TripTracker from '../components/TripTracker';
 import TripCelebration from '../components/TripCelebration';
+import TripWhoGate from '../components/TripWhoGate';
 import { addMyTrip } from '../lib/myTrips';
+import { addPendingTrip, flushTripQueue } from '../lib/offlineTripQueue';
 
 const ReportMap = dynamic(() => import('../components/ReportMap'), {
   ssr: false,
@@ -27,13 +30,17 @@ function haptic(pattern = 8) {
 }
 
 export default function Sykle() {
+  const router = useRouter();
   const mapApiRef = useRef(null);
   // The map is only needed for the tracking view, so it stays unmounted until
   // a trip actually starts — flows like "Meld farlig sted" never load it.
   // Once mounted it's left in place (not tied back to `view`) so it doesn't
   // unmount while TripTracker's cleanup still calls into it.
   const [mapMounted, setMapMounted] = useState(false);
-  const [view, setView] = useState('hub'); // hub | setup | tracking | done | danger | danger-done
+  const [view, setView] = useState('hub'); // hub | who | setup | tracking | done | danger | danger-done
+  // Who is logging: 'barn13' (child 13+) | 'voksen' (adult along on the trip).
+  // Children under 13 never log on their own — see components/TripWhoGate.js.
+  const [loggedBy, setLoggedBy] = useState('barn13');
   const [competition, setCompetition] = useState(null);
   const [compChecked, setCompChecked] = useState(false);
   const [routeType, setRouteType] = useState('fritid');
@@ -56,7 +63,15 @@ export default function Sykle() {
         if (first?.clubs?.length === 1) setClub(first.clubs[0].name);
       })
       .catch(() => { setCompChecked(true); });
+    // Resend trips parked on this phone after a dead-zone finish.
+    if (typeof navigator === 'undefined' || navigator.onLine !== false) flushTripQueue().catch(() => {});
   }, []);
+
+  const pickWho = (choice) => {
+    if (choice === 'voksen-tegn') { router.push('/tegn-rute?voksen=1&fra=/sykle'); return; }
+    setLoggedBy(choice === 'voksen-live' ? 'voksen' : 'barn13');
+    setView('setup');
+  };
 
   const handleMapReady = useCallback((api) => { mapApiRef.current = api; }, []);
 
@@ -80,33 +95,49 @@ export default function Sykle() {
 
   const finishTrip = async ({ distanceM, durationS, cells, path, weather }) => {
     setBusy(true);
-    try {
-      if (competition) {
-        const response = await fetch('/api/bike-trips', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ competitionId: competition.id, club, helmet, routeType, mode, weather, distanceM, durationS, cells, path, tripToken: tripToken() }),
-        });
-        if (!response.ok) {
-          const payload = await response.json().catch(() => ({}));
-          throw new Error(payload.error || 'Kunne ikke lagre turen');
-        }
-      }
-      // Local-only record for /mine-turer — no server identity, just a
-      // convenience list on this device.
-      addMyTrip({ distanceM, mode, routeType, weather });
-      setResult({ km: (distanceM / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 2 }), weatherKind: weather?.kind || null });
+    // Every trip is saved, with or without a competition: outside one it
+    // still counts in the map of where children travel.
+    const payload = { competitionId: competition?.id || null, club: competition ? club : '', helmet, routeType, mode, weather, distanceM, durationS, cells, path, loggedBy, tripToken: tripToken() };
+    const km = (distanceM / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 2 });
+    const celebrate = (queued) => {
+      setResult({ km, weatherKind: weather?.kind || null, queued });
       setBusy(false);
       setView('done');
-    } catch (error) {
-      setBusy(false);
-      setTripError(error.message || 'Noe gikk galt. Prøv igjen.');
-      setView('trip-error');
+    };
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      addPendingTrip(payload);
+      celebrate(true);
+      return;
     }
+    let response;
+    try {
+      response = await fetch('/api/bike-trips', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    } catch (_networkError) {
+      // No response at all (tunnel, dead zone): keep the trip on the phone
+      // and resend it automatically later.
+      addPendingTrip(payload);
+      celebrate(true);
+      return;
+    }
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      setBusy(false);
+      setTripError(body.error || 'Kunne ikke lagre turen');
+      setView('trip-error');
+      return;
+    }
+    // Local-only record for /mine-turer — no server identity, just a
+    // convenience list on this device.
+    addMyTrip({ distanceM, mode, routeType, weather });
+    celebrate(false);
   };
 
   const resetToHub = () => {
-    setView('hub'); setResult(null); setTripError(''); setClub(competition?.clubs?.length === 1 ? competition.clubs[0].name : ''); setRouteType('fritid'); setMode('sykkel'); setHelmet(true);
+    setView('hub'); setResult(null); setTripError(''); setLoggedBy('barn13'); setClub(competition?.clubs?.length === 1 ? competition.clubs[0].name : ''); setRouteType('fritid'); setMode('sykkel'); setHelmet(true);
   };
 
   // --- Danger reporting (kids) ---
@@ -163,7 +194,7 @@ export default function Sykle() {
           <section className="kid-screen kid-hub">
             <div className="kid-brand"><Logo size="md" /></div>
             <h1 className="kid-title">Hva vil du gjøre?</h1>
-            <button type="button" className="kid-big kid-big--green" onClick={() => { haptic(10); setView('setup'); }}>
+            <button type="button" className="kid-big kid-big--green" onClick={() => { haptic(10); setView('who'); }}>
               <Icon name="bike" size={42} strokeWidth={1.7} />
               <span>Registrer tur</span>
             </button>
@@ -174,13 +205,20 @@ export default function Sykle() {
             <nav className="kid-links">
               <Link href="/mine-turer" className="kid-link"><Icon name="bike" size={20} />Mine turer<Icon name="chevronRight" size={18} strokeWidth={2} /></Link>
               <Link href="/bud" className="kid-link"><Icon name="bud" size={20} />Finns 10 bud<Icon name="chevronRight" size={18} strokeWidth={2} /></Link>
+              <Link href="/tegn-rute?fra=/sykle" className="kid-link"><Icon name="pencil" size={20} />For voksne: tegn en rute<Icon name="chevronRight" size={18} strokeWidth={2} /></Link>
             </nav>
+          </section>
+        )}
+
+        {view === 'who' && (
+          <section className="kid-screen">
+            <TripWhoGate onPick={pickWho} onBack={() => setView('hub')} />
           </section>
         )}
 
         {view === 'setup' && (
           <section className="kid-screen">
-            <button type="button" className="kid-back" onClick={() => setView('hub')}><Icon name="chevronLeft" size={20} strokeWidth={2.2} />Tilbake</button>
+            <button type="button" className="kid-back" onClick={() => setView('who')}><Icon name="chevronLeft" size={20} strokeWidth={2.2} />Tilbake</button>
             <h1 className="kid-title">Klar for tur?</h1>
 
             {compChecked && (
@@ -189,7 +227,7 @@ export default function Sykle() {
                   <Icon name="trophy" size={16} /> Turen teller i <strong>{competition.name}</strong>
                 </p>
               ) : (
-                <p className="kid-comp-note">Ingen konkurranse akkurat nå. Turen lagres under «Mine turer».</p>
+                <p className="kid-comp-note">Ingen konkurranse akkurat nå. Turen blir likevel med i kartet over hvor barn sykler og går.</p>
               )
             )}
 
@@ -205,9 +243,13 @@ export default function Sykle() {
               <button type="button" className={routeType === 'skole' ? 'kid-pick kid-pick--on' : 'kid-pick'} onClick={() => { haptic(6); setRouteType('skole'); }}><Icon name="school" size={26} /><span>Skole</span></button>
             </div>
 
+            {loggedBy === 'voksen' && (
+              <p className="kid-comp-note"><Icon name="user" size={16} /> Du logger turen som voksen og er med på turen.</p>
+            )}
+
             {competition?.clubs?.length > 1 && (
               <>
-                <span className="kid-label">Laget ditt</span>
+                <span className="kid-label">{loggedBy === 'voksen' ? 'Barnets lag' : 'Laget ditt'}</span>
                 <div className="kid-clubs">
                   {competition.clubs.map((c) => (
                     <button type="button" key={c.name} className={club === c.name ? 'kid-club kid-club--on' : 'kid-club'} onClick={() => { haptic(6); setClub(c.name); }}>{c.name}</button>
@@ -217,7 +259,7 @@ export default function Sykle() {
             )}
 
             <button type="button" className={helmet ? 'kid-helmet kid-helmet--on' : 'kid-helmet'} onClick={() => { haptic(6); setHelmet((v) => !v); }}>
-              <Icon name="helmet" size={26} /><span>Jeg har hjelm</span><span className="kid-helmet__check">{helmet ? <Icon name="check" size={22} /> : ''}</span>
+              <Icon name="helmet" size={26} /><span>{loggedBy === 'voksen' ? 'Barnet har hjelm' : 'Jeg har hjelm'}</span><span className="kid-helmet__check">{helmet ? <Icon name="check" size={22} /> : ''}</span>
             </button>
 
             <button type="button" className="kid-big kid-big--green kid-start" onClick={startTrip} disabled={competition?.clubs?.length > 1 && !club}>
@@ -228,11 +270,11 @@ export default function Sykle() {
         )}
 
         {view === 'tracking' && (
-          <TripTracker club={club} helmet={helmet} routeType={routeType} mode={mode} mapApiRef={mapApiRef} onDone={finishTrip} onCancel={resetToHub} />
+          <TripTracker club={club} helmet={helmet} routeType={routeType} mode={mode} loggedBy={loggedBy} mapApiRef={mapApiRef} onDone={finishTrip} onCancel={resetToHub} />
         )}
 
         {view === 'done' && (
-          <TripCelebration km={result?.km} mode={mode} weatherKind={result?.weatherKind} onDone={resetToHub} />
+          <TripCelebration km={result?.km} mode={mode} weatherKind={result?.weatherKind} queued={result?.queued} onDone={resetToHub} />
         )}
 
         {view === 'trip-error' && (

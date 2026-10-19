@@ -1,5 +1,5 @@
 import { isAdminRequest } from '../../../lib/backofficeAuth';
-import { getCompetitionStats, listCompetitions, hasSupabaseConfig } from '../../../lib/supabaseRest';
+import { ALL_TRIPS_ID, getCompetitionStats, listCompetitions, hasSupabaseConfig } from '../../../lib/supabaseRest';
 import { checkRequestRateLimit } from '../../../lib/rateLimit';
 
 const RATE_LIMIT = 30;
@@ -37,8 +37,9 @@ export default async function handler(req, res) {
     const id = typeof req.query.id === 'string' ? req.query.id : '';
     if (!id) {
       // No id → return the list so the internal page can offer a picker.
+      // "Alle turer" comes first: every trip, with or without a competition.
       const competitions = await listCompetitions({ activeOnly: false });
-      return res.status(200).json({ competitions });
+      return res.status(200).json({ competitions: [{ id: ALL_TRIPS_ID, name: 'Alle turer', active: true, all: true }, ...competitions] });
     }
     const mode = typeof req.query.mode === 'string' ? req.query.mode : null;
     const cacheKey = `${id}|${mode || ''}`;
@@ -48,7 +49,7 @@ export default async function handler(req, res) {
     }
     // This backs the internal density heatmap (backoffice/tetthet), which needs
     // the segment geojson - explicit now that getCompetitionStats defaults to false.
-    const stats = await getCompetitionStats(id, { mode, includeGeojson: true });
+    const stats = await getCompetitionStats(id, { mode, includeGeojson: true, allowAllTrips: true });
     if (!stats) return res.status(404).json({ error: 'Fant ikke konkurransen' });
     cache.set(cacheKey, { at: Date.now(), data: stats });
     return res.status(200).json(stats);

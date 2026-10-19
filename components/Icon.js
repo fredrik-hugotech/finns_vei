@@ -165,6 +165,38 @@ const ICONS = {
       <path d="M18.8 6.2a8.8 8.8 0 0 1 0 11.6" />
     </>
   ),
+  user: (
+    <>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21a8 8 0 0 1 16 0" />
+    </>
+  ),
+  users: (
+    <>
+      <circle cx="9" cy="8" r="3.5" />
+      <path d="M2.5 20a6.5 6.5 0 0 1 13 0" />
+      <circle cx="17" cy="9" r="2.6" />
+      <path d="M16 14.2a5 5 0 0 1 5.5 5" />
+    </>
+  ),
+  child: (
+    <>
+      <circle cx="12" cy="6" r="3" />
+      <path d="M12 9v6M8 12h8M9.5 21l2.5-6 2.5 6" />
+    </>
+  ),
+  undo: (
+    <>
+      <path d="M9 14 4 9l5-5" />
+      <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+    </>
+  ),
+  pencil: (
+    <>
+      <path d="M17 3a2.85 2.85 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+      <path d="m15 5 4 4" />
+    </>
+  ),
 };
 
 export default function Icon({ name, size = 20, strokeWidth = 1.8, className, ...rest }) {

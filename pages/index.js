@@ -248,9 +248,11 @@ export default function Home() {
     return token;
   };
 
-  const startTrip = ({ competition, club, helmet, routeType, mode }) => {
+  // `competition` may be null (a trip outside any competition); `loggedBy` is
+  // 'barn13' or 'voksen' from the "Hvem logger turen?" step.
+  const startTrip = ({ competition, club, helmet, routeType, mode, loggedBy }) => {
     haptic(12);
-    setTripContext({ competition, club, helmet, routeType: routeType || 'fritid', mode: mode || 'sykkel' });
+    setTripContext({ competition: competition || null, club, helmet, routeType: routeType || 'fritid', mode: mode || 'sykkel', loggedBy: loggedBy === 'voksen' ? 'voksen' : 'barn13' });
     setShowCompetitions(false);
     mapApiRef.current?.clearCompetitionTrips?.();
     setMode('trip-track');
@@ -263,8 +265,9 @@ export default function Home() {
     const tripMode = tripContext.mode || 'sykkel';
     const km = (distanceM / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 2 });
     const bikeTripPayload = {
-      competitionId: tripContext.competition.id,
-      club,
+      competitionId: tripContext.competition?.id || null,
+      club: tripContext.competition ? club : '',
+      loggedBy: tripContext.loggedBy,
       helmet,
       routeType,
       mode: tripMode,
@@ -382,6 +385,7 @@ export default function Home() {
                 <nav className="app-menu__panel" role="menu" aria-label="Meny">
                   <a role="menuitem" className="app-menu__item" href="/mine-meldinger"><Icon name="inbox" size={20} />Mine meldinger</a>
                   <a role="menuitem" className="app-menu__item" href="/mine-turer"><Icon name="bike" size={20} />Mine turer</a>
+                  <a role="menuitem" className="app-menu__item" href="/tegn-rute"><Icon name="pencil" size={20} />Tegn en rute</a>
                   <a role="menuitem" className="app-menu__item" href="/aktuelt"><Icon name="news" size={20} />Aktuelt</a>
                   <a role="menuitem" className="app-menu__item" href="/bud"><Icon name="bud" size={20} />Finns 10 bud</a>
                   <span className="app-menu__rule" aria-hidden="true" />
@@ -403,7 +407,7 @@ export default function Home() {
                     type="button"
                     className={hasActiveComp ? 'fab-konk' : 'fab-konk fab-konk--idle'}
                     onClick={openCompetitions}
-                    aria-label={hasActiveComp ? 'Konkurranser' : 'Konkurranser, ingen aktive nå'}
+                    aria-label={hasActiveComp ? 'Logg tur og konkurranser' : 'Logg tur, ingen aktive konkurranser nå'}
                   >
                     <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4Z" />
@@ -462,6 +466,7 @@ export default function Home() {
             helmet={tripContext.helmet}
             routeType={tripContext.routeType}
             mode={tripContext.mode}
+            loggedBy={tripContext.loggedBy}
             mapApiRef={mapApiRef}
             onDone={finishTrip}
             onCancel={cancelTrip}

@@ -185,7 +185,8 @@ bounded by route distance and grid size.
 
 - Public: `GET /api/competitions` (active list), `GET /api/competitions/[id]`
   (competition + leaderboard + heatmap GeoJSON), `POST /api/bike-trips` (log a trip:
-  `{ competitionId, club, helmet, distanceM, durationS, cells }`).
+  `{ competitionId?, club, helmet, distanceM, durationS, cells, path, loggedBy }`, or a
+  drawn route: `{ source: 'manuell', mode, routeType, path }`).
 - Backoffice: `GET/POST/PATCH /api/backoffice/competitions` (auth via
   `BACKOFFICE_SECRET`). Admin UI at `/backoffice/konkurranser?secret=…` to create
   competitions, define clubs (names only), pick the winning metric and show/hide them.
@@ -252,6 +253,41 @@ walking/school route type were added, apply this additive migration too:
 
 ```sql
 ALTER TABLE public.bike_trips ADD COLUMN IF NOT EXISTS path jsonb, ADD COLUMN IF NOT EXISTS route_type text;
+NOTIFY pgrst, 'reload schema';
+```
+
+### Who logs a trip, trips outside competitions, and drawn routes (2026-10-19)
+
+After feedback on GDPR and children's smartphone use, every trip now starts
+with **"Hvem logger turen?"** (`components/TripWhoGate.js`, used by `/sykle` and
+the trip sheet on the main map):
+
+- **13 år eller eldre** — the child logs the trip live on their own phone.
+- **Under 13 år** — the child is told that an adult who is along on the trip
+  logs it on the adult's phone (no phone needed for the child), ideally riding
+  or walking together with others from the club. Children under 13 never log
+  location themselves.
+- **Voksen** — either logs live while along on the trip, or **draws a regular
+  route** (to training, school …) on the map at `/tegn-rute`
+  (`components/RouteDrawer.js`): tap points, each leg follows the road via the
+  Mapbox Directions API (cycling/walking), "Følg veien" off draws straight
+  lines. The start is clipped on the device (`clipPath` around a
+  `randomOffsetPoint`) and again on the server, exactly like a live trip.
+
+The age itself is never stored — only `logged_by` (`'barn13'` | `'voksen'`).
+Trips no longer need a competition: `competitionId` is optional on
+`POST /api/bike-trips`, and such trips (plus drawn routes, `source: 'manuell'`)
+feed the backoffice heatmap ("Alle turer" in `/backoffice/tetthet`, the
+default; demo competitions excluded) but never a leaderboard. Drawn routes have
+no duration; the server recomputes their distance from the line (max 50 km).
+
+Applied to production 2026-10-19 (additive — relaxing NOT NULL loses no data):
+
+```sql
+ALTER TABLE public.bike_trips ALTER COLUMN competition_id DROP NOT NULL;
+ALTER TABLE public.bike_trips ADD COLUMN IF NOT EXISTS source text NOT NULL DEFAULT 'live';  -- 'live' | 'manuell'
+ALTER TABLE public.bike_trips ADD COLUMN IF NOT EXISTS logged_by text;                    -- 'barn13' | 'voksen' | null (older clients)
+CREATE INDEX IF NOT EXISTS bike_trips_created_at_idx ON public.bike_trips(created_at DESC);
 NOTIFY pgrst, 'reload schema';
 ```
 

@@ -52,7 +52,9 @@ export default function MineTurer() {
 
   const isLoading = trips === null;
   const isEmpty = trips !== null && trips.length === 0 && pendingTrips.length === 0;
-  const totalM = (trips || []).reduce((sum, entry) => sum + (Number(entry?.distanceM) || 0), 0);
+  // Drawn routes describe a regular way, not a ridden trip — not in the km total.
+  const ridden = (trips || []).filter((entry) => entry?.source !== 'manuell');
+  const totalM = ridden.reduce((sum, entry) => sum + (Number(entry?.distanceM) || 0), 0);
 
   return (
     <>
@@ -86,24 +88,25 @@ export default function MineTurer() {
           {isLoading && <p className="ui-small-text">Laster …</p>}
 
           {isEmpty && (
-            <p className="my-reports-empty">Ingen turer ennå. Trykk på pokalen på kartet og velg en konkurranse for å starte din første tur.</p>
+            <p className="my-reports-empty">Ingen turer ennå. Trykk på pokalen på kartet og velg «Logg en tur» for å starte. Du trenger ikke være med i en konkurranse.</p>
           )}
 
           {!isLoading && trips.length > 0 && (
             <>
               <div className="my-trips-total">
                 <strong>{formatKm(totalM)} km</strong>
-                <span>{trips.length === 1 ? '1 tur registrert' : `${trips.length} turer registrert`}</span>
+                <span>{ridden.length === 1 ? '1 tur logget' : `${ridden.length} turer logget`}{trips.length > ridden.length ? ` · ${trips.length - ridden.length} tegnet rute${trips.length - ridden.length === 1 ? '' : 'r'}` : ''}</span>
               </div>
               <ul className="trip-rows">
                 {trips.map((entry, index) => {
                   const dateLabel = formatDate(entry.createdAt);
-                  const modeLabel = entry.mode === 'gange' ? 'Gikk' : 'Syklet';
+                  const drawn = entry.source === 'manuell';
+                  const modeLabel = drawn ? (entry.mode === 'gange' ? 'Tegnet gårute' : 'Tegnet sykkelrute') : (entry.mode === 'gange' ? 'Gikk' : 'Syklet');
                   const routeLabel = entry.routeType === 'skole' ? 'Skolerute' : 'Fritidsrute';
                   return (
                     // eslint-disable-next-line react/no-array-index-key
                     <li className="trip-row" key={`${entry.createdAt || 'ukjent'}-${index}`}>
-                      <span className="trip-row__icon" aria-hidden="true"><Icon name={entry.mode === 'gange' ? 'walk' : 'bike'} size={20} /></span>
+                      <span className="trip-row__icon" aria-hidden="true"><Icon name={drawn ? 'pencil' : (entry.mode === 'gange' ? 'walk' : 'bike')} size={20} /></span>
                       <span className="trip-row__main">
                         <strong>{formatKm(entry.distanceM)} km</strong>
                         <span>{modeLabel} · {routeLabel}{entry.weatherBonus ? ' · Værhelt' : ''}</span>

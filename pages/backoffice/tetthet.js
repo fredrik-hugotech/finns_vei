@@ -119,13 +119,16 @@ export default function Sykkelspor() {
                 </select>
               )}
               {stats && (
-                <span className="spor-panel__meta">{stats.totals.trips} turer · {(stats.totals.distanceM / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 0 })} km</span>
+                <span className="spor-panel__meta">{stats.totals.trips} turer · {(stats.totals.distanceM / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 0 })} km{stats.totals.drawnRoutes ? ` · ${stats.totals.drawnRoutes} tegnet av voksne` : ''}</span>
               )}
               {stats && trackCount === 0 && (
-                <span className="spor-panel__meta">Ingen lagrede spor i denne konkurransen ennå. Velg en annen, eller logg en tur.</span>
+                <span className="spor-panel__meta">{competitionId === 'alle' ? 'Ingen lagrede spor ennå.' : 'Ingen lagrede spor i denne konkurransen ennå. Velg en annen, eller logg en tur.'}</span>
+              )}
+              {competitionId === 'alle' && (
+                <span className="spor-panel__meta">Alle turer, også de som er logget utenfor konkurranser og ruter tegnet av voksne. Demo-turer er ikke med.</span>
               )}
               {status && status !== 'not-authed' && <span className="spor-panel__meta">{status}</span>}
-              {stats?.leaderboard?.length > 0 && (
+              {competitionId !== 'alle' && stats?.leaderboard?.length > 0 && (
                 <ol className="comp-board__list spor-panel__leaderboard">
                   {stats.leaderboard.map((row, index) => (
                     <li key={row.club} className={index === 0 && row.trips > 0 ? 'comp-row comp-row--lead' : 'comp-row'}>

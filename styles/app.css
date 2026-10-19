@@ -4938,3 +4938,117 @@ a:focus-visible, button:focus-visible, label:focus-within { outline: 2px solid v
 .kid-brand .logo { height: 44px; }
 .dp__brand .logo { height: 24px; }
 .fin__brand .logo { transform: none; margin-bottom: 0.4rem; }
+
+/* ======================================================================
+   "Hvem logger turen?" (TripWhoGate) — kids app and the trip sheet.
+   ====================================================================== */
+.who { display: grid; gap: 0.9rem; }
+.who__back {
+  align-items: center; background: none; border: 0; color: var(--color-primary);
+  display: inline-flex; font-size: 1rem; font-weight: 700; gap: 0.15rem;
+  justify-self: start; margin-left: -0.35rem; padding: 0.2rem 0;
+}
+.who__title { color: var(--color-text); font-family: var(--font-heading); font-size: 1.55rem; line-height: 1.2; margin: 0; text-align: center; }
+.who--sheet .who__title { font-size: 1.3rem; text-align: left; }
+.who__options { display: grid; gap: 0.6rem; }
+.who-opt {
+  align-items: center; background: var(--color-surface); border: 1.5px solid var(--color-border-strong);
+  border-radius: 14px; color: var(--color-text); display: grid; gap: 0.8rem;
+  grid-template-columns: 48px 1fr 20px; min-height: 78px; padding: 0.75rem 0.9rem; text-align: left;
+  transition: transform var(--dur-fast, 120ms) ease, border-color var(--dur-fast, 120ms) ease;
+}
+.who-opt:active { transform: scale(0.99); border-color: var(--color-primary); }
+.who-opt > svg:last-child { color: var(--color-muted); }
+.who-opt__ic {
+  align-items: center; background: var(--color-primary-tint); border-radius: 12px; color: var(--color-primary);
+  display: inline-flex; height: 48px; justify-content: center; width: 48px;
+}
+.who-opt__ic--amber { background: #fdf1d6; color: #8a5a00; }
+.who-opt__txt { display: grid; gap: 0.15rem; }
+.who-opt__txt strong { font-size: 1.05rem; font-weight: 800; }
+.who-opt__txt span { color: var(--color-muted); font-size: 0.9rem; line-height: 1.35; }
+.who__why {
+  align-items: center; background: none; border: 0; color: var(--color-primary); display: inline-flex;
+  font-size: 0.92rem; font-weight: 700; gap: 0.35rem; justify-self: center; padding: 0.3rem;
+}
+.who--sheet .who__why { justify-self: start; padding-left: 0; }
+.who__whytext, .who__note { color: var(--color-muted); font-size: 0.9rem; line-height: 1.45; margin: 0; }
+.who__whytext { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; padding: 0.75rem 0.9rem; }
+.who__note { text-align: center; }
+.who--sheet .who__note { text-align: left; }
+.who__badge {
+  align-items: center; background: #fdf1d6; border-radius: 50%; color: #8a5a00; display: inline-flex;
+  height: 84px; justify-content: center; justify-self: center; width: 84px;
+}
+.who__lead { color: var(--color-text); font-size: 1.05rem; line-height: 1.5; margin: 0; text-align: center; }
+.who--sheet .who__lead { text-align: left; }
+.who__tip {
+  align-items: start; background: var(--color-primary-tint); border-radius: 14px; color: var(--color-primary-dark, var(--color-primary));
+  display: grid; gap: 0.7rem; grid-template-columns: 24px 1fr; line-height: 1.45; padding: 0.85rem 0.95rem;
+}
+.who__tip strong { display: block; font-weight: 800; }
+.who__primary {
+  align-items: center; background: var(--color-primary); border: 0; border-radius: 14px; color: #fff; display: flex;
+  font-size: 1.05rem; font-weight: 800; gap: 0.5rem; justify-content: center; min-height: 56px; padding: 0.8rem 1rem;
+}
+.comp-card--log { border-color: var(--color-primary); }
+.comp-card--log .comp-card__icon { background: var(--color-primary); color: #fff; }
+.comp-voksen-note { align-items: center; color: var(--color-primary); display: flex; font-size: 0.9rem; font-weight: 700; gap: 0.35rem; }
+
+/* ======================================================================
+   Tegn en rute (/tegn-rute) — Strava-style route builder for adults.
+   ====================================================================== */
+.rd { inset: 0; position: fixed; }
+.rd > .rd__map { height: 100%; inset: 0; position: absolute; width: 100%; }
+.rd__top {
+  align-items: center; display: flex; gap: 0.5rem; left: 12px; position: absolute;
+  right: 56px; top: max(12px, env(safe-area-inset-top)); z-index: 5;
+}
+.rd__cancel {
+  align-items: center; background: var(--chrome-bg, #fff); border: 1px solid var(--chrome-border, rgba(20,32,28,.1));
+  border-radius: 12px; box-shadow: var(--chrome-shadow); color: var(--color-text); display: inline-flex;
+  font-weight: 700; gap: 0.15rem; height: 44px; padding: 0 0.8rem 0 0.45rem;
+}
+.rd__panel {
+  background: var(--color-surface); border-radius: 18px 18px 0 0; bottom: 0; box-shadow: 0 -8px 30px -12px rgba(20, 32, 28, 0.35);
+  display: grid; gap: 0.7rem; left: 0; padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom)); position: absolute; right: 0; z-index: 5;
+}
+@media (min-width: 700px) {
+  .rd__panel { border-radius: 18px; bottom: 16px; left: 16px; right: auto; width: 400px; }
+}
+.rd__hint { color: var(--color-text); font-size: 1.05rem; font-weight: 700; margin: 0; text-align: center; }
+.rd__stats { align-items: baseline; display: flex; gap: 0.6rem; justify-content: center; }
+.rd__stats strong { font-family: var(--font-heading); font-size: 1.6rem; }
+.rd__stats span { color: var(--color-muted); }
+.rd__notice { background: #fdf1d6; border-radius: 10px; color: #6b4600; font-size: 0.9rem; margin: 0; padding: 0.5rem 0.7rem; text-align: center; }
+.rd__row { display: grid; gap: 0.5rem; grid-template-columns: repeat(3, 1fr); }
+.rd__tool {
+  align-items: center; background: var(--color-surface); border: 1px solid var(--color-border-strong); border-radius: 12px;
+  color: var(--color-text); display: flex; font-size: 0.88rem; font-weight: 700; gap: 0.3rem; justify-content: center; min-height: 44px; padding: 0 0.4rem;
+}
+.rd__tool:disabled { opacity: 0.45; }
+.rd__tool--on { background: var(--color-primary-tint); border-color: var(--color-primary); color: var(--color-primary); }
+.rd__save { min-height: 52px; }
+.rd-pin {
+  background: #fff; border: 3px solid #0b5d4d; border-radius: 50%; box-shadow: 0 1px 4px rgba(0,0,0,.35); height: 14px; width: 14px;
+}
+.rd-pin--end { background: #0b5d4d; border-color: #fff; height: 18px; width: 18px; }
+.rd-pin--start {
+  background: #0b5d4d; border: 2px solid #fff; border-radius: 999px; color: #fff; font-size: 0.72rem; font-weight: 800;
+  height: auto; letter-spacing: 0.02em; padding: 0.15rem 0.5rem; width: auto;
+}
+.rd-intro .kid-sub { line-height: 1.5; }
+.rd-adult {
+  align-items: center; background: var(--color-surface); border: 2px solid var(--color-border); border-radius: 16px;
+  cursor: pointer; display: grid; font-weight: 700; gap: 0.75rem; grid-template-columns: 28px 1fr; min-height: 3.6rem; padding: 0.6rem 0.9rem;
+}
+.rd-adult input { height: 1px; opacity: 0; position: absolute; width: 1px; }
+.rd-adult__box {
+  align-items: center; border: 2px solid var(--color-border-strong); border-radius: 8px; color: #fff; display: inline-flex;
+  height: 28px; justify-content: center; width: 28px;
+}
+.rd-adult--on { background: var(--color-primary-tint); border-color: var(--color-primary); }
+.rd-adult--on .rd-adult__box { background: var(--color-primary); border-color: var(--color-primary); }
+.rd-intro__privacy { align-items: start; color: var(--color-muted); display: flex; font-size: 0.9rem; gap: 0.4rem; line-height: 1.45; margin: 0; }
+.rd-intro__privacy svg { color: var(--color-primary); flex: none; margin-top: 0.1rem; }
+.who__title { font-family: var(--font-display), Georgia, serif; font-weight: 600; letter-spacing: -0.01em; }
