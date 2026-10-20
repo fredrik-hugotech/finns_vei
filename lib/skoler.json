@@ -1,0 +1,413 @@
+{
+ "kommune": "4204",
+ "source": "Utdanningsdirektoratet, Nasjonalt skoleregister (data-nsr.udir.no)",
+ "fetched": "2026-10-20",
+ "schools": [
+  {
+   "orgnr": "974598825",
+   "name": "Brattbakken skole",
+   "lat": 58.17874,
+   "lng": 8.09116,
+   "students": 273
+  },
+  {
+   "orgnr": "974598787",
+   "name": "Fagerholt skole",
+   "lat": 58.17963,
+   "lng": 8.03386,
+   "students": 539
+  },
+  {
+   "orgnr": "975271544",
+   "name": "Finsland skole",
+   "lat": 58.27295,
+   "lng": 7.58447,
+   "students": 141
+  },
+  {
+   "orgnr": "974598590",
+   "name": "Fiskå skole",
+   "lat": 58.12599,
+   "lng": 7.95479,
+   "students": 232
+  },
+  {
+   "orgnr": "874598542",
+   "name": "Flekkerøy skole",
+   "lat": 58.07872,
+   "lng": 7.99561,
+   "students": 347
+  },
+  {
+   "orgnr": "974598663",
+   "name": "Grim skole",
+   "lat": 58.14861,
+   "lng": 7.97015,
+   "students": 483
+  },
+  {
+   "orgnr": "874598852",
+   "name": "Haumyrheia skole",
+   "lat": 58.15775,
+   "lng": 8.06675,
+   "students": 311
+  },
+  {
+   "orgnr": "988110833",
+   "name": "Havlimyra skole",
+   "lat": 58.19102,
+   "lng": 8.03445,
+   "students": 415
+  },
+  {
+   "orgnr": "974598620",
+   "name": "Hellemyr skole",
+   "lat": 58.14741,
+   "lng": 7.93593,
+   "students": 386
+  },
+  {
+   "orgnr": "974598469",
+   "name": "Hellemyr skole Kompetanse",
+   "lat": 58.14741,
+   "lng": 7.93593,
+   "students": 27
+  },
+  {
+   "orgnr": "974598841",
+   "name": "Heståsen skole",
+   "lat": 58.17582,
+   "lng": 8.09535,
+   "students": 165
+  },
+  {
+   "orgnr": "985260044",
+   "name": "Holte skole",
+   "lat": 58.1282,
+   "lng": 8.0953,
+   "students": 346
+  },
+  {
+   "orgnr": "974598795",
+   "name": "Justvik skole",
+   "lat": 58.20386,
+   "lng": 8.03013,
+   "students": 201
+  },
+  {
+   "orgnr": "974598639",
+   "name": "Karl Johans Minne skole",
+   "lat": 58.14856,
+   "lng": 7.95581,
+   "students": 205
+  },
+  {
+   "orgnr": "984181345",
+   "name": "Karuss skole",
+   "lat": 58.12924,
+   "lng": 7.95067,
+   "students": 399
+  },
+  {
+   "orgnr": "974598868",
+   "name": "Kringsjå skole",
+   "lat": 58.12694,
+   "lng": 8.11303,
+   "students": 230
+  },
+  {
+   "orgnr": "991156224",
+   "name": "Kristiansand Internasjonale skole",
+   "lat": 58.15611,
+   "lng": 8.01744,
+   "students": 199
+  },
+  {
+   "orgnr": "974598671",
+   "name": "Krossen skole",
+   "lat": 58.15391,
+   "lng": 7.9538,
+   "students": 81
+  },
+  {
+   "orgnr": "995682257",
+   "name": "Krossen skole - Kompetanse",
+   "lat": 58.15391,
+   "lng": 7.9538,
+   "students": 78
+  },
+  {
+   "orgnr": "975271595",
+   "name": "Langenes skole",
+   "lat": 58.0784,
+   "lng": 7.85451,
+   "students": 246
+  },
+  {
+   "orgnr": "985713480",
+   "name": "Lindebøskauen skole",
+   "lat": 58.0883,
+   "lng": 7.99934,
+   "students": 176
+  },
+  {
+   "orgnr": "974598744",
+   "name": "Lovisenlund skole",
+   "lat": 58.15638,
+   "lng": 8.00956,
+   "students": 422
+  },
+  {
+   "orgnr": "975288935",
+   "name": "Lunde skole",
+   "lat": 58.0965,
+   "lng": 7.77085,
+   "students": 352
+  },
+  {
+   "orgnr": "974598701",
+   "name": "Mosby oppvekssenter skole",
+   "lat": 58.22024,
+   "lng": 7.92477,
+   "students": 222
+  },
+  {
+   "orgnr": "974598892",
+   "name": "Mottaksskolen",
+   "lat": 58.15611,
+   "lng": 8.01744,
+   "students": 97
+  },
+  {
+   "orgnr": "974598574",
+   "name": "Møvig skole",
+   "lat": 58.10477,
+   "lng": 7.9725,
+   "students": 264
+  },
+  {
+   "orgnr": "975271587",
+   "name": "Nygård skole",
+   "lat": 58.09004,
+   "lng": 7.81658,
+   "students": 342
+  },
+  {
+   "orgnr": "985315469",
+   "name": "Oasen skole Birkelid AS",
+   "lat": 58.12668,
+   "lng": 7.84612,
+   "students": 222
+  },
+  {
+   "orgnr": "915828701",
+   "name": "Oasen skole Strømme AS grunnskole",
+   "lat": 58.15521,
+   "lng": 8.07752,
+   "students": 127
+  },
+  {
+   "orgnr": "819260702",
+   "name": "Oasen skole Vågsbygd AS",
+   "lat": 58.1197,
+   "lng": 7.94784,
+   "students": 55
+  },
+  {
+   "orgnr": "974598752",
+   "name": "Oddemarka skole",
+   "lat": 58.15697,
+   "lng": 8.01463,
+   "students": 466
+  },
+  {
+   "orgnr": "979956916",
+   "name": "Odderhei skole",
+   "lat": 58.13435,
+   "lng": 8.07648,
+   "students": 336
+  },
+  {
+   "orgnr": "980447766",
+   "name": "Presteheia skole",
+   "lat": 58.16657,
+   "lng": 8.01095,
+   "students": 381
+  },
+  {
+   "orgnr": "981522036",
+   "name": "Samfundets skole Dvergsnes",
+   "lat": 58.13895,
+   "lng": 8.07568,
+   "students": 43
+  },
+  {
+   "orgnr": "981522028",
+   "name": "Samfundets skole Oftenes",
+   "lat": 58.07471,
+   "lng": 7.75758,
+   "students": 66
+  },
+  {
+   "orgnr": "974117053",
+   "name": "Samfundets skole Sentrum",
+   "lat": 58.1499,
+   "lng": 7.99474,
+   "students": 110
+  },
+  {
+   "orgnr": "974598558",
+   "name": "Sjøstrand skole",
+   "lat": 58.10166,
+   "lng": 7.97662,
+   "students": 290
+  },
+  {
+   "orgnr": "974598604",
+   "name": "Slettheia skole",
+   "lat": 58.13289,
+   "lng": 7.96148,
+   "students": 323
+  },
+  {
+   "orgnr": "928112535",
+   "name": "Smi-Skolen i Agder",
+   "lat": 58.15105,
+   "lng": 7.99417,
+   "students": null
+  },
+  {
+   "orgnr": "888249982",
+   "name": "Smi-Skolen i Kristiansand",
+   "lat": 58.16383,
+   "lng": 7.98128,
+   "students": null
+  },
+  {
+   "orgnr": "974598655",
+   "name": "Solholmen skole",
+   "lat": 58.14752,
+   "lng": 7.9698,
+   "students": 213
+  },
+  {
+   "orgnr": "975271560",
+   "name": "Songdalen skole",
+   "lat": 58.15553,
+   "lng": 7.83051,
+   "students": 211
+  },
+  {
+   "orgnr": "924563494",
+   "name": "Stiftelsen Kristiansand International School",
+   "lat": 58.15611,
+   "lng": 8.01744,
+   "students": null
+  },
+  {
+   "orgnr": "873501162",
+   "name": "Stiftelsen steinerskolen i Kristiansand",
+   "lat": 58.15918,
+   "lng": 8.01523,
+   "students": 93
+  },
+  {
+   "orgnr": "974598833",
+   "name": "Strømme skole",
+   "lat": 58.15278,
+   "lng": 8.08117,
+   "students": 353
+  },
+  {
+   "orgnr": "975271579",
+   "name": "Tangvall skole",
+   "lat": 58.09657,
+   "lng": 7.8108,
+   "students": 280
+  },
+  {
+   "orgnr": "984446853",
+   "name": "Tinntjønn skole",
+   "lat": 58.10169,
+   "lng": 7.7655,
+   "students": 157
+  },
+  {
+   "orgnr": "874598712",
+   "name": "Tordenskjoldsgate skole",
+   "lat": 58.15005,
+   "lng": 7.99262,
+   "students": 144
+  },
+  {
+   "orgnr": "874598682",
+   "name": "Torridal skole",
+   "lat": 58.20446,
+   "lng": 7.92718,
+   "students": 347
+  },
+  {
+   "orgnr": "979646275",
+   "name": "Tunballen skole",
+   "lat": 58.16933,
+   "lng": 7.85811,
+   "students": 422
+  },
+  {
+   "orgnr": "923632395",
+   "name": "Valsvigveien skole",
+   "lat": 58.13199,
+   "lng": 8.06861,
+   "students": 144
+  },
+  {
+   "orgnr": "974598817",
+   "name": "Vardåsen skole",
+   "lat": 58.14542,
+   "lng": 8.05917,
+   "students": 302
+  },
+  {
+   "orgnr": "974598809",
+   "name": "Ve skole",
+   "lat": 58.20779,
+   "lng": 8.11058,
+   "students": 376
+  },
+  {
+   "orgnr": "974598728",
+   "name": "Vigvoll skole",
+   "lat": 58.1759,
+   "lng": 8.09031,
+   "students": 220
+  },
+  {
+   "orgnr": "974598566",
+   "name": "Voiebyen skole",
+   "lat": 58.10069,
+   "lng": 7.94903,
+   "students": 286
+  },
+  {
+   "orgnr": "974598582",
+   "name": "Vågsbygd skole",
+   "lat": 58.12392,
+   "lng": 7.95702,
+   "students": 454
+  },
+  {
+   "orgnr": "974598736",
+   "name": "Wilds Minne skole",
+   "lat": 58.14991,
+   "lng": 8.02463,
+   "students": 362
+  },
+  {
+   "orgnr": "974598876",
+   "name": "Åsane skole",
+   "lat": 58.1197,
+   "lng": 7.94784,
+   "students": null
+  }
+ ]
+}

@@ -94,6 +94,16 @@ function Dashboard({ me, onLogout }) {
   const [truncated, setTruncated] = useState(false);
   const [boardUrl, setBoardUrl] = useState('');
   const [error, setError] = useState('');
+  const [skoleAvvik, setSkoleAvvik] = useState(null);
+
+  // Bus disruptions near schools (Entur) — its own request so a slow or
+  // failing Entur never holds up the case numbers.
+  useEffect(() => {
+    fetch('/api/backoffice/skolevei-avvik')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setSkoleAvvik(d ? (d.items || []).filter((i) => i.nearSchool).length : null))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetch('/api/backoffice/cases')
@@ -139,6 +149,7 @@ function Dashboard({ me, onLogout }) {
     { key: 'unassigned', n: unassigned.length, label: 'Uten ansvarlig', href: { pathname: '/backoffice/liste', query: { assignee: 'unassigned' } } },
     { key: 'today', n: newToday.length, label: 'Nye i dag', href: { pathname: '/backoffice/liste', query: { created: 'today' } } },
     { key: 'support', n: totalSupport, label: 'Innbyggerstøtter', href: { pathname: '/backoffice/liste', query: { sort: 'support' } } },
+    { key: 'skoleavvik', n: skoleAvvik, label: 'Bussavvik ved skoler', href: '/backoffice/skolevei-avvik', warn: skoleAvvik > 0, own: true },
   ];
 
   const dueBadge = (c) => {
@@ -194,7 +205,7 @@ function Dashboard({ me, onLogout }) {
         <div className="dash2__pulse">
           {pulse.map((p) => (
             <Link key={p.key} href={p.href} className={p.warn ? 'dash2-pulse dash2-pulse--warn' : 'dash2-pulse'}>
-              <strong>{cases === null ? '–' : p.n}</strong>
+              <strong>{(p.own ? p.n === null : cases === null) ? '–' : p.n}</strong>
               <span>{p.label}</span>
             </Link>
           ))}
@@ -223,6 +234,7 @@ function Dashboard({ me, onLogout }) {
             <Link className="dash2-link" href="/backoffice/hotteste">Hotteste saker</Link>
             <Link className="dash2-link" href="/backoffice/gjentakende-steder">Gjentakende steder</Link>
             <Link className="dash2-link" href="/backoffice/tetthet">Sykkelspor</Link>
+            <Link className="dash2-link" href="/backoffice/skolevei-avvik">Avvik ved skolevei</Link>
             <Link className="dash2-link" href="/backoffice/konkurranser">Konkurranser</Link>
             <Link className="dash2-link" href="/backoffice/statistikk">Statistikk</Link>
             {me.role === 'superuser' && <Link className="dash2-link" href="/backoffice/brukere">Brukere</Link>}
