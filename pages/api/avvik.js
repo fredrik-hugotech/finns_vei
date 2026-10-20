@@ -19,7 +19,9 @@ export default async function handler(req, res) {
   }
   try {
     const data = await getSchoolRouteDisruptions();
-    const items = data.items.map((i) => ({
+    // Only what matters for the school commute: stops near a school, never
+    // night-bus-only notices (those are already not 'nearSchool').
+    const items = data.items.filter((i) => i.nearSchool).map((i) => ({
       id: i.id,
       summary: i.summary,
       advice: i.advice,

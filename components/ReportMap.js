@@ -1837,7 +1837,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   const toggleBus = () => {
     const next = !busOn;
     setBusOn(next);
-    if (next) setMessage(busNear ? `${busNear} bussavvik nær skoler nå. Trykk på et merke for mer.` : 'Ingen bussavvik nær skoler nå. Grå merker er andre avvik.');
+    if (next) setMessage(`${busNear} bussavvik nær skoler nå. Trykk på et merke for mer.`);
   };
 
   return (
