@@ -306,15 +306,15 @@ trips keep logging and stats keep working either way, migrated or not.
 
 ## Bussavvik ved skolevei and sparkesykler (2026-10-20)
 
-**Bussavvik (public map layer + backoffice).** `lib/transitDisruptions.js`
+**Bussavvik (backoffice).** `lib/transitDisruptions.js`
 reads active SIRI SX situations for Agder Kollektivtrafikk from Entur's open
 journey planner API (GraphQL, no key, `ET-Client-Name` header), keeps those
 with affected stops within 3 km of a school, and flags stops within 500 m of
 a primary school (`lib/skoler.json`, from Utdanningsdirektoratet's Nasjonalt
 skoleregister; refresh with `node scripts/hent-skoler.mjs 4204`). Night-bus-
-only notices and adult education are excluded. Served publicly by
-`GET /api/avvik` (edge-cached 5 min, only what AKT already publishes) for the
-bus button on the map, and to staff by `/backoffice/skolevei-avvik`.
+only notices and adult education are excluded. Shown to staff at
+`/backoffice/skolevei-avvik` (a public map layer was tried 2026-10-20 and
+removed — not relevant for the public map).
 
 **Sparkesykler (backoffice only).** Collected entirely inside the database —
 no Vercel cron, no secrets: `pg_cron` runs `scooter_collect()` every 3

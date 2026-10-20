@@ -613,85 +613,6 @@ function showHeatLines(map, geojson, { keepReports = false } = {}) {
 
 // /demo tour: accident hot spots (only places with several accidents), as
 // red discs sized by count with the count printed in the middle.
-// Public "Bussavvik" layer: closed stops and detours for the bus (Entur,
-// via /api/avvik), one dot per affected stop. Amber when the stop is near a
-// school, grey otherwise. Tapping a dot explains the disruption.
-function busAvvikPeriod(item) {
-  const fmt = (v) => { const d = v ? new Date(v) : null; return d && !Number.isNaN(d.getTime()) ? d.toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' }) : null; };
-  if (item.upcoming && fmt(item.start)) return `Fra ${fmt(item.start)}${fmt(item.end) ? ` til ${fmt(item.end)}` : ''}`;
-  return fmt(item.end) ? `Til ${fmt(item.end)}` : 'Inntil videre';
-}
-
-function showBusAvvik(map, items, visible) {
-  if (!map || !map.isStyleLoaded?.()) {
-    if (map) setTimeout(() => showBusAvvik(map, items, visible), 200);
-    return;
-  }
-  const features = [];
-  for (const item of items || []) {
-    for (const stop of item.stops || []) {
-      features.push({
-        type: 'Feature',
-        properties: {
-          near: Boolean(item.nearSchool),
-          summary: item.summary || 'Avvik',
-          advice: item.advice || '',
-          period: busAvvikPeriod(item),
-          stop: stop.name,
-          lines: (stop.lines || []).join(', '),
-          school: stop.school || '',
-          dist: stop.schoolDistanceM ?? null,
-        },
-        geometry: { type: 'Point', coordinates: [stop.lng, stop.lat] },
-      });
-    }
-  }
-  const data = { type: 'FeatureCollection', features };
-  if (map.getSource('bus-avvik')) {
-    map.getSource('bus-avvik').setData(data);
-  } else {
-    map.addSource('bus-avvik', { type: 'geojson', data });
-    map.addLayer({
-      id: 'bus-avvik-dot',
-      type: 'circle',
-      source: 'bus-avvik',
-      paint: {
-        'circle-color': ['case', ['get', 'near'], '#f59e0b', '#94a3a0'],
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 6, 15, 11],
-        'circle-stroke-color': '#ffffff',
-        'circle-stroke-width': 2.5,
-      },
-    });
-    map.addLayer({
-      id: 'bus-avvik-mark',
-      type: 'symbol',
-      source: 'bus-avvik',
-      minzoom: 12,
-      layout: { 'text-field': '!', 'text-font': ['DIN Pro Bold', 'Arial Unicode MS Bold'], 'text-size': 13, 'text-allow-overlap': true },
-      paint: { 'text-color': '#ffffff' },
-    });
-  }
-  ['bus-avvik-dot', 'bus-avvik-mark'].forEach((id) => {
-    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none');
-  });
-  if (!map.__busAvvikClick) {
-    map.__busAvvikClick = true;
-    map.on('click', 'bus-avvik-dot', (e) => {
-      const f = e.features?.[0];
-      if (!f) return;
-      const p = f.properties || {};
-      const dist = Number(p.dist);
-      const school = p.school && Number.isFinite(dist) ? `<span class="bus-pop__school">${dist < 1000 ? `${dist} m` : `${(dist / 1000).toFixed(1).replace('.', ',')} km`} fra ${escapeHtml(p.school)}</span>` : '';
-      const html = `<div class="bus-pop"><span class="bus-pop__kicker">Bussavvik · ${escapeHtml(p.period)}</span><strong>${escapeHtml(p.summary)}</strong>`
-        + `<span class="bus-pop__stop">${escapeHtml(p.stop)}${p.lines ? ` · linje ${escapeHtml(p.lines)}` : ''}</span>${school}`
-        + `${p.advice ? `<span class="bus-pop__advice">${escapeHtml(p.advice)}</span>` : ''}<span class="bus-pop__src">Kilde: AKT via Entur</span></div>`;
-      new mapboxgl.Popup({ maxWidth: '280px' }).setLngLat(f.geometry.coordinates).setHTML(html).addTo(map);
-    });
-    map.on('mouseenter', 'bus-avvik-dot', () => { map.getCanvas().style.cursor = 'pointer'; });
-    map.on('mouseleave', 'bus-avvik-dot', () => { map.getCanvas().style.cursor = ''; });
-  }
-}
-
 function showHotspots(map, geojson) {
   if (!map || !map.isStyleLoaded?.()) {
     if (map) setTimeout(() => showHotspots(map, geojson), 200);
@@ -928,18 +849,8 @@ function fitToGeoJson(map, geojson) {
   }
 }
 
-export default function ReportMap({ selectable = false, point, onPointChange, className = 'map-canvas', showReports = true, enableNvdbLayers = false, pickMode = false, pinnedPoint = null, onMapReady, onPickCenterChange, mapStyle = null, initialNvdbLayers = [], adminChrome = true, publicLayers = false }) {
+export default function ReportMap({ selectable = false, point, onPointChange, className = 'map-canvas', showReports = true, enableNvdbLayers = false, pickMode = false, pinnedPoint = null, onMapReady, onPickCenterChange, mapStyle = null, initialNvdbLayers = [], adminChrome = true }) {
   const venueMarkersRef = useRef([]);
-  // Public "Bussavvik" layer (publicLayers): fetched once, off by default.
-  const [busAvvik, setBusAvvik] = useState(null);
-  const [busOn, setBusOn] = useState(false);
-  const busRef = useRef({ items: [], on: false });
-  useEffect(() => {
-    if (!publicLayers) return undefined;
-    let alive = true;
-    fetch('/api/avvik').then((r) => (r.ok ? r.json() : null)).then((d) => { if (alive && d) setBusAvvik(d.items || []); }).catch(() => {});
-    return () => { alive = false; };
-  }, [publicLayers]);
   // Optional fixed style URL (e.g. the dark basemap on /demo). When set, the
   // Flyfoto/Kart toggle is hidden and the aerial treatment is skipped.
   const mapStyleRef = useRef(mapStyle);
@@ -1755,8 +1666,6 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       if (pointRef.current) placeMarker(pointRef.current);
       loadReports().catch((error) => console.error(error));
       refreshNvdbLayers().catch((error) => console.error(error));
-      // The style switch dropped the bus layer too; draw it again if it was on.
-      if (busRef.current.on) showBusAvvik(map, busRef.current.items, true);
     });
 
     map.on('moveend', () => {
@@ -1811,13 +1720,6 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     map.setStyle(next ? 'mapbox://styles/mapbox/satellite-streets-v12' : 'mapbox://styles/mapbox/streets-v12');
   };
 
-  useEffect(() => {
-    busRef.current = { items: busAvvik || [], on: busOn };
-    const map = mapRef.current;
-    if (!map || !busAvvik) return;
-    if (busOn || map.getSource('bus-avvik')) showBusAvvik(map, busAvvik, busOn);
-  }, [busAvvik, busOn]);
-
   if (!hasMapboxToken) {
     return <div className="map-missing">Mapbox-token mangler.</div>;
   }
@@ -1832,13 +1734,6 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     ? popupHtml(caseFeature, { nearbyCount: caseData.nearbyCount, radiusM: NEARBY_RADIUS_M, accidentsHtml: caseAccidentsHtml })
     : '';
   const caseFooterHtml = caseFeature ? caseActionsHtml(caseFeature) : '';
-
-  const busNear = (busAvvik || []).filter((i) => i.nearSchool).length;
-  const toggleBus = () => {
-    const next = !busOn;
-    setBusOn(next);
-    if (next) setMessage(`${busNear} bussavvik nær skoler nå. Trykk på et merke for mer.`);
-  };
 
   return (
     <div className="map-wrap">
@@ -1857,19 +1752,6 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           ) : (
             <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" /></svg>
           )}
-        </button>
-      )}
-      {publicLayers && showReports && !pickMode && Array.isArray(busAvvik) && busAvvik.length > 0 && (
-        <button
-          type="button"
-          className={busOn ? 'map-bus-toggle map-bus-toggle--on' : 'map-bus-toggle'}
-          onClick={toggleBus}
-          aria-pressed={busOn}
-          aria-label={busOn ? 'Skjul bussavvik' : `Vis bussavvik${busNear ? `, ${busNear} nær skoler` : ''}`}
-          title={busOn ? 'Skjul bussavvik' : 'Vis bussavvik'}
-        >
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="15" rx="2.5" /><path d="M5 11h14M8 18v2.5M16 18v2.5" /><circle cx="8.5" cy="14.5" r="0.8" fill="currentColor" /><circle cx="15.5" cy="14.5" r="0.8" fill="currentColor" /></svg>
-          {busNear > 0 && <span className="map-bus-toggle__count">{busNear}</span>}
         </button>
       )}
       {showReports && adminSecret && adminChrome && (
