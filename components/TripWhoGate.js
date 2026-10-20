@@ -35,7 +35,7 @@ export default function TripWhoGate({ onPick, onBack, variant = 'kid' }) {
           <div className="who__options">
             <button type="button" className="who-opt" onClick={() => pick('barn13')}>
               <span className="who-opt__ic"><Icon name="bike" size={26} /></span>
-              <span className="who-opt__txt"><strong>Jeg er 13 år eller eldre</strong></span>
+              <span className="who-opt__txt"><strong>Jeg er over 13 år</strong></span>
               <Icon name="chevronRight" size={20} strokeWidth={2} />
             </button>
             <button type="button" className="who-opt" onClick={() => go('under13')}>
