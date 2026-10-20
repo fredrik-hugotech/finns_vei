@@ -24,7 +24,7 @@ const POINTS = [
   },
   {
     title: 'Ruten bearbeides på telefonen din',
-    body: 'Ruten klippes og avrundes på telefonen før den sendes, og en gang til hos oss. Vi ser hvor mange som sykler og går, ikke hvem. Enkeltruter vises aldri offentlig.',
+    body: 'Ruten klippes og avrundes på telefonen før den sendes, og en gang til hos oss. Vi ser hvor mange som sykler og går, ikke hvem. Bare stiftelsen ser varmekartet, og enkeltruter vises aldri offentlig.',
   },
   {
     title: 'Ingen sporing og ingen deling',
@@ -42,6 +42,17 @@ export default function Personvern() {
       <main className="page sub">
         <PageHeader title="Personvern" intro="Slik tar vi vare på personvernet ditt og barnas." />
         <section className="sub__body personvern-card">
+
+          <div className="personvern-summary">
+            <p>
+              Finns Fairway lagrer ingen navn, kontaktinfo eller alder om barn, og barn under 13 år logger aldri
+              posisjon selv: en voksen som er med logger turen på sin egen telefon, eller tegner ruten på kartet.
+            </p>
+            <p>
+              Ruten klippes både på telefonen og hos oss, slik at de første 50 meterne fra start (ofte hjemmet) aldri
+              lagres, og bare stiftelsen bak Finns Fairway ser varmekartet over hvor barn ferdes, aldri offentligheten.
+            </p>
+          </div>
 
           <ul className="personvern-list">
             {POINTS.map((point) => (

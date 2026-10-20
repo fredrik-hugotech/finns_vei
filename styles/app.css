@@ -5052,3 +5052,8 @@ a:focus-visible, button:focus-visible, label:focus-within { outline: 2px solid v
 .rd-intro__privacy { align-items: start; color: var(--color-muted); display: flex; font-size: 0.9rem; gap: 0.4rem; line-height: 1.45; margin: 0; }
 .rd-intro__privacy svg { color: var(--color-primary); flex: none; margin-top: 0.1rem; }
 .who__title { font-family: var(--font-display), Georgia, serif; font-weight: 600; letter-spacing: -0.01em; }
+.personvern-summary {
+  background: var(--color-primary-tint); border-radius: 14px; color: var(--color-primary-dark);
+  display: grid; font-size: 1rem; gap: 0.6rem; line-height: 1.5; padding: 0.95rem 1.05rem;
+}
+.personvern-summary p { margin: 0; }
