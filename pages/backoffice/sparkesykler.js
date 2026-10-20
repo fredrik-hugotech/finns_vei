@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useState } from 'react';
 import BackofficeHeader from '../../components/BackofficeHeader';
 import { describeFetchError } from '../../lib/backofficeFormat';
+import { FYLKER } from '../../lib/fylker';
 
 const ScooterStatsMap = dynamic(() => import('../../components/ScooterStatsMap'), { ssr: false, loading: () => <div className="sk-map sk-map--loading">Laster kart …</div> });
 
@@ -54,7 +55,9 @@ function Columns({ title, values, labels, tickEvery = 1, unit = 'ankomster', tip
 export default function Sparkesykler() {
   const [range, setRange] = useState('7d');
   const [kind, setKind] = useState('');
+  const [fylke, setFylke] = useState('');
   const [kommune, setKommune] = useState('');
+  const [fylker, setFylker] = useState([]);
   const [data, setData] = useState(null);
   const [kommuner, setKommuner] = useState([]);
   const [error, setError] = useState('');
@@ -63,7 +66,7 @@ export default function Sparkesykler() {
   useEffect(() => {
     let alive = true;
     setData(null);
-    const q = new URLSearchParams({ range, ...(kind ? { type: kind } : {}), ...(kommune ? { kommune } : {}) });
+    const q = new URLSearchParams({ range, ...(kind ? { type: kind } : {}), ...(fylke ? { fylke } : {}), ...(kommune ? { kommune } : {}) });
     fetch(`/api/backoffice/sparkesykler?${q}`)
       .then(async (r) => {
         if (r.status === 403) throw new Error('not-authed');
@@ -73,20 +76,21 @@ export default function Sparkesykler() {
       .then((d) => {
         if (!alive) return;
         setData(d);
-        // The municipality list comes from the whole country, so keep the one
-        // fetched without a municipality filter.
+        // The county list is national and the municipality list covers the
+        // chosen county, so keep the ones fetched before narrowing further.
+        if (d.fylker) setFylker(d.fylker);
         if (!kommune && d.kommuner) setKommuner(d.kommuner);
       })
       .catch((e) => { if (alive) setError(e.message === 'not-authed' ? 'not-authed' : e.message); });
     return () => { alive = false; };
-  }, [range, kind, kommune]);
+  }, [range, kind, fylke, kommune]);
 
   const hours = useMemo(() => Array.from({ length: 24 }, (_, h) => String(h).padStart(2, '0')), []);
   const places = data?.places || [];
   const shown = all ? places : places.slice(0, SHOW);
   const collectingHours = data?.dataSince ? (Date.now() - new Date(data.dataSince)) / 3600000 : 0;
   const t = data?.totals;
-  const area = kommune ? (kommuner.find((k) => k.nr === kommune)?.navn || 'kommunen') : 'Norge';
+  const area = kommune ? (kommuner.find((k) => k.nr === kommune)?.navn || 'kommunen') : (fylke ? FYLKER[fylke] || 'fylket' : 'Norge');
 
   return (
     <>
@@ -110,8 +114,15 @@ export default function Sparkesykler() {
               </button>
             ))}
           </div>
-          <select className="comp-select sk-kommune" value={kommune} onChange={(e) => { setKommune(e.target.value); setAll(false); }} aria-label="Kommune">
+          <select className="comp-select sk-kommune" value={fylke} onChange={(e) => { setFylke(e.target.value); setKommune(''); setAll(false); }} aria-label="Fylke">
             <option value="">Hele landet</option>
+            {Object.entries(FYLKER).map(([nr, navn]) => {
+              const n = fylker.find((f) => f.nr === nr)?.arrivals;
+              return <option key={nr} value={nr}>{navn}{n ? ` (${nb(n)})` : ''}</option>;
+            })}
+          </select>
+          <select className="comp-select sk-kommune" value={kommune} onChange={(e) => { setKommune(e.target.value); setAll(false); }} aria-label="Kommune">
+            <option value="">{fylke ? `Alle kommuner i ${FYLKER[fylke]}` : 'Alle kommuner'}</option>
             {kommuner.map((k) => <option key={k.nr} value={k.nr}>{k.navn} ({nb(k.arrivals)})</option>)}
           </select>
         </div>
@@ -168,7 +179,7 @@ export default function Sparkesykler() {
 
             <section className="sk-section">
               <div className="sk-section__head"><h2>Kart</h2></div>
-              <ScooterStatsMap places={places} focusKey={`${kommune}|${kind}|${range}`} />
+              <ScooterStatsMap places={places} focusKey={`${fylke}|${kommune}|${kind}|${range}`} />
               <p className="sk-legend">
                 <span className="sk-swatch" style={{ background: '#2a78d6' }} aria-hidden="true" />Idrettsanlegg
                 <span className="sk-swatch" style={{ background: '#eb6834' }} aria-hidden="true" />Skole

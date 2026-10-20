@@ -62,13 +62,16 @@ const TOUR = [
   { title: 'Hva er utrygt?', text: 'Velg hvem som melder og hva som er utrygt, og beskriv stedet med noen ord.', report: 'form', place: 'top' },
   { title: 'Melderen ser veien videre', text: 'Kvitteringen viser hva som skjer nå, og saken kan deles så flere kan støtte den.', report: 'success', place: 'top' },
   { title: 'Der ulykkene skjer', text: 'Steder med flere registrerte trafikkulykker (NVDB) vises sammen med meldingene.', layers: { saker: true, ulykker: false }, hotspots: true, map: VIEW_HOT },
-  { title: 'Barna er med i konkurransen', text: 'Barnet velger laget sitt, krysser av for hjelm og starter turen.', layers: { saker: false }, phone: 'setup', map: VIEW_REPLAY },
+  { title: 'Hvem logger?', text: 'Først velger man hvem som logger turen. Barn under 13 år logger aldri selv.', layers: { saker: false }, phone: 'who', map: VIEW_REPLAY },
+  { title: 'En voksen er med', text: 'For de yngste logger en voksen som er med, på sin telefon. Gjerne sammen med andre fra klubben.', phone: 'under13' },
+  { title: 'Sykkel, sparkesykkel eller gå', text: 'Velg hvordan og hvor turen går, og klubben turen teller for.', phone: 'setup' },
   { title: 'Turen logges underveis', text: 'Telefonen ligger i lomma. Utrygge punkter kan markeres med ett trykk.', phone: 'tracking' },
   { title: 'Bra jobba!', text: 'Etter turen får barnet ros, og lærer ett av Finns 10 bud.', phone: 'done' },
   { title: 'Kartet vokser fram', text: 'Hver tur barna logger blir en strek. Slik bygges en måned opp.', layers: { saker: false, turer: true, anlegg: false }, replay: true, map: VIEW_REPLAY },
   { title: 'Der barna faktisk ferdes', text: 'Varmekartet viser veiene barna bruker mest til klubbenes baner og haller.', layers: { saker: false, turer: true, anlegg: true }, view: 'tetthet', mapSeq: [VIEW_VENUE_A, VIEW_VENUE_B] },
   { title: 'Personvernet er ivaretatt', text: 'Startstedet fjernes automatisk, og ingen enkeltruter vises.', layers: { turer: true, saker: true, anlegg: true }, view: 'tetthet', map: VIEW_REPLAY },
-  { title: 'Alt samlet for oppfølging', text: 'Sakene følges opp i backoffice, med status, kart og historikk på ett sted.', laptop: true },
+  { title: 'Sparkesykler ved anlegg og skoler', text: 'Vi ser hvor delte elsparkesykler parkeres ved baner, haller og skoler i hele landet.', laptop: '/backoffice/sparkesykler' },
+  { title: 'Alt samlet for oppfølging', text: 'Sakene følges opp i backoffice, med status, kart og historikk på ett sted.', laptop: '/backoffice' },
   { title: 'Hvert kvartal', text: 'Kart og historikk legges fram for veisjefen.', finale: true, layers: { saker: true, turer: true, anlegg: false }, view: 'tetthet', map: VIEW_REPLAY, end: true },
 ];
 
@@ -435,7 +438,7 @@ export default function Demo() {
           </div>
         )}
 
-        {tourStep >= 0 && TOUR[tourStep]?.laptop && <DemoLaptop src="/backoffice" />}
+        {tourStep >= 0 && TOUR[tourStep]?.laptop && <DemoLaptop key={TOUR[tourStep].laptop} src={TOUR[tourStep].laptop} />}
         {tourStep >= 0 && TOUR[tourStep]?.finale && (
           <DemoFinale trips={data?.totals?.trips || 0} hotspots={hotspots?.features?.length || 0} onRestart={() => goStep(0)} onDone={endTour} />
         )}

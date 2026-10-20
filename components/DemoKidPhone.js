@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Icon from './Icon';
 import Logo from './Logo';
 import TripCelebration from './TripCelebration';
+import TripWhoGate from './TripWhoGate';
 
 // The children's app as it looks during a competition, shown in a phone
 // frame on top of the /demo map for the guided tour. Same markup and styles
@@ -42,33 +43,30 @@ function staticMapUrl(path) {
 function SetupScreen({ competitionName, clubs }) {
   const [club, setClub] = useState(clubs[0] || '');
   const [helmet, setHelmet] = useState(true);
-  const [mode, setMode] = useState('sykkel');
+  const [mode, setMode] = useState('sparkesykkel');
   const [routeType, setRouteType] = useState('fritid');
   return (
-    <section className="kid-screen">
+    <section className="kid-screen kid-screen--fit">
       <span className="kid-back"><Icon name="chevronLeft" size={20} strokeWidth={2.2} />Tilbake</span>
-      <h1 className="kid-title">Klar for tur?</h1>
       <p className="kid-comp-note kid-comp-note--live"><Icon name="trophy" size={16} /> Turen teller i <strong>{competitionName}</strong></p>
-      <span className="kid-label">Hvordan?</span>
-      <div className="kid-choice">
+      <div className="kid-choice kid-choice--3">
         <button type="button" className={mode === 'sykkel' ? 'kid-pick kid-pick--on' : 'kid-pick'} onClick={() => setMode('sykkel')}><Icon name="bike" size={26} /><span>Sykle</span></button>
+        <button type="button" className={mode === 'sparkesykkel' ? 'kid-pick kid-pick--on' : 'kid-pick'} onClick={() => setMode('sparkesykkel')}><Icon name="scooter" size={26} /><span>Sparkesykkel</span></button>
         <button type="button" className={mode === 'gange' ? 'kid-pick kid-pick--on' : 'kid-pick'} onClick={() => setMode('gange')}><Icon name="walk" size={26} /><span>Gå</span></button>
       </div>
-      <span className="kid-label">Hvor skal du?</span>
       <div className="kid-choice">
         <button type="button" className={routeType === 'fritid' ? 'kid-pick kid-pick--on' : 'kid-pick'} onClick={() => setRouteType('fritid')}><Icon name="ball" size={26} /><span>Fritid</span></button>
         <button type="button" className={routeType === 'skole' ? 'kid-pick kid-pick--on' : 'kid-pick'} onClick={() => setRouteType('skole')}><Icon name="school" size={26} /><span>Skole</span></button>
       </div>
-      <span className="kid-label">Laget ditt</span>
       <div className="kid-clubs">
-        {clubs.slice(0, 3).map((c) => (
+        {clubs.slice(0, 4).map((c) => (
           <button type="button" key={c} className={club === c ? 'kid-club kid-club--on' : 'kid-club'} onClick={() => setClub(c)}>{c}</button>
         ))}
       </div>
       <button type="button" className={helmet ? 'kid-helmet kid-helmet--on' : 'kid-helmet'} onClick={() => setHelmet((v) => !v)}>
         <Icon name="helmet" size={26} /><span>Jeg har hjelm</span><span className="kid-helmet__check">{helmet ? <Icon name="check" size={22} /> : ''}</span>
       </button>
-      <button type="button" className="kid-big kid-big--green kid-start"><Icon name="bike" size={34} /><span>Start tur</span></button>
+      <button type="button" className="kid-big kid-big--green kid-start"><Icon name={mode === 'sparkesykkel' ? 'scooter' : mode === 'gange' ? 'walk' : 'bike'} size={34} /><span>Start tur</span></button>
     </section>
   );
 }
@@ -110,6 +108,8 @@ export default function DemoKidPhone({ screen, competitionName = 'Sykle til tren
           <div className="dk__screen" key={screen}>
             <div className="dk__status" aria-hidden="true"><span>07:42</span><span className="dk__notch" /><span>100 %</span></div>
             <div className="dk__app kid-app">
+              {screen === 'who' && <section className="kid-screen kid-screen--fit"><TripWhoGate onPick={() => {}} onBack={() => {}} /></section>}
+              {screen === 'under13' && <section className="kid-screen kid-screen--fit"><TripWhoGate initialStep="under13" onPick={() => {}} onBack={() => {}} /></section>}
               {screen === 'setup' && <SetupScreen competitionName={competitionName} clubs={clubs} />}
               {screen === 'tracking' && <TrackingScreen path={path} />}
               {screen === 'done' && <TripCelebration km="2,4" mode="sykkel" weatherKind="rain" quiz={false} onDone={() => {}} />}

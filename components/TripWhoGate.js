@@ -16,8 +16,9 @@ function haptic(pattern = 8) {
 // The age itself is never stored; only who logged ('barn13' | 'voksen').
 //
 // onPick(choice): 'barn13' | 'voksen-live' | 'voksen-tegn'
-export default function TripWhoGate({ onPick, onBack, variant = 'kid' }) {
-  const [step, setStep] = useState('who'); // who | under13 | adult
+// `initialStep` lets the /demo phone open straight on a given step.
+export default function TripWhoGate({ onPick, onBack, variant = 'kid', initialStep = 'who' }) {
+  const [step, setStep] = useState(initialStep); // who | under13 | adult
   const [why, setWhy] = useState(false);
   const go = (next) => { haptic(6); setStep(next); };
   const pick = (choice) => { haptic(10); onPick?.(choice); };
