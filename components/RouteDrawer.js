@@ -42,6 +42,16 @@ export default function RouteDrawer({ mode = 'sykkel', onSave, onCancel, saving 
   // or a straight line when snapping is off or no road route is found.
   const routeLeg = async (a, b) => {
     if (!snapRef.current) return { coords: [[a.lng, a.lat], [b.lng, b.lat]], straight: true };
+    // First choice: our /api/rute (OpenStreetMap routing that prefers gang-
+    // og sykkelveier). Mapbox Directions is only the fallback.
+    try {
+      const q = `mode=${modeRef.current === 'gange' ? 'gange' : 'sykkel'}&from=${a.lng.toFixed(6)},${a.lat.toFixed(6)}&to=${b.lng.toFixed(6)},${b.lat.toFixed(6)}`;
+      const res = await fetch(`/api/rute?${q}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data?.coords) && data.coords.length >= 2) return { coords: data.coords, straight: false };
+      }
+    } catch (_e) { /* fall through to Mapbox */ }
     const profile = modeRef.current === 'gange' ? 'walking' : 'cycling';
     try {
       const url = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${a.lng},${a.lat};${b.lng},${b.lat}?geometries=geojson&overview=full&access_token=${mapboxgl.accessToken}`;
@@ -152,10 +162,15 @@ export default function RouteDrawer({ mode = 'sykkel', onSave, onCancel, saving 
     const draw = () => {
       const source = map.getSource('draw-route');
       if (!source) return;
-      source.setData({
-        type: 'FeatureCollection',
-        features: legs.map((leg) => ({ type: 'Feature', properties: { pending: Boolean(leg.pending) }, geometry: { type: 'LineString', coordinates: leg.coords } })),
-      });
+      // One continuous line for the finished legs (a leg that starts a few
+      // metres from where the previous one ended is simply joined to it);
+      // legs still being routed are drawn faintly on top.
+      const joined = [];
+      legs.forEach((leg) => { if (!leg.pending) joined.push(...leg.coords); });
+      const features = [];
+      if (joined.length >= 2) features.push({ type: 'Feature', properties: { pending: false }, geometry: { type: 'LineString', coordinates: joined } });
+      legs.forEach((leg) => { if (leg.pending) features.push({ type: 'Feature', properties: { pending: true }, geometry: { type: 'LineString', coordinates: leg.coords } }); });
+      source.setData({ type: 'FeatureCollection', features });
     };
     if (map.__drawReady) draw(); else map.once('draw-ready', draw);
 
