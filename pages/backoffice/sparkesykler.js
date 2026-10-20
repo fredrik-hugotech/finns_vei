@@ -50,6 +50,99 @@ function Columns({ title, values, labels, tickEvery = 1, unit = 'ankomster', tip
   );
 }
 
+const SERIES = [
+  { key: 'anlegg', label: 'Idrettsanlegg', color: '#2a78d6' },
+  { key: 'skole', label: 'Skoler', color: '#eb6834' },
+];
+const fmtDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' });
+
+// Arrivals per day, venues vs schools. With 30+ days the lines show a
+// trailing 7-day average so weekly rhythm doesn't hide the trend. Legend +
+// end labels, crosshair tooltip on hover, table view below.
+function TrendChart({ days, kind, smooth }) {
+  const [hover, setHover] = useState(null);
+  const series = SERIES.filter((s) => !kind || s.key === kind);
+  if (!days || days.length < 3) {
+    return (
+      <figure className="sk-chart sk-chart--wide">
+        <figcaption className="sk-chart__title">Ankomster per dag</figcaption>
+        <p className="admin-list-empty" style={{ margin: 0 }}>Trendlinjen vises når det er samlet inn minst 3 døgn.</p>
+      </figure>
+    );
+  }
+  const values = (key) => days.map((_, i) => {
+    if (!smooth) return days[i][key];
+    const from = Math.max(0, i - 6);
+    const win = days.slice(from, i + 1);
+    return win.reduce((n, d) => n + d[key], 0) / win.length;
+  });
+  const data = Object.fromEntries(series.map((s) => [s.key, values(s.key)]));
+  const max = Math.max(1, ...series.flatMap((s) => data[s.key]));
+  const W = 720; const H = 220; const L = 36; const R = 120; const T = 12; const B = 26;
+  const x = (i) => L + (days.length === 1 ? 0 : (i / (days.length - 1)) * (W - L - R));
+  const y = (v) => T + (1 - v / max) * (H - T - B);
+  const ticks = [0, max / 2, max];
+  const onMove = (e) => {
+    const box = e.currentTarget.getBoundingClientRect();
+    const px = ((e.clientX - box.left) / box.width) * W;
+    const i = Math.round(((px - L) / (W - L - R)) * (days.length - 1));
+    setHover(Math.max(0, Math.min(days.length - 1, i)));
+  };
+  return (
+    <figure className="sk-chart sk-chart--wide">
+      <figcaption className="sk-chart__title">Ankomster per dag{smooth ? ' (7-dagers snitt)' : ''}</figcaption>
+      <div className="sk-legend sk-legend--chart">
+        {series.map((s) => <span key={s.key}><span className="sk-swatch" style={{ background: s.color }} aria-hidden="true" />{s.label}</span>)}
+      </div>
+      <div className="sk-trend">
+        <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Ankomster per dag fra ${fmtDay(days[0].day)} til ${fmtDay(days[days.length - 1].day)}`}
+          onMouseMove={onMove} onMouseLeave={() => setHover(null)}>
+          {ticks.map((t) => (
+            <g key={t}>
+              <line x1={L} x2={W - R} y1={y(t)} y2={y(t)} stroke="#e3e8e5" strokeWidth="1" />
+              <text x={L - 6} y={y(t) + 4} textAnchor="end" className="sk-trend__tick">{nb(t)}</text>
+            </g>
+          ))}
+          {[0, Math.floor((days.length - 1) / 2), days.length - 1].map((i) => (
+            <text key={i} x={x(i)} y={H - 6} textAnchor={i === 0 ? 'start' : i === days.length - 1 ? 'end' : 'middle'} className="sk-trend__tick">{fmtDay(days[i].day)}</text>
+          ))}
+          {series.map((s) => {
+            const v = data[s.key];
+            const d = v.map((val, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(val).toFixed(1)}`).join(' ');
+            const last = v.length - 1;
+            return (
+              <g key={s.key}>
+                <path d={d} fill="none" stroke={s.color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+                <circle cx={x(last)} cy={y(v[last])} r="4" fill={s.color} stroke="#fff" strokeWidth="2" />
+                <text x={x(last) + 8} y={y(v[last]) + 4} className="sk-trend__label">{nb(v[last])} {s.label.toLowerCase()}</text>
+              </g>
+            );
+          })}
+          {hover != null && (
+            <g>
+              <line x1={x(hover)} x2={x(hover)} y1={T} y2={H - B} stroke="#16201c" strokeOpacity="0.35" strokeWidth="1" />
+              {series.map((s) => <circle key={s.key} cx={x(hover)} cy={y(data[s.key][hover])} r="4" fill={s.color} stroke="#fff" strokeWidth="2" />)}
+            </g>
+          )}
+        </svg>
+        {hover != null && (
+          <div className="sk-trend__tip" style={{ left: `${(x(hover) / W) * 100}%` }} role="tooltip">
+            <strong>{fmtDay(days[hover].day)}</strong>
+            {series.map((s) => <span key={s.key}><span className="sk-swatch" style={{ background: s.color }} aria-hidden="true" />{s.label}: {nb(data[s.key][hover])}</span>)}
+          </div>
+        )}
+      </div>
+      <details className="sk-table-toggle">
+        <summary>Vis som tabell</summary>
+        <table className="sk-table">
+          <thead><tr><th scope="col">Dag</th>{series.map((s) => <th key={s.key} scope="col">{s.label}</th>)}</tr></thead>
+          <tbody>{days.map((d) => <tr key={d.day}><th scope="row">{fmtDay(d.day)}</th>{series.map((s) => <td key={s.key}>{nb(d[s.key])}</td>)}</tr>)}</tbody>
+        </table>
+      </details>
+    </figure>
+  );
+}
+
 // Which schools and sports venues in Norway get the most shared e-scooter
 // traffic: parkings and rentals within 100 m (nearest place only), ranked by
 // net traffic above each place's own neighbourhood. From Entur's open data.
@@ -230,6 +323,8 @@ export default function Sparkesykler() {
                 <span>Større sirkel = mer trafikk</span>
               </p>
             </section>
+
+            <TrendChart days={data.byDay} kind={kind} smooth={range === '30d' || range === '90d'} />
 
             <div className="sk-grid">
               <Columns title="Ankomster per time på døgnet" values={data.byHour || []} labels={hours} tickEvery={3} tipLabel={(l) => `kl. ${l}–${String((Number(l) + 1) % 24).padStart(2, '0')}`} />

@@ -1,6 +1,6 @@
 import { isAdminRequest } from '../../../lib/backofficeAuth';
 import { checkRequestRateLimit } from '../../../lib/rateLimit';
-import { getScooterPlaceStats, hasSupabaseConfig } from '../../../lib/supabaseRest';
+import { getScooterPlaceDaily, getScooterPlaceStats, hasSupabaseConfig } from '../../../lib/supabaseRest';
 
 // Backoffice: shared e-scooter traffic at schools and sports venues across
 // Norway (Entur open data, counted per place and hour in the database).
@@ -39,8 +39,9 @@ export default async function handler(req, res) {
   try {
     const to = new Date();
     const from = new Date(to.getTime() - RANGES[range] * 86400000);
-    const stats = await getScooterPlaceStats({ from: from.toISOString(), to: to.toISOString(), fylke, kommune, kind });
-    const data = { range, fylke, kommune, type: kind, ...stats };
+    const scope = { from: from.toISOString(), to: to.toISOString(), fylke, kommune };
+    const [stats, byDay] = await Promise.all([getScooterPlaceStats({ ...scope, kind }), getScooterPlaceDaily(scope)]);
+    const data = { range, fylke, kommune, type: kind, ...stats, byDay: byDay || [] };
     cache.set(key, { at: Date.now(), data });
     if (cache.size > 200) cache.delete(cache.keys().next().value);
     return res.status(200).json(data);
