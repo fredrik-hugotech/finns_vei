@@ -316,21 +316,41 @@ only notices and adult education are excluded. Shown to staff at
 `/backoffice/skolevei-avvik` (a public map layer was tried 2026-10-20 and
 removed — not relevant for the public map).
 
-**Sparkesykler (backoffice only).** Collected entirely inside the database —
-no Vercel cron, no secrets: `pg_cron` runs `scooter_collect()` every 3
-minutes, which fires a `pg_net` request to Entur's mobility API (GBFS) for
-Kristiansand and diffs the previous response against `scooter_state`:
-a scooter that leaves the feed is a rental (`scooter_events.kind = 'ut'`, with
-how long it stood), one that appears is a parking (`'inn'`, with how many
-appeared together — restocking when large), one that moves >40 m while
-visible is `'flyttet'`. Voi keeps vehicle ids while parked, so a rental and
-its parking are linked by `md5(id)` into rides (duration, straight-line
-distance); a battery increase marks operator service, not a ride. Positions
-are snapped to ~30 m; hashes are cleared after 7 days
-(`scooter_forget_hashes()`, daily). `scooter_stats(from, to, places)`
-aggregates everything for `/backoffice/sparkesykler` via
-`/api/backoffice/sparkesykler`. Renting requires 18, so this measures traffic
-around venues and schools, not children's own trips.
+**Sparkesykler (backoffice only, all of Norway).** Answers one question:
+which schools and sports venues get the most shared e-scooter traffic.
+Collected entirely inside the database — no Vercel cron, no secrets:
+`pg_cron` runs `scooter_collect()` every 5 minutes, which fires one `pg_net`
+request to Entur's mobility API (GBFS) for all of Norway (~32 000 scooters,
+~3 MB) and diffs the previous answer against `scooter_state`: a scooter that
+leaves the feed is a rental (`scooter_events.kind = 'ut'`), one that appears
+is a parking (`'inn'`; many together = operator restocking, not counted), one
+that moves >40 m while visible is `'flyttet'`. Rentals and parkings within
+150 m of a place are added to `place_scooter_hourly(place_id, hour,
+arrivals, departures)` — the only long-term data. Raw events are meant to be
+kept 3 days (`scooter_prune()`, daily — see below).
+
+Places: `public/data/steder.json`, built by `node scripts/hent-steder.mjs`
+(every active grunnskole from Utdanningsdirektoratet's NSR, every football
+pitch/sports hall/stadium/track/swimming hall/ice rink from OpenStreetMap
+merged per site, municipality names from SSB). The database imports it with
+`select places_import_start();` (processed on the next collector run); after
+an import, `select place_scooter_recount('<since>');` recounts from the raw
+events. `scooter_place_stats_v2(from, to, fylke, kommune, kind, limit)` feeds
+`/backoffice/sparkesykler` (filters: period, anlegg/skoler, fylke, kommune)
+and the admin map layer. Renting requires 18, so this measures traffic around
+the places children are, not children's own trips.
+
+Pending (needs an owner-approved migration — the Supabase tool asks before
+anything containing DELETE): the daily prune.
+
+```sql
+create or replace function public.scooter_prune() returns void language sql security definer set search_path = public as $$
+  delete from scooter_events where ts < now() - interval '3 days';
+  delete from scooter_state where gone_at is not null and gone_at < now() - interval '1 day';
+  delete from scooter_poll where created_at < now() - interval '2 days';
+$$;
+select cron.schedule('scooter-prune', '23 3 * * *', 'select public.scooter_prune()');
+```
 
 ## Recurring hotspot / seasonal-pattern overview
 
