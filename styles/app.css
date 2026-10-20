@@ -5084,3 +5084,91 @@ a:focus-visible, button:focus-visible, label:focus-within { outline: 2px solid v
 .fab-tur:active { transform: scale(0.96); }
 /* The trophy (only while a competition is live) sits above the row. */
 .fab-konk { bottom: calc(max(4.25rem, calc(env(safe-area-inset-bottom) + 3.6rem)) + 66px); }
+
+/* ======================================================================
+   Fit-to-screen (2026-10-20): every step of trip logging must fit on a
+   phone without scrolling. Compact versions of the gate, the trip sheet
+   and the kids setup screens; tighter still on short screens.
+   ====================================================================== */
+.who { gap: 0.7rem; }
+.who__title { font-size: 1.4rem; }
+.who--sheet .who__title { font-size: 1.22rem; }
+.who__title--icon { align-items: center; display: flex; gap: 0.6rem; justify-content: center; }
+.who--sheet .who__title--icon { justify-content: flex-start; }
+.who__title--icon .who__badge { flex: none; height: 44px; width: 44px; }
+.who__options { gap: 0.5rem; }
+.who-opt { gap: 0.7rem; grid-template-columns: 40px 1fr 18px; min-height: 62px; padding: 0.55rem 0.8rem; }
+.who-opt__ic { border-radius: 10px; height: 40px; width: 40px; }
+.who-opt__txt strong { font-size: 1rem; }
+.who-opt__txt span { font-size: 0.86rem; line-height: 1.3; }
+.who__lead { font-size: 1rem; line-height: 1.45; }
+.who__tip { gap: 0.6rem; grid-template-columns: 20px 1fr; padding: 0.65rem 0.8rem; }
+.who__tip strong { display: inline; }
+.who__tip strong::after { content: ' '; }
+.who__primary { min-height: 52px; }
+.who__why { padding: 0.15rem; }
+.who__whytext { padding: 0.55rem 0.75rem; }
+
+/* Trip sheet setup */
+.sheet .comp-voksen-note, .kid-voksen-tag {
+  align-items: center; background: var(--color-primary-tint); border-radius: 999px; color: var(--color-primary);
+  display: inline-flex; font-family: var(--font-heading); font-size: 0.78rem; font-weight: 700; gap: 0.25rem;
+  letter-spacing: 0; margin-left: 0.5rem; padding: 0.2rem 0.55rem; vertical-align: middle;
+}
+.sheet .support-intro h2 { align-items: center; display: flex; flex-wrap: wrap; }
+
+/* A taller card on laptops so a step fits without scrolling. */
+@media (min-width: 768px) {
+  .sheet { max-height: min(calc(100dvh - 2 * clamp(1rem, 4vh, 2.2rem)), 760px); }
+}
+
+/* Kids screens in the trip flow */
+.kid-screen--fit { gap: 0.7rem; padding-top: max(1rem, env(safe-area-inset-top)); }
+.kid-screen--fit .kid-title { font-size: 1.45rem; }
+.kid-screen--fit .kid-label { margin: 0.15rem 0 -0.4rem; }
+.kid-screen--fit .kid-choice { gap: 0.55rem; }
+.kid-screen--fit .kid-pick { flex-direction: row; gap: 0.5rem; min-height: 3.4rem; }
+.kid-screen--fit .kid-clubs { gap: 0.5rem; grid-template-columns: 1fr 1fr; }
+.kid-screen--fit .kid-club { font-size: 1rem; min-height: 3rem; padding: 0 0.5rem; }
+.kid-screen--fit .kid-helmet { min-height: 3.2rem; }
+.kid-screen--fit .kid-start { font-size: 1.2rem; min-height: 3.8rem; padding: 0.8rem 1rem; }
+.kid-screen--fit .kid-comp-note { font-size: 0.88rem; padding: 0.45rem 0.75rem; }
+.kid-screen--fit .kid-sub { font-size: 0.98rem; }
+.kid-screen--fit .kid-hint { margin-top: -0.3rem; }
+.rd-intro .rd-adult { min-height: 3.2rem; }
+
+/* Short screens (small phones, laptops with browser chrome) */
+@media (max-height: 700px) {
+  .who { gap: 0.55rem; }
+  .who-opt { min-height: 56px; padding: 0.45rem 0.75rem; }
+  .who__lead { font-size: 0.95rem; }
+  .sheet-scroll { gap: 0.6rem; padding-top: 0.9rem; }
+  .sheet .segmented__option { min-height: 38px; }
+  .sheet .helmet-toggle { padding: 0.5rem 0.75rem; }
+  .sheet .sheet-footer { padding-top: 0.55rem; }
+  .kid-screen--fit { gap: 0.55rem; }
+  .kid-screen--fit .kid-title { font-size: 1.3rem; }
+  .kid-screen--fit .kid-pick { min-height: 3rem; }
+  .kid-screen--fit .kid-club { min-height: 2.6rem; }
+  .kid-screen--fit .kid-helmet { min-height: 2.9rem; }
+  .kid-screen--fit .kid-start { min-height: 3.3rem; }
+}
+@media (max-height: 600px) {
+  .who__title { font-size: 1.2rem; }
+  .who-opt__txt span { display: none; }
+  .who-opt { min-height: 50px; }
+  .who__title--icon .who__badge { height: 36px; width: 36px; }
+  .kid-screen--fit .kid-label { display: none; }
+  .kid-screen--fit .kid-comp-note { display: none; }
+}
+/* Desktop cards: the ≥560px rule centres with top:50% + translate, the
+   ≥768px rule anchors to the bottom. Together they squeezed every card to
+   whatever was left below the middle and shifted it left. From 768px it is
+   a bottom-anchored, horizontally centred card with the full height free. */
+@media (min-width: 768px) {
+  .sheet { top: auto; transform: none; }
+  @keyframes sheet-up {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: none; }
+  }
+}

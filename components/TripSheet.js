@@ -18,13 +18,20 @@ export default function TripSheet({ competitions = [], onClose, onPickStart }) {
   const [mode, setMode] = useState('sykkel');
   const [routeType, setRouteType] = useState('fritid');
   const [helmet, setHelmet] = useState(true);
-  const [compId, setCompId] = useState(competitions[0]?.id || '');
-  const [club, setClub] = useState('');
+  // One choice for "counts in": a competition + club pair, or none. '?' =
+  // not chosen yet, so nobody ends up on the wrong club by default.
+  const [countsIn, setCountsIn] = useState(competitions.length ? '?' : '');
   const [error, setError] = useState('');
   const sheetDrag = useSheetDrag(onClose);
 
+  const countOptions = [];
+  for (const c of competitions) {
+    const clubs = [...(c.clubs || [])].sort((a, b) => a.name.localeCompare(b.name, 'nb'));
+    if (clubs.length) clubs.forEach((cl) => countOptions.push({ value: `${c.id}|${cl.name}`, label: competitions.length > 1 ? `${c.name} · ${cl.name}` : cl.name, group: c.name }));
+    else countOptions.push({ value: `${c.id}|`, label: c.name });
+  }
+  const [compId, club] = countsIn && countsIn !== '?' ? countsIn.split('|') : ['', ''];
   const competition = competitions.find((c) => c.id === compId) || null;
-  const clubs = [...(competition?.clubs || [])].sort((a, b) => a.name.localeCompare(b.name, 'nb'));
 
   const pickWho = (choice) => {
     if (choice === 'voksen-tegn') { window.location.href = '/tegn-rute?voksen=1'; return; }
@@ -34,7 +41,7 @@ export default function TripSheet({ competitions = [], onClose, onPickStart }) {
   };
 
   const start = () => {
-    if (competition && clubs.length && !club) { setError('Velg klubb, eller velg «Ingen konkurranse».'); return; }
+    if (countsIn === '?') { setError('Velg klubb, eller «Ingen konkurranse».'); return; }
     haptic(12);
     onPickStart?.({ competition, club: competition ? club : '', helmet, routeType, mode, loggedBy });
   };
@@ -51,12 +58,11 @@ export default function TripSheet({ competitions = [], onClose, onPickStart }) {
             <>
               <button type="button" className="comp-back" onClick={() => setView('who')}><Icon name="chevronLeft" size={18} strokeWidth={2.2} />Tilbake</button>
               <div className="support-intro">
-                <h2>Logg tur</h2>
-                {loggedBy === 'voksen' && <p className="comp-voksen-note"><Icon name="user" size={15} /> Du logger som voksen og er med på turen.</p>}
+                <h2>Logg tur{loggedBy === 'voksen' && <span className="comp-voksen-note"><Icon name="user" size={14} />Voksen er med</span>}</h2>
               </div>
 
               <fieldset className="sheet-field">
-                <legend>Sykle eller gå?</legend>
+                <legend>Hvordan?</legend>
                 <div className="segmented">
                   <button type="button" className={mode === 'sykkel' ? 'segmented__option segmented__option--active' : 'segmented__option'} onClick={() => { haptic(6); setMode('sykkel'); }}><Icon name="bike" size={16} /> Sykle</button>
                   <button type="button" className={mode === 'gange' ? 'segmented__option segmented__option--active' : 'segmented__option'} onClick={() => { haptic(6); setMode('gange'); }}><Icon name="walk" size={16} /> Gå</button>
@@ -73,20 +79,11 @@ export default function TripSheet({ competitions = [], onClose, onPickStart }) {
 
               {competitions.length > 0 && (
                 <label className="sheet-field">
-                  <span className="sheet-field__label">Konkurranse</span>
-                  <select className="comp-select" value={compId} onChange={(e) => { setCompId(e.target.value); setClub(''); setError(''); }}>
-                    {competitions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  <span className="sheet-field__label">{competitions.length === 1 ? `Teller i ${competitions[0].name}` : 'Teller i konkurranse'}</span>
+                  <select className="comp-select" value={countsIn} onChange={(e) => { setCountsIn(e.target.value); setError(''); }}>
+                    <option value="?" disabled>{loggedBy === 'voksen' ? 'Velg barnets klubb …' : 'Velg klubben din …'}</option>
+                    {countOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                     <option value="">Ingen konkurranse</option>
-                  </select>
-                </label>
-              )}
-
-              {competition && clubs.length > 0 && (
-                <label className="sheet-field">
-                  <span className="sheet-field__label">{loggedBy === 'voksen' ? 'Barnets klubb' : 'Klubben din'}</span>
-                  <select className="comp-select" value={club} onChange={(e) => { setClub(e.target.value); setError(''); }}>
-                    <option value="">Velg klubb …</option>
-                    {clubs.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
                   </select>
                 </label>
               )}

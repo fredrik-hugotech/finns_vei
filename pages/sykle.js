@@ -211,15 +211,15 @@ export default function Sykle() {
         )}
 
         {view === 'who' && (
-          <section className="kid-screen">
+          <section className="kid-screen kid-screen--fit">
             <TripWhoGate onPick={pickWho} onBack={() => setView('hub')} />
           </section>
         )}
 
         {view === 'setup' && (
-          <section className="kid-screen">
+          <section className="kid-screen kid-screen--fit">
             <button type="button" className="kid-back" onClick={() => setView('who')}><Icon name="chevronLeft" size={20} strokeWidth={2.2} />Tilbake</button>
-            <h1 className="kid-title">Klar for tur?</h1>
+            <h1 className="kid-title">Klar for tur?{loggedBy === 'voksen' && <span className="kid-voksen-tag"><Icon name="user" size={14} />Voksen er med</span>}</h1>
 
             {compChecked && (
               competition ? (
@@ -227,7 +227,7 @@ export default function Sykle() {
                   <Icon name="trophy" size={16} /> Turen teller i <strong>{competition.name}</strong>
                 </p>
               ) : (
-                <p className="kid-comp-note">Ingen konkurranse akkurat nå. Turen blir likevel med i kartet over hvor barn sykler og går.</p>
+                <p className="kid-comp-note">Ingen konkurranse nå. Turen blir likevel med i kartet.</p>
               )
             )}
 
@@ -243,9 +243,6 @@ export default function Sykle() {
               <button type="button" className={routeType === 'skole' ? 'kid-pick kid-pick--on' : 'kid-pick'} onClick={() => { haptic(6); setRouteType('skole'); }}><Icon name="school" size={26} /><span>Skole</span></button>
             </div>
 
-            {loggedBy === 'voksen' && (
-              <p className="kid-comp-note"><Icon name="user" size={16} /> Du logger turen som voksen og er med på turen.</p>
-            )}
 
             {competition?.clubs?.length > 1 && (
               <>

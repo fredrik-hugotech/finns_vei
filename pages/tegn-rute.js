@@ -88,13 +88,10 @@ export default function TegnRute() {
         )}
 
         {step === 'intro' && (
-          <section className="kid-screen rd-intro">
+          <section className="kid-screen kid-screen--fit rd-intro">
             <button type="button" className="kid-back" onClick={() => router.push(backTo)}><Icon name="chevronLeft" size={20} strokeWidth={2.2} />Tilbake</button>
             <h1 className="kid-title">Tegn en fast rute</h1>
-            <p className="kid-sub">
-              Vis veien barnet bruker, for eksempel til trening eller skole. Da ser Finns Fairway hvor barn ferdes,
-              og hvor det trengs tryggere veier.
-            </p>
+            <p className="kid-sub">Vis veien barnet bruker, for eksempel til trening eller skole.</p>
 
             <span className="kid-label">Hvordan?</span>
             <div className="kid-choice">
@@ -111,10 +108,10 @@ export default function TegnRute() {
             <label className={adult ? 'rd-adult rd-adult--on' : 'rd-adult'}>
               <input type="checkbox" checked={adult} onChange={(e) => setAdult(e.target.checked)} />
               <span className="rd-adult__box" aria-hidden="true">{adult ? <Icon name="check" size={18} /> : null}</span>
-              <span>Jeg er voksen og registrerer ruten for et barn</span>
+              <span>Jeg er voksen og tegner ruten for et barn</span>
             </label>
 
-            <p className="rd-intro__privacy"><Icon name="shield" size={16} />Start gjerne hjemme. De første 50 meterne fjernes automatisk, og ruten lagres uten navn.</p>
+            <p className="rd-intro__privacy"><Icon name="shield" size={16} />De første 50 meterne fjernes alltid, og ruten lagres uten navn.</p>
 
             <button type="button" className="kid-big kid-big--green kid-start" disabled={!adult} onClick={() => { haptic(10); setStep('draw'); }}>
               <Icon name="pencil" size={28} /><span>Start tegning</span>
