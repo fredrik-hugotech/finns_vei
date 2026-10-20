@@ -5057,3 +5057,30 @@ a:focus-visible, button:focus-visible, label:focus-within { outline: 2px solid v
   display: grid; font-size: 1rem; gap: 0.6rem; line-height: 1.5; padding: 0.95rem 1.05rem;
 }
 .personvern-summary p { margin: 0; }
+
+/* ---------- Bottom actions: "Logg tur" and "Meld fra" side by side ---------- */
+.fab-row {
+  bottom: max(4.25rem, calc(env(safe-area-inset-bottom) + 3.6rem));
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  /* Clear of the round map-style button on the left. */
+  left: calc(max(0.9rem, env(safe-area-inset-left)) + 54px + 0.6rem);
+  position: fixed;
+  right: max(0.9rem, env(safe-area-inset-right));
+  z-index: 24;
+}
+@media (min-width: 700px) { .fab-row { left: 0; right: 0; } }
+.fab-row .fab-meld, .fab-row .fab-tur {
+  flex: 1 1 0; inset: auto; justify-content: center; margin: 0; max-width: 190px;
+  padding: 0 0.9rem; position: static; width: auto;
+}
+.fab-tur {
+  align-items: center; animation: fab-in var(--dur-sheet) var(--ease-out); background: #ffffff;
+  border: 1px solid var(--chrome-border); border-radius: var(--radius-pill); box-shadow: var(--chrome-shadow);
+  color: var(--color-primary); display: inline-flex; font-family: var(--font-heading); font-size: 1.02rem;
+  font-weight: 700; gap: 0.45rem; min-height: 54px; transition: transform 110ms ease;
+}
+.fab-tur:active { transform: scale(0.96); }
+/* The trophy (only while a competition is live) sits above the row. */
+.fab-konk { bottom: calc(max(4.25rem, calc(env(safe-area-inset-bottom) + 3.6rem)) + 66px); }

@@ -5,6 +5,7 @@ import Logo from '../components/Logo';
 import Icon from '../components/Icon';
 import ReportSheet from '../components/ReportSheet';
 import CompetitionSheet from '../components/CompetitionSheet';
+import TripSheet from '../components/TripSheet';
 import TripTracker from '../components/TripTracker';
 import TripCelebration from '../components/TripCelebration';
 import InstallHint from '../components/InstallHint';
@@ -27,6 +28,7 @@ export default function Home() {
   const [nearbyNotice, setNearbyNotice] = useState(null); // { count, nearestId } | null
   const [accidentNotice, setAccidentNotice] = useState(null); // { count } | null
   const [showCompetitions, setShowCompetitions] = useState(false);
+  const [showTripSheet, setShowTripSheet] = useState(false);
   const [competitionFocusId, setCompetitionFocusId] = useState(null);
   // Whether there's a live competition right now — drives the trophy button:
   // gold and shining when there is one, muted grey with a "no competition"
@@ -254,6 +256,7 @@ export default function Home() {
     haptic(12);
     setTripContext({ competition: competition || null, club, helmet, routeType: routeType || 'fritid', mode: mode || 'sykkel', loggedBy: loggedBy === 'voksen' ? 'voksen' : 'barn13' });
     setShowCompetitions(false);
+    setShowTripSheet(false);
     mapApiRef.current?.clearCompetitionTrips?.();
     setMode('trip-track');
   };
@@ -399,28 +402,28 @@ export default function Home() {
 
         {mode === 'browse' && (
           <>
-            {(() => {
-              const hasActiveComp = Array.isArray(activeCompetitions) && activeCompetitions.length > 0;
-              return (
-                <div className={hasActiveComp ? 'fab-konk-wrap' : 'fab-konk-wrap fab-konk-wrap--idle'}>
-                  <button
-                    type="button"
-                    className={hasActiveComp ? 'fab-konk' : 'fab-konk fab-konk--idle'}
-                    onClick={openCompetitions}
-                    aria-label={hasActiveComp ? 'Logg tur og konkurranser' : 'Logg tur, ingen aktive konkurranser nå'}
-                  >
-                    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4Z" />
-                      <path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3" />
-                    </svg>
-                  </button>
-                </div>
-              );
-            })()}
-            <button type="button" className="fab-meld" onClick={startPick}>
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" /></svg>
-              Meld fra
-            </button>
+            {/* The trophy only shows while a competition is live — logging a
+                trip is its own choice below, not part of a competition. */}
+            {Array.isArray(activeCompetitions) && activeCompetitions.length > 0 && (
+              <div className="fab-konk-wrap">
+                <button type="button" className="fab-konk" onClick={openCompetitions} aria-label="Konkurranser">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4Z" />
+                    <path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3" />
+                  </svg>
+                </button>
+              </div>
+            )}
+            <div className="fab-row">
+              <button type="button" className="fab-tur" onClick={() => { haptic(10); setShowTripSheet(true); }}>
+                <Icon name="bike" size={20} strokeWidth={2} />
+                Logg tur
+              </button>
+              <button type="button" className="fab-meld" onClick={startPick}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" /></svg>
+                Meld fra
+              </button>
+            </div>
           </>
         )}
 
@@ -490,6 +493,14 @@ export default function Home() {
             onSubmitted={handleSubmitted}
             onChangeLocation={changeLocation}
             onViewCase={handleViewCase}
+          />
+        )}
+
+        {showTripSheet && (
+          <TripSheet
+            competitions={activeCompetitions || []}
+            onClose={() => setShowTripSheet(false)}
+            onPickStart={startTrip}
           />
         )}
 

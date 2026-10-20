@@ -148,19 +148,11 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
           {view === 'list' && (
             <>
               <div className="support-intro">
-                <h2>Turer og konkurranser</h2>
+                <h2>Konkurranser</h2>
               </div>
               {isAdmin && (
                 <a className="comp-admin-link" href="/backoffice/konkurranser">+ Opprett / administrer konkurranser</a>
               )}
-              <button type="button" className="comp-card comp-card--log" onClick={() => openWho(null)}>
-                <span className="comp-card__icon" aria-hidden="true"><Icon name="route" size={22} /></span>
-                <span className="comp-card__body">
-                  <strong>Logg en tur</strong>
-                  <span className="comp-card__desc">Også uten konkurranse</span>
-                </span>
-                <span className="comp-card__chev" aria-hidden="true"><Icon name="chevronRight" size={18} strokeWidth={2} /></span>
-              </button>
               {competitions === null && <p className="comp-muted">Laster …</p>}
               {competitions && competitions.length === 0 && (
                 <p className="comp-muted">Ingen aktive konkurranser akkurat nå. Kom tilbake snart!</p>
