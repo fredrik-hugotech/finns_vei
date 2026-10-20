@@ -5280,3 +5280,4 @@ a:focus-visible, button:focus-visible, label:focus-within { outline: 2px solid v
 .spor-modes { display: grid !important; gap: 4px; grid-template-columns: 1fr 1fr; }
 .spor-modes .spor-mode { width: 100%; }
 .segmented:has(> :nth-child(3)) .segmented__option { align-items: center; display: inline-flex; gap: 0.25rem; justify-content: center; white-space: nowrap; }
+.nvdb-toggle--scooter.nvdb-toggle--active { background: #ede9fe; border-color: #6d28d9; color: #5b21b6; }

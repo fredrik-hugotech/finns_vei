@@ -511,6 +511,49 @@ function showCompetitionTrips(map, geojson) {
   applyCompetitionTrips(map);
 }
 
+// Admin layer "Sparkesykler": where shared e-scooter rides end (or start),
+// aggregated to ~150 m cells by /api/backoffice/sparkesykler. Same
+// latest-wish pattern as the trips layer, so a late answer or a pending
+// retry can never redraw it after it was switched off.
+function showScooterCells(map, cells) {
+  if (!map) return;
+  map.__scooterWanted = cells || [];
+  applyScooterCells(map);
+}
+
+function applyScooterCells(map) {
+  if (!map.isStyleLoaded?.()) {
+    if (!map.__scooterRetry) map.__scooterRetry = setTimeout(() => { map.__scooterRetry = null; applyScooterCells(map); }, 200);
+    return;
+  }
+  const data = {
+    type: 'FeatureCollection',
+    features: (map.__scooterWanted || []).map(([lng, lat, n]) => ({ type: 'Feature', properties: { n }, geometry: { type: 'Point', coordinates: [lng, lat] } })),
+  };
+  const source = map.getSource('scooter-cells');
+  if (source) { source.setData(data); return; }
+  map.addSource('scooter-cells', { type: 'geojson', data });
+  map.addLayer({
+    id: 'scooter-cells',
+    type: 'circle',
+    source: 'scooter-cells',
+    paint: {
+      'circle-color': '#6d28d9',
+      'circle-radius': ['interpolate', ['linear'], ['sqrt', ['get', 'n']], 1, 4, 3, 9, 6, 16, 10, 24],
+      'circle-opacity': ['interpolate', ['linear'], ['get', 'n'], 1, 0.3, 10, 0.55, 40, 0.8],
+      'circle-stroke-color': '#ffffff',
+      'circle-stroke-width': 1,
+    },
+  }, map.getLayer('reports-clusters') ? 'reports-clusters' : undefined);
+  map.on('click', 'scooter-cells', (e) => {
+    const f = e.features?.[0];
+    if (!f) return;
+    const n = f.properties.n;
+    new mapboxgl.Popup({ maxWidth: '220px' }).setLngLat(f.geometry.coordinates)
+      .setHTML(`<strong>${n}</strong> sparkesykkel${n === 1 ? 'tur' : 'turer'} ${map.__scooterView === 'starts' ? 'starter' : 'slutter'} her`).addTo(map);
+  });
+}
+
 function applyCompetitionTrips(map) {
   if (!map.isStyleLoaded?.()) {
     // Style not ready yet — retry shortly so the overlay still appears.
@@ -920,6 +963,11 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   const [weightPanelOpen, setWeightPanelOpen] = useState(false);
   const [sporOn, setSporOn] = useState(false);
   const [sporComps, setSporComps] = useState([]);
+  const [scooterOn, setScooterOn] = useState(false);
+  const [scooterView, setScooterView] = useState('ends'); // ends | starts
+  const [scooterRange, setScooterRange] = useState('7d');
+  const scooterOnRef = useRef(false);
+  const scooterReqRef = useRef(0);
   const [sporCompId, setSporCompId] = useState('');
   const [sporMode, setSporMode] = useState('samlet'); // samlet | sykkel | sparkesykkel | gange
   const caseSheetDrag = useSheetDrag(() => setCaseData(null));
@@ -1334,6 +1382,35 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
 
   const changeSporComp = (id) => { setSporCompId(id); drawSpor(id, sporMode); };
   const changeSporMode = (m) => { setSporMode(m); if (sporCompId) drawSpor(sporCompId, m); };
+
+  const drawScooters = async (range, view) => {
+    const map = mapRef.current;
+    if (!map) return;
+    const req = ++scooterReqRef.current;
+    try {
+      const r = await fetch(`/api/backoffice/sparkesykler?range=${encodeURIComponent(range)}`);
+      const d = r.ok ? await r.json() : null;
+      if (req !== scooterReqRef.current || !scooterOnRef.current) return;
+      if (!d) { setMessage('Kunne ikke hente sparkesykler.'); return; }
+      map.__scooterView = view;
+      const cells = view === 'starts' ? d.starts : d.ends;
+      showScooterCells(map, cells);
+      setMessage(cells?.length ? `${d.rentals} utleier · ${view === 'starts' ? 'hvor turene starter' : 'hvor turene slutter'}` : 'Ingen sparkesykkelturer registrert i perioden ennå.');
+    } catch (_e) {
+      if (req === scooterReqRef.current) setMessage('Kunne ikke hente sparkesykler.');
+    }
+  };
+  const toggleScooters = () => {
+    const map = mapRef.current;
+    if (!map) return;
+    const next = !scooterOnRef.current;
+    scooterOnRef.current = next;
+    setScooterOn(next);
+    if (!next) { scooterReqRef.current += 1; showScooterCells(map, []); return; }
+    drawScooters(scooterRange, scooterView);
+  };
+  const changeScooterView = (v) => { setScooterView(v); drawScooters(scooterRange, v); };
+  const changeScooterRange = (r) => { setScooterRange(r); drawScooters(r, scooterView); };
 
   // Open a case sheet straight from a feature (shared-link deep links + clicks).
   const openReportCase = useCallback((feature) => {
@@ -1798,7 +1875,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
             <span className="nvdb-toggle-card__title">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5z" /><path d="M3 13l9 5 9-5" opacity=".6" /></svg>
               Kartlag
-              {!layersOpen && (activeNvdbLayers.length > 0 || concernHeatmapOn || sporOn) && <span className="nvdb-toggle-card__count" aria-hidden="true" />}
+              {!layersOpen && (activeNvdbLayers.length > 0 || concernHeatmapOn || sporOn || scooterOn) && <span className="nvdb-toggle-card__count" aria-hidden="true" />}
             </span>
             <svg className="nvdb-toggle-card__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={layersOpen ? 'M6 15l6-6 6 6' : 'M6 9l6 6 6-6'} /></svg>
           </button>
@@ -1845,6 +1922,27 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
                       >
                         {label}
                       </button>
+                    ))}
+                  </div>
+                </>
+              )}
+              <button
+                type="button"
+                className={scooterOn ? 'nvdb-toggle nvdb-toggle--active nvdb-toggle--scooter' : 'nvdb-toggle nvdb-toggle--scooter'}
+                onClick={toggleScooters}
+              >
+                Sparkesykler
+              </button>
+              {scooterOn && (
+                <>
+                  <select className="spor-select" value={scooterRange} onChange={(e) => changeScooterRange(e.target.value)} aria-label="Periode">
+                    <option value="1d">Siste døgn</option>
+                    <option value="7d">Siste 7 dager</option>
+                    <option value="30d">Siste 30 dager</option>
+                  </select>
+                  <div className="spor-modes" role="group" aria-label="Start eller slutt">
+                    {[['ends', 'Slutter'], ['starts', 'Starter']].map(([value, label]) => (
+                      <button key={value} type="button" className={scooterView === value ? 'spor-mode spor-mode--on' : 'spor-mode'} onClick={() => changeScooterView(value)}>{label}</button>
                     ))}
                   </div>
                 </>
