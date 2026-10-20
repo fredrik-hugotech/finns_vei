@@ -269,9 +269,15 @@ the trip sheet on the main map):
   location themselves.
 - **Voksen** — either logs live while along on the trip, or **draws a regular
   route** (to training, school …) on the map at `/tegn-rute`
-  (`components/RouteDrawer.js`): tap points, each leg follows the road via the
-  Mapbox Directions API (cycling/walking), "Følg veien" off draws straight
-  lines. The start is clipped on the device (`clipPath` around a
+  (`components/RouteDrawer.js`): tap points, and each leg is routed by
+  `GET /api/rute` — Valhalla on OpenStreetMap data (FOSSGIS public server,
+  `bicycle` with `use_roads: 0.2` / `pedestrian`), which prefers gang- og
+  sykkelveier where Mapbox's cycling profile sent riders along the road (even
+  E18/E39). Called server-side, so the user's IP never reaches the router;
+  nothing is stored, and the edge caches identical legs. If it fails, the
+  client falls back to Mapbox Directions. "Følg veien" off draws straight
+  lines. If usage grows beyond the public server's fair use, swap the URL in
+  `pages/api/rute.js` for a hosted Valhalla (e.g. Stadia Maps). The start is clipped on the device (`clipPath` around a
   `randomOffsetPoint`) and again on the server, exactly like a live trip.
 
 The age itself is never stored — only `logged_by` (`'barn13'` | `'voksen'`).
