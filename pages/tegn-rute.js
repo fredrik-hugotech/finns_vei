@@ -92,7 +92,7 @@ export default function TegnRute() {
             <button type="button" className="kid-back" onClick={() => router.push(backTo)}><Icon name="chevronLeft" size={20} strokeWidth={2.2} />Tilbake</button>
             <h1 className="kid-title">Tegn en fast rute</h1>
             <p className="kid-sub">
-              Vis veien barnet bruker, for eksempel til trening eller skole. Da ser kommunen hvor barn ferdes,
+              Vis veien barnet bruker, for eksempel til trening eller skole. Da ser Finns Fairway hvor barn ferdes,
               og hvor det trengs tryggere veier.
             </p>
 
@@ -127,7 +127,7 @@ export default function TegnRute() {
             <div className="kid-done__badge"><Icon name="check" size={56} strokeWidth={2.2} /></div>
             <h1 className="kid-title">Ruten er lagret</h1>
             <p className="kid-big-number">{savedKm} km</p>
-            <p className="kid-sub">Takk! Ruten hjelper kommunen å se hvilke veier barna bruker, og hvor det trengs tiltak.</p>
+            <p className="kid-sub">Takk! Ruten hjelper Finns Fairway å se hvilke veier barna bruker, og hvor det trengs tiltak.</p>
             <button type="button" className="kid-big kid-big--outline kid-big--cta" onClick={() => { setDrawKey((k) => k + 1); setStep('draw'); }}><span>Tegn en rute til</span></button>
             <button type="button" className="kid-big kid-big--green kid-big--cta" onClick={() => router.push(backTo)}><span>Ferdig</span></button>
           </section>
