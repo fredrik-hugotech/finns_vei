@@ -251,7 +251,7 @@ export default function Home() {
   };
 
   // `competition` may be null (a trip outside any competition); `loggedBy` is
-  // 'barn13' or 'voksen' from the "Hvem logger turen?" step.
+  // 'barn13' or 'voksen' from the "Hvem logger?" step.
   const startTrip = ({ competition, club, helmet, routeType, mode, loggedBy }) => {
     haptic(12);
     setTripContext({ competition: competition || null, club, helmet, routeType: routeType || 'fritid', mode: mode || 'sykkel', loggedBy: loggedBy === 'voksen' ? 'voksen' : 'barn13' });

@@ -5172,3 +5172,24 @@ a:focus-visible, button:focus-visible, label:focus-within { outline: 2px solid v
     to { opacity: 1; transform: none; }
   }
 }
+
+/* Tegn rute: map first — mode/purpose toggles live in the panel. */
+.rd__toggles { display: grid; gap: 0.5rem; grid-template-columns: 1fr 1fr; }
+.rd__seg { background: var(--color-surface-muted, #f1f4f2); border-radius: 12px; display: grid; grid-template-columns: 1fr 1fr; padding: 3px; }
+.rd__segbtn {
+  align-items: center; background: transparent; border: 0; border-radius: 9px; color: var(--color-muted); display: inline-flex;
+  font-size: 0.86rem; font-weight: 700; gap: 0.25rem; justify-content: center; min-height: 36px; padding: 0 0.3rem;
+}
+.rd__segbtn--on { background: #fff; box-shadow: 0 1px 3px rgba(20, 32, 28, 0.15); color: var(--color-primary); }
+.rd__privacy { align-items: center; color: var(--color-muted); display: flex; font-size: 0.78rem; gap: 0.3rem; justify-content: center; margin: -0.2rem 0 0; }
+.rd__privacy svg { color: var(--color-primary); }
+.rd-gate { align-items: center; background: rgba(14, 30, 26, 0.35); display: flex; inset: 0; justify-content: center; padding: 1rem; position: fixed; z-index: 30; }
+.rd-gate__card {
+  background: var(--color-surface); border-radius: 18px; box-shadow: 0 20px 40px -18px rgba(14, 30, 26, 0.5); display: grid;
+  gap: 0.6rem; justify-items: center; max-width: 340px; padding: 1.3rem 1.2rem 0.8rem; text-align: center; width: 100%;
+}
+.rd-gate__card strong { font-family: var(--font-display), Georgia, serif; font-size: 1.3rem; font-weight: 600; }
+.rd-gate__card p { color: var(--color-muted); margin: 0; }
+.rd-gate__card .big-button { width: 100%; }
+.rd-gate__ic { align-items: center; background: var(--color-primary-tint); border-radius: 50%; color: var(--color-primary); display: inline-flex; height: 48px; justify-content: center; width: 48px; }
+.rd-gate__cancel { background: none; border: 0; color: var(--color-muted); font-weight: 700; padding: 0.4rem; }

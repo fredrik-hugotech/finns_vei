@@ -45,7 +45,7 @@ export default async function handler(req, res) {
 
   const body = req.body || {};
   const source = body.source === 'manuell' ? 'manuell' : 'live';
-  // Self-declared on the device ("Hvem logger turen?"): a child aged 13+ or
+  // Self-declared on the device ("Hvem logger?"): a child aged 13+ or
   // an adult. Children under 13 never log on their own. Older cached
   // clients and queued trips send nothing — accepted as unknown (null).
   const loggedBy = source === 'manuell' ? 'voksen' : (body.loggedBy === 'barn13' || body.loggedBy === 'voksen' ? body.loggedBy : null);

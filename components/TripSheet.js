@@ -8,7 +8,7 @@ function haptic(ms = 8) {
 }
 
 // "Logg tur" from the main map — its own choice next to "Meld fra", not
-// something that lives inside a competition. Starts with "Hvem logger turen?"
+// something that lives inside a competition. Starts with "Hvem logger?"
 // (components/TripWhoGate.js); an adult can also go on to draw a route. If a
 // competition happens to be running, the trip can count in it, but nothing
 // here requires one.

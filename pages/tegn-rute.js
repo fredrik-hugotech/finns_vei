@@ -30,7 +30,7 @@ function tripToken() {
 // again on the server, exactly like a live trip.
 export default function TegnRute() {
   const router = useRouter();
-  const [step, setStep] = useState('intro'); // intro | draw | done | error
+  const [step, setStep] = useState('draw'); // draw | done | error
   const [adult, setAdult] = useState(false);
   const [mode, setMode] = useState('sykkel');
   const [routeType, setRouteType] = useState('fritid');
@@ -39,10 +39,17 @@ export default function TegnRute() {
   const [savedKm, setSavedKm] = useState('');
   const [drawKey, setDrawKey] = useState(0);
 
-  // Coming from the "Hvem logger turen?" step, the adult has already said so.
+  // Coming from the "Hvem logger?" step, the adult has already said so;
+  // anyone arriving directly (menu, link) confirms it once on the map.
+  // `ready` waits for the query on the client, so the server HTML (no
+  // overlay) and the first client render match.
+  const [ready, setReady] = useState(false);
   useEffect(() => {
-    if (router.isReady && router.query.voksen === '1') setAdult(true);
+    if (!router.isReady) return;
+    if (router.query.voksen === '1') setAdult(true);
+    setReady(true);
   }, [router.isReady, router.query.voksen]);
+  const leave = () => router.push(backTo);
 
   const backTo = typeof router.query.fra === 'string' && router.query.fra.startsWith('/') && !router.query.fra.startsWith('//') ? router.query.fra : '/';
 
@@ -84,48 +91,36 @@ export default function TegnRute() {
       <main className="kid-app">
         {/* Stays mounted behind the error screen so a failed save keeps the drawing. */}
         {(step === 'draw' || step === 'error') && (
-          <RouteDrawer key={drawKey} mode={mode} saving={saving} onSave={save} onCancel={() => setStep('intro')} />
+          <RouteDrawer
+            key={drawKey}
+            mode={mode}
+            onModeChange={setMode}
+            routeType={routeType}
+            onRouteTypeChange={setRouteType}
+            saving={saving}
+            onSave={save}
+            onCancel={leave}
+          />
         )}
 
-        {step === 'intro' && (
-          <section className="kid-screen kid-screen--fit rd-intro">
-            <button type="button" className="kid-back" onClick={() => router.push(backTo)}><Icon name="chevronLeft" size={20} strokeWidth={2.2} />Tilbake</button>
-            <h1 className="kid-title">Tegn en fast rute</h1>
-            <p className="kid-sub">Vis veien barnet bruker, for eksempel til trening eller skole.</p>
-
-            <span className="kid-label">Hvordan?</span>
-            <div className="kid-choice">
-              <button type="button" className={mode === 'sykkel' ? 'kid-pick kid-pick--on' : 'kid-pick'} onClick={() => { haptic(6); setMode('sykkel'); }}><Icon name="bike" size={26} /><span>Sykle</span></button>
-              <button type="button" className={mode === 'gange' ? 'kid-pick kid-pick--on' : 'kid-pick'} onClick={() => { haptic(6); setMode('gange'); }}><Icon name="walk" size={26} /><span>Gå</span></button>
+        {step === 'draw' && ready && !adult && (
+          <div className="rd-gate" role="dialog" aria-modal="true" aria-label="For voksne">
+            <div className="rd-gate__card">
+              <span className="rd-gate__ic" aria-hidden="true"><Icon name="pencil" size={24} /></span>
+              <strong>Tegn veien barnet bruker</strong>
+              <p>Dette er for voksne. Barn under 13 år logger ikke selv.</p>
+              <button type="button" className="big-button big-button--primary" onClick={() => { haptic(10); setAdult(true); }}>Jeg er voksen</button>
+              <button type="button" className="rd-gate__cancel" onClick={leave}>Avbryt</button>
             </div>
-
-            <span className="kid-label">Hvor går ruten?</span>
-            <div className="kid-choice">
-              <button type="button" className={routeType === 'fritid' ? 'kid-pick kid-pick--on' : 'kid-pick'} onClick={() => { haptic(6); setRouteType('fritid'); }}><Icon name="ball" size={26} /><span>Trening og fritid</span></button>
-              <button type="button" className={routeType === 'skole' ? 'kid-pick kid-pick--on' : 'kid-pick'} onClick={() => { haptic(6); setRouteType('skole'); }}><Icon name="school" size={26} /><span>Skole</span></button>
-            </div>
-
-            <label className={adult ? 'rd-adult rd-adult--on' : 'rd-adult'}>
-              <input type="checkbox" checked={adult} onChange={(e) => setAdult(e.target.checked)} />
-              <span className="rd-adult__box" aria-hidden="true">{adult ? <Icon name="check" size={18} /> : null}</span>
-              <span>Jeg er voksen og tegner ruten for et barn</span>
-            </label>
-
-            <p className="rd-intro__privacy"><Icon name="shield" size={16} />De første 50 meterne fjernes alltid, og ruten lagres uten navn.</p>
-
-            <button type="button" className="kid-big kid-big--green kid-start" disabled={!adult} onClick={() => { haptic(10); setStep('draw'); }}>
-              <Icon name="pencil" size={28} /><span>Start tegning</span>
-            </button>
-          </section>
+          </div>
         )}
 
         {step === 'done' && (
           <section className="kid-screen kid-done">
             <div className="kid-done__badge"><Icon name="check" size={56} strokeWidth={2.2} /></div>
-            <h1 className="kid-title">Ruten er lagret</h1>
+            <h1 className="kid-title">Takk, ruten er lagret</h1>
             <p className="kid-big-number">{savedKm} km</p>
-            <p className="kid-sub">Takk! Ruten hjelper Finns Fairway å se hvilke veier barna bruker, og hvor det trengs tiltak.</p>
-            <button type="button" className="kid-big kid-big--outline kid-big--cta" onClick={() => { setDrawKey((k) => k + 1); setStep('draw'); }}><span>Tegn en rute til</span></button>
+            <button type="button" className="kid-big kid-big--outline kid-big--cta" onClick={() => { setDrawKey((k) => k + 1); setStep('draw'); }}><span>Tegn en til</span></button>
             <button type="button" className="kid-big kid-big--green kid-big--cta" onClick={() => router.push(backTo)}><span>Ferdig</span></button>
           </section>
         )}

@@ -23,7 +23,7 @@ let nextId = 1;
 // them. "Følg veien" off draws straight lines instead, for paths the router
 // doesn't know. Everything stays on the device until the adult presses save;
 // the caller then clips the start (home) zone before anything is sent.
-export default function RouteDrawer({ mode = 'sykkel', onSave, onCancel, saving = false }) {
+export default function RouteDrawer({ mode = 'sykkel', onModeChange, routeType = 'fritid', onRouteTypeChange, onSave, onCancel, saving = false }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const markersRef = useRef([]);
@@ -196,8 +196,14 @@ export default function RouteDrawer({ mode = 'sykkel', onSave, onCancel, saving 
   const canSave = !pending && !saving && distanceM >= MIN_ROUTE_M;
 
   let hint = '';
-  if (waypoints.length === 0) hint = 'Trykk på kartet der turen starter.';
-  else if (waypoints.length === 1) hint = 'Trykk videre langs veien, helt fram til målet.';
+  if (waypoints.length === 0) hint = 'Trykk der veien starter';
+  else if (waypoints.length === 1) hint = 'Trykk videre fram til målet';
+
+  // Leaving with a half-drawn route asks first.
+  const cancel = () => {
+    if (waypoints.length && typeof window !== 'undefined' && !window.confirm('Forkaste ruten?')) return;
+    onCancel?.();
+  };
 
   return (
     <div className="rd">
@@ -205,7 +211,7 @@ export default function RouteDrawer({ mode = 'sykkel', onSave, onCancel, saving 
       {!mapboxgl.accessToken && <div className="map-missing">Mapbox-token mangler.</div>}
 
       <div className="rd__top">
-        <button type="button" className="rd__cancel" onClick={onCancel}><Icon name="chevronLeft" size={20} strokeWidth={2.2} />Avbryt</button>
+        <button type="button" className="rd__cancel" onClick={cancel}><Icon name="chevronLeft" size={20} strokeWidth={2.2} />Avbryt</button>
         <PlaceSearch
           onPick={(pt) => mapRef.current?.flyTo({ center: [pt.lng, pt.lat], zoom: Math.max(mapRef.current.getZoom(), 15), duration: 700 })}
           getProximity={() => { const c = mapRef.current?.getCenter(); return c ? { lng: c.lng, lat: c.lat } : null; }}
@@ -213,16 +219,26 @@ export default function RouteDrawer({ mode = 'sykkel', onSave, onCancel, saving 
       </div>
 
       <div className="rd__panel">
+        <div className="rd__toggles">
+          <div className="rd__seg" role="group" aria-label="Sykle eller gå">
+            <button type="button" className={mode === 'sykkel' ? 'rd__segbtn rd__segbtn--on' : 'rd__segbtn'} aria-pressed={mode === 'sykkel'} onClick={() => onModeChange?.('sykkel')} disabled={saving}><Icon name="bike" size={16} />Sykle</button>
+            <button type="button" className={mode === 'gange' ? 'rd__segbtn rd__segbtn--on' : 'rd__segbtn'} aria-pressed={mode === 'gange'} onClick={() => onModeChange?.('gange')} disabled={saving}><Icon name="walk" size={16} />Gå</button>
+          </div>
+          <div className="rd__seg" role="group" aria-label="Hvor går veien">
+            <button type="button" className={routeType === 'fritid' ? 'rd__segbtn rd__segbtn--on' : 'rd__segbtn'} aria-pressed={routeType === 'fritid'} onClick={() => onRouteTypeChange?.('fritid')} disabled={saving}>Trening</button>
+            <button type="button" className={routeType === 'skole' ? 'rd__segbtn rd__segbtn--on' : 'rd__segbtn'} aria-pressed={routeType === 'skole'} onClick={() => onRouteTypeChange?.('skole')} disabled={saving}>Skole</button>
+          </div>
+        </div>
         {hint ? <p className="rd__hint">{hint}</p> : (
           <div className="rd__stats">
             <strong>{km} km</strong>
-            <span>ca. {minutes} min {mode === 'gange' ? 'å gå' : 'på sykkel'}</span>
+            <span>ca. {minutes} min</span>
           </div>
         )}
         {notice && <p className="rd__notice">{notice}</p>}
         <div className="rd__row">
           <button type="button" className="rd__tool" onClick={undo} disabled={!waypoints.length || saving}><Icon name="undo" size={18} />Angre</button>
-          <button type="button" className="rd__tool" onClick={clearAll} disabled={!waypoints.length || saving}><Icon name="close" size={18} />Fjern alt</button>
+          <button type="button" className="rd__tool" onClick={clearAll} disabled={!waypoints.length || saving}><Icon name="close" size={18} />Slett</button>
           <button type="button" className={snap ? 'rd__tool rd__tool--on' : 'rd__tool'} aria-pressed={snap} onClick={() => setSnap((v) => !v)} disabled={saving}>
             <Icon name="route" size={18} />Følg veien
           </button>
@@ -230,6 +246,7 @@ export default function RouteDrawer({ mode = 'sykkel', onSave, onCancel, saving 
         <button type="button" className="big-button big-button--primary rd__save" disabled={!canSave} onClick={() => onSave?.({ points, distanceM })}>
           {saving ? 'Lagrer …' : 'Lagre ruten'}
         </button>
+        <p className="rd__privacy"><Icon name="shield" size={13} />Lagres uten navn. De første 50 m fjernes.</p>
       </div>
     </div>
   );

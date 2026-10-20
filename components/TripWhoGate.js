@@ -5,7 +5,7 @@ function haptic(pattern = 8) {
   if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(pattern);
 }
 
-// "Hvem logger turen?" — asked every time a trip is about to be logged, so it
+// "Hvem logger?" — asked every time a trip is about to be logged, so it
 // is always clear who is behind the phone:
 //   - a child aged 13 or older logs their own trip live,
 //   - a child under 13 is told that an adult who is along on the trip logs
@@ -31,68 +31,62 @@ export default function TripWhoGate({ onPick, onBack, variant = 'kid' }) {
 
       {step === 'who' && (
         <>
-          <h2 className="who__title">Hvem logger turen?</h2>
+          <h2 className="who__title">Hvem logger?</h2>
           <div className="who__options">
             <button type="button" className="who-opt" onClick={() => pick('barn13')}>
               <span className="who-opt__ic"><Icon name="bike" size={26} /></span>
-              <span className="who-opt__txt"><strong>Jeg er 13 år eller eldre</strong><span>Du logger turen selv</span></span>
+              <span className="who-opt__txt"><strong>Jeg er 13 år eller eldre</strong></span>
               <Icon name="chevronRight" size={20} strokeWidth={2} />
             </button>
             <button type="button" className="who-opt" onClick={() => go('under13')}>
               <span className="who-opt__ic who-opt__ic--amber"><Icon name="child" size={26} /></span>
-              <span className="who-opt__txt"><strong>Jeg er under 13 år</strong><span>En voksen logger turen for deg</span></span>
+              <span className="who-opt__txt"><strong>Jeg er under 13 år</strong></span>
               <Icon name="chevronRight" size={20} strokeWidth={2} />
             </button>
             <button type="button" className="who-opt" onClick={() => go('adult')}>
               <span className="who-opt__ic"><Icon name="user" size={26} /></span>
-              <span className="who-opt__txt"><strong>Jeg er voksen</strong><span>Forelder, trener eller annen voksen</span></span>
+              <span className="who-opt__txt"><strong>Jeg er voksen</strong></span>
               <Icon name="chevronRight" size={20} strokeWidth={2} />
             </button>
           </div>
           <button type="button" className="who__why" aria-expanded={why} onClick={() => setWhy((v) => !v)}>
-            <Icon name="shield" size={16} />Hvorfor spør vi om dette?
+            <Icon name="shield" size={16} />Hvorfor spør vi?
           </button>
           {why && (
-            <p className="who__whytext">
-              Barn under 13 år skal ikke logge hvor de er, og skal ikke trenge egen telefon.
-              Vi lagrer aldri alder eller navn.
-            </p>
+            <p className="who__whytext">Barn under 13 år skal ikke logge hvor de er. Vi lagrer aldri alder eller navn.</p>
           )}
         </>
       )}
 
       {step === 'under13' && (
         <>
-          <h2 className="who__title who__title--icon"><span className="who__badge" aria-hidden="true"><Icon name="users" size={24} strokeWidth={1.8} /></span>En voksen logger turen</h2>
-          <p className="who__lead">
-            Under 13 år logger en voksen som er med på turen, på sin telefon. Du trenger ikke egen telefon.
-          </p>
+          <h2 className="who__title who__title--icon"><span className="who__badge" aria-hidden="true"><Icon name="users" size={24} strokeWidth={1.8} /></span>En voksen logger for deg</h2>
+          <p className="who__lead">En voksen som er med på turen, logger den på sin telefon.</p>
           <div className="who__tip">
             <Icon name="users" size={20} />
-            <span><strong>Sykle eller gå sammen med andre</strong>gjerne fra klubben din. Det er tryggere og morsommere.</span>
+            <span>Sykle eller gå gjerne sammen med andre fra klubben.</span>
           </div>
           <button type="button" className="who__primary" onClick={() => go('adult')}>
-            <Icon name="user" size={20} />Jeg er voksen og er med på turen
+            <Icon name="user" size={20} />Jeg er voksen
           </button>
         </>
       )}
 
       {step === 'adult' && (
         <>
-          <h2 className="who__title">Hvordan vil du registrere turen?</h2>
+          <h2 className="who__title">Hvordan?</h2>
           <div className="who__options">
             <button type="button" className="who-opt" onClick={() => pick('voksen-live')}>
               <span className="who-opt__ic"><Icon name="route" size={26} /></span>
-              <span className="who-opt__txt"><strong>Logg turen nå</strong><span>Telefonen din følger turen. Du må være med.</span></span>
+              <span className="who-opt__txt"><strong>Logg turen med GPS</strong><span>Du er med på turen nå</span></span>
               <Icon name="chevronRight" size={20} strokeWidth={2} />
             </button>
             <button type="button" className="who-opt" onClick={() => pick('voksen-tegn')}>
               <span className="who-opt__ic"><Icon name="pencil" size={24} /></span>
-              <span className="who-opt__txt"><strong>Tegn ruten på kartet</strong><span>Trykk deg fram langs veien barnet bruker.</span></span>
+              <span className="who-opt__txt"><strong>Tegn veien på kartet</strong><span>Vis veien barnet bruker</span></span>
               <Icon name="chevronRight" size={20} strokeWidth={2} />
             </button>
           </div>
-          <p className="who__note">Ruten lagres uten navn, og de første 50 meterne fra start fjernes alltid.</p>
         </>
       )}
     </div>

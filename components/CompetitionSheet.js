@@ -112,7 +112,7 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
     setView('list');
   };
 
-  // "Logg tur" always starts with "Hvem logger turen?" (components/TripWhoGate.js).
+  // "Logg tur" always starts with "Hvem logger?" (components/TripWhoGate.js).
   const openWho = (competition) => {
     haptic(8);
     setLogComp(competition || null);
