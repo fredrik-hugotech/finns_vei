@@ -51,7 +51,8 @@ function Columns({ title, values, labels, tickEvery = 1, unit = 'ankomster', tip
 }
 
 // Which schools and sports venues in Norway get the most shared e-scooter
-// traffic: parkings and rentals within 150 m, from Entur's open data.
+// traffic: parkings and rentals within 100 m (nearest place only), ranked by
+// net traffic above each place's own neighbourhood. From Entur's open data.
 export default function Sparkesykler() {
   const [range, setRange] = useState('7d');
   const [kind, setKind] = useState('');
@@ -62,6 +63,9 @@ export default function Sparkesykler() {
   const [kommuner, setKommuner] = useState([]);
   const [error, setError] = useState('');
   const [all, setAll] = useState(false);
+  const [query, setQuery] = useState('');
+  const [subtype, setSubtype] = useState(''); // '' | bane | hall
+  const [sort, setSort] = useState({ key: 'net', dir: -1 });
 
   useEffect(() => {
     let alive = true;
@@ -86,8 +90,34 @@ export default function Sparkesykler() {
   }, [range, kind, fylke, kommune]);
 
   const hours = useMemo(() => Array.from({ length: 24 }, (_, h) => String(h).padStart(2, '0')), []);
-  const places = data?.places || [];
+  const SORT_VALUE = {
+    net: (p) => p.netArrivals + p.netDepartures,
+    arrivals: (p) => p.arrivals,
+    school: (p) => (p.kind === 'skole' ? p.arrivalsSchoolHours : -1),
+    departures: (p) => p.departures,
+    name: (p) => p.name,
+  };
+  const places = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const list = (data?.places || []).filter((p) => (!subtype || p.type === subtype)
+      && (!q || p.name.toLowerCase().includes(q) || (p.kommuneNavn || '').toLowerCase().includes(q)));
+    const val = SORT_VALUE[sort.key];
+    return [...list].sort((a, b) => {
+      const x = val(a); const y = val(b);
+      return (typeof x === 'string' ? x.localeCompare(y, 'nb') : x - y) * sort.dir;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, query, subtype, sort]);
   const shown = all ? places : places.slice(0, SHOW);
+  const sortBy = (key) => setSort((s) => ({ key, dir: s.key === key ? -s.dir : (key === 'name' ? 1 : -1) }));
+  // A plain function (not a component) so the header buttons keep focus.
+  const th = (k, label) => (
+    <th scope="col" aria-sort={sort.key === k ? (sort.dir < 0 ? 'descending' : 'ascending') : 'none'}>
+      <button type="button" className={sort.key === k ? 'sk-sort sk-sort--on' : 'sk-sort'} onClick={() => sortBy(k)}>
+        {label}<span aria-hidden="true">{sort.key === k ? (sort.dir < 0 ? ' ↓' : ' ↑') : ''}</span>
+      </button>
+    </th>
+  );
   const collectingHours = data?.dataSince ? (Date.now() - new Date(data.dataSince)) / 3600000 : 0;
   const t = data?.totals;
   const area = kommune ? (kommuner.find((k) => k.nr === kommune)?.navn || 'kommunen') : (fylke ? FYLKER[fylke] || 'fylket' : 'Norge');
@@ -98,7 +128,7 @@ export default function Sparkesykler() {
       <BackofficeHeader title="Sparkesykler" />
       <main className="page admin-list-page sk">
         <p className="dash2__hint" style={{ margin: 0 }}>
-          Hvilke idrettsanlegg og skoler i Norge som får mest trafikk fra delte elsparkesykler: parkeringer og utleie innen 150 m. Fra Enturs åpne data, hvert 5. minutt.
+          Hvilke idrettsanlegg og skoler i Norge som får mest trafikk fra delte elsparkesykler: parkeringer og utleie innen 100 m, utover det som er vanlig i nabolaget. Fra Enturs åpne data, hvert 5. minutt.
         </p>
 
         <div className="sk-filters">
@@ -145,14 +175,27 @@ export default function Sparkesykler() {
             </div>
 
             <section className="sk-section">
-              <div className="sk-section__head"><h2>Mest trafikk</h2></div>
+              <div className="sk-section__head">
+                <h2>Mest trafikk</h2>
+                <div className="sk-listtools">
+                  {kind !== 'skole' && (
+                    <select className="comp-select" value={subtype} onChange={(e) => { setSubtype(e.target.value); setAll(false); }} aria-label="Type anlegg">
+                      <option value="">Alle typer</option>
+                      <option value="bane">Baner</option>
+                      <option value="hall">Haller</option>
+                      {kind === '' && <option value="skole">Skoler</option>}
+                    </select>
+                  )}
+                  <input type="search" className="sk-search" value={query} onChange={(e) => { setQuery(e.target.value); setAll(false); }} placeholder="Søk sted eller kommune" aria-label="Søk sted eller kommune" />
+                </div>
+              </div>
               {places.length === 0 ? (
                 <p className="admin-list-empty">Ingen sparkesykkeltrafikk registrert her i perioden ennå.</p>
               ) : (
                 <div className="sk-table-wrap">
                   <table className="sk-table sk-table--places">
                     <thead>
-                      <tr><th scope="col">#</th><th scope="col">Sted</th><th scope="col">Ankomster</th><th scope="col">I skoletid</th><th scope="col">Leid herfra</th></tr>
+                      <tr><th scope="col">#</th>{th('name', 'Sted')}{th('net', 'Netto')}{th('arrivals', 'Ankomster')}{th('school', 'I skoletid')}{th('departures', 'Leid herfra')}</tr>
                     </thead>
                     <tbody>
                       {shown.map((p, i) => (
@@ -163,6 +206,7 @@ export default function Sparkesykler() {
                             {p.name}
                             <span className="sk-type">{TYPE_LABEL[p.type] || p.type}{p.kommuneNavn ? ` · ${p.kommuneNavn}` : ''}</span>
                           </th>
+                          <td><strong>{nb(Math.max(0, p.netArrivals + p.netDepartures))}</strong></td>
                           <td>{nb(p.arrivals)}</td>
                           <td>{p.kind === 'skole' ? nb(p.arrivalsSchoolHours) : '–'}</td>
                           <td>{nb(p.departures)}</td>
@@ -179,7 +223,7 @@ export default function Sparkesykler() {
 
             <section className="sk-section">
               <div className="sk-section__head"><h2>Kart</h2></div>
-              <ScooterStatsMap places={places} focusKey={`${fylke}|${kommune}|${kind}|${range}`} />
+              <ScooterStatsMap places={places.slice(0, 300)} focusKey={`${fylke}|${kommune}|${kind}|${range}`} />
               <p className="sk-legend">
                 <span className="sk-swatch" style={{ background: '#2a78d6' }} aria-hidden="true" />Idrettsanlegg
                 <span className="sk-swatch" style={{ background: '#eb6834' }} aria-hidden="true" />Skole
@@ -195,7 +239,8 @@ export default function Sparkesykler() {
             <details className="sk-notes">
               <summary>Slik leses tallene</summary>
               <ul>
-                <li><b>Ankomst</b> er en sparkesykkel som blir parkert innen 150 m fra stedet etter en tur. <b>Leid herfra</b> er en som blir leid der. Sykler som operatøren setter ut i grupper, er holdt utenfor.</li>
+                <li><b>Ankomst</b> er en sparkesykkel som blir parkert innen 100 m fra stedet etter en tur. <b>Leid herfra</b> er en som blir leid der. Hver hendelse telles bare for det nærmeste stedet. Sykler som operatøren setter ut i grupper, er holdt utenfor.</li>
+                <li><b>Netto</b> er ankomster og utleie utover det som er vanlig i nabolaget: trafikken 200–300 m unna, omregnet til samme areal, trekkes fra. Et sted i et travelt sentrum kommer dermed ikke høyt bare fordi området er travelt.</li>
                 <li><b>I skoletid</b> er hverdager kl. 07–09 og 13–17.</li>
                 <li>Skolene er alle aktive grunnskoler i Utdanningsdirektoratets skoleregister. Idrettsanleggene er fotballbaner, haller og stadioner fra OpenStreetMap, der baner på samme anlegg er slått sammen.</li>
                 <li>Utleie krever 18 år, så tallene viser trafikken rundt stedene der barna er, ikke barnas egne turer.</li>

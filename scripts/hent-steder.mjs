@@ -26,6 +26,13 @@ const UA = { 'User-Agent': 'Finns Fairway (finnsvei.no)' };
 const MIN_PITCH_M2 = 1200; // bounding box; smaller is a ballbinge / løkke
 const MERGE_M = 130;
 const SKIP_SPORTS = /golf|tennis|beachvolleyball|equestrian|skateboard|table_tennis|shooting|motor|boules|padel|bowling|disc_golf/;
+// Halls are kept only for children's organised sport: team sports, gym,
+// swimming, ice. Commercial gyms, studios and shopping centres tagged
+// sports_centre in OSM are not where children's training happens.
+const ADULT_HALL_SPORTS = /fitness|yoga|crossfit|bodybuilding|weightlifting|pilates|boxing|martial_arts|karate|judo|taekwondo|kickboxing|mma|dance|billiards|squash|climbing|darts|chess|bowling/;
+const NOT_A_VENUE_NAME = /treningssenter|fitness|\bgym\b|kjøpesenter|storsenter|crossfit|\bsats\b|\bevo\b|elixia|spenst|\b3t\b|kung.?fu|karate|judo|taekwondo|yoga|pilates|dansestudio|klatre/i;
+// Schools inside hospitals or prisons share their grounds with unrelated traffic.
+const NOT_A_SCHOOL_NAME = /sykehus|fengsel|voksenoppl/i;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // Optional cache of raw source answers (CACHE_DIR=/some/dir) so a rerun after
 // a processing fix doesn't hit the servers again.
@@ -69,7 +76,7 @@ console.log(`${Object.keys(kommuner).length} kommuner`);
 const listed = [];
 for (const fylke of FYLKER) {
   const d = await json('https://data-nsr.udir.no/v4/enheter/sok', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ Fylkesnummer: fylke, InkluderSkoler: true, InkluderAktive: true }) });
-  const g = (d.EnhetListe || []).filter((x) => x.ErAktiv && x.ErSkole && x.ErGrunnskole && !/voksenoppl/i.test(x.Navn || ''));
+  const g = (d.EnhetListe || []).filter((x) => x.ErAktiv && x.ErSkole && x.ErGrunnskole && !NOT_A_SCHOOL_NAME.test(x.Navn || ''));
   listed.push(...g);
 }
 console.log(`${listed.length} aktive grunnskoler, henter koordinater …`);
@@ -129,6 +136,8 @@ for (const fylke of FYLKER) {
     const lng = e.lon ?? e.center?.lon ?? (b ? (b.minlon + b.maxlon) / 2 : NaN);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
     const isHall = ['sports_centre', 'sports_hall', 'ice_rink'].includes(t.leisure);
+    if (isHall && (ADULT_HALL_SPORTS.test(sport) && !/multi|handball|basketball|volleyball|floorball|soccer|swimming|gymnastics|ice/.test(sport))) continue;
+    if (t.name && NOT_A_VENUE_NAME.test(t.name)) continue;
     const a = bboxArea(e.bounds);
     if (t.leisure === 'pitch' && a != null && a < MIN_PITCH_M2) continue;
     raw.push({ osm: `${e.type[0]}${e.id}`, lat, lng, name: t.name || null, hall: isHall, weight: isHall || t.leisure === 'stadium' ? 2 : (t.name ? 1 : 0) });
