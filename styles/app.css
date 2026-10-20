@@ -5281,3 +5281,10 @@ a:focus-visible, button:focus-visible, label:focus-within { outline: 2px solid v
 .spor-modes .spor-mode { width: 100%; }
 .segmented:has(> :nth-child(3)) .segmented__option { align-items: center; display: inline-flex; gap: 0.25rem; justify-content: center; white-space: nowrap; }
 .nvdb-toggle--scooter.nvdb-toggle--active { background: #ede9fe; border-color: #6d28d9; color: #5b21b6; }
+.sk-filters { align-items: center; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.sk-kommune { max-width: 260px; min-height: 42px; }
+.sk-swatch { border-radius: 50%; display: inline-block; flex: none; height: 10px; margin-right: 0.4rem; vertical-align: middle; width: 10px; }
+.sk-legend .sk-swatch { margin-left: 0.4rem; }
+.sk-table--places td:first-child { color: var(--color-muted); text-align: left; width: 2rem; }
+.spor-modes--3 { grid-template-columns: repeat(3, 1fr) !important; }
+.sk-table--places thead th:nth-child(2) { text-align: left; }

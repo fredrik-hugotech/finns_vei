@@ -1,22 +1,14 @@
 import { isAdminRequest } from '../../../lib/backofficeAuth';
 import { checkRequestRateLimit } from '../../../lib/rateLimit';
-import { getScooterStats, hasSupabaseConfig } from '../../../lib/supabaseRest';
-import venues from '../../../data/demo-venues.json';
-import skoler from '../../../lib/skoler.json';
+import { getScooterPlaceStats, hasSupabaseConfig } from '../../../lib/supabaseRest';
 
-// Backoffice statistics for shared e-scooters in Kristiansand (Entur open
-// data, collected every 3 minutes in the database). Aggregates only — no
-// vehicle ids or single positions leave the database.
-const RATE_LIMIT = 60;
+// Backoffice: shared e-scooter traffic at schools and sports venues across
+// Norway (Entur open data, counted per place and hour in the database).
+// ?range=1d|7d|30d|90d  ?kommune=<kommunenummer>  ?type=anlegg|skole
+const RATE_LIMIT = 120;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
-const RANGES = { '1d': 1, '7d': 7, '30d': 30 };
+const RANGES = { '1d': 1, '7d': 7, '30d': 30, '90d': 90 };
 const TTL_MS = 2 * 60 * 1000;
-
-const PLACES = [
-  ...venues.map((v) => ({ name: v.name, type: v.type === 'hall' ? 'hall' : 'bane', lat: v.lat, lng: v.lng })),
-  ...skoler.schools.map((s) => ({ name: s.name, type: 'skole', lat: s.lat, lng: s.lng })),
-];
-
 const cache = new Map();
 
 export default async function handler(req, res) {
@@ -37,15 +29,19 @@ export default async function handler(req, res) {
   }
 
   const range = RANGES[req.query.range] ? req.query.range : '7d';
-  const cached = cache.get(range);
+  const kommune = /^\d{4}$/.test(String(req.query.kommune || '')) ? String(req.query.kommune) : null;
+  const kind = req.query.type === 'anlegg' || req.query.type === 'skole' ? req.query.type : null;
+  const key = `${range}|${kommune || ''}|${kind || ''}`;
+  const cached = cache.get(key);
   if (cached && Date.now() - cached.at < TTL_MS) return res.status(200).json(cached.data);
 
   try {
     const to = new Date();
     const from = new Date(to.getTime() - RANGES[range] * 86400000);
-    const stats = await getScooterStats({ from: from.toISOString(), to: to.toISOString(), places: PLACES });
-    const data = { range, ...stats };
-    cache.set(range, { at: Date.now(), data });
+    const stats = await getScooterPlaceStats({ from: from.toISOString(), to: to.toISOString(), kommune, kind });
+    const data = { range, kommune, type: kind, ...stats };
+    cache.set(key, { at: Date.now(), data });
+    if (cache.size > 200) cache.delete(cache.keys().next().value);
     return res.status(200).json(data);
   } catch (error) {
     console.error(error);

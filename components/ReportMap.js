@@ -511,46 +511,52 @@ function showCompetitionTrips(map, geojson) {
   applyCompetitionTrips(map);
 }
 
-// Admin layer "Sparkesykler": where shared e-scooter rides end (or start),
-// aggregated to ~150 m cells by /api/backoffice/sparkesykler. Same
-// latest-wish pattern as the trips layer, so a late answer or a pending
-// retry can never redraw it after it was switched off.
-function showScooterCells(map, cells) {
+// Admin layer "Sparkesykler": schools (orange) and sports venues (blue)
+// sized by shared e-scooter traffic within 150 m, from
+// /api/backoffice/sparkesykler. Same latest-wish pattern as the trips layer,
+// so a late answer or a pending retry can never redraw it after it was
+// switched off.
+const SCOOTER_KIND_COLOR = { anlegg: '#2a78d6', skole: '#eb6834' };
+function showScooterPlaces(map, places) {
   if (!map) return;
-  map.__scooterWanted = cells || [];
-  applyScooterCells(map);
+  map.__scooterWanted = places || [];
+  applyScooterPlaces(map);
 }
 
-function applyScooterCells(map) {
+function applyScooterPlaces(map) {
   if (!map.isStyleLoaded?.()) {
-    if (!map.__scooterRetry) map.__scooterRetry = setTimeout(() => { map.__scooterRetry = null; applyScooterCells(map); }, 200);
+    if (!map.__scooterRetry) map.__scooterRetry = setTimeout(() => { map.__scooterRetry = null; applyScooterPlaces(map); }, 200);
     return;
   }
   const data = {
     type: 'FeatureCollection',
-    features: (map.__scooterWanted || []).map(([lng, lat, n]) => ({ type: 'Feature', properties: { n }, geometry: { type: 'Point', coordinates: [lng, lat] } })),
+    features: (map.__scooterWanted || []).map((p) => ({
+      type: 'Feature',
+      properties: { name: p.name, kind: p.kind, arrivals: p.arrivals, departures: p.departures, total: p.arrivals + p.departures },
+      geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
+    })),
   };
-  const source = map.getSource('scooter-cells');
+  const source = map.getSource('scooter-places');
   if (source) { source.setData(data); return; }
-  map.addSource('scooter-cells', { type: 'geojson', data });
+  map.addSource('scooter-places', { type: 'geojson', data });
   map.addLayer({
-    id: 'scooter-cells',
+    id: 'scooter-places',
     type: 'circle',
-    source: 'scooter-cells',
+    source: 'scooter-places',
     paint: {
-      'circle-color': '#6d28d9',
-      'circle-radius': ['interpolate', ['linear'], ['sqrt', ['get', 'n']], 1, 4, 3, 9, 6, 16, 10, 24],
-      'circle-opacity': ['interpolate', ['linear'], ['get', 'n'], 1, 0.3, 10, 0.55, 40, 0.8],
+      'circle-color': ['match', ['get', 'kind'], 'skole', SCOOTER_KIND_COLOR.skole, SCOOTER_KIND_COLOR.anlegg],
+      'circle-radius': ['interpolate', ['linear'], ['sqrt', ['get', 'total']], 1, 5, 5, 10, 10, 16, 20, 26],
+      'circle-opacity': 0.85,
       'circle-stroke-color': '#ffffff',
-      'circle-stroke-width': 1,
+      'circle-stroke-width': 2,
     },
-  }, map.getLayer('reports-clusters') ? 'reports-clusters' : undefined);
-  map.on('click', 'scooter-cells', (e) => {
+  });
+  map.on('click', 'scooter-places', (e) => {
     const f = e.features?.[0];
     if (!f) return;
-    const n = f.properties.n;
-    new mapboxgl.Popup({ maxWidth: '220px' }).setLngLat(f.geometry.coordinates)
-      .setHTML(`<strong>${n}</strong> sparkesykkel${n === 1 ? 'tur' : 'turer'} ${map.__scooterView === 'starts' ? 'starter' : 'slutter'} her`).addTo(map);
+    const p = f.properties;
+    new mapboxgl.Popup({ maxWidth: '240px' }).setLngLat(f.geometry.coordinates)
+      .setHTML(`<strong>${escapeHtml(p.name)}</strong><br>${p.arrivals} sparkesykler parkert · ${p.departures} leid herfra`).addTo(map);
   });
 }
 
@@ -964,7 +970,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   const [sporOn, setSporOn] = useState(false);
   const [sporComps, setSporComps] = useState([]);
   const [scooterOn, setScooterOn] = useState(false);
-  const [scooterView, setScooterView] = useState('ends'); // ends | starts
+  const [scooterKind, setScooterKind] = useState(''); // '' | anlegg | skole
   const [scooterRange, setScooterRange] = useState('7d');
   const scooterOnRef = useRef(false);
   const scooterReqRef = useRef(0);
@@ -1383,19 +1389,18 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   const changeSporComp = (id) => { setSporCompId(id); drawSpor(id, sporMode); };
   const changeSporMode = (m) => { setSporMode(m); if (sporCompId) drawSpor(sporCompId, m); };
 
-  const drawScooters = async (range, view) => {
+  const drawScooters = async (range, kind) => {
     const map = mapRef.current;
     if (!map) return;
     const req = ++scooterReqRef.current;
     try {
-      const r = await fetch(`/api/backoffice/sparkesykler?range=${encodeURIComponent(range)}`);
+      const q = new URLSearchParams({ range, ...(kind ? { type: kind } : {}) });
+      const r = await fetch(`/api/backoffice/sparkesykler?${q}`);
       const d = r.ok ? await r.json() : null;
       if (req !== scooterReqRef.current || !scooterOnRef.current) return;
       if (!d) { setMessage('Kunne ikke hente sparkesykler.'); return; }
-      map.__scooterView = view;
-      const cells = view === 'starts' ? d.starts : d.ends;
-      showScooterCells(map, cells);
-      setMessage(cells?.length ? `${d.rentals} utleier · ${view === 'starts' ? 'hvor turene starter' : 'hvor turene slutter'}` : 'Ingen sparkesykkelturer registrert i perioden ennå.');
+      showScooterPlaces(map, d.places);
+      setMessage(d.places?.length ? `${d.places.length} steder med sparkesykkeltrafikk. Trykk på en sirkel for tall.` : 'Ingen sparkesykkeltrafikk registrert i perioden ennå.');
     } catch (_e) {
       if (req === scooterReqRef.current) setMessage('Kunne ikke hente sparkesykler.');
     }
@@ -1406,11 +1411,11 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     const next = !scooterOnRef.current;
     scooterOnRef.current = next;
     setScooterOn(next);
-    if (!next) { scooterReqRef.current += 1; showScooterCells(map, []); return; }
-    drawScooters(scooterRange, scooterView);
+    if (!next) { scooterReqRef.current += 1; showScooterPlaces(map, []); return; }
+    drawScooters(scooterRange, scooterKind);
   };
-  const changeScooterView = (v) => { setScooterView(v); drawScooters(scooterRange, v); };
-  const changeScooterRange = (r) => { setScooterRange(r); drawScooters(r, scooterView); };
+  const changeScooterKind = (k) => { setScooterKind(k); drawScooters(scooterRange, k); };
+  const changeScooterRange = (r) => { setScooterRange(r); drawScooters(r, scooterKind); };
 
   // Open a case sheet straight from a feature (shared-link deep links + clicks).
   const openReportCase = useCallback((feature) => {
@@ -1939,10 +1944,11 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
                     <option value="1d">Siste døgn</option>
                     <option value="7d">Siste 7 dager</option>
                     <option value="30d">Siste 30 dager</option>
+                    <option value="90d">Siste 90 dager</option>
                   </select>
-                  <div className="spor-modes" role="group" aria-label="Start eller slutt">
-                    {[['ends', 'Slutter'], ['starts', 'Starter']].map(([value, label]) => (
-                      <button key={value} type="button" className={scooterView === value ? 'spor-mode spor-mode--on' : 'spor-mode'} onClick={() => changeScooterView(value)}>{label}</button>
+                  <div className="spor-modes spor-modes--3" role="group" aria-label="Type sted">
+                    {[['', 'Alle'], ['anlegg', 'Anlegg'], ['skole', 'Skoler']].map(([value, label]) => (
+                      <button key={label} type="button" className={scooterKind === value ? 'spor-mode spor-mode--on' : 'spor-mode'} onClick={() => changeScooterKind(value)}>{label}</button>
                     ))}
                   </div>
                 </>

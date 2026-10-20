@@ -7,17 +7,13 @@ import { describeFetchError } from '../../lib/backofficeFormat';
 
 const ScooterStatsMap = dynamic(() => import('../../components/ScooterStatsMap'), { ssr: false, loading: () => <div className="sk-map sk-map--loading">Laster kart …</div> });
 
-const RANGES = [['1d', 'Siste døgn'], ['7d', '7 dager'], ['30d', '30 dager']];
+const RANGES = [['1d', 'Siste døgn'], ['7d', '7 dager'], ['30d', '30 dager'], ['90d', '90 dager']];
+const KINDS = [['', 'Alle'], ['anlegg', 'Anlegg'], ['skole', 'Skoler']];
 const WEEKDAYS = ['Man', 'Tir', 'Ons', 'Tor', 'Fre', 'Lør', 'Søn'];
 const TYPE_LABEL = { skole: 'Skole', bane: 'Bane', hall: 'Hall' };
+const SHOW = 25;
 
-const nb = (n, d = 0) => (n == null || Number.isNaN(Number(n)) ? '–' : Number(n).toLocaleString('nb-NO', { maximumFractionDigits: d }));
-const fmtDist = (m) => (m == null ? '–' : m < 1000 ? `${nb(m)} m` : `${nb(m / 1000, 1)} km`);
-const fmtMin = (min) => {
-  if (min == null) return '–';
-  if (min < 90) return `${nb(min)} min`;
-  return `${nb(min / 60, 1)} t`;
-};
+const nb = (n) => (n == null || Number.isNaN(Number(n)) ? '–' : Number(n).toLocaleString('nb-NO', { maximumFractionDigits: 0 }));
 function fmtDateTime(v) {
   const d = v ? new Date(v) : null;
   return d && !Number.isNaN(d.getTime()) ? d.toLocaleString('nb-NO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '–';
@@ -25,13 +21,13 @@ function fmtDateTime(v) {
 
 // One-series column chart: thin columns from one baseline, the peak labelled,
 // every column hoverable/focusable with its value; a table view below.
-function Columns({ title, values, labels, tickEvery = 1, unit = 'utleier', tipLabel = (l) => l }) {
+function Columns({ title, values, labels, tickEvery = 1, unit = 'ankomster', tipLabel = (l) => l }) {
   const max = Math.max(1, ...values);
   const peak = values.indexOf(Math.max(...values));
   return (
     <figure className="sk-chart">
       <figcaption className="sk-chart__title">{title}</figcaption>
-      <div className="sk-cols" role="img" aria-label={`${title}. Høyest: ${labels[peak]} med ${values[peak]} ${unit}.`}>
+      <div className="sk-cols" role="img" aria-label={`${title}. Høyest: ${tipLabel(labels[peak])} med ${values[peak]} ${unit}.`}>
         {values.map((v, i) => (
           <div key={labels[i]} className="sk-col" tabIndex={0} aria-label={`${tipLabel(labels[i])}: ${v} ${unit}`}>
             {i === peak && v > 0 && <span className="sk-col__peak" style={{ bottom: `calc(${(v / max) * 100}% + 2px)` }}>{nb(v)}</span>}
@@ -46,44 +42,51 @@ function Columns({ title, values, labels, tickEvery = 1, unit = 'utleier', tipLa
       <details className="sk-table-toggle">
         <summary>Vis som tabell</summary>
         <table className="sk-table">
-          <tbody>{labels.map((l, i) => <tr key={l}><th scope="row">{l}</th><td>{nb(values[i])}</td></tr>)}</tbody>
+          <tbody>{labels.map((l, i) => <tr key={l}><th scope="row">{tipLabel(l)}</th><td>{nb(values[i])}</td></tr>)}</tbody>
         </table>
       </details>
     </figure>
   );
 }
 
-// Shared e-scooters in Kristiansand: rentals, rides, timing and arrivals at
-// venues and schools — from Entur's open data, aggregated in the database.
+// Which schools and sports venues in Norway get the most shared e-scooter
+// traffic: parkings and rentals within 150 m, from Entur's open data.
 export default function Sparkesykler() {
   const [range, setRange] = useState('7d');
+  const [kind, setKind] = useState('');
+  const [kommune, setKommune] = useState('');
   const [data, setData] = useState(null);
+  const [kommuner, setKommuner] = useState([]);
   const [error, setError] = useState('');
-  const [mapView, setMapView] = useState('ends');
-  const [placeFilter, setPlaceFilter] = useState('alle');
-  const [allPlaces, setAllPlaces] = useState(false);
+  const [all, setAll] = useState(false);
 
   useEffect(() => {
     let alive = true;
     setData(null);
-    fetch(`/api/backoffice/sparkesykler?range=${range}`)
+    const q = new URLSearchParams({ range, ...(kind ? { type: kind } : {}), ...(kommune ? { kommune } : {}) });
+    fetch(`/api/backoffice/sparkesykler?${q}`)
       .then(async (r) => {
         if (r.status === 403) throw new Error('not-authed');
         if (!r.ok) throw new Error(await describeFetchError(r, 'Kunne ikke hente statistikk.'));
         return r.json();
       })
-      .then((d) => { if (alive) setData(d); })
+      .then((d) => {
+        if (!alive) return;
+        setData(d);
+        // The municipality list comes from the whole country, so keep the one
+        // fetched without a municipality filter.
+        if (!kommune && d.kommuner) setKommuner(d.kommuner);
+      })
       .catch((e) => { if (alive) setError(e.message === 'not-authed' ? 'not-authed' : e.message); });
     return () => { alive = false; };
-  }, [range]);
+  }, [range, kind, kommune]);
 
   const hours = useMemo(() => Array.from({ length: 24 }, (_, h) => String(h).padStart(2, '0')), []);
-  const places = useMemo(() => (data?.places || []).filter((p) => p.arrivals > 0 || p.departures > 0), [data]);
-  const shownPlaces = places.filter((p) => placeFilter === 'alle' || (placeFilter === 'skole' ? p.type === 'skole' : p.type !== 'skole'));
-  const days = data ? Math.max(1, (new Date(data.to) - new Date(Math.max(new Date(data.from), new Date(data.firstSnapshot || data.from)))) / 86400000) : 1;
-  const collectingHours = data?.firstSnapshot ? (Date.now() - new Date(data.firstSnapshot)) / 3600000 : 0;
-  const schoolHourArrivals = (data?.places || []).filter((p) => p.type === 'skole').reduce((n, p) => n + p.arrivals_school_hours, 0);
-  const linkedShare = data?.rentals ? Math.round((data.trips.count / data.rentals) * 100) : null;
+  const places = data?.places || [];
+  const shown = all ? places : places.slice(0, SHOW);
+  const collectingHours = data?.dataSince ? (Date.now() - new Date(data.dataSince)) / 3600000 : 0;
+  const t = data?.totals;
+  const area = kommune ? (kommuner.find((k) => k.nr === kommune)?.navn || 'kommunen') : 'Norge';
 
   return (
     <>
@@ -91,13 +94,26 @@ export default function Sparkesykler() {
       <BackofficeHeader title="Sparkesykler" />
       <main className="page admin-list-page sk">
         <p className="dash2__hint" style={{ margin: 0 }}>
-          Delte elsparkesykler i Kristiansand, fra Enturs åpne data. Hentes hvert 3. minutt. Vi ser når en sykkel leies og hvor den parkeres, ikke hvem som kjører.
+          Hvilke idrettsanlegg og skoler i Norge som får mest trafikk fra delte elsparkesykler: parkeringer og utleie innen 150 m. Fra Enturs åpne data, hvert 5. minutt.
         </p>
 
-        <div className="sk-tabs" role="tablist" aria-label="Periode">
-          {RANGES.map(([value, label]) => (
-            <button key={value} type="button" role="tab" aria-selected={range === value} className={range === value ? 'sk-tab sk-tab--on' : 'sk-tab'} onClick={() => setRange(value)}>{label}</button>
-          ))}
+        <div className="sk-filters">
+          <div className="sk-tabs" role="tablist" aria-label="Periode">
+            {RANGES.map(([value, label]) => (
+              <button key={value} type="button" role="tab" aria-selected={range === value} className={range === value ? 'sk-tab sk-tab--on' : 'sk-tab'} onClick={() => setRange(value)}>{label}</button>
+            ))}
+          </div>
+          <div className="sk-tabs" role="tablist" aria-label="Type sted">
+            {KINDS.map(([value, label]) => (
+              <button key={label} type="button" role="tab" aria-selected={kind === value} className={kind === value ? 'sk-tab sk-tab--on' : 'sk-tab'} onClick={() => { setKind(value); setAll(false); }}>
+                {value && <span className="sk-swatch" style={{ background: value === 'skole' ? '#eb6834' : '#2a78d6' }} aria-hidden="true" />}{label}
+              </button>
+            ))}
+          </div>
+          <select className="comp-select sk-kommune" value={kommune} onChange={(e) => { setKommune(e.target.value); setAll(false); }} aria-label="Kommune">
+            <option value="">Hele landet</option>
+            {kommuner.map((k) => <option key={k.nr} value={k.nr}>{k.navn} ({nb(k.arrivals)})</option>)}
+          </select>
         </div>
 
         {error === 'not-authed' && <p className="admin-list-empty">Logg inn først. <Link href="/backoffice">Til innlogging</Link></p>}
@@ -107,87 +123,72 @@ export default function Sparkesykler() {
         {data && (
           <>
             {collectingHours < 72 && (
-              <p className="admin-warning">
-                Innsamlingen startet {fmtDateTime(data.firstSnapshot)}. Tallene blir mer pålitelige etter noen dager, og ukedager etter et par uker.
-              </p>
+              <p className="admin-warning">Tellingen startet {fmtDateTime(data.dataSince)}. Tallene blir mer pålitelige etter noen dager, og ukedager etter et par uker.</p>
             )}
 
             <div className="sk-tiles">
-              <div className="sk-tile"><span>Utleier</span><strong>{nb(data.rentals)}</strong><em>{nb(data.rentals / days, 0)} per døgn</em></div>
-              <div className="sk-tile"><span>Typisk tur</span><strong>{fmtMin(data.trips.medianMin)}</strong><em>{fmtDist(data.trips.medianDistM)} i luftlinje</em></div>
-              <div className="sk-tile"><span>Ankomster ved skoler i skoletid</span><strong>{nb(schoolHourArrivals)}</strong><em>hverdager 07–08.30 og 13.30–16.30</em></div>
-              <div className="sk-tile"><span>Ledige nå</span><strong>{nb(data.fleetNow?.available)}</strong><em>snitt batteri {nb(data.fleetNow?.fuelPct)} %</em></div>
-            </div>
-
-            <div className="sk-grid">
-              <Columns title="Utleie per time på døgnet" values={data.byHour || []} labels={hours} tickEvery={3} tipLabel={(l) => `kl. ${l}–${String((Number(l) + 1) % 24).padStart(2, '0')}`} />
-              <Columns title="Utleie per ukedag" values={data.byWeekday || []} labels={WEEKDAYS} />
+              <div className="sk-tile"><span>Ankomster ved anlegg</span><strong>{nb(t.arrivalsAnlegg)}</strong><em>{area}</em></div>
+              <div className="sk-tile"><span>Ankomster ved skoler</span><strong>{nb(t.arrivalsSkole)}</strong><em>{nb(t.arrivalsSchoolHours)} i skoletid</em></div>
+              <div className="sk-tile"><span>Steder med trafikk</span><strong>{nb(t.placesWithTraffic)}</strong><em>av {nb(data.placesTracked)} anlegg og skoler</em></div>
+              <div className="sk-tile"><span>Ledige sparkesykler nå</span><strong>{nb(data.fleetNow?.available)}</strong><em>i hele Norge</em></div>
             </div>
 
             <section className="sk-section">
-              <div className="sk-section__head">
-                <h2>{mapView === 'ends' ? 'Hvor turene slutter' : 'Hvor turene starter'}</h2>
-                <div className="sk-tabs sk-tabs--small" role="tablist" aria-label="Kartvisning">
-                  <button type="button" role="tab" aria-selected={mapView === 'ends'} className={mapView === 'ends' ? 'sk-tab sk-tab--on' : 'sk-tab'} onClick={() => setMapView('ends')}>Slutter</button>
-                  <button type="button" role="tab" aria-selected={mapView === 'starts'} className={mapView === 'starts' ? 'sk-tab sk-tab--on' : 'sk-tab'} onClick={() => setMapView('starts')}>Starter</button>
-                </div>
-              </div>
-              <ScooterStatsMap cells={mapView === 'ends' ? data.ends : data.starts} places={data.places} />
-              <p className="sk-legend">
-                <span className="sk-legend__dot sk-legend__dot--cell" /> Turer (større og mørkere = flere)
-                <span className="sk-legend__dot sk-legend__dot--venue" /> Bane eller hall
-                <span className="sk-legend__dot sk-legend__dot--school" /> Skole
-              </p>
-            </section>
-
-            <section className="sk-section">
-              <div className="sk-section__head">
-                <h2>Anlegg og skoler</h2>
-                <div className="sk-tabs sk-tabs--small" role="tablist" aria-label="Filter">
-                  {[['alle', 'Alle'], ['anlegg', 'Anlegg'], ['skole', 'Skoler']].map(([v, l]) => (
-                    <button key={v} type="button" role="tab" aria-selected={placeFilter === v} className={placeFilter === v ? 'sk-tab sk-tab--on' : 'sk-tab'} onClick={() => setPlaceFilter(v)}>{l}</button>
-                  ))}
-                </div>
-              </div>
-              {shownPlaces.length === 0 ? (
-                <p className="admin-list-empty">Ingen ankomster registrert her ennå.</p>
+              <div className="sk-section__head"><h2>Mest trafikk</h2></div>
+              {places.length === 0 ? (
+                <p className="admin-list-empty">Ingen sparkesykkeltrafikk registrert her i perioden ennå.</p>
               ) : (
                 <div className="sk-table-wrap">
                   <table className="sk-table sk-table--places">
                     <thead>
-                      <tr><th scope="col">Sted</th><th scope="col">Ankomster</th><th scope="col">I skoletid</th><th scope="col">Leid herfra</th><th scope="col">Står typisk</th><th scope="col">Tur hit</th></tr>
+                      <tr><th scope="col">#</th><th scope="col">Sted</th><th scope="col">Ankomster</th><th scope="col">I skoletid</th><th scope="col">Leid herfra</th></tr>
                     </thead>
                     <tbody>
-                      {(allPlaces ? shownPlaces : shownPlaces.slice(0, 15)).map((p) => (
-                        <tr key={`${p.type}-${p.name}`}>
-                          <th scope="row">{p.name}<span className="sk-type">{TYPE_LABEL[p.type] || p.type}</span></th>
+                      {shown.map((p, i) => (
+                        <tr key={p.id}>
+                          <td>{i + 1}</td>
+                          <th scope="row">
+                            <span className="sk-swatch" style={{ background: p.kind === 'skole' ? '#eb6834' : '#2a78d6' }} aria-hidden="true" />
+                            {p.name}
+                            <span className="sk-type">{TYPE_LABEL[p.type] || p.type}{p.kommuneNavn ? ` · ${p.kommuneNavn}` : ''}</span>
+                          </th>
                           <td>{nb(p.arrivals)}</td>
-                          <td>{p.type === 'skole' ? nb(p.arrivals_school_hours) : '–'}</td>
+                          <td>{p.kind === 'skole' ? nb(p.arrivalsSchoolHours) : '–'}</td>
                           <td>{nb(p.departures)}</td>
-                          <td>{p.median_idle_s == null ? '–' : fmtMin(p.median_idle_s / 60)}</td>
-                          <td>{fmtDist(p.median_dist_in_m)}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                  {shownPlaces.length > 15 && (
-                    <button type="button" className="sk-more" onClick={() => setAllPlaces((v) => !v)}>
-                      {allPlaces ? 'Vis topp 15' : `Vis alle ${shownPlaces.length}`}
-                    </button>
+                  {places.length > SHOW && (
+                    <button type="button" className="sk-more" onClick={() => setAll((v) => !v)}>{all ? `Vis topp ${SHOW}` : `Vis alle ${places.length}`}</button>
                   )}
                 </div>
               )}
             </section>
 
+            <section className="sk-section">
+              <div className="sk-section__head"><h2>Kart</h2></div>
+              <ScooterStatsMap places={places} focusKey={`${kommune}|${kind}|${range}`} />
+              <p className="sk-legend">
+                <span className="sk-swatch" style={{ background: '#2a78d6' }} aria-hidden="true" />Idrettsanlegg
+                <span className="sk-swatch" style={{ background: '#eb6834' }} aria-hidden="true" />Skole
+                <span>Større sirkel = mer trafikk</span>
+              </p>
+            </section>
+
+            <div className="sk-grid">
+              <Columns title="Ankomster per time på døgnet" values={data.byHour || []} labels={hours} tickEvery={3} tipLabel={(l) => `kl. ${l}–${String((Number(l) + 1) % 24).padStart(2, '0')}`} />
+              <Columns title="Ankomster per ukedag" values={data.byWeekday || []} labels={WEEKDAYS} />
+            </div>
+
             <details className="sk-notes">
               <summary>Slik leses tallene</summary>
               <ul>
-                <li><b>Utleie</b> er en sykkel som forsvinner fra Enturs oversikt mellom to henteringer (hvert 3. minutt). <b>Ankomst</b> er en sykkel som dukker opp igjen, innen 150 m fra stedet.</li>
-                <li><b>Typisk tur</b> er medianen for turer der vi kan koble utleie og parkering til samme sykkel ({linkedShare == null ? '–' : `${linkedShare} %`} av utleiene). Avstand er luftlinje, så faktisk kjørt vei er lengre. Varighet er nøyaktig til omtrent 3 minutter.</li>
-                <li>Operatørens egen flytting og lading holdes utenfor: {nb(data.trips.service)} flyttinger med batteribytte og {nb(data.restocked)} sykler satt ut i grupper.</li>
-                <li><b>Står typisk</b> er hvor lenge en sykkel ble stående før den ble leid igjen. Kort tid betyr stor etterspørsel.</li>
-                <li>Utleie krever 18 år, så tallene viser trafikken rundt anlegg og skoler, ikke barnas egne turer.</li>
-                <li>Posisjoner lagres avrundet til ca. 30 m, uten sykkel-ID. Koblingen mellom utleie og parkering slettes etter 7 dager.</li>
+                <li><b>Ankomst</b> er en sparkesykkel som blir parkert innen 150 m fra stedet etter en tur. <b>Leid herfra</b> er en som blir leid der. Sykler som operatøren setter ut i grupper, er holdt utenfor.</li>
+                <li><b>I skoletid</b> er hverdager kl. 07–09 og 13–17.</li>
+                <li>Skolene er alle aktive grunnskoler i Utdanningsdirektoratets skoleregister. Idrettsanleggene er fotballbaner, haller og stadioner fra OpenStreetMap, der baner på samme anlegg er slått sammen.</li>
+                <li>Utleie krever 18 år, så tallene viser trafikken rundt stedene der barna er, ikke barnas egne turer.</li>
+                <li>Vi lagrer bare antall per sted og time. Detaljert sykkeldata slettes etter 3 dager.</li>
               </ul>
             </details>
           </>
