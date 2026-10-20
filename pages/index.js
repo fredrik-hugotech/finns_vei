@@ -349,6 +349,7 @@ export default function Home() {
         <ReportMap
           className="map-canvas"
           enableNvdbLayers
+          publicLayers
           pickMode={mode === 'pick'}
           pinnedPoint={mode === 'form' ? pickedPoint : null}
           onMapReady={handleMapReady}
