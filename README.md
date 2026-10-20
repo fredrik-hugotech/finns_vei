@@ -304,6 +304,34 @@ returns an empty list and the rest of the app is unaffected. The `mode`/weather/
 migrated yet, and `getCompetitionStats` falls back to a narrower `select` — so
 trips keep logging and stats keep working either way, migrated or not.
 
+## Bussavvik ved skolevei and sparkesykler (2026-10-20)
+
+**Bussavvik (public map layer + backoffice).** `lib/transitDisruptions.js`
+reads active SIRI SX situations for Agder Kollektivtrafikk from Entur's open
+journey planner API (GraphQL, no key, `ET-Client-Name` header), keeps those
+with affected stops within 3 km of a school, and flags stops within 500 m of
+a primary school (`lib/skoler.json`, from Utdanningsdirektoratet's Nasjonalt
+skoleregister; refresh with `node scripts/hent-skoler.mjs 4204`). Night-bus-
+only notices and adult education are excluded. Served publicly by
+`GET /api/avvik` (edge-cached 5 min, only what AKT already publishes) for the
+bus button on the map, and to staff by `/backoffice/skolevei-avvik`.
+
+**Sparkesykler (backoffice only).** Collected entirely inside the database —
+no Vercel cron, no secrets: `pg_cron` runs `scooter_collect()` every 3
+minutes, which fires a `pg_net` request to Entur's mobility API (GBFS) for
+Kristiansand and diffs the previous response against `scooter_state`:
+a scooter that leaves the feed is a rental (`scooter_events.kind = 'ut'`, with
+how long it stood), one that appears is a parking (`'inn'`, with how many
+appeared together — restocking when large), one that moves >40 m while
+visible is `'flyttet'`. Voi keeps vehicle ids while parked, so a rental and
+its parking are linked by `md5(id)` into rides (duration, straight-line
+distance); a battery increase marks operator service, not a ride. Positions
+are snapped to ~30 m; hashes are cleared after 7 days
+(`scooter_forget_hashes()`, daily). `scooter_stats(from, to, places)`
+aggregates everything for `/backoffice/sparkesykler` via
+`/api/backoffice/sparkesykler`. Renting requires 18, so this measures traffic
+around venues and schools, not children's own trips.
+
 ## Recurring hotspot / seasonal-pattern overview
 
 Backoffice staff can see which locations keep getting reported across *multiple different

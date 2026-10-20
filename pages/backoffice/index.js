@@ -235,6 +235,7 @@ function Dashboard({ me, onLogout }) {
             <Link className="dash2-link" href="/backoffice/gjentakende-steder">Gjentakende steder</Link>
             <Link className="dash2-link" href="/backoffice/tetthet">Sykkelspor</Link>
             <Link className="dash2-link" href="/backoffice/skolevei-avvik">Avvik ved skolevei</Link>
+            <Link className="dash2-link" href="/backoffice/sparkesykler">Sparkesykler</Link>
             <Link className="dash2-link" href="/backoffice/konkurranser">Konkurranser</Link>
             <Link className="dash2-link" href="/backoffice/statistikk">Statistikk</Link>
             {me.role === 'superuser' && <Link className="dash2-link" href="/backoffice/brukere">Brukere</Link>}
