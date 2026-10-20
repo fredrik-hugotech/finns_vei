@@ -111,10 +111,11 @@ export default function Sykkelspor() {
                   {competitions.map((c) => <option key={c.id} value={c.id}>{c.name}{c.active ? '' : ' (skjult)'}</option>)}
                 </select>
               )}
-              {modeCounts && (modeCounts.sykkel > 0 && modeCounts.gange > 0) && (
+              {modeCounts && Object.values(modeCounts).filter((n) => n > 0).length > 1 && (
                 <select className="comp-select" value={mode} onChange={(e) => onModeChange(e.target.value)}>
-                  <option value="">Alle ({modeCounts.sykkel + modeCounts.gange})</option>
+                  <option value="">Alle ({Object.values(modeCounts).reduce((a, b) => a + b, 0)})</option>
                   <option value="sykkel">Sykkel ({modeCounts.sykkel})</option>
+                  {modeCounts.sparkesykkel > 0 && <option value="sparkesykkel">Sparkesykkel ({modeCounts.sparkesykkel})</option>}
                   <option value="gange">Gange ({modeCounts.gange})</option>
                 </select>
               )}

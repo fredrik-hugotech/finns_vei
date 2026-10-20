@@ -22,7 +22,7 @@ const QUIZ_CHANCE = 1 / 3;
 // the leaderboard when it's actually still waiting to sync.
 // `quiz`: true/false forces the quiz or the tip (demo tour); default random.
 export default function TripCelebration({ km, mode = 'sykkel', weatherKind = null, queued = false, onDone, quiz }) {
-  const verb = mode === 'gange' ? 'gikk' : 'syklet';
+  const done = { gange: 'gikk', sparkesykkel: 'kjørte sparkesykkel', sykkel: 'syklet' }[mode] || 'syklet';
   const isPrecip = isPrecipKind(weatherKind);
   const weatherWord = weatherKind === 'snow' ? 'snøen' : weatherKind === 'sleet' ? 'sluddet' : 'regnet';
   const [showQuiz] = useState(() => (typeof quiz === 'boolean' ? quiz : Math.random() < QUIZ_CHANCE));
@@ -32,7 +32,7 @@ export default function TripCelebration({ km, mode = 'sykkel', weatherKind = nul
       <div className="kid-done__badge"><Icon name="check" size={56} strokeWidth={2.2} /></div>
       <h1 className="kid-title">Bra jobba!</h1>
       <p className="kid-big-number">{km} km</p>
-      <p className="kid-sub">Du {verb} {km} km i dag.</p>
+      <p className="kid-sub">Du {done} {km} km i dag.</p>
 
       {queued && (
         <p className="trip-cheer__queued">

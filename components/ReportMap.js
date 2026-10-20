@@ -504,12 +504,22 @@ function applyAerialTreatment(map) {
 // out as strong, bright lines and quiet ones stay faint. While the layer has
 // data we hide report markers. Passing an empty FC clears + restores.
 function showCompetitionTrips(map, geojson) {
-  if (!map || !map.isStyleLoaded?.()) {
+  if (!map) return;
+  // Remember only the LATEST wish: a retry scheduled for an older draw must
+  // never win over a newer "clear" (or vice versa) once the style is ready.
+  map.__compTripsWanted = geojson && geojson.type ? geojson : { type: 'FeatureCollection', features: [] };
+  applyCompetitionTrips(map);
+}
+
+function applyCompetitionTrips(map) {
+  if (!map.isStyleLoaded?.()) {
     // Style not ready yet — retry shortly so the overlay still appears.
-    if (map) setTimeout(() => showCompetitionTrips(map, geojson), 200);
+    if (!map.__compTripsRetry) {
+      map.__compTripsRetry = setTimeout(() => { map.__compTripsRetry = null; applyCompetitionTrips(map); }, 200);
+    }
     return;
   }
-  const data = geojson && geojson.type ? geojson : { type: 'FeatureCollection', features: [] };
+  const data = map.__compTripsWanted || { type: 'FeatureCollection', features: [] };
   const hasData = (data.features || []).length > 0;
 
   const source = map.getSource('competition-trips');
@@ -911,7 +921,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   const [sporOn, setSporOn] = useState(false);
   const [sporComps, setSporComps] = useState([]);
   const [sporCompId, setSporCompId] = useState('');
-  const [sporMode, setSporMode] = useState('samlet'); // samlet | sykkel | gange
+  const [sporMode, setSporMode] = useState('samlet'); // samlet | sykkel | sparkesykkel | gange
   const caseSheetDrag = useSheetDrag(() => setCaseData(null));
   const hasMapboxToken = Boolean(process.env.NEXT_PUBLIC_MAPBOX_TOKEN);
 
@@ -1284,23 +1294,30 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   // Admin-only "Sykkelspor" layer: the density left by competition rides.
   // Reuses the backoffice competition-trips endpoint + the map's density draw.
   // Admins pick which competition and whether to show all / cycling / walking.
+  // Each draw gets a number; an answer that arrives after the layer was
+  // switched off (or after a newer draw) is thrown away.
+  const sporReqRef = useRef(0);
+  const sporOnRef = useRef(false);
   const drawSpor = async (id, mode) => {
     const map = mapRef.current;
     if (!map || !id) return;
+    const req = ++sporReqRef.current;
     const q = mode && mode !== 'samlet' ? `&mode=${encodeURIComponent(mode)}` : '';
     try {
       const stats = await fetch(`/api/backoffice/competition-trips?id=${encodeURIComponent(id)}${q}`).then((r) => (r.ok ? r.json() : null));
+      if (req !== sporReqRef.current || !sporOnRef.current) return;
       showCompetitionTrips(map, stats?.geojson || { type: 'FeatureCollection', features: [] });
-      if (!stats?.geojson?.features?.length) setMessage(mode === 'gange' ? 'Ingen gå-turer logget ennå.' : (mode === 'sykkel' ? 'Ingen sykkelturer logget ennå.' : 'Ingen spor logget ennå.'));
+      if (!stats?.geojson?.features?.length) setMessage({ gange: 'Ingen gå-turer logget ennå.', sykkel: 'Ingen sykkelturer logget ennå.', sparkesykkel: 'Ingen sparkesykkelturer logget ennå.' }[mode] || 'Ingen spor logget ennå.');
     } catch (_e) { setMessage('Kunne ikke hente sykkelspor.'); }
   };
 
   const toggleSpor = async () => {
     const map = mapRef.current;
     if (!map) return;
-    const next = !sporOn;
+    const next = !sporOnRef.current;
+    sporOnRef.current = next;
     setSporOn(next);
-    if (!next) { showCompetitionTrips(map, { type: 'FeatureCollection', features: [] }); return; }
+    if (!next) { sporReqRef.current += 1; showCompetitionTrips(map, { type: 'FeatureCollection', features: [] }); return; }
     try {
       let comps = sporComps;
       if (!comps.length) {
@@ -1308,11 +1325,11 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         comps = list?.competitions || [];
         setSporComps(comps);
       }
-      if (!comps.length) { setMessage('Ingen konkurranser ennå.'); setSporOn(false); return; }
+      if (!comps.length) { setMessage('Ingen konkurranser ennå.'); sporOnRef.current = false; setSporOn(false); return; }
       const pick = comps.find((c) => c.id === sporCompId) || comps.find((c) => c.active) || comps[0];
       setSporCompId(pick.id);
       await drawSpor(pick.id, sporMode);
-    } catch (_e) { setMessage('Kunne ikke hente sykkelspor.'); setSporOn(false); }
+    } catch (_e) { setMessage('Kunne ikke hente sykkelspor.'); sporOnRef.current = false; setSporOn(false); }
   };
 
   const changeSporComp = (id) => { setSporCompId(id); drawSpor(id, sporMode); };
@@ -1819,7 +1836,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
                     {sporComps.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                   <div className="spor-modes" role="group" aria-label="Transportmåte">
-                    {[['samlet', 'Samlet'], ['sykkel', 'Sykle'], ['gange', 'Gå']].map(([value, label]) => (
+                    {[['samlet', 'Samlet'], ['sykkel', 'Sykle'], ['sparkesykkel', 'Sparkesykkel'], ['gange', 'Gå']].map(([value, label]) => (
                       <button
                         key={value}
                         type="button"

@@ -31,7 +31,6 @@ export default function TripWhoGate({ onPick, onBack, variant = 'kid' }) {
 
       {step === 'who' && (
         <>
-          <h2 className="who__title">Hvem logger?</h2>
           <div className="who__options">
             <button type="button" className="who-opt" onClick={() => pick('barn13')}>
               <span className="who-opt__ic"><Icon name="bike" size={26} /></span>
@@ -74,7 +73,6 @@ export default function TripWhoGate({ onPick, onBack, variant = 'kid' }) {
 
       {step === 'adult' && (
         <>
-          <h2 className="who__title">Hvordan?</h2>
           <div className="who__options">
             <button type="button" className="who-opt" onClick={() => pick('voksen-live')}>
               <span className="who-opt__ic"><Icon name="route" size={26} /></span>

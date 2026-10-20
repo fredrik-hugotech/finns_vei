@@ -528,14 +528,13 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
                 <button type="button" className="report-loc__change" onClick={() => { haptic(6); onChangeLocation?.(); }}>Endre</button>
               </div>
 
-              <span className="sheet-field__label">Hvem melder?</span>
               <div className="segmented" role="tablist" aria-label="Hvem melder">
-                <button type="button" role="tab" aria-selected={!isAdult} className={!isAdult ? 'segmented__option segmented__option--active' : 'segmented__option'} onClick={() => selectReporter(REPORTER_TYPES.CHILD)}>Barn</button>
-                <button type="button" role="tab" aria-selected={isAdult} className={isAdult ? 'segmented__option segmented__option--active' : 'segmented__option'} onClick={() => selectReporter(REPORTER_TYPES.ADULT)}>Voksen</button>
+                <button type="button" role="tab" aria-selected={!isAdult} className={!isAdult ? 'segmented__option segmented__option--active' : 'segmented__option'} onClick={() => selectReporter(REPORTER_TYPES.CHILD)}>Jeg er barn</button>
+                <button type="button" role="tab" aria-selected={isAdult} className={isAdult ? 'segmented__option segmented__option--active' : 'segmented__option'} onClick={() => selectReporter(REPORTER_TYPES.ADULT)}>Jeg er voksen</button>
               </div>
 
               <fieldset className="sheet-field">
-                <legend>Hva føles utrygt? <span className="sheet-field__hint">Velg én eller flere</span></legend>
+                <legend className="sr-only">Hva føles utrygt (velg én eller flere)</legend>
                 <div className="category-grid">
                   {REPORT_CATEGORIES.map((category) => {
                     const checked = form.categories.includes(category);
@@ -568,7 +567,7 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
               </div>
 
               <div className="sheet-field">
-                <label htmlFor="report-description" className="sheet-field__label">Beskriv stedet</label>
+                <label htmlFor="report-description" className="sr-only">Beskriv stedet</label>
                 {primaryCategory && (
                   <div className="suggestion-chips" role="group" aria-label="Forslag til beskrivelse">
                     {descriptionSuggestions(primaryCategory).map((phrase) => {
@@ -592,7 +591,6 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
 
               <div className="sheet-field">
                 <div className="image-row">
-                  <span className="sheet-field__label">Bilde <span className="sheet-field__hint">Valgfritt</span></span>
                   <div className="image-row__actions">
                     <label className="ui-button ui-button-secondary image-pick">
                       <Icon name="camera" size={19} />

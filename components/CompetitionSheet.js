@@ -62,7 +62,7 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
   const [club, setClub] = useState('');
   const [helmet, setHelmet] = useState(true);
   const [routeType, setRouteType] = useState('fritid');
-  const [mode, setMode] = useState('sykkel'); // sykkel | gange
+  const [mode, setMode] = useState('sykkel'); // sykkel | sparkesykkel | gange
   const [isAdmin, setIsAdmin] = useState(false);
   const sheetDrag = useSheetDrag(onClose);
   const distanceFact = stats ? pickDistanceFact(stats.totals?.distanceM) : null;
@@ -253,15 +253,16 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
               </div>
 
               <fieldset className="sheet-field">
-                <legend>Sykler eller går du?</legend>
+                <legend className="sr-only">Sykle, sparkesykkel eller gå</legend>
                 <div className="segmented">
                   <button type="button" className={mode === 'sykkel' ? 'segmented__option segmented__option--active' : 'segmented__option'} onClick={() => { haptic(6); setMode('sykkel'); }}><Icon name="bike" size={16} /> Sykle</button>
-                  <button type="button" className={mode === 'gange' ? 'segmented__option segmented__option--active' : 'segmented__option'} onClick={() => { haptic(6); setMode('gange'); }}><Icon name="activity" size={16} /> Gå</button>
+                  <button type="button" className={mode === 'sparkesykkel' ? 'segmented__option segmented__option--active' : 'segmented__option'} onClick={() => { haptic(6); setMode('sparkesykkel'); }}><Icon name="scooter" size={16} /> Sparkesykkel</button>
+                  <button type="button" className={mode === 'gange' ? 'segmented__option segmented__option--active' : 'segmented__option'} onClick={() => { haptic(6); setMode('gange'); }}><Icon name="walk" size={16} /> Gå</button>
                 </div>
               </fieldset>
 
               <fieldset className="sheet-field">
-                <legend>Hvor skal du?</legend>
+                <legend className="sr-only">Hvor turen går</legend>
                 <div className="segmented">
                   <button type="button" className={routeType === 'fritid' ? 'segmented__option segmented__option--active' : 'segmented__option'} onClick={() => { haptic(6); setRouteType('fritid'); }}><Icon name="activity" size={16} /> Fritid</button>
                   <button type="button" className={routeType === 'skole' ? 'segmented__option segmented__option--active' : 'segmented__option'} onClick={() => { haptic(6); setRouteType('skole'); }}><Icon name="school" size={16} /> Skole</button>
@@ -270,9 +271,8 @@ export default function CompetitionSheet({ onClose, onPickStart, initialCompetit
 
               {logComp?.clubs?.length > 0 && (
                 <label className="sheet-field">
-                  <span className="sheet-field__label">{loggedBy === 'voksen' ? 'Barnets klubb' : 'Klubben din'}</span>
                   <select className="comp-select" value={club} onChange={(event) => setClub(event.target.value)}>
-                    <option value="">Velg klubb …</option>
+                    <option value="">{loggedBy === 'voksen' ? 'Barnets klubb …' : 'Klubben din …'}</option>
                     {[...logComp.clubs]
                       .sort((a, b) => a.name.localeCompare(b.name, 'nb'))
                       .map((entry) => (

@@ -44,7 +44,7 @@ export default function Sykle() {
   const [competition, setCompetition] = useState(null);
   const [compChecked, setCompChecked] = useState(false);
   const [routeType, setRouteType] = useState('fritid');
-  const [mode, setMode] = useState('sykkel'); // sykkel | gange
+  const [mode, setMode] = useState('sykkel'); // sykkel | sparkesykkel | gange
   const [club, setClub] = useState('');
   const [helmet, setHelmet] = useState(true);
   const [result, setResult] = useState(null);
@@ -193,7 +193,6 @@ export default function Sykle() {
         {view === 'hub' && (
           <section className="kid-screen kid-hub">
             <div className="kid-brand"><Logo size="md" /></div>
-            <h1 className="kid-title">Hva vil du gjøre?</h1>
             <button type="button" className="kid-big kid-big--green" onClick={() => { haptic(10); setView('who'); }}>
               <Icon name="bike" size={42} strokeWidth={1.7} />
               <span>Registrer tur</span>
@@ -219,7 +218,8 @@ export default function Sykle() {
         {view === 'setup' && (
           <section className="kid-screen kid-screen--fit">
             <button type="button" className="kid-back" onClick={() => setView('who')}><Icon name="chevronLeft" size={20} strokeWidth={2.2} />Tilbake</button>
-            <h1 className="kid-title">Klar for tur?{loggedBy === 'voksen' && <span className="kid-voksen-tag"><Icon name="user" size={14} />Voksen er med</span>}</h1>
+            <h1 className="sr-only">Klar for tur</h1>
+            {loggedBy === 'voksen' && <span className="kid-voksen-tag kid-voksen-tag--solo"><Icon name="user" size={14} />Voksen er med</span>}
 
             {compChecked && (
               competition ? (
@@ -231,13 +231,12 @@ export default function Sykle() {
               )
             )}
 
-            <span className="kid-label">Hvordan?</span>
-            <div className="kid-choice">
+            <div className="kid-choice kid-choice--3">
               <button type="button" className={mode === 'sykkel' ? 'kid-pick kid-pick--on' : 'kid-pick'} onClick={() => { haptic(6); setMode('sykkel'); }}><Icon name="bike" size={26} /><span>Sykle</span></button>
+              <button type="button" className={mode === 'sparkesykkel' ? 'kid-pick kid-pick--on' : 'kid-pick'} onClick={() => { haptic(6); setMode('sparkesykkel'); }}><Icon name="scooter" size={26} /><span>Sparkesykkel</span></button>
               <button type="button" className={mode === 'gange' ? 'kid-pick kid-pick--on' : 'kid-pick'} onClick={() => { haptic(6); setMode('gange'); }}><Icon name="walk" size={26} /><span>Gå</span></button>
             </div>
 
-            <span className="kid-label">Hvor skal du?</span>
             <div className="kid-choice">
               <button type="button" className={routeType === 'fritid' ? 'kid-pick kid-pick--on' : 'kid-pick'} onClick={() => { haptic(6); setRouteType('fritid'); }}><Icon name="ball" size={26} /><span>Fritid</span></button>
               <button type="button" className={routeType === 'skole' ? 'kid-pick kid-pick--on' : 'kid-pick'} onClick={() => { haptic(6); setRouteType('skole'); }}><Icon name="school" size={26} /><span>Skole</span></button>
@@ -246,7 +245,6 @@ export default function Sykle() {
 
             {competition?.clubs?.length > 1 && (
               <>
-                <span className="kid-label">{loggedBy === 'voksen' ? 'Barnets lag' : 'Laget ditt'}</span>
                 <div className="kid-clubs">
                   {competition.clubs.map((c) => (
                     <button type="button" key={c.name} className={club === c.name ? 'kid-club kid-club--on' : 'kid-club'} onClick={() => { haptic(6); setClub(c.name); }}>{c.name}</button>
@@ -286,7 +284,7 @@ export default function Sykle() {
         {view === 'danger' && (
           <section className="kid-screen">
             <button type="button" className="kid-back" onClick={resetToHub}><Icon name="chevronLeft" size={20} strokeWidth={2.2} />Tilbake</button>
-            <h1 className="kid-title">Hva er farlig her?</h1>
+            <h1 className="sr-only">Hva er farlig her</h1>
             {dangerStatus && dangerStatus !== 'ready' && <p className="kid-hint">{dangerStatus}</p>}
             {dangerError && <button type="button" className="kid-back" onClick={openDanger}>Prøv igjen</button>}
             <div className="kid-danger-grid">

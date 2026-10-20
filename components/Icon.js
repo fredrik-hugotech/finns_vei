@@ -197,6 +197,13 @@ const ICONS = {
       <path d="m15 5 4 4" />
     </>
   ),
+  scooter: (
+    <>
+      <circle cx="6" cy="18" r="2.5" />
+      <circle cx="18.5" cy="18" r="2.5" />
+      <path d="M8.5 18h7.5M16.5 4h2l-2.5 14" />
+    </>
+  ),
 };
 
 export default function Icon({ name, size = 20, strokeWidth = 1.8, className, ...rest }) {

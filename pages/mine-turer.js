@@ -4,6 +4,7 @@ import Icon from '../components/Icon';
 import { useEffect, useState } from 'react';
 import { getMyTrips } from '../lib/myTrips';
 import { TRIP_QUEUE_CHANGED_EVENT, flushTripQueue, getPendingTrips } from '../lib/offlineTripQueue';
+import { MODE_ICON, MODE_PAST, normalizeMode } from '../lib/tripModes';
 
 function formatDate(iso) {
   if (!iso) return '';
@@ -71,7 +72,7 @@ export default function MineTurer() {
             <ul className="my-reports-list my-reports-list--pending">
               {pendingTrips.map((entry) => {
                 const km = formatKm(entry.payload?.distanceM);
-                const modeLabel = entry.payload?.mode === 'gange' ? 'Gikk' : 'Syklet';
+                const modeLabel = MODE_PAST[normalizeMode(entry.payload?.mode)];
                 return (
                   <li className="my-reports-item" key={entry.id}>
                     <div className="my-reports-item__head">
@@ -101,12 +102,13 @@ export default function MineTurer() {
                 {trips.map((entry, index) => {
                   const dateLabel = formatDate(entry.createdAt);
                   const drawn = entry.source === 'manuell';
-                  const modeLabel = drawn ? (entry.mode === 'gange' ? 'Tegnet gårute' : 'Tegnet sykkelrute') : (entry.mode === 'gange' ? 'Gikk' : 'Syklet');
+                  const m = normalizeMode(entry.mode);
+                  const modeLabel = drawn ? `Tegnet ${{ sykkel: 'sykkelrute', sparkesykkel: 'sparkesykkelrute', gange: 'gårute' }[m]}` : MODE_PAST[m];
                   const routeLabel = entry.routeType === 'skole' ? 'Skolerute' : 'Fritidsrute';
                   return (
                     // eslint-disable-next-line react/no-array-index-key
                     <li className="trip-row" key={`${entry.createdAt || 'ukjent'}-${index}`}>
-                      <span className="trip-row__icon" aria-hidden="true"><Icon name={drawn ? 'pencil' : (entry.mode === 'gange' ? 'walk' : 'bike')} size={20} /></span>
+                      <span className="trip-row__icon" aria-hidden="true"><Icon name={drawn ? 'pencil' : MODE_ICON[normalizeMode(entry.mode)]} size={20} /></span>
                       <span className="trip-row__main">
                         <strong>{formatKm(entry.distanceM)} km</strong>
                         <span>{modeLabel} · {routeLabel}{entry.weatherBonus ? ' · Værhelt' : ''}</span>

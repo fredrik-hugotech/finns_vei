@@ -1,6 +1,7 @@
 import { createBikeTrip, getCompetition, hasSupabaseConfig } from '../../lib/supabaseRest';
 import { pathDistanceMeters } from '../../lib/geoPrivacy';
 import { checkRequestRateLimit } from '../../lib/rateLimit';
+import { normalizeMode } from '../../lib/tripModes';
 
 // ~15 trip logs per 10 minutes per IP hash - a class of kids sharing one
 // gym/school wifi can log several trips in a row without tripping this.
@@ -69,7 +70,7 @@ export default async function handler(req, res) {
         cells: points.map((p) => [p.lng, p.lat]),
         path: body.path,
         routeType: body.routeType || null,
-        mode: body.mode === 'gange' ? 'gange' : 'sykkel',
+        mode: normalizeMode(body.mode),
         weather: null,
         tripToken: body.tripToken || null,
         source,
@@ -124,7 +125,7 @@ export default async function handler(req, res) {
       cells: Array.isArray(cells) ? cells : [],
       path: Array.isArray(path) ? path : [],
       routeType: routeType || null,
-      mode: mode === 'gange' ? 'gange' : 'sykkel',
+      mode: normalizeMode(mode),
       weather: weather && typeof weather === 'object' ? weather : null,
       tripToken: tripToken || null,
       source,

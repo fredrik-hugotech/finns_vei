@@ -172,7 +172,7 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mode =
     // yet, so a point marked while walking falls back to 'Annet' rather than
     // being mistagged as a cycling hazard.
     const category = mode === 'gange' ? 'Annet' : 'Farlig for sykkel';
-    const modeLabel = mode === 'gange' ? 'gåregistrering' : 'sykkelregistrering';
+    const modeLabel = { gange: 'gåregistrering', sparkesykkel: 'sparkesykkelregistrering' }[mode] || 'sykkelregistrering';
     // Same JSON-serializable shape ReportSheet.js queues on a genuine
     // connectivity failure (see buildQueuePayload/handleOfflineSubmit there) —
     // an image-free report, safe to park in the offline queue and auto-resend.
@@ -271,7 +271,7 @@ export default function TripTracker({ club, helmet, routeType = 'fritid', mode =
 
       <div className={acquiring ? 'bike-track bike-track--wait' : 'bike-track'} aria-hidden="true">
         <div className="bike-track__road" />
-        <div className="bike-track__bike"><Icon name="bike" size={34} strokeWidth={1.7} /></div>
+        <div className="bike-track__bike"><Icon name={mode === 'sparkesykkel' ? 'scooter' : mode === 'gange' ? 'walk' : 'bike'} size={34} strokeWidth={1.7} /></div>
       </div>
 
       <div className="trip-tracker__stats trip-tracker__stats--two">

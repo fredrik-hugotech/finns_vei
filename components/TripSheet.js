@@ -62,15 +62,16 @@ export default function TripSheet({ competitions = [], onClose, onPickStart }) {
               </div>
 
               <fieldset className="sheet-field">
-                <legend>Hvordan?</legend>
+                <legend className="sr-only">Sykle, sparkesykkel eller gå</legend>
                 <div className="segmented">
                   <button type="button" className={mode === 'sykkel' ? 'segmented__option segmented__option--active' : 'segmented__option'} onClick={() => { haptic(6); setMode('sykkel'); }}><Icon name="bike" size={16} /> Sykle</button>
+                  <button type="button" className={mode === 'sparkesykkel' ? 'segmented__option segmented__option--active' : 'segmented__option'} onClick={() => { haptic(6); setMode('sparkesykkel'); }}><Icon name="scooter" size={16} /> Sparkesykkel</button>
                   <button type="button" className={mode === 'gange' ? 'segmented__option segmented__option--active' : 'segmented__option'} onClick={() => { haptic(6); setMode('gange'); }}><Icon name="walk" size={16} /> Gå</button>
                 </div>
               </fieldset>
 
               <fieldset className="sheet-field">
-                <legend>Hvor skal {loggedBy === 'voksen' ? 'dere' : 'du'}?</legend>
+                <legend className="sr-only">Hvor turen går</legend>
                 <div className="segmented">
                   <button type="button" className={routeType === 'fritid' ? 'segmented__option segmented__option--active' : 'segmented__option'} onClick={() => { haptic(6); setRouteType('fritid'); }}><Icon name="ball" size={16} /> Trening og fritid</button>
                   <button type="button" className={routeType === 'skole' ? 'segmented__option segmented__option--active' : 'segmented__option'} onClick={() => { haptic(6); setRouteType('skole'); }}><Icon name="school" size={16} /> Skole</button>
@@ -79,9 +80,8 @@ export default function TripSheet({ competitions = [], onClose, onPickStart }) {
 
               {competitions.length > 0 && (
                 <label className="sheet-field">
-                  <span className="sheet-field__label">{competitions.length === 1 ? `Teller i ${competitions[0].name}` : 'Teller i konkurranse'}</span>
-                  <select className="comp-select" value={countsIn} onChange={(e) => { setCountsIn(e.target.value); setError(''); }}>
-                    <option value="?" disabled>{loggedBy === 'voksen' ? 'Velg barnets klubb …' : 'Velg klubben din …'}</option>
+                  <select className="comp-select" aria-label="Teller i konkurranse" value={countsIn} onChange={(e) => { setCountsIn(e.target.value); setError(''); }}>
+                    <option value="?" disabled>{competitions.length === 1 ? `Klubb i ${competitions[0].name} …` : 'Konkurranse og klubb …'}</option>
                     {countOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                     <option value="">Ingen konkurranse</option>
                   </select>
