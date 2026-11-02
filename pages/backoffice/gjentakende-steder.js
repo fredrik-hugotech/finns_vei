@@ -53,11 +53,8 @@ export default function GjentakendeSteder() {
       <BackofficeHeader title="Gjentakende steder" />
       <main className="page admin-list-page">
         <p className="dash2__hint" style={{ margin: 0 }}>
-          Steder som får meldinger igjen og igjen på tvers av flere ulike sesonger eller år — ikke bare mye
-          engasjement akkurat nå. Rangert etter hvor mange ulike perioder stedet har dukket opp i, ikke
-          rått meldingsantall: et sted med 6 meldinger fordelt på 3 forskjellige år er et sterkere signal om
-          et kronisk problem enn 10 meldinger fra én travel uke. Se{' '}
-          <Link href="/backoffice/hotteste">Hotteste saker</Link> for åpne saker rangert etter engasjement akkurat nå.
+          Steder det meldes om i flere ulike sesonger eller år, altså varige problemer og ikke en travel uke.
+          For det som engasjerer mest akkurat nå, se <Link href="/backoffice/hotteste">Hotteste saker</Link>.
         </p>
 
         {error === 'not-authed' && (

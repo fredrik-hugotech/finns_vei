@@ -89,7 +89,7 @@ export default function MineTurer() {
           {isLoading && <p className="ui-small-text">Laster …</p>}
 
           {isEmpty && (
-            <p className="my-reports-empty">Ingen turer ennå. Trykk på pokalen på kartet og velg «Logg en tur» for å starte. Du trenger ikke være med i en konkurranse.</p>
+            <p className="my-reports-empty">Ingen turer ennå. Trykk «Logg tur» på forsiden for å starte. Du trenger ikke være med i en konkurranse.</p>
           )}
 
           {!isLoading && trips.length > 0 && (

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { applyLocalLabelNames } from '../lib/mapLabels';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { DEFAULT_CENTER } from '../lib/config';
@@ -139,6 +140,7 @@ export default function RouteDrawer({ mode = 'sykkel', onModeChange, routeType =
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right');
     map.doubleClickZoom.disable();
     map.on('load', () => {
+      applyLocalLabelNames(map);
       map.addSource('draw-route', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addLayer({ id: 'draw-route-casing', type: 'line', source: 'draw-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 9 } });
       map.addLayer({
@@ -220,8 +222,9 @@ export default function RouteDrawer({ mode = 'sykkel', onModeChange, routeType =
 
       <div className="rd__panel">
         <div className="rd__toggles">
-          <div className="rd__seg" role="group" aria-label="Sykle eller gå">
+          <div className="rd__seg rd__seg--3" role="group" aria-label="Sykle, sparkesykkel eller gå">
             <button type="button" className={mode === 'sykkel' ? 'rd__segbtn rd__segbtn--on' : 'rd__segbtn'} aria-pressed={mode === 'sykkel'} onClick={() => onModeChange?.('sykkel')} disabled={saving}><Icon name="bike" size={16} />Sykle</button>
+            <button type="button" className={mode === 'sparkesykkel' ? 'rd__segbtn rd__segbtn--on' : 'rd__segbtn'} aria-pressed={mode === 'sparkesykkel'} onClick={() => onModeChange?.('sparkesykkel')} disabled={saving}><Icon name="scooter" size={16} />Sparkesykkel</button>
             <button type="button" className={mode === 'gange' ? 'rd__segbtn rd__segbtn--on' : 'rd__segbtn'} aria-pressed={mode === 'gange'} onClick={() => onModeChange?.('gange')} disabled={saving}><Icon name="walk" size={16} />Gå</button>
           </div>
           <div className="rd__seg" role="group" aria-label="Hvor går veien">

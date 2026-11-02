@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { applyLocalLabelNames } from '../lib/mapLabels';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
@@ -43,6 +44,7 @@ export default function ScooterStatsMap({ places, focusKey }) {
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right');
     map.on('load', () => {
+      applyLocalLabelNames(map);
       map.addSource('places', { type: 'geojson', data: asGeojson(placesRef.current) });
       map.addLayer({
         id: 'places',

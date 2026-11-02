@@ -1,10 +1,11 @@
 import Head from 'next/head';
 import Link from 'next/link';
+import BackofficeHeader from '../../components/BackofficeHeader';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Logo from '../../components/Logo';
 import { reportStatusMeta } from '../../lib/reportStatusMeta';
 import { REPORT_STATUS } from '../../lib/config';
-import { timeAgo, describeFetchError } from '../../lib/backofficeFormat';
+import { timeAgo, staffName, describeFetchError } from '../../lib/backofficeFormat';
 
 const FLAG = 'ff-admin-secret'; // client "logged in" flag; real auth is the httpOnly cookie
 const STATUSES = [REPORT_STATUS.NEW, REPORT_STATUS.REGISTERED, REPORT_STATUS.STARTED, REPORT_STATUS.DONE];
@@ -61,7 +62,7 @@ export default function Backoffice() {
     setMe(null);
   };
 
-  if (checked && me) return <Dashboard me={me} onLogout={logout} />;
+  if (checked && me) return <Dashboard me={me} />;
 
   return (
     <>
@@ -74,7 +75,7 @@ export default function Backoffice() {
           <>
             <form className="admin-login__card" onSubmit={login}>
               <h1>Logg inn</h1>
-              <p className="admin-login__sub">For ansatte i Finns Fairway.</p>
+              <p className="admin-login__sub">Finnsvei for ansatte i Finns.Fairway.</p>
               <input type="email" className="admin-login__input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="E-post" autoComplete="username" autoFocus />
               <input type="password" className="admin-login__input" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Passord" autoComplete="current-password" />
               {error && <p className="admin-login__error">{error}</p>}
@@ -89,7 +90,7 @@ export default function Backoffice() {
   );
 }
 
-function Dashboard({ me, onLogout }) {
+function Dashboard({ me }) {
   const [cases, setCases] = useState(null);
   const [truncated, setTruncated] = useState(false);
   const [boardUrl, setBoardUrl] = useState('');
@@ -174,7 +175,7 @@ function Dashboard({ me, onLogout }) {
         {hasFoot && (
           <span className="admin-list-item__foot">
             {dueBadge(c)}
-            {c.assignee_email && <span className="admin-list-item__assignee">{c.assignee_email.split('@')[0]}</span>}
+            {c.assignee_email && <span className="admin-list-item__assignee">{staffName(c.assignee_email)}</span>}
           </span>
         )}
       </Link>
@@ -184,13 +185,13 @@ function Dashboard({ me, onLogout }) {
   return (
     <>
       <Head><title>Dashbord – Finnsvei</title><meta name="robots" content="noindex" /></Head>
+      <BackofficeHeader title="Oversikt" />
       <main className="page admin-page dash2">
         <header className="dash2__top">
           <div>
             <h1>{greetingFor(me.name)}</h1>
             <p className="dash2__sub">Innlogget som {me.email}{me.role === 'superuser' ? ' · superbruker' : ''}</p>
           </div>
-          <button type="button" className="dash2__logout" onClick={onLogout}>Logg ut</button>
         </header>
 
         {error === 'not-authed' && (
@@ -243,6 +244,7 @@ function Dashboard({ me, onLogout }) {
           </div>
         </section>
 
+        <div className="dash2__cols">
         {mine.length > 0 && (
           <section>
             <h2 className="dash2__h2">Mine saker <span className="dash2__hint">tildelt deg</span></h2>
@@ -269,6 +271,7 @@ function Dashboard({ me, onLogout }) {
           {cases && minDag.length === 0 && <p className="comp-muted">Ingen nye saker akkurat nå. Fint jobbet.</p>}
           <div className="admin-list">{minDag.map(renderCase)}</div>
         </section>
+        </div>
 
         <ChangePassword />
       </main>

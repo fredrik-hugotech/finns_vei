@@ -50,7 +50,7 @@ export default function Personvern() {
             </p>
             <p>
               Ruten klippes både på telefonen og hos oss, slik at de første 50 meterne fra start (ofte hjemmet) aldri
-              lagres, og bare Stiftelsen Finns Fairway ser varmekartet over hvor barn ferdes, aldri offentligheten.
+              lagres, og bare Stiftelsen Finns.Fairway ser varmekartet over hvor barn ferdes, aldri offentligheten.
             </p>
           </div>
 

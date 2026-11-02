@@ -2,7 +2,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { reportStatusMeta } from '../../lib/reportStatusMeta';
-import { timeAgo, ownerShort, describeFetchError } from '../../lib/backofficeFormat';
+import { timeAgo, ownerShort, staffName, describeFetchError } from '../../lib/backofficeFormat';
 
 const TTL_MINUTES = 5;
 import BackofficeHeader from '../../components/BackofficeHeader';
@@ -42,7 +42,7 @@ export default function Hotteste() {
       <BackofficeHeader title="Hotteste saker" />
       <main className="page admin-list-page">
         <p className="dash2__hint" style={{ margin: 0 }}>
-          Åpne saker rangert etter «hetegrad» — innbyggerstøtte og hvor mange ulike bekymringer saken samler. Ikke Trello-rekkefølge.
+          Åpne saker rangert etter innbyggerstøtte og hvor mange ulike bekymringer de samler.
         </p>
 
         {error === 'not-authed' && <p className="admin-list-empty">Logg inn først. <Link href="/backoffice">Til innlogging</Link></p>}
@@ -85,8 +85,8 @@ export default function Hotteste() {
                   {topFacets.map((f) => (
                     <span key={f.category} className="admin-list-item__tag">{f.category}{f.count > 1 ? ` · ${f.count}` : ''}</span>
                   ))}
-                  {days !== null && <span className="sak-due">{days === 0 ? 'Åpnet i dag' : `${days} d åpen`}</span>}
-                  {c.assignee_email && <span className="admin-list-item__assignee">{c.assignee_email.split('@')[0]}</span>}
+                  {days !== null && <span className="sak-due">{days === 0 ? 'Åpnet i dag' : `Åpen i ${days} ${days === 1 ? 'dag' : 'dager'}`}</span>}
+                  {c.assignee_email && <span className="admin-list-item__assignee">{staffName(c.assignee_email)}</span>}
                 </span>
               </Link>
             );

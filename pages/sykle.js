@@ -182,7 +182,7 @@ export default function Sykle() {
     <>
       <Head>
         <title>Finnsvei – Sykle</title>
-        <meta name="description" content="Registrer turen din og meld fra om farlige steder." />
+        <meta name="description" content="Logg turen din og meld fra om farlige steder." />
         {/* Map page: pinch-zoom disabled so pinch gestures control the Mapbox
             map instead of the page (overrides the permissive default in _app.js). */}
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
@@ -195,7 +195,7 @@ export default function Sykle() {
             <div className="kid-brand"><Logo size="md" /></div>
             <button type="button" className="kid-big kid-big--green" onClick={() => { haptic(10); setView('who'); }}>
               <Icon name="bike" size={42} strokeWidth={1.7} />
-              <span>Registrer tur</span>
+              <span>Logg tur</span>
             </button>
             <button type="button" className="kid-big kid-big--outline" onClick={openDanger}>
               <Icon name="flag" size={40} strokeWidth={1.8} />

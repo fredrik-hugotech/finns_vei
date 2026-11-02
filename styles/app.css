@@ -5354,3 +5354,118 @@ button.app-menu__item { width: 100%; }
    take clicks, so the Flyfoto toggle underneath it stays usable. */
 .fab-row { pointer-events: none; }
 .fab-row > * { pointer-events: auto; }
+
+/* ===== Backoffice (2026-11): one shell, real desktop layouts ===== */
+/* Top bar: phones show back + title; larger screens show brand + navigation. */
+.bo-header { gap: 0.75rem; min-height: 56px; }
+.bo-header__brand { align-items: center; color: var(--color-primary); display: none; gap: 0.5rem; text-decoration: none; }
+.bo-header__brand .logo { height: 26px; width: auto; }
+.bo-header__brand .logo svg { height: 26px; width: auto; }
+.bo-header__brandtext { color: var(--color-text); font-family: var(--font-heading); font-size: 1rem; font-weight: 800; letter-spacing: -0.01em; }
+.bo-header__nav { display: none; }
+.bo-header__logout { border-radius: 8px; font-weight: 600; padding: 0.4rem 0.6rem; text-decoration: none; }
+.bo-header__logout:hover { background: var(--color-surface-muted); color: var(--color-text); }
+/* On the overview there is nothing to go back to: show the brand instead. */
+.bo-header:not(:has(.bo-header__back)) .bo-header__brand { display: inline-flex; }
+.bo-header:not(:has(.bo-header__back)) .bo-header__title { text-align: left; }
+@media (min-width: 900px) {
+  .bo-header { justify-content: flex-start; padding-left: 1.5rem; padding-right: 1.5rem; }
+  .bo-header__brand { display: inline-flex; margin-right: 1rem; }
+  .bo-header__back, .bo-header__title { display: none; }
+  .bo-header__nav { align-items: center; display: flex; flex: 1; gap: 0.15rem; }
+  .bo-header__link { border-radius: 8px; color: var(--color-muted); font-size: 0.92rem; font-weight: 650; padding: 0.45rem 0.75rem; text-decoration: none; white-space: nowrap; }
+  .bo-header__link:hover { background: var(--color-surface-muted); color: var(--color-text); }
+  .bo-header__link--on { background: var(--color-primary-tint, #e8f1ee); color: var(--color-primary); }
+}
+
+/* Wider pages on desktop instead of a phone column in the middle. */
+@media (min-width: 900px) {
+  .admin-list-page { max-width: 920px; padding-top: 1.6rem; }
+  .admin-list-page.sk { max-width: 1180px; }
+  .stats-page { max-width: 920px; padding-top: 1.6rem; }
+  .admin-page { padding-top: 1.6rem; }
+}
+
+/* Overview */
+.dash2__pulse { grid-template-columns: repeat(3, 1fr) !important; grid-auto-flow: row !important; overflow: visible !important; }
+@media (min-width: 640px) { .dash2__pulse { grid-template-columns: repeat(6, 1fr) !important; } }
+.dash2__cols { display: grid; gap: 1.4rem; }
+@media (min-width: 1000px) {
+  .admin-page.dash2 { max-width: 1180px; }
+  .dash2__grid { grid-template-columns: repeat(6, 1fr); }
+  .dash2__cols { align-items: start; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Case page: work on the left, facts and tools on the right. On phones the
+   two columns dissolve and the details come right after the description. */
+.sak-col { display: contents; }
+.sak-col--main > .sak-hero { order: 1; }
+.sak-col--main > .sak-referral { order: 2; }
+.sak-col--side > .tkt-detail { order: 3; }
+.sak-col--main > .tkt-activity-card { order: 4; }
+.sak-col--side > :not(.tkt-detail) { order: 5; }
+@media (min-width: 1100px) {
+  .sak-page { align-items: start; column-gap: 1.25rem; grid-template-columns: minmax(0, 1fr) 380px; max-width: 1200px; }
+  .sak-page > .sak-flashbar, .sak-page > .sak-nav, .sak-page > .admin-status, .sak-page > .admin-list-empty { grid-column: 1 / -1; }
+  .sak-col { align-content: start; display: grid; gap: 0.85rem; }
+}
+
+/* Statistics */
+.segmented:has(> :nth-child(4)) { grid-template-columns: repeat(4, 1fr); }
+.stats-trend { grid-auto-columns: minmax(0, 1fr); gap: 0.3rem; }
+.stats-trend__bar { align-self: end; }
+.stats-trend__label { font-size: 0.68rem; line-height: 1.2; overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  .stats-trend__col:nth-child(even) .stats-trend__label { visibility: hidden; }
+}
+.stats-trend__col { grid-template-rows: auto 1fr 1.3em; }
+.stats-trend__label { overflow: visible; overflow-wrap: normal; white-space: nowrap; }
+@media (max-width: 640px) { .stats-trend__label { font-size: 0.62rem; } }
+/* Two inputs side by side must never push the page wider than the phone. */
+.admin-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.admin-row > *, .admin-row input { min-width: 0; }
+.admin-row input { width: 100%; }
+/* Case lists on desktop: one grouped list of compact rows (status · case ·
+   support/age) instead of a stack of tall cards. */
+@media (min-width: 900px) {
+  .admin-list-page .admin-list { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 14px; gap: 0; overflow: hidden; }
+  .admin-list-page .admin-list-item {
+    align-items: start; border: 0; border-bottom: 1px solid var(--color-border); border-radius: 0;
+    column-gap: 1.1rem; grid-template-areas: "status title meta" "status desc meta" "status foot meta";
+    grid-template-columns: 120px minmax(0, 1fr) auto; padding: 0.8rem 1.1rem; row-gap: 0.2rem;
+  }
+  .admin-list-page .admin-list-item:last-child { border-bottom: 0; }
+  .admin-list-page .admin-list-item:hover { background: #f7f9f8; }
+  .admin-list-page .admin-list-item__head { display: contents; }
+  .admin-list-page .admin-list-item__head > .status-pill { grid-area: status; justify-self: start; margin-top: 0.1rem; }
+  .admin-list-page .admin-list-item__headright { grid-area: meta; justify-content: flex-end; white-space: nowrap; }
+  .admin-list-page .admin-list-item__title { grid-area: title; }
+  .admin-list-page .admin-list-item__desc { grid-area: desc; }
+  .admin-list-page .admin-list-item__foot { grid-area: foot; }
+}
+/* Scooter filters: county and municipality fit on the same line as the tabs. */
+.sk-filters .sk-kommune { flex: 0 1 200px; min-width: 150px; }
+.share-card__meta { color: var(--color-muted); font-size: 0.92rem; margin: -0.35rem 0 0; }
+.report-loc__place { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.report-loc__text { min-width: 0; }
+/* Drawn route: three ways to travel on one row, route type below. */
+.rd__toggles { grid-template-columns: 1fr; }
+.rd__seg--3 { grid-template-columns: repeat(3, 1fr); }
+.rd__seg--3 .rd__segbtn { white-space: nowrap; }
+/* Receipt on short phones (iPhone SE): same content, tighter, so the
+   buttons stay on screen without scrolling. */
+@media (max-height: 700px) {
+  .sheet-success { gap: 0.55rem; }
+  .sheet-success__badge { height: 44px; width: 44px; }
+  .sheet-success__badge svg { height: 22px; width: 22px; }
+  .sheet-success > h2 { margin: 0; }
+  .sheet-success > h2 + p { display: none; }
+  .sheet-success .process-steps { gap: 0.3rem; margin: 0; }
+  .sheet-success .share-block { gap: 0.35rem; padding-top: 0.6rem; }
+  .sheet-success .share-block__sub, .sheet-success .share-block__note { display: none; }
+  .sheet-success .share-btn { height: 42px; width: 42px; }
+  .sheet-success .give-card { margin-top: 0.3rem; padding: 0.6rem 0.8rem; }
+}
+@media (max-height: 700px) {
+  .sheet-success { padding-top: 0.9rem; }
+}

@@ -3,6 +3,7 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { DEFAULT_CENTER, NEARBY_REPORT_RADIUS_M, REPORT_STATUS } from '../lib/config';
 import { caseProgress } from '../lib/processSteps';
+import { applyLocalLabelNames } from '../lib/mapLabels';
 import {
   MAP_COLORS,
   MAP_STYLE,
@@ -221,7 +222,7 @@ function attachmentsHtml(properties = {}) {
       : '<span class="popup-attach__file">PDF</span>';
     return `<a href="${url}" target="_blank" rel="noreferrer" class="popup-attach__item">${inner}</a>`;
   }).join('');
-  return `<div class="popup-attach"><span class="popup-attach__label">Vedlegg fra Finns Fairway</span><div class="popup-attach__row">${items}</div></div>`;
+  return `<div class="popup-attach"><span class="popup-attach__label">Vedlegg fra Finns.Fairway</span><div class="popup-attach__row">${items}</div></div>`;
 }
 
 function formatDate(value) {
@@ -270,7 +271,7 @@ function threadMessagesHtml(properties) {
     prevAuthor = message.author;
     const time = message.ts ? `<time>${escapeHtml(formatDate(message.ts))}</time>` : '';
     const author = message.author === 'official'
-      ? `<span class="msg__author">${ICON.info}Finns Fairway</span>`
+      ? `<span class="msg__author">${ICON.info}Finns.Fairway</span>`
       : `<span class="msg__author">Innbygger${message.category ? ` · ${escapeHtml(message.category)}` : ''}</span>`;
     // Group consecutive messages from the same author: only the first shows the
     // author label, the rest just show the date — tighter and less repetitive.
@@ -531,6 +532,7 @@ function applyLightTreatment(map) {
 function applyBasemapTreatment(map, satellite) {
   if (satellite) applyAerialTreatment(map);
   else applyLightTreatment(map);
+  applyLocalLabelNames(map);
 }
 
 // Draw a competition's route density as weighted lines: every road segment is
@@ -1885,7 +1887,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       {showReports && adminSecret && adminChrome && (
         <div className="admin-mode-badge" aria-label="Admin">
           <span className="admin-mode-badge__dot" aria-hidden="true" />
-          <a className="admin-mode-badge__link" href="/backoffice">Dashbord</a>
+          <a className="admin-mode-badge__link" href="/backoffice">Oversikt</a>
           <button type="button" className="admin-mode-badge__logout" onClick={logoutAdmin}>Logg ut</button>
         </div>
       )}

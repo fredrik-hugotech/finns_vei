@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import BackofficeHeader from '../../components/BackofficeHeader';
 import { STATUS_COLORS } from '../../lib/config';
 import { reportStatusMeta } from '../../lib/reportStatusMeta';
-import { describeFetchError } from '../../lib/backofficeFormat';
+import { describeFetchError, ownerName } from '../../lib/backofficeFormat';
 
 const RANGES = [
   { key: '30', label: '30 dager' },
@@ -13,10 +13,10 @@ const RANGES = [
   { key: 'all', label: 'Alt' },
 ];
 
-const OWNER_LABEL = { kommune: 'Kommunal', fylke: 'Fylkesvei', stat: 'Riksvei', privat: 'Privat' };
+const OWNER_LABEL = { kommune: 'Kommunal vei', fylke: 'Fylkesvei', stat: 'Riksvei', privat: 'Privat vei' };
 
 function ownerLabel(value) {
-  return OWNER_LABEL[String(value || '').toLowerCase()] || value || 'Ukjent';
+  return OWNER_LABEL[String(value || '').toLowerCase()] || ownerName(value) || 'Ukjent';
 }
 
 // RFC 4180-ish escaping: quote a field if it contains a comma, quote, or
@@ -98,7 +98,6 @@ export default function BackofficeStatistikk() {
   const maxStatus = useMemo(() => Math.max(1, ...(data?.statuses || []).map((s) => s.count)), [data]);
   const maxTrend = useMemo(() => Math.max(1, ...(data?.trend?.points || []).map((t) => t.count)), [data]);
   const maxOwner = useMemo(() => Math.max(1, ...(data?.roadOwner?.items || []).map((o) => o.count)), [data]);
-  const maxRoadCategory = useMemo(() => Math.max(1, ...(data?.roadCategory?.items || []).map((o) => o.count)), [data]);
 
   return (
     <>
@@ -187,11 +186,11 @@ export default function BackofficeStatistikk() {
                   />
                 ))}
               </div>
-              <p className="stats-page__note">
-                {data.resolution.count > 0
-                  ? `Snitt ${data.resolution.avgDays} dager, median ${data.resolution.medianDays} dager fra melding til «Fullført» (${data.resolution.count} avsluttede saker).`
-                  : 'Ingen avsluttede saker i perioden ennå.'}
-              </p>
+              {data.resolution.count > 0 && (
+                <p className="stats-page__note">
+                  {`Snitt ${data.resolution.avgDays} dager, median ${data.resolution.medianDays} dager fra melding til fullført (${data.resolution.count} saker).`}
+                </p>
+              )}
             </section>
 
             {(data.roadOwner.items.length > 0 || data.roadOwner.missing > 0) && (
@@ -203,21 +202,7 @@ export default function BackofficeStatistikk() {
                   ))}
                 </div>
                 {data.roadOwner.missing > 0 && (
-                  <p className="stats-page__note">{data.roadOwner.missing} meldinger mangler NVDB-data om veieier (berikelse skjer «best effort»).</p>
-                )}
-              </section>
-            )}
-
-            {(data.roadCategory.items.length > 0 || data.roadCategory.missing > 0) && (
-              <section>
-                <h2 className="stats-page__h2">Vegkategori</h2>
-                <div className="stats-barlist">
-                  {data.roadCategory.items.map((o) => (
-                    <Bar key={o.value} label={o.value} count={o.count} max={maxRoadCategory} color="var(--color-primary)" />
-                  ))}
-                </div>
-                {data.roadCategory.missing > 0 && (
-                  <p className="stats-page__note">{data.roadCategory.missing} meldinger mangler NVDB-data om vegkategori.</p>
+                  <p className="stats-page__note">{data.roadOwner.missing} {data.roadOwner.missing === 1 ? 'melding' : 'meldinger'} uten kjent veieier.</p>
                 )}
               </section>
             )}
@@ -225,7 +210,7 @@ export default function BackofficeStatistikk() {
             <section>
               <h2 className="stats-page__h2">Last ned data</h2>
               <p className="stats-page__note">
-                CSV med meldingene som ligger til grunn for tallene over ({data.total} stk, samme periode som visningen). Ingen kontaktinfo følger med.
+                Meldingene bak tallene over ({data.total} stk, samme periode) som CSV for Excel. Kontaktinfo er ikke med.
               </p>
               <div className="stats-page__downloads">
                 <button type="button" className="ui-button ui-button-secondary" onClick={() => downloadCsv(data.reports, range)}>

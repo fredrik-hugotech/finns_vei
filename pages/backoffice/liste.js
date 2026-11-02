@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { reportStatusMeta } from '../../lib/reportStatusMeta';
 import { REPORT_STATUS, REPORT_CATEGORIES, REPORTER_TYPES } from '../../lib/config';
-import { timeAgo, ownerShort, describeFetchError } from '../../lib/backofficeFormat';
+import { timeAgo, ownerShort, staffName, describeFetchError } from '../../lib/backofficeFormat';
 import { classifyRoadAuthority } from '../../lib/roadAuthorityReferral';
 import BackofficeHeader from '../../components/BackofficeHeader';
 
@@ -287,7 +287,7 @@ export default function Liste() {
                     const over = isOverdueCase(c, new Date().toISOString().slice(0, 10));
                     return <span className={over ? 'sak-due sak-due--over' : 'sak-due'}>{over ? 'Forfalt' : 'Frist'} {new Date(c.due_date).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })}</span>;
                   })()}
-                  {c.assignee_email && <span className="admin-list-item__assignee">{c.assignee_email.split('@')[0]}</span>}
+                  {c.assignee_email && <span className="admin-list-item__assignee">{staffName(c.assignee_email)}</span>}
                 </span>
               </Link>
             );

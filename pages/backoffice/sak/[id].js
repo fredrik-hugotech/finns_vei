@@ -478,7 +478,7 @@ export default function SakDetalj() {
   return (
     <>
       <Head><title>{c ? `${c.category} – sak` : 'Sak'}</title><meta name="robots" content="noindex" /><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" /></Head>
-      <BackofficeHeader title={c ? c.category : 'Sak'} back="/backoffice/liste" />
+      <BackofficeHeader title={c ? c.category : 'Sak'} back="/backoffice/liste" backLabel="Saker" />
       <main className="page sak-page">
         {flash && <div className="sak-flashbar">{flash}</div>}
         {idx >= 0 && (
@@ -494,6 +494,7 @@ export default function SakDetalj() {
 
         {c && (
           <>
+            <div className="sak-col sak-col--main">
             <header className="sak-hero">
               <div className="sak-hero__topline">
                 <span className={`status-pill status-pill--${meta.key}`} dangerouslySetInnerHTML={{ __html: `${meta.icon}<span>${meta.label}</span>` }} />
@@ -567,7 +568,7 @@ export default function SakDetalj() {
                   aria-expanded={draftOpen}
                   onClick={() => setDraftOpen((v) => !v)}
                 >
-                  {draftOpen ? 'Skjul e-postutkast ▴' : 'Lag e-postutkast ✉'}
+                  {draftOpen ? 'Skjul e-postutkast' : 'Lag e-postutkast til veieier'}
                 </button>
                 {draftOpen && (
                   <div className="sak-referral__box">
@@ -586,6 +587,55 @@ export default function SakDetalj() {
               </section>
             )}
 
+            <section className="admin-section tkt-activity-card">
+              <div className="tkt-activity-head">
+                <h2>Aktivitet</h2>
+                {support.facets.length > 0 && (
+                  <div className="sak-support__facets">
+                    {support.facets.map((f) => <span key={f.category} className="sak-support__facet">{f.category}<b>{f.count}</b></span>)}
+                  </div>
+                )}
+              </div>
+              <ul className="tkt-activity">
+                {activity.map((a, i) => (
+                  <li key={i} className={`tkt-act tkt-act--${a.type}`}>
+                    <span className="tkt-act__dot" />
+                    <div className="tkt-act__head">
+                      <span className="tkt-act__who">{ACT_LABEL[a.type]}{a.tag ? ` · ${a.tag}` : ''}</span>
+                      <span className="tkt-act__time">{fmtDate(a.at)}</span>
+                    </div>
+                    {a.text && <p className="tkt-act__text">{a.type === 'voice' ? `«${a.text}»` : a.text}</p>}
+                  </li>
+                ))}
+              </ul>
+
+              <div className="tkt-composer">
+                <div className="case-admin__notetabs">
+                  <button type="button" aria-pressed={noteMode === 'public'} className={noteMode === 'public' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setNoteMode('public')}>Svar til innbygger</button>
+                  <button type="button" aria-pressed={noteMode === 'internal'} className={noteMode === 'internal' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setNoteMode('internal')}>Internt notat</button>
+                </div>
+                {noteMode === 'public' && (
+                  <div className="suggestion-chips" role="group" aria-label="Hurtigsvar">
+                    {PUBLIC_UPDATE_TEMPLATES.map((phrase) => (
+                      <button key={phrase} type="button" className="suggestion-chip" onClick={() => applyTemplate(phrase)}>
+                        {phrase}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <textarea className="sak-note" rows={3} value={note} onChange={(e) => setNote(e.target.value)}
+                  placeholder={noteMode === 'internal' ? 'Lim inn e-post fra kommunen, eller skriv et internt notat. Kun for ansatte.' : 'Skriv en oppdatering som vises for innbyggeren.'} />
+                <button type="button" className="big-button big-button--primary" onClick={addNote} disabled={busy || note.trim().length < 2 || (data && !data.hasCard)}>
+                  {busy ? 'Lagrer …' : (noteMode === 'internal' ? 'Legg til notat' : 'Publiser oppdatering')}
+                </button>
+                {data && !data.hasCard && (
+                  <p className="notice notice--warning">Denne saken mangler Trello-kort — kan ikke publisere eller lagre notat ennå.</p>
+                )}
+              </div>
+            </section>
+
+            </div>
+            <div className="sak-col sak-col--side">
             <section className="admin-section tkt-detail">
               <h2>Detaljer</h2>
               <div className="tkt-props">
@@ -632,53 +682,6 @@ export default function SakDetalj() {
                     <span className="tkt-prop__k">Vegreferanse</span>
                     <span className="tkt-prop__v tkt-prop__v--mono">{c.road_reference}</span>
                   </div>
-                )}
-              </div>
-            </section>
-
-            <section className="admin-section tkt-activity-card">
-              <div className="tkt-activity-head">
-                <h2>Aktivitet</h2>
-                {support.facets.length > 0 && (
-                  <div className="sak-support__facets">
-                    {support.facets.map((f) => <span key={f.category} className="sak-support__facet">{f.category}<b>{f.count}</b></span>)}
-                  </div>
-                )}
-              </div>
-              <ul className="tkt-activity">
-                {activity.map((a, i) => (
-                  <li key={i} className={`tkt-act tkt-act--${a.type}`}>
-                    <span className="tkt-act__dot" />
-                    <div className="tkt-act__head">
-                      <span className="tkt-act__who">{ACT_LABEL[a.type]}{a.tag ? ` · ${a.tag}` : ''}</span>
-                      <span className="tkt-act__time">{fmtDate(a.at)}</span>
-                    </div>
-                    {a.text && <p className="tkt-act__text">{a.type === 'voice' ? `«${a.text}»` : a.text}</p>}
-                  </li>
-                ))}
-              </ul>
-
-              <div className="tkt-composer">
-                <div className="case-admin__notetabs">
-                  <button type="button" aria-pressed={noteMode === 'public'} className={noteMode === 'public' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setNoteMode('public')}>Svar til innbygger</button>
-                  <button type="button" aria-pressed={noteMode === 'internal'} className={noteMode === 'internal' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setNoteMode('internal')}>Internt notat</button>
-                </div>
-                {noteMode === 'public' && (
-                  <div className="suggestion-chips" role="group" aria-label="Hurtigsvar">
-                    {PUBLIC_UPDATE_TEMPLATES.map((phrase) => (
-                      <button key={phrase} type="button" className="suggestion-chip" onClick={() => applyTemplate(phrase)}>
-                        {phrase}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <textarea className="sak-note" rows={3} value={note} onChange={(e) => setNote(e.target.value)}
-                  placeholder={noteMode === 'internal' ? 'Lim inn e-post fra kommunen, eller skriv et internt notat. Kun for ansatte.' : 'Skriv en oppdatering som vises for innbyggeren.'} />
-                <button type="button" className="big-button big-button--primary" onClick={addNote} disabled={busy || note.trim().length < 2 || (data && !data.hasCard)}>
-                  {busy ? 'Lagrer …' : (noteMode === 'internal' ? 'Legg til notat' : 'Publiser oppdatering')}
-                </button>
-                {data && !data.hasCard && (
-                  <p className="notice notice--warning">Denne saken mangler Trello-kort — kan ikke publisere eller lagre notat ennå.</p>
                 )}
               </div>
             </section>
@@ -760,7 +763,7 @@ export default function SakDetalj() {
               <section className="admin-section">
                 <h2>Kontakt</h2>
                 {c.contact_name && <p className="sak-kv"><span>Navn</span><b>{c.contact_name}</b></p>}
-                {c.contact_email && <p className="sak-kv"><span>E-post</span><b><a href={`mailto:${c.contact_email}?subject=${encodeURIComponent(`Finns Fairway – ${c.category}`)}`}>{c.contact_email}</a></b></p>}
+                {c.contact_email && <p className="sak-kv"><span>E-post</span><b><a href={`mailto:${c.contact_email}?subject=${encodeURIComponent(`Finns.Fairway – ${c.category}`)}`}>{c.contact_email}</a></b></p>}
                 {c.contact_phone && <p className="sak-kv"><span>Telefon</span><b><a href={`tel:${c.contact_phone}`}>{c.contact_phone}</a></b></p>}
               </section>
             )}
@@ -796,6 +799,7 @@ export default function SakDetalj() {
                 </div>
               )}
             </section>
+            </div>
           </>
         )}
       </main>

@@ -73,7 +73,7 @@ export default async function handler(req, res) {
   try {
     const response = await fetch(VALHALLA_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'User-Agent': 'Finns Fairway (finnsvei.no)' },
+      headers: { 'Content-Type': 'application/json', 'User-Agent': 'Finnsvei (finnsvei.no)' },
       body: JSON.stringify({
         locations: [{ lon: from.lng, lat: from.lat }, { lon: to.lng, lat: to.lat }],
         costing: profile.costing,

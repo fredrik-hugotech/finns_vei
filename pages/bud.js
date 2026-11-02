@@ -46,7 +46,7 @@ export default function Bud() {
     <>
       <Head>
         <title>Finns 10 bud for trygg ferdsel</title>
-        <meta name="description" content="Finns Fairways ti bud for trygg ferdsel til og fra idrettsaktiviteter." />
+        <meta name="description" content="Ti bud for trygg ferdsel til og fra idrettsaktiviteter, fra Finns.Fairway." />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
       </Head>
       <main className="page sub bud-page">

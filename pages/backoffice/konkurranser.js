@@ -132,7 +132,7 @@ export default function KonkurranserAdmin() {
           {!loading && competitions.length === 0 && <p className="comp-muted">Ingen konkurranser ennå.</p>}
           <ul className="comp-cards">
             {competitions.map((competition) => {
-              const period = [competition.starts_on, competition.ends_on].filter(Boolean).join(' – ');
+              const period = [competition.starts_on, competition.ends_on].filter(Boolean).map((d) => new Date(`${d}T12:00:00`).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short', year: 'numeric' })).join(' – ');
               return (
                 <li key={competition.id} className="comp-card">
                   <div className="comp-card__body">

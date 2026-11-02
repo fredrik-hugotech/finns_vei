@@ -7,7 +7,7 @@ import { checkRequestRateLimit } from '../../lib/rateLimit';
 //   CALENDAR_ICS_URL   e.g. a public Google Calendar .ics URL
 // Missing/failing sources just return empty arrays — the page degrades to the
 // bud tips.
-const NEWS_FEED_URL = process.env.NEWS_FEED_URL || '';
+const NEWS_FEED_URL = process.env.NEWS_FEED_URL || 'https://finnsfairway.no/feed';
 const CALENDAR_ICS_URL = process.env.CALENDAR_ICS_URL || '';
 const TTL_MS = 10 * 60 * 1000;
 const RATE_LIMIT = 120;

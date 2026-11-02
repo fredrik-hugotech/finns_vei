@@ -499,7 +499,7 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
                     <span className="give-card__icon" aria-hidden="true"><Icon name="heart" size={20} /></span>
                     <span className="give-card__text">
                       <strong>Støtt arbeidet</strong>
-                      <span>Bli fast lagkamerat i Stiftelsen Finns Fairway, eller gi et bidrag.</span>
+                      <span>Bli fast lagkamerat i Stiftelsen Finns.Fairway, eller gi et bidrag.</span>
                     </span>
                     <span className="give-card__cta">Vipps</span>
                   </a>

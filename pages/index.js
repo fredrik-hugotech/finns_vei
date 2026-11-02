@@ -381,7 +381,7 @@ export default function Home() {
                   <a role="menuitem" className="app-menu__item" href="/tegn-rute"><Icon name="pencil" size={20} />Tegn en rute</a>
                   <a role="menuitem" className="app-menu__item" href="/aktuelt"><Icon name="news" size={20} />Aktuelt</a>
                   <a role="menuitem" className="app-menu__item" href="/bud"><Icon name="bud" size={20} />Finns 10 bud</a>
-                  <a role="menuitem" className="app-menu__item" href={SUPPORT_URL} target="_blank" rel="noopener noreferrer"><Icon name="heart" size={20} />Støtt Finns Fairway</a>
+                  <a role="menuitem" className="app-menu__item" href={SUPPORT_URL} target="_blank" rel="noopener noreferrer"><Icon name="heart" size={20} />Støtt Finns.Fairway</a>
                   {canInstall && (
                     <button type="button" role="menuitem" className="app-menu__item" onClick={() => { setMenuOpen(false); window.dispatchEvent(new Event('ff-open-install')); }}>
                       <Icon name="download" size={20} />Installer appen

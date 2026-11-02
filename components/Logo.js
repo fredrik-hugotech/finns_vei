@@ -10,7 +10,7 @@ export default function Logo({ size = 'md', variant = 'full', className = '' }) 
   const classes = ['logo', symbol ? 'logo--symbol' : 'logo--full', SIZE_CLASS[size] || SIZE_CLASS.md, className].filter(Boolean).join(' ');
   return (
     <span className={classes}>
-      <svg viewBox={symbol ? SYMBOL_VIEWBOX : LOGO_VIEWBOX} role="img" aria-label="Finns Fairway" focusable="false">
+      <svg viewBox={symbol ? SYMBOL_VIEWBOX : LOGO_VIEWBOX} role="img" aria-label="Finns.Fairway" focusable="false">
         {(symbol ? SYMBOL_PATHS : LOGO_PATHS).map((d) => <path key={d.slice(0, 24)} d={d} fill="currentColor" />)}
       </svg>
     </span>

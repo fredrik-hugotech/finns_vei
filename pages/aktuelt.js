@@ -40,7 +40,7 @@ export default function Aktuelt() {
     <>
       <Head>
         <title>Aktuelt – Finnsvei</title>
-        <meta name="description" content="Siste nytt, arrangementer og trygg ferdsel fra Finns Fairway." />
+        <meta name="description" content="Siste nytt, arrangementer og trygg ferdsel fra Finns.Fairway." />
       </Head>
       <main className="page sub">
         <PageHeader title="Aktuelt" />

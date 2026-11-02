@@ -21,7 +21,7 @@ export default function SakPage({ report, shareUrl, ogImageUrl, photos }) {
     `${report.category}.`,
     `Status: ${meta.label}.`,
     report.description || '',
-    report.public_status_note ? `Oppdatering fra Finns Fairway: ${report.public_status_note}` : '',
+    report.public_status_note ? `Oppdatering fra Finns.Fairway: ${report.public_status_note}` : '',
   ].filter(Boolean).join(' ');
 
   // Feature-detected client-side so the button never renders as a dead no-op
@@ -91,6 +91,13 @@ export default function SakPage({ report, shareUrl, ogImageUrl, photos }) {
             dangerouslySetInnerHTML={{ __html: `${meta.icon}<span>${meta.label}</span>` }}
           />
           <h1>{report.category}</h1>
+          {(report.created_at || Number(report.support_count) > 0) && (
+            <p className="share-card__meta">
+              {report.created_at ? `Meldt ${new Date(report.created_at).toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Oslo' })}` : ''}
+              {report.created_at && Number(report.support_count) > 0 ? ' · ' : ''}
+              {Number(report.support_count) > 0 ? `${report.support_count} ${Number(report.support_count) === 1 ? 'person støtter' : 'støtter'} saken` : ''}
+            </p>
+          )}
           <ReadAloudButton text={readAloudText} label="Hør saken lest opp" />
 
           {(() => {
@@ -112,7 +119,7 @@ export default function SakPage({ report, shareUrl, ogImageUrl, photos }) {
           {report.description && <p className="share-card__text">{report.description}</p>}
           {report.public_status_note && (
             <div className="share-card__update">
-              <strong>Oppdatering fra Finns Fairway</strong>
+              <strong>Oppdatering fra Finns.Fairway</strong>
               <p>{report.public_status_note}</p>
             </div>
           )}

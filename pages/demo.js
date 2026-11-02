@@ -56,7 +56,7 @@ const VIEW_REPLAY = { lng: 7.995, lat: 58.155, zoom: 11.15 };
 const VIEW_VENUE_A = { lng: 8.0185, lat: 58.1545, zoom: 14.3 }; // Kristiansand stadion · Gimlehallen
 const VIEW_VENUE_B = { lng: 8.0855, lat: 58.1535, zoom: 14.4 }; // Sukkevann
 const TOUR = [
-  { title: 'Finnsvei', text: 'Barn og voksne melder fra om utrygge steder. Finns Fairway følger opp.', layers: { saker: false, ulykker: false, turer: false, anlegg: false }, map: VIEW_CITY },
+  { title: 'Finnsvei', text: 'Barn og voksne melder fra om utrygge steder. Finns.Fairway følger opp.', layers: { saker: false, ulykker: false, turer: false, anlegg: false }, map: VIEW_CITY },
   { title: 'Meldte steder', text: 'Kartet viser alle stedene det er meldt fra om, så alle ser hvor det føles utrygt.', layers: { saker: true }, map: VIEW_CASES },
   { title: 'Meld fra på sekunder', text: 'Dra kartet til stedet og trykk «Velg dette stedet». Ingen innlogging.', report: 'pick', map: VIEW_SPOT, place: 'top' },
   { title: 'Hva er utrygt?', text: 'Velg hvem som melder og hva som er utrygt, og beskriv stedet med noen ord.', report: 'form', place: 'top' },
