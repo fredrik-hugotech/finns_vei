@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import Icon from './Icon';
-import { REPORT_CATEGORIES, REPORTER_TYPES, REPORT_STATUS } from '../lib/config';
+import { REPORT_CATEGORIES, REPORTER_TYPES, REPORT_STATUS, SUPPORT_URL } from '../lib/config';
 import { processStepsForStatus } from '../lib/processSteps';
 import { categoryGlyph } from '../lib/reportCategoryGlyphs';
 import { descriptionSuggestions } from '../lib/reportDescriptionSuggestions';
@@ -492,6 +492,17 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
                       Meldinger med stor støtte prioriteres.
                     </p>
                   </div>
+                )}
+
+                {isAdult && (
+                  <a className="give-card" href={SUPPORT_URL} target="_blank" rel="noopener noreferrer">
+                    <span className="give-card__icon" aria-hidden="true"><Icon name="heart" size={20} /></span>
+                    <span className="give-card__text">
+                      <strong>Støtt arbeidet</strong>
+                      <span>Bli fast lagkamerat i Stiftelsen Finns Fairway, eller gi et bidrag.</span>
+                    </span>
+                    <span className="give-card__cta">Vipps</span>
+                  </a>
                 )}
               </>
             )}

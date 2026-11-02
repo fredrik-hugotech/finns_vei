@@ -102,7 +102,7 @@ export default function BackofficeStatistikk() {
 
   return (
     <>
-      <Head><title>Statistikk – Finns Fairway</title><meta name="robots" content="noindex" /><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" /></Head>
+      <Head><title>Statistikk – Finnsvei</title><meta name="robots" content="noindex" /><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" /></Head>
       <BackofficeHeader title="Statistikk" />
       <main className="page stats-page">
         <div className="segmented" role="tablist" aria-label="Tidsrom">

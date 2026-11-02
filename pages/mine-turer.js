@@ -60,7 +60,7 @@ export default function MineTurer() {
   return (
     <>
       <Head>
-        <title>Mine turer – Finns Fairway</title>
+        <title>Mine turer – Finnsvei</title>
         <meta name="description" content="Se turer du har registrert fra denne enheten." />
         <meta name="robots" content="noindex" />
       </Head>

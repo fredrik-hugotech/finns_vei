@@ -204,6 +204,7 @@ const ICONS = {
       <path d="M8.5 18h7.5M16.5 4h2l-2.5 14" />
     </>
   ),
+  heart: <path d="M12 20s-7-4.4-9-8.8C1.6 8 3.4 5 6.6 5c2 0 3.3 1.1 4.4 2.6C12.1 6.1 13.4 5 15.4 5c3.2 0 5 3 3.6 6.2C19 15.6 12 20 12 20z" />,
 };
 
 export default function Icon({ name, size = 20, strokeWidth = 1.8, className, ...rest }) {

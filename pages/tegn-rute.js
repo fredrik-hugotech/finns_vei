@@ -83,7 +83,7 @@ export default function TegnRute() {
   return (
     <>
       <Head>
-        <title>Tegn en rute – Finns Fairway</title>
+        <title>Tegn en rute – Finnsvei</title>
         <meta name="description" content="Tegn veien barnet bruker til trening, skole eller fritid." />
         <meta name="robots" content="noindex" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />

@@ -217,7 +217,7 @@ export default function Sparkesykler() {
 
   return (
     <>
-      <Head><title>Sparkesykler – Finns Fairway</title><meta name="robots" content="noindex" /><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" /></Head>
+      <Head><title>Sparkesykler – Finnsvei</title><meta name="robots" content="noindex" /><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" /></Head>
       <BackofficeHeader title="Sparkesykler" />
       <main className="page admin-list-page sk">
         <p className="dash2__hint" style={{ margin: 0 }}>

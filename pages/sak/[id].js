@@ -10,7 +10,7 @@ import { getPublicReportById, listCaseAttachments, hasSupabaseConfig } from '../
 
 export default function SakPage({ report, shareUrl, ogImageUrl, photos }) {
   const meta = reportStatusMeta(report.status);
-  const title = `Finns Fairway – ${report.category}`;
+  const title = `Finnsvei – ${report.category}`;
   const description = report.description
     ? report.description.slice(0, 180)
     : 'Meld fra om utrygge steder i trafikken, eller se kart over meldinger.';
@@ -70,7 +70,7 @@ export default function SakPage({ report, shareUrl, ogImageUrl, photos }) {
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <meta name="description" content={description} />
         <meta property="og:type" content="article" />
-        <meta property="og:site_name" content="Finns Fairway" />
+        <meta property="og:site_name" content="Finnsvei" />
         <meta property="og:title" content={title} />
         <meta property="og:description" content={description} />
         <meta property="og:url" content={shareUrl} />

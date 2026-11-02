@@ -25,7 +25,7 @@ const GREEN = '#276a4a';
 const GREEN_DARK = '#1a4d34';
 const OCHRE = '#e3a13a';
 
-const FALLBACK_TITLE = 'Finns Fairway';
+const FALLBACK_TITLE = 'Finnsvei';
 const FALLBACK_DESCRIPTION = 'Diplomer for vinnerklubben deles her når en konkurranse er avsluttet.';
 
 const MONTHS_NB = ['jan', 'feb', 'mar', 'apr', 'mai', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'des'];

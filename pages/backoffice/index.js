@@ -65,7 +65,7 @@ export default function Backoffice() {
 
   return (
     <>
-      <Head><title>Finns Fairway – Innlogging</title><meta name="robots" content="noindex" /><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" /></Head>
+      <Head><title>Finnsvei – Innlogging</title><meta name="robots" content="noindex" /><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" /></Head>
       <main className="admin-login">
         <div className="admin-login__brand"><Logo size="md" /></div>
         {!checked ? (
@@ -183,7 +183,7 @@ function Dashboard({ me, onLogout }) {
 
   return (
     <>
-      <Head><title>Dashbord – Finns Fairway</title><meta name="robots" content="noindex" /></Head>
+      <Head><title>Dashbord – Finnsvei</title><meta name="robots" content="noindex" /></Head>
       <main className="page admin-page dash2">
         <header className="dash2__top">
           <div>

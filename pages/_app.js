@@ -41,7 +41,7 @@ export default function MyApp({ Component, pageProps }) {
           <path d="M3.5 9a9 9 0 0 1 3-3M20.5 15a9 9 0 0 1-3 3" />
         </svg>
         <strong>Snu telefonen</strong>
-        <span>Finns Fairway brukes stående.</span>
+        <span>Finnsvei brukes stående.</span>
       </div>
     </div>
   );

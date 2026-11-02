@@ -85,7 +85,7 @@ export default function SkoleveiAvvik() {
 
   return (
     <>
-      <Head><title>Avvik ved skolevei – Finns Fairway</title><meta name="robots" content="noindex" /><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" /></Head>
+      <Head><title>Avvik ved skolevei – Finnsvei</title><meta name="robots" content="noindex" /><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" /></Head>
       <BackofficeHeader title="Avvik ved skolevei" />
       <main className="page admin-list-page">
         <p className="dash2__hint" style={{ margin: 0 }}>

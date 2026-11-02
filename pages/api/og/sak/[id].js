@@ -27,7 +27,7 @@ const GREEN = '#276a4a';
 const GREEN_DARK = '#1a4d34';
 const OCHRE = '#e3a13a';
 
-const FALLBACK_TITLE = 'Finns Fairway';
+const FALLBACK_TITLE = 'Finnsvei';
 const FALLBACK_DESCRIPTION = 'Meld fra om utrygge steder i trafikken, eller se kart over meldinger.';
 
 function truncate(text, max) {

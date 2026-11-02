@@ -66,7 +66,7 @@ export default function InstallHint() {
             <div className="install-steps__body">
               <span className="install-steps__logo" aria-hidden="true"><Mark /></span>
               <h2>Legg appen på hjemskjermen</h2>
-              <p>Da åpner Finns Fairway seg i fullskjerm, som en vanlig app.</p>
+              <p>Da åpner Finnsvei seg i fullskjerm, som en vanlig app.</p>
               {ios ? (
                 <>
                   <p className="install-steps__os">På iPhone (Safari)</p>

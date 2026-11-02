@@ -36,8 +36,8 @@ export default function Personvern() {
   return (
     <>
       <Head>
-        <title>Personvern – Finns Fairway</title>
-        <meta name="description" content="Slik tar Finns Fairway vare på personvernet: anonyme meldinger, ingen personopplysninger om barn, hjemmeområdet skjules ved turlogging, og barn under 13 år logger ikke turer selv." />
+        <title>Personvern – Finnsvei</title>
+        <meta name="description" content="Slik tar Finnsvei vare på personvernet: anonyme meldinger, ingen personopplysninger om barn, hjemmeområdet skjules ved turlogging, og barn under 13 år logger ikke turer selv." />
       </Head>
       <main className="page sub">
         <PageHeader title="Personvern" intro="Slik tar vi vare på personvernet ditt og barnas." />
@@ -45,12 +45,12 @@ export default function Personvern() {
 
           <div className="personvern-summary">
             <p>
-              Finns Fairway lagrer ingen navn, kontaktinfo eller alder om barn, og barn under 13 år logger aldri
+              Finnsvei lagrer ingen navn, kontaktinfo eller alder om barn, og barn under 13 år logger aldri
               posisjon selv: en voksen som er med logger turen på sin egen telefon, eller tegner ruten på kartet.
             </p>
             <p>
               Ruten klippes både på telefonen og hos oss, slik at de første 50 meterne fra start (ofte hjemmet) aldri
-              lagres, og bare stiftelsen bak Finns Fairway ser varmekartet over hvor barn ferdes, aldri offentligheten.
+              lagres, og bare Stiftelsen Finns Fairway ser varmekartet over hvor barn ferdes, aldri offentligheten.
             </p>
           </div>
 

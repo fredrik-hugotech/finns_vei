@@ -325,9 +325,12 @@ request to Entur's mobility API (GBFS) for all of Norway (~32 000 scooters,
 leaves the feed is a rental (`scooter_events.kind = 'ut'`), one that appears
 is a parking (`'inn'`; many together = operator restocking, not counted), one
 that moves >40 m while visible is `'flyttet'`. Rentals and parkings within
-150 m of a place are added to `place_scooter_hourly(place_id, hour,
+100 m of a place (nearest place only) are added to `place_scooter_hourly(place_id, hour,
 arrivals, departures)` — the only long-term data. Raw events are meant to be
-kept 3 days (`scooter_prune()`, daily — see below).
+kept 3 days: `scooter_prune()` runs daily at 03:23 (cron job `scooter-prune`)
+and deletes events older than 3 days, vanished scooters older than 1 day and
+poll responses older than 2 days. A recount after a places import can
+therefore only look 3 days back.
 
 Places: `public/data/steder.json`, built by `node scripts/hent-steder.mjs`
 (every active grunnskole from Utdanningsdirektoratet's NSR, every football
@@ -339,18 +342,6 @@ events. `scooter_place_stats_v2(from, to, fylke, kommune, kind, limit)` feeds
 `/backoffice/sparkesykler` (filters: period, anlegg/skoler, fylke, kommune)
 and the admin map layer. Renting requires 18, so this measures traffic around
 the places children are, not children's own trips.
-
-Pending (needs an owner-approved migration — the Supabase tool asks before
-anything containing DELETE): the daily prune.
-
-```sql
-create or replace function public.scooter_prune() returns void language sql security definer set search_path = public as $$
-  delete from scooter_events where ts < now() - interval '3 days';
-  delete from scooter_state where gone_at is not null and gone_at < now() - interval '1 day';
-  delete from scooter_poll where created_at < now() - interval '2 days';
-$$;
-select cron.schedule('scooter-prune', '23 3 * * *', 'select public.scooter_prune()');
-```
 
 ## Recurring hotspot / seasonal-pattern overview
 

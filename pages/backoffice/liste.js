@@ -173,7 +173,7 @@ export default function Liste() {
 
   return (
     <>
-      <Head><title>Saker – Finns Fairway</title><meta name="robots" content="noindex" /><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" /></Head>
+      <Head><title>Saker – Finnsvei</title><meta name="robots" content="noindex" /><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" /></Head>
       <BackofficeHeader title="Saker" />
       <main className="page admin-list-page">
         <input className="sak-search" value={q} onChange={handleQChange} placeholder="Søk i saker …" aria-label="Søk" />

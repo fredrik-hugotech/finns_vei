@@ -181,7 +181,7 @@ export default function Sykle() {
   return (
     <>
       <Head>
-        <title>Finns Fairway – Sykle</title>
+        <title>Finnsvei – Sykle</title>
         <meta name="description" content="Registrer turen din og meld fra om farlige steder." />
         {/* Map page: pinch-zoom disabled so pinch gestures control the Mapbox
             map instead of the page (overrides the permissive default in _app.js). */}

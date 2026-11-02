@@ -10,7 +10,7 @@ import TripTracker from '../components/TripTracker';
 import TripCelebration from '../components/TripCelebration';
 import InstallHint from '../components/InstallHint';
 import PlaceSearch from '../components/PlaceSearch';
-import { NEARBY_REPORT_RADIUS_M } from '../lib/config';
+import { NEARBY_REPORT_RADIUS_M, SUPPORT_URL } from '../lib/config';
 import { QUEUE_CHANGED_EVENT, flushQueue, getPendingCount } from '../lib/offlineReportQueue';
 import { TRIP_QUEUE_CHANGED_EVENT, addPendingTrip, flushTripQueue, getPendingTripCount } from '../lib/offlineTripQueue';
 import { addMyTrip } from '../lib/myTrips';
@@ -339,7 +339,7 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>Finns Fairway</title>
+        <title>Finnsvei</title>
         <meta name="description" content="For en trygg og aktiv oppvekst. Se kart over utrygge steder i trafikken, eller meld fra." />
         {/* Map page: pinch-zoom disabled so pinch gestures control the Mapbox
             map instead of the page (overrides the permissive default in _app.js). */}
@@ -381,6 +381,7 @@ export default function Home() {
                   <a role="menuitem" className="app-menu__item" href="/tegn-rute"><Icon name="pencil" size={20} />Tegn en rute</a>
                   <a role="menuitem" className="app-menu__item" href="/aktuelt"><Icon name="news" size={20} />Aktuelt</a>
                   <a role="menuitem" className="app-menu__item" href="/bud"><Icon name="bud" size={20} />Finns 10 bud</a>
+                  <a role="menuitem" className="app-menu__item" href={SUPPORT_URL} target="_blank" rel="noopener noreferrer"><Icon name="heart" size={20} />Støtt Finns Fairway</a>
                   {canInstall && (
                     <button type="button" role="menuitem" className="app-menu__item" onClick={() => { setMenuOpen(false); window.dispatchEvent(new Event('ff-open-install')); }}>
                       <Icon name="download" size={20} />Installer appen

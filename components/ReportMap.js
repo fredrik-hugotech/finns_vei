@@ -1635,7 +1635,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       if (!id) return;
       const url = `${window.location.origin}/sak/${id}`;
       const shareData = {
-        title: `Finns Fairway – ${category}`,
+        title: `Finnsvei – ${category}`,
         text: `Se denne saken i nabolaget: ${category}`,
         url,
       };

@@ -38,7 +38,7 @@ export default function Hotteste() {
 
   return (
     <>
-      <Head><title>Hotteste saker – Finns Fairway</title><meta name="robots" content="noindex" /><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" /></Head>
+      <Head><title>Hotteste saker – Finnsvei</title><meta name="robots" content="noindex" /><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" /></Head>
       <BackofficeHeader title="Hotteste saker" />
       <main className="page admin-list-page">
         <p className="dash2__hint" style={{ margin: 0 }}>

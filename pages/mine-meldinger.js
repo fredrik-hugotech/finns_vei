@@ -108,7 +108,7 @@ export default function MineMeldinger() {
   return (
     <>
       <Head>
-        <title>Mine meldinger – Finns Fairway</title>
+        <title>Mine meldinger – Finnsvei</title>
         <meta name="description" content="Se meldinger du har sendt inn fra denne enheten." />
         <meta name="robots" content="noindex" />
       </Head>
