@@ -231,10 +231,6 @@ function formatDate(value) {
   return date.toLocaleDateString('no-NO', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-function reportMarkerIconHtml() {
-  return '<span class="popup-head__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5.5 4.5h13a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H11l-3.6 3.1a0.6 0.6 0 0 1-1-0.46V16.5H5.5a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2z" fill="var(--color-primary)"/><path d="M12 7.6v3.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="12" cy="13.4" r="1.05" fill="#fff"/></svg></span>';
-}
-
 function parseJsonArray(value) {
   if (Array.isArray(value)) return value;
   if (typeof value !== 'string' || !value) return [];
@@ -246,10 +242,14 @@ function parseJsonArray(value) {
   }
 }
 
+// Other concerns grouped into this case, as labelled chips. The case's own
+// category is already the title, so it is only repeated when several people
+// raised it.
 function facetBadges(properties) {
-  const facets = parseJsonArray(properties.facets_json);
+  const facets = parseJsonArray(properties.facets_json)
+    .filter((facet) => facet.category && !(facet.category === properties.category && Number(facet.count) <= 1));
   if (!facets.length) return '';
-  return facets.map((facet) => `<span class="facet" title="${escapeHtml(facet.category || '')}">${categoryGlyph(facet.category)}${Number(facet.count) > 1 ? `<b>${Number(facet.count)}</b>` : ''}</span>`).join('');
+  return facets.map((facet) => `<span class="info-chip">${categoryGlyph(facet.category)}${escapeHtml(facet.category)}${Number(facet.count) > 1 ? ` <b>×${Number(facet.count)}</b>` : ''}</span>`).join('');
 }
 
 function threadMessagesHtml(properties) {
@@ -283,41 +283,39 @@ function threadMessagesHtml(properties) {
   return html.join('');
 }
 
-function ownerInfo(properties) {
+// Plain-language road facts for the case card: "70 km/t", "Riksvei",
+// "Kommunal vei" — no single-letter codes to decode.
+function roadOwnerLabel(properties) {
   const owner = String(properties.road_owner || properties.road_authority || '').trim();
   const lower = owner.toLowerCase();
-  let abbr = '';
-  if (lower.includes('kommune')) abbr = 'K';
-  else if (lower.includes('fylke')) abbr = 'F';
-  else if (lower.includes('stat')) abbr = 'S';
-  else if (lower.includes('privat')) abbr = 'P';
-  else {
-    const cat = String(properties.road_category || '').toUpperCase();
-    if (['K', 'F', 'R', 'E', 'P', 'S'].includes(cat)) abbr = cat;
-    else if (owner) abbr = owner.slice(0, 1).toUpperCase();
-  }
-  return abbr ? { abbr, full: owner || abbr } : null;
+  const cat = String(properties.road_category || '').toUpperCase();
+  if (lower.includes('kommune')) return 'Kommunal vei';
+  if (lower.includes('fylke')) return 'Fylkesvei';
+  if (lower.includes('privat')) return 'Privat vei';
+  if (cat === 'E') return 'Europavei';
+  if (lower.includes('stat') || cat === 'R' || cat === 'S') return 'Riksvei';
+  if (cat === 'K') return 'Kommunal vei';
+  if (cat === 'F') return 'Fylkesvei';
+  if (cat === 'P') return 'Privat vei';
+  return owner || '';
 }
 
 function roadBadges(properties) {
   const parts = [];
   const speed = Number(properties.speed_limit);
   if (Number.isFinite(speed) && speed > 0) {
-    parts.push(`<span class="speed-sign" title="Fartsgrense ${speed} km/t">${speed}</span>`);
+    parts.push(`<span class="info-chip info-chip--speed"><span class="speed-dot" aria-hidden="true"></span>${speed} km/t</span>`);
   }
-  const owner = ownerInfo(properties);
-  if (owner) {
-    parts.push(`<span class="owner-badge" title="Veieier: ${escapeHtml(owner.full)}">${escapeHtml(owner.abbr)}</span>`);
-  }
+  const owner = roadOwnerLabel(properties);
+  if (owner) parts.push(`<span class="info-chip">${escapeHtml(owner)}</span>`);
   return parts.join('');
 }
 
 function popupStatsHtml(properties, { nearbyCount, radiusM }) {
-  // Accident data is internal (admin only) — not surfaced in the public case card.
-  const rows = [
-    `<div><dt>Saker innen ${radiusM} m</dt><dd>${nearbyCount}</dd></div>`,
-  ];
-  return `<dl class="popup-stats">${rows.join('')}</dl>`;
+  // nearbyCount includes the case itself; only mention the others.
+  const others = Number(nearbyCount) - 1;
+  if (!(others > 0)) return '';
+  return `<p class="popup-nearby">${others} ${others === 1 ? 'annen sak' : 'andre saker'} innen ${radiusM} m</p>`;
 }
 
 // Compact, status-driven "slik jobber vi videre" progress for the case box —
@@ -328,7 +326,7 @@ function caseProgressHtml(status) {
       <div class="case-progress__row"><strong>Slik jobber vi videre</strong><span class="case-progress__count">Steg ${p.done} av ${p.total}</span></div>
       <div class="case-progress__track"><span class="case-progress__fill" style="width:${p.percent}%"></span></div>
       <p class="case-progress__now"><span class="case-progress__dot"></span>${escapeHtml(p.current)}</p>
-      ${p.next ? `<p class="case-progress__next">Neste: ${escapeHtml(p.next)}</p>` : '<p class="case-progress__next">Saken er ferdig behandlet.</p>'}
+      <p class="case-progress__next">${p.next ? `Neste: ${escapeHtml(p.next)}` : (p.finished ? 'Saken er ferdig behandlet.' : 'Saken følges opp.')}</p>
     </div>`;
 }
 
@@ -341,7 +339,6 @@ function popupHtml(featureOrProperties = {}, context = { nearbyCount: 1, radiusM
   return `
     <article class="report-popup popup-card">
       <header class="popup-head">
-        ${reportMarkerIconHtml()}
         <div class="popup-head__titles">
           <strong>${escapeHtml(category)}</strong>
           ${statusPillHtml(properties.status || REPORT_STATUS.NEW)}
@@ -472,9 +469,12 @@ async function ensureReportCategorySymbolLayer(map) {
       type: 'symbol',
       source: 'reports',
       filter: ['!', ['has', 'point_count']],
+      // Only when zoomed far in; further out the icon is too small to read
+      // and the plain status dot says more.
+      minzoom: 16,
       layout: MAP_STYLE.reportCategorySymbolLayout,
       paint: MAP_STYLE.reportCategorySymbolPaint,
-    }, map.getLayer('reports-support-badge') ? 'reports-support-badge' : undefined);
+    });
 
     restoreMapLayerOrder(map);
   } catch (error) {
@@ -1524,14 +1524,6 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       paint: MAP_STYLE.reportPointPaint,
     });
 
-    map.addLayer({
-      id: 'reports-support-badge',
-      type: 'symbol',
-      source: 'reports',
-      filter: ['all', ['!', ['has', 'point_count']], ['>', ['coalesce', ['to-number', ['get', 'support_count']], 0], 0]],
-      layout: MAP_STYLE.reportSupportBadgeLayout,
-      paint: MAP_STYLE.reportSupportBadgePaint,
-    });
 
     moveLayersToTop(map, REPORT_LAYER_IDS);
 
@@ -1887,6 +1879,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           ) : (
             <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" /></svg>
           )}
+          <span className="map-style-toggle__label">{satellite ? 'Kart' : 'Flyfoto'}</span>
         </button>
       )}
       {showReports && adminSecret && adminChrome && (
@@ -1922,6 +1915,16 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           </button>
           {layersOpen && (
             <div className="nvdb-toggle-card__body">
+              {!mapStyle && (
+                <button
+                  type="button"
+                  className={satellite ? 'nvdb-toggle nvdb-toggle--active' : 'nvdb-toggle'}
+                  onClick={toggleSatellite}
+                  aria-pressed={satellite}
+                >
+                  Flyfoto
+                </button>
+              )}
               {NVDB_LAYERS.map((layer) => (
                 <button
                   key={layer.type}

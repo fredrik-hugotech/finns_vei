@@ -32,6 +32,7 @@
 .popup-head__titles {
   display: grid;
   gap: 0.22rem;
+  justify-items: start;
 }
 
 /* Round symbols row: speed limit, road owner, concern facets */
@@ -144,10 +145,10 @@
   padding: 0.22rem 0.56rem 0.22rem 0.42rem;
 }
 
-.status-pill--ny { background: #f6ecda; color: #a9600d; }
-.status-pill--registrert { background: #efe6cf; color: #8a5a12; }
-.status-pill--startet { background: #e2e9fb; color: #1d4ed8; }
-.status-pill--fullfort { background: #dcefe2; color: #15803d; }
+.status-pill--ny { background: #fce6dd; color: #b23a16; }
+.status-pill--registrert { background: #e1f0ec; color: #1f6b5a; }
+.status-pill--startet { background: #d7eae4; color: #0b5d4d; }
+.status-pill--fullfort { background: #eceeee; color: #55605c; }
 .status-pill--ukjent { background: var(--color-surface-muted); color: var(--color-muted); }
 
 /* Conversation / history thread: citizen first, Finns.Fairway replies below.
@@ -473,3 +474,36 @@
 .popup-attach__item { align-items: center; aspect-ratio: 1; background: var(--color-surface-muted); border: 1px solid var(--color-border); border-radius: var(--radius-sm); display: flex; justify-content: center; overflow: hidden; }
 .popup-attach__item img { height: 100%; object-fit: cover; width: 100%; }
 .popup-attach__file { color: var(--color-muted); font-size: 0.72rem; font-weight: 800; }
+
+/* Plain-language chips in the case card: "70 km/t", "Riksvei", other concerns */
+.popup-symbols { gap: 0.35rem; }
+.info-chip {
+  align-items: center;
+  background: var(--color-surface-muted, #f2f4f3);
+  border-radius: var(--radius-pill, 999px);
+  color: var(--color-text, #14211d);
+  display: inline-flex;
+  font-size: 0.8rem;
+  font-weight: 600;
+  gap: 0.3rem;
+  min-height: 28px;
+  padding: 0 0.65rem;
+  white-space: nowrap;
+}
+.info-chip svg { height: 15px; width: 15px; color: var(--color-primary); }
+.info-chip b { font-weight: 800; color: var(--color-primary); }
+.speed-dot {
+  border: 2px solid #d11f2a;
+  border-radius: 50%;
+  display: inline-block;
+  height: 11px;
+  width: 11px;
+}
+.popup-nearby {
+  color: var(--color-muted, #5b6662);
+  font-size: 0.82rem;
+  margin: 0.2rem 0 0;
+}
+@media (min-width: 768px) and (hover: hover) {
+  .case-sheet > .sheet__handle { display: none; }
+}

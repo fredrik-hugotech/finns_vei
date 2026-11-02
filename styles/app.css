@@ -3333,10 +3333,10 @@ select.tkt-prop__ctrl { padding-right: 1.7rem; background-image: url("data:image
   top: 0.95rem;
   width: 9px;
 }
-.dash2-tile--ny::after { background: #f4c542; }
-.dash2-tile--registrert::after { background: #f59e0b; }
-.dash2-tile--startet::after { background: #2563eb; }
-.dash2-tile--fullfort::after { background: #16a34a; }
+.dash2-tile--ny::after { background: #e4572e; }
+.dash2-tile--registrert::after { background: #2e8b76; }
+.dash2-tile--startet::after { background: #0b5d4d; }
+.dash2-tile--fullfort::after { background: #8e9a96; }
 
 /* Pulse + snarvei cards: crisp flat surfaces */
 .dash2-pulse, .dash2-link { background: var(--color-surface); border-color: var(--color-border); }
@@ -5343,3 +5343,14 @@ button.app-menu__item { width: 100%; }
 .give-card__text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;font-size:.84rem;line-height:1.35;color:var(--color-muted, #5b6662)}
 .give-card__text strong{font-size:.95rem;color:var(--color-ink, #14211d)}
 .give-card__cta{flex:none;padding:7px 12px;border-radius:999px;background:#ff5b24;color:#fff;font-weight:800;font-size:.85rem}
+/* Basemap toggle: icon on phones, icon + word on larger screens so "Flyfoto"
+   is findable without guessing what the globe means. */
+.map-style-toggle__label { display: none; }
+@media (min-width: 768px) {
+  .map-style-toggle { border-radius: 999px; gap: 0.45rem; padding: 0 1.1rem 0 0.9rem; width: auto; }
+  .map-style-toggle__label { display: inline; font-size: 0.92rem; font-weight: 700; }
+}
+/* The FAB row spans the full width on larger screens; only its buttons may
+   take clicks, so the Flyfoto toggle underneath it stays usable. */
+.fab-row { pointer-events: none; }
+.fab-row > * { pointer-events: auto; }

@@ -103,7 +103,7 @@ export default function SakPage({ report, shareUrl, ogImageUrl, photos }) {
                 </div>
                 <div className="case-progress__track"><span className="case-progress__fill" style={{ width: `${p.percent}%` }} /></div>
                 <p className="case-progress__now"><span className="case-progress__dot" aria-hidden="true" />{p.current}</p>
-                <p className="case-progress__next">{p.next ? `Neste: ${p.next}` : 'Saken er ferdig behandlet.'}</p>
+                <p className="case-progress__next">{p.next ? `Neste: ${p.next}` : (p.finished ? 'Saken er ferdig behandlet.' : 'Saken følges opp.')}</p>
               </div>
             );
           })()}
