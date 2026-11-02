@@ -30,9 +30,10 @@ body {
    resolved HERE (where --font-text is defined) — body is above the wrapper and
    never sees the variable. */
 .app-root {
-  /* --font-text (Mulish) and --font-display (Fraunces) exist on THIS element
-     via next/font, so resolve the heading/body tokens here — descendants then
-     inherit the fully-resolved family. */
+  /* --font-text (Mulish) exists on THIS element via next/font, so resolve
+     the heading/body tokens here — descendants then inherit the fully-resolved
+     family. --font-display is an alias of the same face (one typeface). */
+  --font-display: var(--font-text);
   --font-heading: var(--font-text), system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-body: var(--font-text), system-ui, -apple-system, "Segoe UI", sans-serif;
   font-family: var(--font-body);
@@ -65,16 +66,14 @@ h1, h2, h3, h4 {
   letter-spacing: -0.014em;
 }
 
-/* The one "extra touch": a characterful display serif on the big public
-   hero titles only — everything else stays a clean grotesk. */
+/* Big titles and numbers: same face, heavier and tighter. */
 .kid-title,
 .kid-big-number,
 .bud-hero h1,
 .sak-hero h1 {
-  font-family: var(--font-display), Georgia, serif;
-  font-optical-sizing: auto;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-family: var(--font-heading);
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 /* Chrome (buttons, links, labels, handles) is not selectable — it feels like a

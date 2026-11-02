@@ -421,6 +421,12 @@ function accidentPopupHtml(properties = {}) {
 const MIN_ACCIDENT_FETCH_ZOOM = 12;
 const ACCIDENT_HEATMAP_MAX_ZOOM = 15;
 const ACCIDENT_POINT_MIN_ZOOM = 15;
+// The everyday basemap: muted, so reports and layers carry the colour.
+const BASEMAP_KART = 'mapbox://styles/mapbox/light-v11';
+function readBasemapPref() {
+  try { return window.localStorage.getItem('ff-basemap'); } catch (_e) { return null; }
+}
+
 const NVDB_LAYERS = [
   { type: 'accidents', label: 'Ulykker', color: MAP_COLORS.accidentLayer },
 ];
@@ -497,6 +503,34 @@ function applyAerialTreatment(map) {
       }
     }
   } catch (_e) { /* best effort */ }
+}
+
+// The light basemap is almost colourless out of the box; in a fjord city water
+// and land then blur together. Give water a faint blue, parks a faint green and
+// roads a touch more contrast, and hide commercial POI pins. Best-effort.
+function applyLightTreatment(map) {
+  if (!map) return;
+  const set = (id, prop, value) => {
+    try { if (map.getLayer(id)) map.setPaintProperty(id, prop, value); } catch (_e) { /* skip */ }
+  };
+  try {
+    set('water', 'fill-color', '#cfe0ea');
+    set('waterway', 'line-color', '#cfe0ea');
+    set('land', 'background-color', '#f6f5f2');
+    set('landuse', 'fill-color', '#e7efe4');
+    set('national-park', 'fill-color', '#e7efe4');
+    const layers = map.getStyle()?.layers || [];
+    for (const layer of layers) {
+      if (/poi/i.test(layer.id) && !/transit/i.test(layer.id)) {
+        try { map.setLayoutProperty(layer.id, 'visibility', 'none'); } catch (_e) { /* skip */ }
+      }
+    }
+  } catch (_e) { /* best effort */ }
+}
+
+function applyBasemapTreatment(map, satellite) {
+  if (satellite) applyAerialTreatment(map);
+  else applyLightTreatment(map);
 }
 
 // Draw a competition's route density as weighted lines: every road segment is
@@ -951,8 +985,9 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   // Public aerial-imagery toggle. Aerial ("Flyfoto") is the default view;
   // switching the base style wipes all custom sources/layers, so a style.load
   // handler rebuilds them (see the map effect).
-  const [satellite, setSatellite] = useState(true);
-  const satelliteRef = useRef(true);
+  // Calm light map by default; aerial is one tap away and remembered per device.
+  const [satellite, setSatellite] = useState(() => readBasemapPref() === 'flyfoto');
+  const satelliteRef = useRef(satellite);
   // The Kartlag panel is collapsed to a compact pill on phones so it doesn't
   // crowd the topbar; it stays expanded on wider screens where there's room.
   const [layersOpen, setLayersOpen] = useState(() => (typeof window !== 'undefined' ? window.innerWidth > 720 : false));
@@ -1657,7 +1692,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: mapStyleRef.current || (satelliteRef.current ? 'mapbox://styles/mapbox/satellite-streets-v12' : 'mapbox://styles/mapbox/streets-v12'),
+      style: mapStyleRef.current || (satelliteRef.current ? 'mapbox://styles/mapbox/satellite-streets-v12' : BASEMAP_KART),
       center: pointRef.current ? [pointRef.current.lng, pointRef.current.lat] : DEFAULT_CENTER,
       zoom: selectable ? 13 : 11,
       attributionControl: false,
@@ -1675,7 +1710,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right');
 
     map.on('load', async () => {
-      if (satelliteRef.current && !mapStyleRef.current) applyAerialTreatment(map);
+      if (!mapStyleRef.current) applyBasemapTreatment(map, satelliteRef.current);
       if (pointRef.current) placeMarker(pointRef.current);
       onMapReadyRef.current?.({
         getCenter: () => {
@@ -1761,7 +1796,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     let initialStyleSeen = false;
     map.on('style.load', () => {
       if (!initialStyleSeen) { initialStyleSeen = true; return; }
-      if (satelliteRef.current && !mapStyleRef.current) applyAerialTreatment(map);
+      if (!mapStyleRef.current) applyBasemapTreatment(map, satelliteRef.current);
       if (pointRef.current) placeMarker(pointRef.current);
       loadReports().catch((error) => console.error(error));
       refreshNvdbLayers().catch((error) => console.error(error));
@@ -1816,7 +1851,8 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     const next = !satelliteRef.current;
     satelliteRef.current = next;
     setSatellite(next);
-    map.setStyle(next ? 'mapbox://styles/mapbox/satellite-streets-v12' : 'mapbox://styles/mapbox/streets-v12');
+    try { window.localStorage.setItem('ff-basemap', next ? 'flyfoto' : 'kart'); } catch (_e) { /* private mode */ }
+    map.setStyle(next ? 'mapbox://styles/mapbox/satellite-streets-v12' : BASEMAP_KART);
   };
 
   if (!hasMapboxToken) {

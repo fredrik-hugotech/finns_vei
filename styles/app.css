@@ -5305,3 +5305,33 @@ a:focus-visible, button:focus-visible, label:focus-within { outline: 2px solid v
   padding: 0.4rem 0.55rem; position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; z-index: 2;
 }
 .sk-trend__tip span { align-items: center; display: inline-flex; }
+
+/* ======================================================================
+   Polish (2026-11): one typeface, calmer map chrome, fewer decorations.
+   ====================================================================== */
+/* Same face everywhere; hierarchy from weight and size. */
+.who__title, .tour__title, .fin__title, .rd-gate__card strong, .replay-hud strong, .fin__figures dd,
+.sheet-title, .ph h1, .page-header h1, .sub h1 {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+/* Touch screens pinch to zoom; the +/- buttons are desktop furniture. */
+@media (hover: none) and (pointer: coarse) {
+  .mapboxgl-ctrl-group:has(.mapboxgl-ctrl-zoom-in) { display: none; }
+}
+/* Map style toggle matches the rest of the white map chrome. */
+.map-style-toggle, .map-style-toggle--sat {
+  background: var(--chrome-bg, #fff);
+  border: 1px solid var(--chrome-border);
+  box-shadow: var(--chrome-shadow);
+  color: var(--color-primary);
+}
+/* Menu: the install entry is a button among links. */
+button.app-menu__item { width: 100%; }
+/* Privacy page: a plain, readable list instead of tick badges and a tinted box. */
+.personvern-item__check { display: none; }
+.personvern-item { grid-template-columns: 1fr; padding: 0.85rem 0; }
+.personvern-item__body strong { font-size: 1rem; }
+.personvern-item__body span { color: var(--color-text); font-size: 0.95rem; line-height: 1.5; opacity: 0.85; }
+.personvern-summary { background: none; color: var(--color-text); font-size: 1.05rem; padding: 0; }

@@ -357,16 +357,6 @@ export default function Home() {
 
         <div className="app-topbar">
           <span className="app-brand"><Logo size="sm" /></span>
-          {canInstall && (
-            <button
-              type="button"
-              className="app-install-cta"
-              onClick={() => { if (typeof window !== 'undefined') window.dispatchEvent(new Event('ff-open-install')); }}
-            >
-              <Icon name="download" size={17} strokeWidth={2} />
-              Installer
-            </button>
-          )}
           <PlaceSearch
             onPick={(pt) => mapApiRef.current?.flyTo?.(pt)}
             getProximity={() => mapApiRef.current?.getCenter?.() || null}
@@ -391,6 +381,11 @@ export default function Home() {
                   <a role="menuitem" className="app-menu__item" href="/tegn-rute"><Icon name="pencil" size={20} />Tegn en rute</a>
                   <a role="menuitem" className="app-menu__item" href="/aktuelt"><Icon name="news" size={20} />Aktuelt</a>
                   <a role="menuitem" className="app-menu__item" href="/bud"><Icon name="bud" size={20} />Finns 10 bud</a>
+                  {canInstall && (
+                    <button type="button" role="menuitem" className="app-menu__item" onClick={() => { setMenuOpen(false); window.dispatchEvent(new Event('ff-open-install')); }}>
+                      <Icon name="download" size={20} />Installer appen
+                    </button>
+                  )}
                   <span className="app-menu__rule" aria-hidden="true" />
                   <a role="menuitem" className="app-menu__item app-menu__item--quiet" href="/personvern"><Icon name="shield" size={18} />Personvern</a>
                   <a role="menuitem" className="app-menu__item app-menu__item--quiet" href="/backoffice"><Icon name="lock" size={18} />Admin</a>

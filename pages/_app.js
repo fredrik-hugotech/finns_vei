@@ -1,19 +1,12 @@
 import '../styles/globals.css';
 import Head from 'next/head';
 import { useEffect } from 'react';
-import { Fraunces, Mulish } from 'next/font/google';
+import { Mulish } from 'next/font/google';
 
-// Bespoke "storybook" pairing — a warm, characterful display serif for
-// headings (Fraunces, optical sizing on) over a friendly humanist sans for
-// text (Mulish). Deliberately not the generic Inter/Poppins default.
-const fraunces = Fraunces({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '900'],
-  style: ['normal', 'italic'],
-  variable: '--font-display',
-  display: 'swap',
-});
-
+// One typeface for the whole product (2026-11): Mulish for text and headings,
+// hierarchy from weight and size. A serif display face next to it made the
+// screens look mixed-and-matched. --font-display is kept as an alias (see
+// globals.css) so existing styles resolve to the same family.
 const mulish = Mulish({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700', '800'],
@@ -32,7 +25,7 @@ export default function MyApp({ Component, pageProps }) {
   }, []);
 
   return (
-    <div className={`app-root ${fraunces.variable} ${mulish.variable}`}>
+    <div className={`app-root ${mulish.variable}`}>
       <Head>
         {/* Permissive by default: pinch-zoom stays enabled everywhere except the
             Mapbox map pages, which set their own restrictive viewport meta

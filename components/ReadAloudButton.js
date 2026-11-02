@@ -41,7 +41,7 @@ function getVoicesWhenReady(synth) {
 // server call, no API key), and simply absent — not broken — during SSR or
 // on browsers without speech support: `supported` only flips true after
 // mount, so the server render and first client render always match.
-export default function ReadAloudButton({ text, label = 'Hør på meg', className = '' }) {
+export default function ReadAloudButton({ text, label = 'Les opp', className = '' }) {
   const [supported, setSupported] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const mountedRef = useRef(false);
