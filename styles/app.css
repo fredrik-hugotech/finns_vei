@@ -5470,3 +5470,19 @@ button.app-menu__item { width: 100%; }
   .sheet-success { padding-top: 0.9rem; }
 }
 .list-more { justify-self: center; margin-top: 0.75rem; max-width: 320px; }
+/* Sykkelspor: mode chips, and on phones the panel sits at the bottom so the
+   Kartlag control at the top stays visible. */
+.spor-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.spor-chip { background: var(--color-surface-muted, #f1f4f2); border: 1px solid var(--color-border); border-radius: 999px; color: var(--color-text); font-size: 0.85rem; font-weight: 650; min-height: 34px; padding: 0 0.75rem; }
+.spor-chip span { color: var(--color-muted); font-weight: 600; margin-left: 0.15rem; }
+.spor-chip--on { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+.spor-chip--on span { color: rgba(255, 255, 255, 0.8); }
+@media (max-width: 640px) {
+  .spor-panel {
+    border-radius: 16px; bottom: max(0.7rem, env(safe-area-inset-bottom)); gap: 0.4rem;
+    left: 0.7rem; max-width: none; padding: 0.7rem 0.8rem; right: 0.7rem; top: auto; width: auto;
+  }
+  .spor-panel .comp-select { min-height: 40px; }
+  .spor-panel__note { display: none; }
+  .spor-panel__leaderboard { max-height: 22vh; }
+}

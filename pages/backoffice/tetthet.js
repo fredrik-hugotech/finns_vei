@@ -107,17 +107,20 @@ export default function Sykkelspor() {
                 <span className="spor-panel__meta">Ingen konkurranser ennå. Opprett en på <Link href="/backoffice/konkurranser">/backoffice/konkurranser</Link>.</span>
               )}
               {competitions.length > 0 && (
-                <select className="comp-select" value={competitionId} onChange={(e) => onSelect(e.target.value)}>
+                <select className="comp-select" value={competitionId} onChange={(e) => onSelect(e.target.value)} aria-label="Hvilke turer">
                   {competitions.map((c) => <option key={c.id} value={c.id}>{c.name}{c.active ? '' : ' (skjult)'}</option>)}
                 </select>
               )}
               {modeCounts && Object.values(modeCounts).filter((n) => n > 0).length > 1 && (
-                <select className="comp-select" value={mode} onChange={(e) => onModeChange(e.target.value)}>
-                  <option value="">Alle ({Object.values(modeCounts).reduce((a, b) => a + b, 0)})</option>
-                  <option value="sykkel">Sykkel ({modeCounts.sykkel})</option>
-                  {modeCounts.sparkesykkel > 0 && <option value="sparkesykkel">Sparkesykkel ({modeCounts.sparkesykkel})</option>}
-                  <option value="gange">Gange ({modeCounts.gange})</option>
-                </select>
+                <div className="spor-chips" role="group" aria-label="Transportmåte">
+                  {[['', 'Alle', Object.values(modeCounts).reduce((a, b) => a + b, 0)], ['sykkel', 'Sykkel', modeCounts.sykkel], ['sparkesykkel', 'Sparkesykkel', modeCounts.sparkesykkel], ['gange', 'Gange', modeCounts.gange]]
+                    .filter(([value, , n]) => value === '' || n > 0)
+                    .map(([value, label, n]) => (
+                      <button key={value || 'alle'} type="button" className={mode === value ? 'spor-chip spor-chip--on' : 'spor-chip'} aria-pressed={mode === value} onClick={() => onModeChange(value)}>
+                        {label} <span>{n}</span>
+                      </button>
+                    ))}
+                </div>
               )}
               {stats && (
                 <span className="spor-panel__meta">{stats.totals.trips} turer · {(stats.totals.distanceM / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 0 })} km{stats.totals.drawnRoutes ? ` · ${stats.totals.drawnRoutes} tegnet av voksne` : ''}</span>
@@ -126,7 +129,7 @@ export default function Sykkelspor() {
                 <span className="spor-panel__meta">{competitionId === 'alle' ? 'Ingen lagrede spor ennå.' : 'Ingen lagrede spor i denne konkurransen ennå. Velg en annen, eller logg en tur.'}</span>
               )}
               {competitionId === 'alle' && (
-                <span className="spor-panel__meta">Alle turer, også de som er logget utenfor konkurranser og ruter tegnet av voksne. Demo-turer er ikke med.</span>
+                <span className="spor-panel__meta spor-panel__note">Også turer utenfor konkurranser og ruter tegnet av voksne. Demo-turer er ikke med.</span>
               )}
               {status && status !== 'not-authed' && <span className="spor-panel__meta">{status}</span>}
               {competitionId !== 'alle' && stats?.leaderboard?.length > 0 && (
