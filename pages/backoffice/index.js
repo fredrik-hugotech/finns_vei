@@ -170,7 +170,8 @@ function Dashboard({ me }) {
   };
   const renderCase = (c) => {
     const meta = reportStatusMeta(c.status);
-    const hasFoot = dueBadge(c) || Number(c.support_count) > 0 || c.assignee_email;
+    const parts = splitReportText(c.description, { exclude: c.category });
+    const hasFoot = dueBadge(c) || Number(c.support_count) > 0 || c.assignee_email || parts.categories.length > 0;
     return (
       <Link key={c.id} href={`/backoffice/sak/${encodeURIComponent(c.id)}`} className="admin-list-item">
         <div className="admin-list-item__head">
@@ -181,9 +182,10 @@ function Dashboard({ me }) {
           </span>
         </div>
         <strong className="admin-list-item__title">{c.category}</strong>
-        {(() => { const { categories, text } = splitReportText(c.description, { exclude: c.category }); const shown = text || categories.join(' · '); return shown ? <span className="admin-list-item__desc">{shown}</span> : null; })()}
+        {parts.text && <span className="admin-list-item__desc">{parts.text}</span>}
         {hasFoot && (
           <span className="admin-list-item__foot">
+            {parts.categories.map((cat) => <span key={cat} className="admin-list-item__cat">{cat}</span>)}
             {dueBadge(c)}
             {c.assignee_email && <span className="admin-list-item__assignee">{staffName(c.assignee_email)}</span>}
           </span>

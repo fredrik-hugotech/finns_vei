@@ -274,6 +274,7 @@ export default function Liste() {
           {shown.slice(0, visible).map((c) => {
             const meta = reportStatusMeta(c.status);
             const loc = ownerShort(c.road_owner, c.speed_limit);
+            const parts = splitReportText(c.description, { exclude: c.category });
             return (
               <Link key={c.id} className="admin-list-item" href={`/backoffice/sak/${encodeURIComponent(c.id)}`}>
                 <div className="admin-list-item__head">
@@ -284,8 +285,9 @@ export default function Liste() {
                   </span>
                 </div>
                 <strong className="admin-list-item__title">{c.category}</strong>
-                {(() => { const { categories, text } = splitReportText(c.description, { exclude: c.category }); const shown = text || categories.join(' · '); return shown ? <span className="admin-list-item__desc">{shown}</span> : null; })()}
+                {parts.text && <span className="admin-list-item__desc">{parts.text}</span>}
                 <span className="admin-list-item__foot">
+                  {parts.categories.map((cat) => <span key={cat} className="admin-list-item__cat">{cat}</span>)}
                   {loc && <span className="admin-list-item__loc">{loc}</span>}
                   {c.bike_route_type && <span className="admin-list-item__tag">{c.bike_route_type === 'skole' ? 'Skolerute' : 'Sykkelrute'}</span>}
                   {c.due_date && (() => {
