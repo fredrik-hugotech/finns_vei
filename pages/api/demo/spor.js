@@ -102,10 +102,10 @@ export default async function handler(req, res) {
       id = pick.id;
     }
     const mode = req.query.mode === 'sykkel' || req.query.mode === 'gange' ? req.query.mode : null;
-    const stats = await getCompetitionStats(id, { mode, includeGeojson: false });
+    const stats = await getCompetitionStats(id, { mode, includeGeojson: false, syntheticOnly: true });
     if (!stats || !isDemoComp(stats.competition)) return res.status(404).json({ error: 'Fant ikke demo-konkurransen' });
 
-    const trips = await listCompetitionTripRoutes(id);
+    const trips = await listCompetitionTripRoutes(id, { syntheticOnly: true });
     const heat = buildHeat(mode ? trips.filter((t) => t.mode === mode) : trips);
     const colorByClub = new Map(stats.leaderboard.map((row) => [row.club, row.color]));
     // Per-trip lines only need city-scale shape: Douglas-Peucker each route

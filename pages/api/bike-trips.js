@@ -3,6 +3,7 @@ import { removeSpurs } from '../../lib/pathClean';
 import { pathDistanceMeters } from '../../lib/geoPrivacy';
 import { checkRequestRateLimit } from '../../lib/rateLimit';
 import { normalizeMode } from '../../lib/tripModes';
+import { isAdminRequest } from '../../lib/backofficeAuth';
 
 // ~15 trip logs per 10 minutes per IP hash - a class of kids sharing one
 // gym/school wifi can log several trips in a row without tripping this.
@@ -105,20 +106,33 @@ export default async function handler(req, res) {
     // No competition is fine: the trip still counts in the map of where
     // children travel, just not on any leaderboard.
     let clubName = '';
+    let savedCompetitionId = competitionId || null;
+    let demoSeed = false;
     if (competitionId) {
       const competition = await getCompetition(competitionId);
       if (!competition || !competition.active) {
         return res.status(404).json({ error: 'Konkurransen er ikke aktiv' });
       }
-      clubName = String(club || '').trim();
-      const matchedClub = competition.clubs.find((entry) => entry.name === clubName);
-      if (competition.clubs.length && !matchedClub) {
-        return res.status(400).json({ error: 'Velg en klubb fra listen' });
+      // Demo competitions are shown publicly on /demo. A real trip must never
+      // land in one, even if a demo competition is left switched on: it is
+      // saved as an ordinary trip outside any competition instead.
+      const isDemo = /\bdemo\b/i.test(competition.name || '') || /\bdemo\b/i.test(competition.description || '');
+      if (isDemo && !(await isAdminRequest(req))) {
+        savedCompetitionId = null;
+      } else {
+        // Staff seeding demo trips (/backoffice/seed-spor): mark them as
+        // generated so the public demo filter recognises them.
+        if (isDemo) demoSeed = true;
+        clubName = String(club || '').trim();
+        const matchedClub = competition.clubs.find((entry) => entry.name === clubName);
+        if (competition.clubs.length && !matchedClub) {
+          return res.status(400).json({ error: 'Velg en klubb fra listen' });
+        }
       }
     }
 
     await createBikeTrip({
-      competitionId: competitionId || null,
+      competitionId: savedCompetitionId,
       club: clubName,
       helmet: Boolean(helmet),
       distanceM,
@@ -128,7 +142,7 @@ export default async function handler(req, res) {
       routeType: routeType || null,
       mode: normalizeMode(mode),
       weather: weather && typeof weather === 'object' ? weather : null,
-      tripToken: tripToken || null,
+      tripToken: demoSeed ? `demo-seed:${Date.now()}:${Math.random().toString(36).slice(2, 8)}` : (tripToken || null),
       source,
       loggedBy,
     });
