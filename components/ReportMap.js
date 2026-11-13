@@ -549,7 +549,35 @@ function showCompetitionTrips(map, geojson) {
   // Remember only the LATEST wish: a retry scheduled for an older draw must
   // never win over a newer "clear" (or vice versa) once the style is ready.
   map.__compTripsWanted = geojson && geojson.type ? geojson : { type: 'FeatureCollection', features: [] };
+  // Trips can be anywhere in Norway: frame them once when new data arrives.
+  map.__compTripsFit = (map.__compTripsWanted.features || []).length > 0;
   applyCompetitionTrips(map);
+}
+
+// Bounding box of line/point features as [[w, s], [e, n]], or null.
+function featureBounds(features) {
+  let w = Infinity; let so = Infinity; let e = -Infinity; let n = -Infinity;
+  const visit = (c) => {
+    if (typeof c?.[0] === 'number') {
+      const [lng, lat] = c;
+      if (Number.isFinite(lng) && Number.isFinite(lat)) { w = Math.min(w, lng); e = Math.max(e, lng); so = Math.min(so, lat); n = Math.max(n, lat); }
+    } else if (Array.isArray(c)) c.forEach(visit);
+  };
+  (features || []).forEach((f) => visit(f?.geometry?.coordinates));
+  return Number.isFinite(w) ? [[w, so], [e, n]] : null;
+}
+
+// One weighted point per segment, for the zoomed-out heatmap.
+function segmentPoints(features) {
+  return {
+    type: 'FeatureCollection',
+    features: (features || []).map((f) => {
+      const c = f?.geometry?.coordinates || [];
+      const a = c[0]; const b = c[c.length - 1];
+      if (!a || !b) return null;
+      return { type: 'Feature', properties: { weight: Number(f.properties?.weight) || 1 }, geometry: { type: 'Point', coordinates: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2] } };
+    }).filter(Boolean),
+  };
 }
 
 // Admin layer "Sparkesykler": schools (orange) and sports venues (blue)
@@ -612,10 +640,44 @@ function applyCompetitionTrips(map) {
   const data = map.__compTripsWanted || { type: 'FeatureCollection', features: [] };
   const hasData = (data.features || []).length > 0;
 
+  const points = segmentPoints(data.features);
   const source = map.getSource('competition-trips');
   if (source) {
     source.setData(data);
+    map.getSource('competition-trip-points')?.setData(points);
   } else {
+    map.addSource('competition-trip-points', { type: 'geojson', data: points });
+    // Zoomed out the lines are hair-thin and trips are spread across the
+    // country, so show where they are as a heatmap that hands over to the
+    // lines as you zoom in.
+    map.addLayer({
+      id: 'competition-trip-heat',
+      type: 'heatmap',
+      source: 'competition-trip-points',
+      maxzoom: 13,
+      paint: {
+        'heatmap-weight': ['interpolate', ['linear'], ['get', 'weight'], 1, 0.4, 10, 1],
+        'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 3, 1.2, 9, 1.6, 12, 2],
+        'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 3, 10, 7, 16, 10, 22, 12, 28],
+        'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 10, 0.85, 12.5, 0],
+        'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'],
+          0, 'rgba(244,63,110,0)', 0.15, 'rgba(251,182,206,0.75)', 0.4, '#f43f6e', 0.7, '#e11d2e', 1, '#9f1239'],
+      },
+    });
+    // Invisible tap targets on the heat spots: tap to zoom in to the routes.
+    map.addLayer({
+      id: 'competition-trip-hit',
+      type: 'circle',
+      source: 'competition-trip-points',
+      maxzoom: 12,
+      paint: { 'circle-radius': 22, 'circle-opacity': 0 },
+    });
+    map.on('click', 'competition-trip-hit', (e) => {
+      const c = e.features?.[0]?.geometry?.coordinates;
+      if (c) map.easeTo({ center: c, zoom: Math.min(13, Math.max(map.getZoom() + 4, 11)), duration: 700 });
+    });
+    map.on('mouseenter', 'competition-trip-hit', () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', 'competition-trip-hit', () => { map.getCanvas().style.cursor = ''; });
     map.addSource('competition-trips', { type: 'geojson', data });
     // Soft white casing so the coloured lines read on the light basemap.
     map.addLayer({
@@ -625,7 +687,7 @@ function applyCompetitionTrips(map) {
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
         'line-color': '#ffffff',
-        'line-opacity': 0.55,
+        'line-opacity': ['interpolate', ['linear'], ['zoom'], 9.5, 0, 11, 0.55],
         'line-width': ['interpolate', ['linear'], ['get', 'weight'], 1, 3.5, 8, 11],
       },
     });
@@ -638,7 +700,8 @@ function applyCompetitionTrips(map) {
       paint: {
         'line-color': ['interpolate', ['linear'], ['get', 'weight'],
           1, '#fbb6ce', 3, '#f43f6e', 6, '#e11d2e', 10, '#ff1130'],
-        'line-opacity': ['interpolate', ['linear'], ['get', 'weight'], 1, 0.5, 6, 1],
+        'line-opacity': ['interpolate', ['linear'], ['zoom'], 9.5, 0,
+          11, ['interpolate', ['linear'], ['get', 'weight'], 1, 0.5, 6, 1]],
         'line-width': ['interpolate', ['linear'], ['get', 'weight'], 1, 2, 4, 4, 8, 7, 14, 10],
       },
     });
@@ -647,6 +710,15 @@ function applyCompetitionTrips(map) {
   // Hide the report markers while the lines are visible, restore when cleared.
   for (const id of REPORT_LAYER_IDS) {
     if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', hasData ? 'none' : 'visible');
+  }
+
+  if (hasData && map.__compTripsFit) {
+    map.__compTripsFit = false;
+    const bounds = featureBounds(data.features);
+    if (bounds) {
+      const narrow = typeof window !== 'undefined' && window.innerWidth < 640;
+      try { map.fitBounds(bounds, { padding: { top: 90, bottom: narrow ? 280 : 60, left: 40, right: 40 }, maxZoom: 13, duration: 700 }); } catch (_e) { /* ignore */ }
+    }
   }
 }
 
