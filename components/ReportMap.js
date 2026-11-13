@@ -544,13 +544,15 @@ function applyBasemapTreatment(map, satellite) {
 // coloured/sized by how many trips used it, so busy routes to/from venues stand
 // out as strong, bright lines and quiet ones stay faint. While the layer has
 // data we hide report markers. Passing an empty FC clears + restores.
-function showCompetitionTrips(map, geojson) {
+function showCompetitionTrips(map, geojson, { fitTo = null } = {}) {
   if (!map) return;
   // Remember only the LATEST wish: a retry scheduled for an older draw must
   // never win over a newer "clear" (or vice versa) once the style is ready.
   map.__compTripsWanted = geojson && geojson.type ? geojson : { type: 'FeatureCollection', features: [] };
   // Trips can be anywhere in Norway: frame them once when new data arrives.
   map.__compTripsFit = (map.__compTripsWanted.features || []).length > 0;
+  // A specific area to show (e.g. a municipality picked on the dashboard).
+  map.__compTripsFitTo = fitTo;
   applyCompetitionTrips(map);
 }
 
@@ -654,12 +656,12 @@ function applyCompetitionTrips(map) {
       id: 'competition-trip-heat',
       type: 'heatmap',
       source: 'competition-trip-points',
-      maxzoom: 13,
+      maxzoom: 11,
       paint: {
         'heatmap-weight': ['interpolate', ['linear'], ['get', 'weight'], 1, 0.4, 10, 1],
         'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 3, 1.2, 9, 1.6, 12, 2],
         'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 3, 10, 7, 16, 10, 22, 12, 28],
-        'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 10, 0.85, 12.5, 0],
+        'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 8.5, 0.85, 10.5, 0],
         'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'],
           0, 'rgba(244,63,110,0)', 0.15, 'rgba(251,182,206,0.75)', 0.4, '#f43f6e', 0.7, '#e11d2e', 1, '#9f1239'],
       },
@@ -669,7 +671,7 @@ function applyCompetitionTrips(map) {
       id: 'competition-trip-hit',
       type: 'circle',
       source: 'competition-trip-points',
-      maxzoom: 12,
+      maxzoom: 10.5,
       paint: { 'circle-radius': 22, 'circle-opacity': 0 },
     });
     map.on('click', 'competition-trip-hit', (e) => {
@@ -687,7 +689,7 @@ function applyCompetitionTrips(map) {
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
         'line-color': '#ffffff',
-        'line-opacity': ['interpolate', ['linear'], ['zoom'], 9.5, 0, 11, 0.55],
+        'line-opacity': ['interpolate', ['linear'], ['zoom'], 8.5, 0, 10, 0.55],
         'line-width': ['interpolate', ['linear'], ['get', 'weight'], 1, 3.5, 8, 11],
       },
     });
@@ -699,12 +701,25 @@ function applyCompetitionTrips(map) {
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
         'line-color': ['interpolate', ['linear'], ['get', 'weight'],
-          1, '#fbb6ce', 3, '#f43f6e', 6, '#e11d2e', 10, '#ff1130'],
-        'line-opacity': ['interpolate', ['linear'], ['zoom'], 9.5, 0,
-          11, ['interpolate', ['linear'], ['get', 'weight'], 1, 0.5, 6, 1]],
-        'line-width': ['interpolate', ['linear'], ['get', 'weight'], 1, 2, 4, 4, 8, 7, 14, 10],
+          1, '#ec5f8f', 3, '#e8365f', 6, '#d91c35', 10, '#b5122a'],
+        'line-opacity': ['interpolate', ['linear'], ['zoom'], 8.5, 0,
+          10, ['interpolate', ['linear'], ['get', 'weight'], 1, 0.85, 6, 1]],
+        'line-width': ['interpolate', ['linear'], ['get', 'weight'], 1, 3, 4, 5, 8, 7.5, 14, 10],
       },
     });
+  }
+
+  if (!map.__compTripsClick) {
+    map.__compTripsClick = true;
+    map.on('click', 'competition-trip-lines', (e) => {
+      const w = Number(e.features?.[0]?.properties?.weight) || 1;
+      new mapboxgl.Popup({ maxWidth: '220px', closeButton: false })
+        .setLngLat(e.lngLat)
+        .setHTML(`<strong>${w} ${w === 1 ? 'tur' : 'turer'}</strong><br>har gått her`)
+        .addTo(map);
+    });
+    map.on('mouseenter', 'competition-trip-lines', () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', 'competition-trip-lines', () => { map.getCanvas().style.cursor = ''; });
   }
 
   // Hide the report markers while the lines are visible, restore when cleared.
@@ -714,7 +729,7 @@ function applyCompetitionTrips(map) {
 
   if (hasData && map.__compTripsFit) {
     map.__compTripsFit = false;
-    const bounds = featureBounds(data.features);
+    const bounds = map.__compTripsFitTo || featureBounds(data.features);
     if (bounds) {
       const narrow = typeof window !== 'undefined' && window.innerWidth < 640;
       try { map.fitBounds(bounds, { padding: { top: 90, bottom: narrow ? 280 : 60, left: 40, right: 40 }, maxZoom: 13, duration: 700 }); } catch (_e) { /* ignore */ }
@@ -1830,7 +1845,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
             .catch(() => (requestId === accidentCheckIdRef.current ? [] : null));
         },
         openCaseById: (id) => openCaseById(id),
-        showCompetitionTrips: (geojson) => showCompetitionTrips(map, geojson),
+        showCompetitionTrips: (geojson, opts) => showCompetitionTrips(map, geojson, opts),
         showRouteLines: (geojson) => showRouteLines(map, geojson),
         showHeatLines: (geojson, opts) => showHeatLines(map, geojson, opts),
         clearHeatLines: (opts) => showHeatLines(map, { type: 'FeatureCollection', features: [] }, opts),

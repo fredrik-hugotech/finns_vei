@@ -97,6 +97,15 @@ function Dashboard({ me }) {
   const [error, setError] = useState('');
   const [skoleAvvik, setSkoleAvvik] = useState(null);
 
+  // Where trips are being logged (Sykkelspor), grouped by municipality.
+  const [tripAreas, setTripAreas] = useState(null);
+  useEffect(() => {
+    fetch('/api/backoffice/trip-areas')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setTripAreas(d))
+      .catch(() => {});
+  }, []);
+
   // Bus disruptions near schools (Entur) — its own request so a slow or
   // failing Entur never holds up the case numbers.
   useEffect(() => {
@@ -226,6 +235,28 @@ function Dashboard({ me }) {
             })}
           </div>
         </section>
+
+        {tripAreas && tripAreas.totalTrips > 0 && (
+          <section>
+            <div className="dash2__h2row">
+              <h2 className="dash2__h2">Sykkelspor <span className="dash2__hint">{tripAreas.totalTrips} turer · {tripAreas.lastWeek} siste 7 dager</span></h2>
+              <Link className="dash2__seeall" href="/backoffice/tetthet">Se kartet ›</Link>
+            </div>
+            <div className="trip-areas">
+              {tripAreas.areas.map((a) => (
+                <Link
+                  key={a.kommune}
+                  className="trip-area"
+                  href={{ pathname: '/backoffice/tetthet', query: { fit: a.bounds.flat().map((v) => v.toFixed(4)).join(','), sted: a.kommune } }}
+                >
+                  <span className="trip-area__name">{a.kommune}<small>{a.fylke}</small></span>
+                  <span className="trip-area__n"><strong>{a.trips}</strong> {a.trips === 1 ? 'tur' : 'turer'}{a.lastWeek > 0 ? <em>+{a.lastWeek} denne uka</em> : null}</span>
+                  <span className="trip-area__go" aria-hidden="true">›</span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section>
           <h2 className="dash2__h2">Snarveier</h2>

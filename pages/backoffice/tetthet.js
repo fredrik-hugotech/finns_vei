@@ -24,6 +24,15 @@ export default function Sykkelspor() {
   const [stats, setStats] = useState(null);
   const [status, setStatus] = useState('');
   const [loaded, setLoaded] = useState(false);
+  // ?fit=w,s,e,n&sted=Bærum — opened from the dashboard's municipality list.
+  const [focus, setFocus] = useState(null);
+  useEffect(() => {
+    try {
+      const q = new URLSearchParams(window.location.search);
+      const nums = String(q.get('fit') || '').split(',').map(Number);
+      if (nums.length === 4 && nums.every(Number.isFinite)) setFocus({ bounds: [[nums[0], nums[1]], [nums[2], nums[3]]], name: q.get('sted') || '' });
+    } catch (_e) { /* ignore */ }
+  }, []);
 
   // requestId guards against out-of-order responses when the competition or
   // mode filter is switched again before an earlier fetch has resolved.
@@ -71,12 +80,12 @@ export default function Sykkelspor() {
   useEffect(() => {
     if (!mapApi) return;
     if (stats?.geojson) {
-      mapApi.showCompetitionTrips?.(stats.geojson);
-      if (stats.geojson.features?.length) mapApi.fitCompetition?.(stats.geojson);
+      // Frames all trips, or the municipality picked on the dashboard.
+      mapApi.showCompetitionTrips?.(stats.geojson, { fitTo: focus?.bounds || null });
     } else {
       mapApi.clearCompetitionTrips?.();
     }
-  }, [mapApi, stats]);
+  }, [mapApi, stats, focus]);
 
   const onSelect = (id) => { setCompetitionId(id); load(id, mode); };
   const onModeChange = (nextMode) => { setMode(nextMode); load(competitionId, nextMode); };
@@ -101,7 +110,7 @@ export default function Sykkelspor() {
             <p className="spor-panel__msg">Logg inn først. <Link href="/backoffice">Til innlogging</Link></p>
           ) : (
             <>
-              <strong>Sykkelspor</strong>
+              <strong>Sykkelspor{focus?.name ? ` · ${focus.name}` : ''}</strong>
               {!loaded && <span className="spor-panel__meta">Laster …</span>}
               {loaded && !status && competitions.length === 0 && (
                 <span className="spor-panel__meta">Ingen konkurranser ennå. Opprett en på <Link href="/backoffice/konkurranser">/backoffice/konkurranser</Link>.</span>
