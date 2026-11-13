@@ -519,7 +519,7 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
                       <strong>Støtt arbeidet</strong>
                       <span>Bli fast lagkamerat i Stiftelsen Finns.Fairway, eller gi et bidrag.</span>
                     </span>
-                    <span className="give-card__cta">Vipps</span>
+                    <span className="give-card__cta">Bli giver</span>
                   </a>
                 )}
               </>

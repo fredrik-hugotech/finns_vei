@@ -5342,7 +5342,7 @@ button.app-menu__item { width: 100%; }
 .give-card__icon{flex:none;display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:var(--color-primary-tint, #e8f1ee);color:var(--color-primary, #0b5d4d)}
 .give-card__text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;font-size:.84rem;line-height:1.35;color:var(--color-muted, #5b6662)}
 .give-card__text strong{font-size:.95rem;color:var(--color-ink, #14211d)}
-.give-card__cta{flex:none;padding:7px 12px;border-radius:999px;background:#ff5b24;color:#fff;font-weight:800;font-size:.85rem}
+.give-card__cta{flex:none;padding:7px 12px;border-radius:999px;background:var(--color-primary,#0b5d4d);color:#fff;font-weight:800;font-size:.85rem;white-space:nowrap}
 /* Basemap toggle: icon on phones, icon + word on larger screens so "Flyfoto"
    is findable without guessing what the globe means. */
 .map-style-toggle__label { display: none; }
