@@ -60,7 +60,11 @@ function haversineMeters([lng1, lat1], [lng2, lat2]) {
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
-function bboxAround([lng, lat], meters) {
+function bboxAround([rawLng, rawLat], meters) {
+  // Snap the centre to a ~50 m grid so people looking at the same spot ask
+  // for the same box, and the CDN can answer instead of the road database.
+  const lng = Math.round(rawLng / 0.0008) * 0.0008;
+  const lat = Math.round(rawLat / 0.0004) * 0.0004;
   const dLat = meters / 111320;
   const dLng = meters / (111320 * Math.cos((lat * Math.PI) / 180));
   return [lng - dLng, lat - dLat, lng + dLng, lat + dLat].map((value) => value.toFixed(6)).join(',');
