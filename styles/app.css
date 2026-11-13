@@ -5498,3 +5498,8 @@ button.app-menu__item { width: 100%; }
 .trip-area__n em { color: var(--color-primary); display: block; font-size: 0.76rem; font-style: normal; font-weight: 700; }
 .trip-area__go { color: var(--color-muted); font-size: 1.2rem; }
 @media (min-width: 1000px) { .trip-areas { grid-template-columns: repeat(2, minmax(0, 1fr)); } .trip-area:nth-child(2) { border-top: 0; } .trip-area:nth-child(even) { border-left: 1px solid var(--color-border); } }
+/* Admin badge on phones: under the top bar on the left, so it never covers
+   the search and menu buttons (Kartlag sits on the right at the same height). */
+@media (max-width: 640px) {
+  .admin-mode-badge { left: max(0.9rem, env(safe-area-inset-left)); top: calc(max(0.55rem, env(safe-area-inset-top)) + 5.5rem); transform: none; }
+}

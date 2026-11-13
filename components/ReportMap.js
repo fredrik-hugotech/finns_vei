@@ -1522,6 +1522,9 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       if (!comps.length) { setMessage('Ingen konkurranser ennå.'); sporOnRef.current = false; setSporOn(false); return; }
       const pick = comps.find((c) => c.id === sporCompId) || comps.find((c) => c.active) || comps[0];
       setSporCompId(pick.id);
+      // On a phone the open panel covers half the map: close it so the
+      // trips are visible straight away (it reopens with one tap).
+      if (typeof window !== 'undefined' && window.innerWidth < 640) setLayersOpen(false);
       await drawSpor(pick.id, sporMode);
     } catch (_e) { setMessage('Kunne ikke hente sykkelspor.'); sporOnRef.current = false; setSporOn(false); }
   };
