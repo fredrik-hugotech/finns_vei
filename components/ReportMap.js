@@ -544,7 +544,7 @@ function applyBasemapTreatment(map, satellite) {
 // coloured/sized by how many trips used it, so busy routes to/from venues stand
 // out as strong, bright lines and quiet ones stay faint. While the layer has
 // data we hide report markers. Passing an empty FC clears + restores.
-function showCompetitionTrips(map, geojson, { fitTo = null } = {}) {
+function showCompetitionTrips(map, geojson, { fitTo = null, endpoints = null } = {}) {
   if (!map) return;
   // Remember only the LATEST wish: a retry scheduled for an older draw must
   // never win over a newer "clear" (or vice versa) once the style is ready.
@@ -553,6 +553,7 @@ function showCompetitionTrips(map, geojson, { fitTo = null } = {}) {
   map.__compTripsFit = (map.__compTripsWanted.features || []).length > 0;
   // A specific area to show (e.g. a municipality picked on the dashboard).
   map.__compTripsFitTo = fitTo;
+  map.__compTripsEnds = map.__compTripsWanted.features?.length && endpoints?.features ? endpoints : { type: 'FeatureCollection', features: [] };
   applyCompetitionTrips(map);
 }
 
@@ -622,13 +623,16 @@ function applyScooterPlaces(map) {
       'circle-stroke-width': 2,
     },
   });
-  map.on('click', 'scooter-places', (e) => {
-    const f = e.features?.[0];
-    if (!f) return;
-    const p = f.properties;
-    new mapboxgl.Popup({ maxWidth: '240px' }).setLngLat(f.geometry.coordinates)
-      .setHTML(`<strong>${escapeHtml(p.name)}</strong><br>${p.arrivals} sparkesykler parkert · ${p.departures} leid herfra`).addTo(map);
-  });
+  if (!map.__scooterClick) {
+    map.__scooterClick = true;
+    map.on('click', 'scooter-places', (e) => {
+      const f = e.features?.[0];
+      if (!f) return;
+      const p = f.properties;
+      new mapboxgl.Popup({ maxWidth: '240px' }).setLngLat(f.geometry.coordinates)
+        .setHTML(`<strong>${escapeHtml(p.name)}</strong><br>${p.arrivals} sparkesykler parkert · ${p.departures} leid herfra`).addTo(map);
+    });
+  }
 }
 
 function applyCompetitionTrips(map) {
@@ -674,12 +678,15 @@ function applyCompetitionTrips(map) {
       maxzoom: 10.5,
       paint: { 'circle-radius': 22, 'circle-opacity': 0 },
     });
-    map.on('click', 'competition-trip-hit', (e) => {
-      const c = e.features?.[0]?.geometry?.coordinates;
-      if (c) map.easeTo({ center: c, zoom: Math.min(13, Math.max(map.getZoom() + 4, 11)), duration: 700 });
-    });
-    map.on('mouseenter', 'competition-trip-hit', () => { map.getCanvas().style.cursor = 'pointer'; });
-    map.on('mouseleave', 'competition-trip-hit', () => { map.getCanvas().style.cursor = ''; });
+    if (!map.__compTripsHitClick) {
+      map.__compTripsHitClick = true;
+      map.on('click', 'competition-trip-hit', (e) => {
+        const c = e.features?.[0]?.geometry?.coordinates;
+        if (c) map.easeTo({ center: c, zoom: Math.min(13, Math.max(map.getZoom() + 4, 11)), duration: 700 });
+      });
+      map.on('mouseenter', 'competition-trip-hit', () => { map.getCanvas().style.cursor = 'pointer'; });
+      map.on('mouseleave', 'competition-trip-hit', () => { map.getCanvas().style.cursor = ''; });
+    }
     map.addSource('competition-trips', { type: 'geojson', data });
     // Soft white casing so the coloured lines read on the light basemap.
     map.addLayer({
@@ -707,6 +714,37 @@ function applyCompetitionTrips(map) {
         'line-width': ['interpolate', ['linear'], ['get', 'weight'], 1, 3, 4, 5, 8, 7.5, 14, 10],
       },
     });
+  }
+
+  // Start (green) and stop (dark) of each trip, from zoom 11.
+  const ends = map.__compTripsEnds || { type: 'FeatureCollection', features: [] };
+  if (map.getSource('competition-trip-ends')) {
+    map.getSource('competition-trip-ends').setData(ends);
+  } else {
+    map.addSource('competition-trip-ends', { type: 'geojson', data: ends });
+    map.addLayer({
+      id: 'competition-trip-ends',
+      type: 'circle',
+      source: 'competition-trip-ends',
+      minzoom: 11,
+      paint: {
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 3.5, 15, 6.5],
+        'circle-color': ['match', ['get', 'kind'], 'start', '#16a34a', '#1f2937'],
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 11, 1.5, 15, 2.5],
+      },
+    });
+    if (!map.__compEndsClick) {
+      map.__compEndsClick = true;
+      map.on('click', 'competition-trip-ends', (e) => {
+        const kind = e.features?.[0]?.properties?.kind;
+        new mapboxgl.Popup({ maxWidth: '240px', closeButton: false }).setLngLat(e.lngLat)
+          .setHTML(kind === 'start'
+            ? '<strong>Start</strong><br>Der turen begynner. De første 50 m fra hjemmet er fjernet.'
+            : '<strong>Stopp</strong><br>Der turen endte, ofte trening eller skole.')
+          .addTo(map);
+      });
+    }
   }
 
   if (!map.__compTripsClick) {
@@ -1500,7 +1538,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     try {
       const stats = await fetch(`/api/backoffice/competition-trips?id=${encodeURIComponent(id)}${q}`).then((r) => (r.ok ? r.json() : null));
       if (req !== sporReqRef.current || !sporOnRef.current) return;
-      showCompetitionTrips(map, stats?.geojson || { type: 'FeatureCollection', features: [] });
+      showCompetitionTrips(map, stats?.geojson || { type: 'FeatureCollection', features: [] }, { endpoints: stats?.endpoints });
       if (!stats?.geojson?.features?.length) setMessage({ gange: 'Ingen gå-turer logget ennå.', sykkel: 'Ingen sykkelturer logget ennå.', sparkesykkel: 'Ingen sparkesykkelturer logget ennå.' }[mode] || 'Ingen spor logget ennå.');
     } catch (_e) { setMessage('Kunne ikke hente sykkelspor.'); }
   };
@@ -1905,6 +1943,10 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       if (pointRef.current) placeMarker(pointRef.current);
       loadReports().catch((error) => console.error(error));
       refreshNvdbLayers().catch((error) => console.error(error));
+      // The switch wiped our own layers: redraw Sykkelspor and scooter places
+      // from what was last asked for (without re-zooming the map).
+      if ((map.__compTripsWanted?.features || []).length) { map.__compTripsFit = false; applyCompetitionTrips(map); }
+      if ((map.__scooterWanted || []).length) applyScooterPlaces(map);
     });
 
     map.on('moveend', () => {

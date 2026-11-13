@@ -25,7 +25,7 @@ export default async function handler(req, res) {
     const stats = await getCompetitionStats(id, { includeGeojson: false });
     if (!stats) return res.status(404).json({ error: 'Fant ikke konkurransen' });
     // The density geojson is internal (admin only) — never expose it publicly.
-    const { geojson, ...publicStats } = stats;
+    const { geojson, endpoints, ...publicStats } = stats;
     res.setHeader('Cache-Control', 's-maxage=8, stale-while-revalidate=60');
     return res.status(200).json(publicStats);
   } catch (error) {

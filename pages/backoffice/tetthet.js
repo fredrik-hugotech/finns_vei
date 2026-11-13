@@ -81,7 +81,7 @@ export default function Sykkelspor() {
     if (!mapApi) return;
     if (stats?.geojson) {
       // Frames all trips, or the municipality picked on the dashboard.
-      mapApi.showCompetitionTrips?.(stats.geojson, { fitTo: focus?.bounds || null });
+      mapApi.showCompetitionTrips?.(stats.geojson, { fitTo: focus?.bounds || null, endpoints: stats.endpoints });
     } else {
       mapApi.clearCompetitionTrips?.();
     }
@@ -130,6 +130,9 @@ export default function Sykkelspor() {
                       </button>
                     ))}
                 </div>
+              )}
+              {stats && trackCount > 0 && (
+                <span className="spor-legend"><i className="spor-legend__start" /> Start <i className="spor-legend__stop" /> Stopp</span>
               )}
               {stats && (
                 <span className="spor-panel__meta">{stats.totals.trips} turer · {(stats.totals.distanceM / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 0 })} km{stats.totals.drawnRoutes ? ` · ${stats.totals.drawnRoutes} tegnet av voksne` : ''}</span>
