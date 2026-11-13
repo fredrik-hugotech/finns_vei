@@ -64,9 +64,11 @@ const nextConfig = {
       "default-src 'self'",
       "script-src 'self'",
       "style-src 'self' 'unsafe-inline'",
-      `img-src 'self' data: blob: https://api.mapbox.com${supabaseHost ? ` https://${supabaseHost}` : ''}`,
+      // cache.kartverket.no: backup basemap tiles when Mapbox is unavailable
+      // (lib/mapFallback.js); ws.geonorge.no: backup address lookup.
+      `img-src 'self' data: blob: https://api.mapbox.com https://cache.kartverket.no${supabaseHost ? ` https://${supabaseHost}` : ''}`,
       "font-src 'self'",
-      `connect-src 'self' https://api.mapbox.com https://events.mapbox.com${supabaseHost ? ` https://${supabaseHost}` : ''}`,
+      `connect-src 'self' https://api.mapbox.com https://events.mapbox.com https://cache.kartverket.no https://ws.geonorge.no${supabaseHost ? ` https://${supabaseHost}` : ''}`,
       "worker-src 'self' blob:",
       "child-src blob:",
       // The /demo tour shows our own /backoffice in a frame.

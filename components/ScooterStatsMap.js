@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { applyLocalLabelNames } from '../lib/mapLabels';
+import { attachMapFallback } from '../lib/mapFallback';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
@@ -41,6 +42,7 @@ export default function ScooterStatsMap({ places, focusKey }) {
     if (!containerRef.current || !mapboxgl.accessToken) return undefined;
     const map = new mapboxgl.Map({ container: containerRef.current, style: 'mapbox://styles/mapbox/light-v11', bounds: NORWAY, attributionControl: false });
     mapRef.current = map;
+    const detachFallback = attachMapFallback(map, { initialOnly: true });
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right');
     map.on('load', () => {
@@ -69,7 +71,7 @@ export default function ScooterStatsMap({ places, focusKey }) {
       map.on('mouseleave', 'places', () => { map.getCanvas().style.cursor = ''; popup.remove(); });
       fit(map, placesRef.current);
     });
-    return () => { map.remove(); mapRef.current = null; };
+    return () => { detachFallback(); map.remove(); mapRef.current = null; };
   }, []);
 
   useEffect(() => {

@@ -11,7 +11,25 @@ import { addPendingReport } from '../lib/offlineReportQueue';
 
 // Coordinates → a human place ("Marviksveien · Lund") so the reporter can
 // confirm they picked the right spot before sending.
+// Kartverket's open address register: backup when Mapbox is unavailable.
+async function reverseGeocodeKartverket(lat, lng) {
+  try {
+    const r = await fetch(`https://ws.geonorge.no/adresser/v1/punktsok?lat=${lat}&lon=${lng}&radius=250&koordsys=4258&utkoordsys=4258&treffPerSide=1`);
+    if (!r.ok) return null;
+    const a = (await r.json())?.adresser?.[0];
+    if (!a?.adressetekst) return null;
+    const town = String(a.poststed || a.kommunenavn || '').toLowerCase().replace(/(^|[\s-])\p{L}/gu, (m) => m.toUpperCase());
+    return [a.adressetekst, town].filter(Boolean).join(' · ');
+  } catch (_e) { return null; }
+}
+
 async function reverseGeocode(lat, lng, token) {
+  const viaMapbox = await reverseGeocodeMapbox(lat, lng, token);
+  return viaMapbox || reverseGeocodeKartverket(lat, lng);
+}
+
+async function reverseGeocodeMapbox(lat, lng, token) {
+  if (!token) return null;
   try {
     // NB: Mapbox geocoding has no "street" type — passing it makes the whole
     // request 422 and the place label hangs on "Henter sted …". Valid types
@@ -528,7 +546,7 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
             <div className="sheet-scroll">
               <h2 className="sheet-title">Meld fra om et utrygt sted</h2>
               <div className="report-loc">
-                {mapThumb && <span className="report-loc__map"><img src={mapThumb} alt="Kart over valgt sted" /></span>}
+                {mapThumb && <span className="report-loc__map"><img src={mapThumb} alt="Kart over valgt sted" onError={(e) => { e.currentTarget.parentElement.style.display = 'none'; }} /></span>}
                 <span className="report-loc__text">
                   <span className="report-loc__label">Stedet du melder fra</span>
                   <span className="report-loc__place">

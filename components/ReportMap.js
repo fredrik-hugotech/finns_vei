@@ -4,6 +4,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { DEFAULT_CENTER, NEARBY_REPORT_RADIUS_M, REPORT_STATUS } from '../lib/config';
 import { caseProgress } from '../lib/processSteps';
 import { applyLocalLabelNames } from '../lib/mapLabels';
+import { attachMapFallback } from '../lib/mapFallback';
 import {
   MAP_COLORS,
   MAP_STYLE,
@@ -993,6 +994,10 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   // handler rebuilds them (see the map effect).
   // Calm light map by default; aerial is one tap away and remembered per device.
   const [satellite, setSatellite] = useState(() => readBasemapPref() === 'flyfoto');
+  // True once the map has switched to Kartverket's backup basemap (Mapbox
+  // unavailable); the aerial toggle is hidden then, since it needs Mapbox.
+  const [backupMap, setBackupMap] = useState(false);
+  const backupMapRef = useRef(false);
   const satelliteRef = useRef(satellite);
   // The Kartlag panel is collapsed to a compact pill on phones so it doesn't
   // crowd the topbar; it stays expanded on wider screens where there's room.
@@ -1697,6 +1702,11 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     });
 
     mapRef.current = map;
+    // If Mapbox fails (outage, quota, blocked token), keep the map working
+    // on Kartverket's open basemap instead of showing a blank screen.
+    const detachFallback = attachMapFallback(map, {
+      onFallback: () => { backupMapRef.current = true; satelliteRef.current = false; setBackupMap(true); },
+    });
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
     // "Zoom to my position" — the standard geolocate button under the zoom
     // controls, so it's not just zoom in/out.
@@ -1825,6 +1835,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     }
 
     return () => {
+      detachFallback();
       markerRef.current?.remove();
       markerRef.current = null;
       map.remove();
@@ -1845,7 +1856,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
 
   const toggleSatellite = () => {
     const map = mapRef.current;
-    if (!map) return;
+    if (!map || backupMapRef.current) return;
     const next = !satelliteRef.current;
     satelliteRef.current = next;
     setSatellite(next);
@@ -1871,7 +1882,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   return (
     <div className="map-wrap">
       <div ref={containerRef} className={className} />
-      {showReports && !pickMode && !mapStyle && (
+      {showReports && !pickMode && !mapStyle && !backupMap && (
         <button
           type="button"
           className={satellite ? 'map-style-toggle map-style-toggle--sat' : 'map-style-toggle'}
@@ -1921,7 +1932,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           </button>
           {layersOpen && (
             <div className="nvdb-toggle-card__body">
-              {!mapStyle && (
+              {!mapStyle && !backupMap && (
                 <button
                   type="button"
                   className={satellite ? 'nvdb-toggle nvdb-toggle--active' : 'nvdb-toggle'}

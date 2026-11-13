@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { applyLocalLabelNames } from '../lib/mapLabels';
+import { attachMapFallback } from '../lib/mapFallback';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { DEFAULT_CENTER } from '../lib/config';
@@ -135,6 +136,7 @@ export default function RouteDrawer({ mode = 'sykkel', onModeChange, routeType =
       attributionControl: false,
     });
     mapRef.current = map;
+    const detachFallback = attachMapFallback(map, { initialOnly: true });
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
     map.addControl(new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: false }), 'top-right');
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right');
@@ -154,7 +156,7 @@ export default function RouteDrawer({ mode = 'sykkel', onModeChange, routeType =
       map.fire('draw-ready');
     });
     map.on('click', (e) => addPoint(e.lngLat));
-    return () => { map.remove(); mapRef.current = null; };
+    return () => { detachFallback(); map.remove(); mapRef.current = null; };
   }, [addPoint]);
 
   // Draw the line + markers whenever the route changes.
