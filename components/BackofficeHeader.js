@@ -10,7 +10,8 @@ const NAV = [
   { href: '/', label: 'Kart' },
   { href: '/backoffice/statistikk', label: 'Statistikk' },
   { href: '/backoffice/sparkesykler', label: 'Sparkesykler' },
-  { href: '/backoffice/konkurranser', label: 'Konkurranser', match: ['/backoffice/konkurranser', '/backoffice/tetthet'] },
+  { href: '/backoffice/tetthet', label: 'Sykkelspor' },
+  { href: '/backoffice/konkurranser', label: 'Konkurranser' },
 ];
 
 function isActive(item, path) {

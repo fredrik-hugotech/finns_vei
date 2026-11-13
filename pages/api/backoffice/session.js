@@ -1,4 +1,5 @@
 import { isAdminRequest } from '../../../lib/backofficeAuth';
+import { getStaffFromRequest } from '../../../lib/staffAuth';
 import { getTrelloBoardId } from '../../../lib/trello';
 import { checkRequestRateLimit } from '../../../lib/rateLimit';
 
@@ -15,6 +16,13 @@ export default async function handler(req, res) {
     res.setHeader('Allow', ['GET']);
     return res.status(405).end('Method Not Allowed');
   }
+  // A logged-in staff member (session cookie) is answered straight away: the
+  // map checks this on every load, and counting those checks against the
+  // password-guessing limit below locked staff out of the admin map layers
+  // after a few reloads.
+  const staff = await getStaffFromRequest(req);
+  if (staff) return res.status(200).json({ ok: true, trelloBoardUrl: `https://trello.com/b/${getTrelloBoardId()}` });
+
   const rateLimit = checkRequestRateLimit(req, 'backoffice-session', RATE_LIMIT, RATE_LIMIT_WINDOW_MS);
   if (!rateLimit.allowed) {
     res.setHeader('Retry-After', Math.ceil(rateLimit.retryAfterMs / 1000));

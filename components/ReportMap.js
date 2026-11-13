@@ -1034,7 +1034,14 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     try { stored = window.localStorage.getItem('ff-admin-secret') || ''; } catch (_e) { stored = ''; }
     if (!stored) return undefined;
     fetch('/api/backoffice/session', { headers: { 'x-backoffice-secret': stored } })
-      .then((r) => { if (!cancelled) setAdminSecret(r.ok ? stored : null); if (!r.ok) { try { window.localStorage.removeItem('ff-admin-secret'); } catch (_e) { /* ignore */ } } })
+      .then((r) => {
+        if (cancelled) return;
+        // Only a clear "not logged in" ends admin mode. A busy/limited answer
+        // (429, 5xx) keeps it — every admin API still checks access itself.
+        const loggedOut = r.status === 401 || r.status === 403;
+        setAdminSecret(loggedOut ? null : stored);
+        if (loggedOut) { try { window.localStorage.removeItem('ff-admin-secret'); } catch (_e) { /* ignore */ } }
+      })
       .catch(() => { if (!cancelled) setAdminSecret(null); });
     return () => { cancelled = true; };
   }, []);
