@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { removeSpurs } from '../lib/pathClean';
 import { applyLocalLabelNames } from '../lib/mapLabels';
 import { attachMapFallback } from '../lib/mapFallback';
 import mapboxgl from 'mapbox-gl';
@@ -169,8 +170,9 @@ export default function RouteDrawer({ mode = 'sykkel', onModeChange, routeType =
       // One continuous line for the finished legs (a leg that starts a few
       // metres from where the previous one ended is simply joined to it);
       // legs still being routed are drawn faintly on top.
-      const joined = [];
-      legs.forEach((leg) => { if (!leg.pending) joined.push(...leg.coords); });
+      const raw = [];
+      legs.forEach((leg) => { if (!leg.pending) raw.push(...leg.coords); });
+      const joined = removeSpurs(raw);
       const features = [];
       if (joined.length >= 2) features.push({ type: 'Feature', properties: { pending: false }, geometry: { type: 'LineString', coordinates: joined } });
       legs.forEach((leg) => { if (leg.pending) features.push({ type: 'Feature', properties: { pending: true }, geometry: { type: 'LineString', coordinates: leg.coords } }); });
@@ -189,10 +191,12 @@ export default function RouteDrawer({ mode = 'sykkel', onModeChange, routeType =
     return undefined;
   }, [legs, waypoints]);
 
-  const points = [];
+  const rawCoords = [];
   legs.forEach((leg, i) => {
-    leg.coords.forEach((c, j) => { if (i > 0 && j === 0) return; points.push({ lng: c[0], lat: c[1] }); });
+    leg.coords.forEach((c, j) => { if (i > 0 && j === 0) return; rawCoords.push(c); });
   });
+  // Without the out-and-back hooks the router adds at each tapped point.
+  const points = removeSpurs(rawCoords).map((c) => ({ lng: c[0], lat: c[1] }));
   const distanceM = pathDistanceMeters(points);
   const pending = legs.some((leg) => leg.pending);
   const km = (distanceM / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 1, minimumFractionDigits: 1 });

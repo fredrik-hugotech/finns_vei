@@ -1,4 +1,5 @@
 import { createBikeTrip, getCompetition, hasSupabaseConfig } from '../../lib/supabaseRest';
+import { removeSpurs } from '../../lib/pathClean';
 import { pathDistanceMeters } from '../../lib/geoPrivacy';
 import { checkRequestRateLimit } from '../../lib/rateLimit';
 import { normalizeMode } from '../../lib/tripModes';
@@ -54,9 +55,9 @@ export default async function handler(req, res) {
   if (source === 'manuell') {
     // Drawn routes describe a regular way to training/school — they feed the
     // heatmap but never count in a competition.
-    const points = Array.isArray(body.path)
-      ? body.path.map((p) => ({ lng: Number(p?.[0]), lat: Number(p?.[1]) })).filter((p) => Number.isFinite(p.lng) && Number.isFinite(p.lat))
-      : [];
+    // Also cleaned here, so older app versions can't store hooked routes.
+    const cleanPath = removeSpurs(Array.isArray(body.path) ? body.path : []);
+    const points = cleanPath.map((p) => ({ lng: Number(p?.[0]), lat: Number(p?.[1]) })).filter((p) => Number.isFinite(p.lng) && Number.isFinite(p.lat));
     if (points.length < 2 || points.length > MAX_DRAWN_ROUTE_POINTS) return res.status(400).json({ error: 'Ugyldig rute' });
     const distance = pathDistanceMeters(points);
     if (!(distance > 0) || distance > MAX_DRAWN_ROUTE_M) return res.status(400).json({ error: 'Ruten er for lang' });
@@ -68,7 +69,7 @@ export default async function handler(req, res) {
         distanceM: distance,
         durationS: null,
         cells: points.map((p) => [p.lng, p.lat]),
-        path: body.path,
+        path: cleanPath,
         routeType: body.routeType || null,
         mode: normalizeMode(body.mode),
         weather: null,
