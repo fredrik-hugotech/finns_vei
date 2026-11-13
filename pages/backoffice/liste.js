@@ -1,4 +1,5 @@
 import Head from 'next/head';
+import { splitReportText } from '../../lib/reportText';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
@@ -283,7 +284,7 @@ export default function Liste() {
                   </span>
                 </div>
                 <strong className="admin-list-item__title">{c.category}</strong>
-                {c.description && <span className="admin-list-item__desc">{c.description}</span>}
+                {(() => { const { categories, text } = splitReportText(c.description, { exclude: c.category }); const shown = text || categories.join(' · '); return shown ? <span className="admin-list-item__desc">{shown}</span> : null; })()}
                 <span className="admin-list-item__foot">
                   {loc && <span className="admin-list-item__loc">{loc}</span>}
                   {c.bike_route_type && <span className="admin-list-item__tag">{c.bike_route_type === 'skole' ? 'Skolerute' : 'Sykkelrute'}</span>}

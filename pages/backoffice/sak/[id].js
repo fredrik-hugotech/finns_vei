@@ -1,4 +1,5 @@
 import Head from 'next/head';
+import { splitReportText } from '../../../lib/reportText';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
@@ -518,14 +519,22 @@ export default function SakDetalj() {
                 </Link>
               )}
               <p className="sak-hero__meta">{c.reporter_type === 'voksen' ? 'Meldt av voksen' : 'Meldt av barn'}{c.bike_route_type ? ` · ${c.bike_route_type === 'skole' ? 'skolerute' : 'fritidsrute'}` : ''}</p>
-              {c.description && (
-                <div className="sak-hero__report">
-                  <p className={descOpen ? 'sak-hero__desc' : 'sak-hero__desc sak-hero__desc--clamp'}>{c.description}</p>
-                  {c.description.length > 150 && (
-                    <button type="button" className="sak-hero__more" onClick={() => setDescOpen((v) => !v)}>{descOpen ? 'Vis mindre' : 'Vis mer'}</button>
-                  )}
-                </div>
-              )}
+              {c.description && (() => {
+                const { categories, text } = splitReportText(c.description, { exclude: c.category });
+                return (
+                  <div className="sak-hero__report">
+                    {categories.length > 0 && (
+                      <div className="cat-chips" aria-label="Gjelder også">
+                        {categories.map((cat) => <span key={cat} className="info-chip">{cat}</span>)}
+                      </div>
+                    )}
+                    {text && <p className={descOpen ? 'sak-hero__desc' : 'sak-hero__desc sak-hero__desc--clamp'}>{text}</p>}
+                    {text.length > 150 && (
+                      <button type="button" className="sak-hero__more" onClick={() => setDescOpen((v) => !v)}>{descOpen ? 'Vis mindre' : 'Vis mer'}</button>
+                    )}
+                  </div>
+                );
+              })()}
               {c.images?.length > 0 && (
                 <div className="sak-images sak-hero__images">
                   {c.images.map((src, i) => <button type="button" key={i} onClick={() => setLightbox(src)}><img src={src} alt={`Bilde ${i + 1} av saken`} /></button>)}

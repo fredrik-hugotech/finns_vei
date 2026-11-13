@@ -1,4 +1,5 @@
 import Head from 'next/head';
+import { splitReportText } from '../../lib/reportText';
 import Link from 'next/link';
 import BackofficeHeader from '../../components/BackofficeHeader';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -180,7 +181,7 @@ function Dashboard({ me }) {
           </span>
         </div>
         <strong className="admin-list-item__title">{c.category}</strong>
-        {c.description && <span className="admin-list-item__desc">{c.description}</span>}
+        {(() => { const { categories, text } = splitReportText(c.description, { exclude: c.category }); const shown = text || categories.join(' · '); return shown ? <span className="admin-list-item__desc">{shown}</span> : null; })()}
         {hasFoot && (
           <span className="admin-list-item__foot">
             {dueBadge(c)}

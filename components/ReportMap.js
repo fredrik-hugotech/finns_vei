@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { splitReportText } from '../lib/reportText';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { DEFAULT_CENTER, NEARBY_REPORT_RADIUS_M, REPORT_STATUS } from '../lib/config';
@@ -358,7 +359,12 @@ function popupHtml(featureOrProperties = {}, context = { nearbyCount: 1, radiusM
       <div class="popup-thread" data-thread>
         <article class="msg msg--citizen">
           <header class="msg__meta"><span class="msg__author">Innbygger</span>${citizenDate ? `<time>${escapeHtml(citizenDate)}</time>` : ''}</header>
-          <p class="msg__text">${description ? escapeHtml(compactText(description, 400)) : 'Ingen beskrivelse lagt ved.'}</p>
+          ${(() => {
+            const { categories, text } = splitReportText(description, { exclude: properties.category });
+            const chips = categories.length ? `<div class="cat-chips">${categories.map((c) => `<span class="info-chip">${escapeHtml(c)}</span>`).join('')}</div>` : '';
+            const body = text ? `<p class="msg__text">${escapeHtml(compactText(text, 400))}</p>` : (chips ? '' : '<p class="msg__text">Ingen beskrivelse lagt ved.</p>');
+            return chips + body;
+          })()}
           ${reportImagesHtml(properties)}
         </article>
         ${replies ? `<div class="popup-replies">${replies}</div>` : ''}

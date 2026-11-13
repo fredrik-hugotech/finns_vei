@@ -1,4 +1,5 @@
 import Head from 'next/head';
+import { splitReportText } from '../../lib/reportText';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import Icon from '../../components/Icon';
@@ -116,7 +117,19 @@ export default function SakPage({ report, shareUrl, ogImageUrl, photos }) {
           })()}
 
           {report.image_url && <img className="share-card__image" src={report.image_url} alt="" />}
-          {report.description && <p className="share-card__text">{report.description}</p>}
+          {(() => {
+            const { categories, text } = splitReportText(report.description, { exclude: report.category });
+            return (
+              <>
+                {categories.length > 0 && (
+                  <div className="cat-chips" aria-label="Gjelder også">
+                    {categories.map((c) => <span key={c} className="info-chip">{c}</span>)}
+                  </div>
+                )}
+                {text && <p className="share-card__text">{text}</p>}
+              </>
+            );
+          })()}
           {report.public_status_note && (
             <div className="share-card__update">
               <strong>Oppdatering fra Finns.Fairway</strong>
@@ -198,6 +211,8 @@ export async function getServerSideProps({ params, req, res }) {
     status: report.status || 'Ny',
     image_url: firstImage ? firstImage.url : null,
     public_status_note: report.public_status_note || null,
+    created_at: report.created_at || null,
+    support_count: Number(report.support_count || 0),
   };
 
   const proto = String(req.headers['x-forwarded-proto'] || 'https').split(',')[0];

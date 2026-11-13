@@ -5507,3 +5507,6 @@ button.app-menu__item { width: 100%; }
 .spor-legend i { border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1px rgba(0,0,0,0.15); display: inline-block; height: 11px; width: 11px; }
 .spor-legend__start { background: #16a34a; }
 .spor-legend__stop { background: #1f2937; margin-left: 0.4rem; }
+/* Extra categories on a report, as labels instead of a "Gjelder: …" sentence. */
+.cat-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.15rem 0 0.35rem; }
+.cat-chips .info-chip { background: var(--color-primary-tint, #e8f1ee); color: var(--color-primary, #0b5d4d); font-size: 0.8rem; font-weight: 650; min-height: 26px; padding: 0 0.6rem; }
