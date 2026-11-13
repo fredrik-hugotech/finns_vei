@@ -20,7 +20,10 @@ const STATUSES = Object.values(REPORT_STATUS);
 // count passes this the OLDEST (often most overdue) cases silently drop off
 // every list/dashboard view. Expose it in the response so the UI can warn
 // staff instead of quietly showing an incomplete list.
-const CASES_LIMIT = 150;
+// High enough to hold every case (a national launch brought 350 in an hour);
+// list descriptions are trimmed below so the payload stays small.
+const CASES_LIMIT = 5000;
+const LIST_DESCRIPTION_CHARS = 280;
 
 // This is the shared-secret's most-hit oracle (main case dashboard, loaded
 // constantly by staff) — rate limit it like every other secret-gated route
@@ -104,7 +107,11 @@ export default async function handler(req, res) {
         const idRows = await listReportsForBackoffice({ limit: CASES_LIMIT, idsOnly: true });
         return res.status(200).json({ ids: idRows.map((r) => r.id), truncated: idRows.length >= CASES_LIMIT, limit: CASES_LIMIT });
       }
-      const cases = await listReportsForBackoffice({ limit: CASES_LIMIT });
+      const cases = (await listReportsForBackoffice({ limit: CASES_LIMIT })).map((c) => (
+        c.description && c.description.length > LIST_DESCRIPTION_CHARS
+          ? { ...c, description: `${c.description.slice(0, LIST_DESCRIPTION_CHARS)}…` }
+          : c
+      ));
       return res.status(200).json({
         cases,
         truncated: cases.length >= CASES_LIMIT,

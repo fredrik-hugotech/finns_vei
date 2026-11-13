@@ -63,6 +63,8 @@ export default function Liste() {
   const router = useRouter();
   const [cases, setCases] = useState(null);
   const [truncated, setTruncated] = useState(false);
+  // Render the list in pages: thousands of cards at once makes phones sluggish.
+  const [visible, setVisible] = useState(100);
   const [error, setError] = useState('');
   const [q, setQ] = useState('');
   // sort/agingFilter mirror `status` below: derived straight from router.query
@@ -153,6 +155,8 @@ export default function Liste() {
     };
     return list.sort(sorters[sort] || byNew);
   }, [cases, active, q, sort, agingFilter, assigneeFilter, createdFilter, ownerFilter, speedFilter, categoryFilter, reporterFilter]);
+  // Back to the first page whenever the filters or search change.
+  useEffect(() => { setVisible(100); }, [shown]);
 
   const totalSupport = useMemo(() => (cases || []).reduce((n, c) => n + Number(c.support_count || 0), 0), [cases]);
 
@@ -266,7 +270,7 @@ export default function Liste() {
         )}
 
         <div className="admin-list">
-          {shown.map((c) => {
+          {shown.slice(0, visible).map((c) => {
             const meta = reportStatusMeta(c.status);
             const loc = ownerShort(c.road_owner, c.speed_limit);
             return (
@@ -293,6 +297,11 @@ export default function Liste() {
             );
           })}
         </div>
+        {shown.length > visible && (
+          <button type="button" className="big-button big-button--secondary list-more" onClick={() => setVisible((v) => v + 200)}>
+            Vis flere ({shown.length - visible} til)
+          </button>
+        )}
       </main>
     </>
   );

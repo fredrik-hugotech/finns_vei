@@ -5469,3 +5469,4 @@ button.app-menu__item { width: 100%; }
 @media (max-height: 700px) {
   .sheet-success { padding-top: 0.9rem; }
 }
+.list-more { justify-self: center; margin-top: 0.75rem; max-width: 320px; }

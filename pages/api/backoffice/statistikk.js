@@ -7,7 +7,7 @@ import { checkRequestRateLimit } from '../../../lib/rateLimit';
 // Bounded like other backoffice list endpoints (cases.js: 150, hot-cases:
 // 300) — this one scans further back in history for aggregation, so the
 // ceiling is higher, but it is still a ceiling, not "every report ever".
-const MAX_ROWS = 2000;
+const MAX_ROWS = 10000;
 // Same limit/window as the sibling hot-cases.js — this was the only route
 // under pages/api/** with no rate limit at all (found 2026-08-25).
 const RATE_LIMIT = 60;
