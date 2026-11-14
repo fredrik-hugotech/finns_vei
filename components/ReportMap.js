@@ -1129,6 +1129,16 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   const [legendOpen, setLegendOpen] = useState(() => (typeof window !== 'undefined' ? window.innerWidth > 720 : false));
   const [supportTarget, setSupportTarget] = useState(null);
   const [caseData, setCaseData] = useState(null);
+  // Map click handlers live outside React; this lets them see an open case.
+  const caseOpenRef = useRef(false);
+  useEffect(() => { caseOpenRef.current = Boolean(caseData); }, [caseData]);
+  // Esc closes an open case on PC.
+  useEffect(() => {
+    if (!caseData) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') setCaseData(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [caseData]);
   const [caseThread, setCaseThread] = useState(null);
   const [caseAccidents, setCaseAccidents] = useState(null);
   const [adminSecret, setAdminSecret] = useState(null);
@@ -1741,6 +1751,13 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
         if (error) return;
         map.easeTo({ center: feature.geometry.coordinates, zoom });
       });
+    });
+    // A tap on the map beside the case (not on a report or cluster) closes it,
+    // on PC and phone alike.
+    map.on('click', (event) => {
+      if (!caseOpenRef.current) return;
+      const hit = map.queryRenderedFeatures(event.point, { layers: ['reports-circle', 'reports-clusters', 'reports-category-symbol'].filter((id) => map.getLayer(id)) });
+      if (!hit.length) setCaseData(null);
     });
     map.on('click', 'reports-circle', (event) => {
       const feature = event.features?.[0];
