@@ -273,6 +273,7 @@ function Dashboard({ me }) {
             <Link className="dash2-link" href="/backoffice/sparkesykler">Sparkesykler</Link>
             <Link className="dash2-link" href="/backoffice/konkurranser">Konkurranser</Link>
             <Link className="dash2-link" href="/backoffice/statistikk">Statistikk</Link>
+            <Link className="dash2-link" href="/innsikt">Finnsvei i tall</Link>
             {me.role === 'superuser' && <Link className="dash2-link" href="/backoffice/brukere">Brukere</Link>}
             {boardUrl && <a className="dash2-link" href={boardUrl} target="_blank" rel="noopener noreferrer">Trello ↗</a>}
           </div>
