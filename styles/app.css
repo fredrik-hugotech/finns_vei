@@ -5633,3 +5633,6 @@ button.app-menu__item { width: 100%; }
 .sak-ai__measure { font-weight: 700; }
 .sak-ai ol { margin: 0.2rem 0 0; padding-left: 1.2rem; }
 .sak-ai__note { color: var(--color-muted); font-size: 0.78rem; margin: 0; }
+.spor-legend { flex-wrap: wrap; }
+.spor-legend__skole { background: #eb6834; margin-left: 0.4rem; }
+.spor-legend__anlegg { background: #2a78d6; margin-left: 0.4rem; }

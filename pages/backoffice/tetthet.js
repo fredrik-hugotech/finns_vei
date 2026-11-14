@@ -132,7 +132,7 @@ export default function Sykkelspor() {
                 </div>
               )}
               {stats && trackCount > 0 && (
-                <span className="spor-legend"><i className="spor-legend__start" /> Start <i className="spor-legend__stop" /> Stopp</span>
+                <span className="spor-legend"><i className="spor-legend__start" /> Start <i className="spor-legend__stop" /> Stopp <i className="spor-legend__skole" /> Skole <i className="spor-legend__anlegg" /> Anlegg</span>
               )}
               {stats && (
                 <span className="spor-panel__meta">{stats.totals.trips} turer · {(stats.totals.distanceM / 1000).toLocaleString('nb-NO', { maximumFractionDigits: 0 })} km{stats.totals.drawnRoutes ? ` · ${stats.totals.drawnRoutes} tegnet av voksne` : ''}</span>

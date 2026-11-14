@@ -602,6 +602,81 @@ function segmentPoints(features) {
   };
 }
 
+// Admin layer "Skoler og anlegg": every primary school (orange) and sports
+// venue (blue) in Norway, from /data/steder.json, so trips and reports can be
+// read against where children are going. Shown from zoom 9, names from 12.
+// Latest-wish like the other admin layers; redrawn after a basemap switch.
+let placesDataPromise = null;
+function loadPlacesData() {
+  if (!placesDataPromise) {
+    placesDataPromise = fetch('/data/steder.json').then((r) => (r.ok ? r.json() : null)).then((d) => ({
+      type: 'FeatureCollection',
+      features: (d?.places || []).map((p) => ({
+        type: 'Feature',
+        properties: { name: p.name, kind: p.kind, type: p.type || p.kind },
+        geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
+      })),
+    })).catch(() => { placesDataPromise = null; return null; });
+  }
+  return placesDataPromise;
+}
+const PLACE_TYPE_LABEL = { skole: 'Skole', bane: 'Fotballbane', hall: 'Idrettshall', stadion: 'Stadion', idrettspark: 'Idrettspark', svommehall: 'Svømmehall', ishall: 'Ishall', friidrett: 'Friidrettsbane' };
+async function showPlacesLayer(map, visible) {
+  if (!map) return;
+  map.__placesWanted = Boolean(visible);
+  if (!map.__placesWanted && !map.getLayer('places-dots')) return;
+  const data = map.__placesWanted ? await loadPlacesData() : null;
+  if (!map.isStyleLoaded?.()) { setTimeout(() => showPlacesLayer(map, map.__placesWanted), 250); return; }
+  if (map.__placesWanted && data && !map.getSource('places')) {
+    map.addSource('places', { type: 'geojson', data });
+    map.addLayer({
+      id: 'places-dots',
+      type: 'circle',
+      source: 'places',
+      minzoom: 9,
+      paint: {
+        'circle-color': ['match', ['get', 'kind'], 'skole', '#eb6834', '#2a78d6'],
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 2.5, 13, 5, 16, 7],
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 9, 0.8, 14, 2],
+      },
+    });
+    map.addLayer({
+      id: 'places-labels',
+      type: 'symbol',
+      source: 'places',
+      minzoom: 12,
+      layout: {
+        'text-field': ['get', 'name'],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 12, 11, 16, 13],
+        'text-offset': [0, 0.9],
+        'text-anchor': 'top',
+        'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
+        'text-max-width': 9,
+        'text-optional': true,
+      },
+      paint: {
+        'text-color': ['match', ['get', 'kind'], 'skole', '#b4461d', '#1f5ea8'],
+        'text-halo-color': '#ffffff',
+        'text-halo-width': 1.6,
+      },
+    });
+    if (!map.__placesClick) {
+      map.__placesClick = true;
+      map.on('click', 'places-dots', (e) => {
+        const p = e.features?.[0]?.properties;
+        if (!p) return;
+        new mapboxgl.Popup({ maxWidth: '240px', closeButton: false }).setLngLat(e.lngLat)
+          .setHTML(`<strong>${escapeHtml(p.name)}</strong><br>${escapeHtml(PLACE_TYPE_LABEL[p.type] || (p.kind === 'skole' ? 'Skole' : 'Idrettsanlegg'))}`)
+          .addTo(map);
+      });
+    }
+  }
+  for (const id of ['places-dots', 'places-labels']) {
+    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', map.__placesWanted ? 'visible' : 'none');
+  }
+}
+
 // Admin layer "Sparkesykler": schools (orange) and sports venues (blue)
 // sized by shared e-scooter traffic within 150 m, from
 // /api/backoffice/sparkesykler. Same latest-wish pattern as the trips layer,
@@ -778,6 +853,10 @@ function applyCompetitionTrips(map) {
     map.on('mouseenter', 'competition-trip-lines', () => { map.getCanvas().style.cursor = 'pointer'; });
     map.on('mouseleave', 'competition-trip-lines', () => { map.getCanvas().style.cursor = ''; });
   }
+
+  // Trips are read against where they go: show schools and venues with them.
+  if (hasData && !map.__placesWanted) { map.__placesAuto = true; showPlacesLayer(map, true); }
+  if (!hasData && map.__placesAuto) { map.__placesAuto = false; if (!map.__placesUserOn) showPlacesLayer(map, false); }
 
   // Hide the report markers while the lines are visible, restore when cleared.
   map.__reportsOverlayHidden = hasData;
@@ -1174,6 +1253,15 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   const [sporOn, setSporOn] = useState(false);
   const [sporComps, setSporComps] = useState([]);
   const [scooterOn, setScooterOn] = useState(false);
+  const [placesOn, setPlacesOn] = useState(false);
+  const togglePlaces = () => {
+    const map = mapRef.current;
+    setPlacesOn((current) => {
+      const next = !current;
+      if (map) { map.__placesUserOn = next; showPlacesLayer(map, next || Boolean(map.__placesAuto)); }
+      return next;
+    });
+  };
   const [scooterKind, setScooterKind] = useState(''); // '' | anlegg | skole
   const [scooterRange, setScooterRange] = useState('7d');
   const scooterOnRef = useRef(false);
@@ -2024,6 +2112,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       if ((map.__compTripsWanted?.features || []).length) { map.__compTripsFit = false; applyCompetitionTrips(map); }
       if ((map.__scooterWanted || []).length) applyScooterPlaces(map);
       if (concernOnRef.current) ensureConcernHeatmapLayer(map);
+      if (map.__placesWanted) showPlacesLayer(map, true);
     });
 
     map.on('moveend', () => {
@@ -2142,7 +2231,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
             <span className="nvdb-toggle-card__title">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5z" /><path d="M3 13l9 5 9-5" opacity=".6" /></svg>
               Kartlag
-              {!layersOpen && (activeNvdbLayers.length > 0 || concernHeatmapOn || sporOn || scooterOn || reportsHidden) && <span className="nvdb-toggle-card__count" aria-hidden="true" />}
+              {!layersOpen && (activeNvdbLayers.length > 0 || concernHeatmapOn || sporOn || scooterOn || reportsHidden || placesOn) && <span className="nvdb-toggle-card__count" aria-hidden="true" />}
             </span>
             <svg className="nvdb-toggle-card__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={layersOpen ? 'M6 15l6-6 6 6' : 'M6 9l6 6 6-6'} /></svg>
           </button>
@@ -2213,6 +2302,14 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
                   </div>
                 </>
               )}
+              <button
+                type="button"
+                className={placesOn ? 'nvdb-toggle nvdb-toggle--active' : 'nvdb-toggle'}
+                onClick={togglePlaces}
+                aria-pressed={placesOn}
+              >
+                Skoler og anlegg
+              </button>
               <button
                 type="button"
                 className={scooterOn ? 'nvdb-toggle nvdb-toggle--active nvdb-toggle--scooter' : 'nvdb-toggle nvdb-toggle--scooter'}
