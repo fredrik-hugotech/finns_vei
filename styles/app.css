@@ -5636,3 +5636,6 @@ button.app-menu__item { width: 100%; }
 .spor-legend { flex-wrap: wrap; }
 .spor-legend__skole { background: #eb6834; margin-left: 0.4rem; }
 .spor-legend__anlegg { background: #2a78d6; margin-left: 0.4rem; }
+.ins-manage__row { flex-wrap: wrap; }
+.ins-manage__row input { flex: 1 1 260px; font-size: 1rem; }
+.ins-manage__row .big-button { flex: 0 0 auto; min-height: 42px; padding: 0 1.4rem; width: auto; }
