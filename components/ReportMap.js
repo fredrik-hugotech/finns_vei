@@ -6,10 +6,10 @@ import { DEFAULT_CENTER, NEARBY_REPORT_RADIUS_M, REPORT_STATUS } from '../lib/co
 import { caseProgress } from '../lib/processSteps';
 import { applyLocalLabelNames } from '../lib/mapLabels';
 import { attachMapFallback } from '../lib/mapFallback';
+import { withConcernScores } from '../lib/concernScore';
 import {
   MAP_COLORS,
   MAP_STYLE,
-  buildConcernHeatmapWeightExpression,
   CONCERN_HEATMAP_CATEGORIES,
   CONCERN_HEATMAP_DEFAULT_WEIGHTS,
   CONCERN_HEATMAP_DEFAULT_OTHER_WEIGHT,
@@ -432,6 +432,8 @@ const ACCIDENT_HEATMAP_MAX_ZOOM = 15;
 const ACCIDENT_POINT_MIN_ZOOM = 15;
 // The everyday basemap: muted, so reports and layers carry the colour.
 const BASEMAP_KART = 'mapbox://styles/mapbox/light-v11';
+// Mainland Norway incl. Finnmark, for the opening view.
+const NORWAY_BOUNDS = [[4.6, 57.9], [31.2, 71.2]];
 function readBasemapPref() {
   try { return window.localStorage.getItem('ff-basemap'); } catch (_e) { return null; }
 }
@@ -442,6 +444,17 @@ const NVDB_LAYERS = [
 
 const ACCIDENT_LAYER_IDS = ['accident-heatmap', 'accident-points', 'accident-point-symbol'];
 const REPORT_LAYER_IDS = ['reports-clusters', 'reports-cluster-count', 'reports-circle', 'reports-category-symbol', 'reports-support-badge'];
+
+// Report markers are hidden when staff switch "Saker" off in Kartlag, or
+// while the trips overlay is showing. Both reasons are kept on the map so one
+// never undoes the other.
+function syncReportVisibility(map) {
+  if (!map) return;
+  const hidden = Boolean(map.__reportsUserHidden || map.__reportsOverlayHidden);
+  for (const id of REPORT_LAYER_IDS) {
+    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', hidden ? 'none' : 'visible');
+  }
+}
 
 function moveLayersToTop(map, layerIds) {
   layerIds.forEach((layerId) => {
@@ -767,9 +780,8 @@ function applyCompetitionTrips(map) {
   }
 
   // Hide the report markers while the lines are visible, restore when cleared.
-  for (const id of REPORT_LAYER_IDS) {
-    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', hasData ? 'none' : 'visible');
-  }
+  map.__reportsOverlayHidden = hasData;
+  syncReportVisibility(map);
 
   if (hasData && map.__compTripsFit) {
     map.__compTripsFit = false;
@@ -1143,6 +1155,11 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   const [heatmapWeights, setHeatmapWeights] = useState(() => ({ ...CONCERN_HEATMAP_DEFAULT_WEIGHTS }));
   const [heatmapOtherWeight, setHeatmapOtherWeight] = useState(CONCERN_HEATMAP_DEFAULT_OTHER_WEIGHT);
   const [heatmapSupportBoost, setHeatmapSupportBoost] = useState(CONCERN_HEATMAP_DEFAULT_SUPPORT_BOOST_FACTOR);
+  // Latest tuning, readable from map callbacks without re-subscribing.
+  const heatTuningRef = useRef({ weights: { ...CONCERN_HEATMAP_DEFAULT_WEIGHTS }, otherWeight: CONCERN_HEATMAP_DEFAULT_OTHER_WEIGHT, supportBoost: CONCERN_HEATMAP_DEFAULT_SUPPORT_BOOST_FACTOR });
+  const concernOnRef = useRef(false);
+  // Staff can hide the report markers to read Bekymringsgrad on its own.
+  const [reportsHidden, setReportsHidden] = useState(false);
   const [weightPanelOpen, setWeightPanelOpen] = useState(false);
   const [sporOn, setSporOn] = useState(false);
   const [sporComps, setSporComps] = useState([]);
@@ -1447,7 +1464,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   // Inserted below the pin layers (beforeId) so pins always stay on top.
   const ensureConcernHeatmapLayer = useCallback((map) => {
     if (map.getSource('reports-heat')) return;
-    map.addSource('reports-heat', { type: 'geojson', data: reportsDataRef.current, cluster: false });
+    map.addSource('reports-heat', { type: 'geojson', data: withConcernScores(reportsDataRef.current, heatTuningRef.current), cluster: false });
     map.addLayer({
       id: 'reports-heatmap',
       type: 'heatmap',
@@ -1462,15 +1479,26 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
   // Nothing outside the staff-only panel below ever calls this, so public
   // visitors always see exactly the default paint from mapStyleConfig.js.
   const applyWeightsToMap = useCallback((weights, otherWeight, supportBoost) => {
+    heatTuningRef.current = { weights, otherWeight, supportBoost };
     const map = mapRef.current;
-    if (!map || !map.getLayer('reports-heatmap')) return;
-    map.setPaintProperty('reports-heatmap', 'heatmap-weight', buildConcernHeatmapWeightExpression(weights, otherWeight, supportBoost));
+    const source = map?.getSource('reports-heat');
+    if (source) source.setData(withConcernScores(reportsDataRef.current, heatTuningRef.current));
   }, []);
+
+  const toggleReportsHidden = () => {
+    const map = mapRef.current;
+    setReportsHidden((current) => {
+      const next = !current;
+      if (map) { map.__reportsUserHidden = next; syncReportVisibility(map); }
+      return next;
+    });
+  };
 
   const toggleConcernHeatmap = () => {
     const map = mapRef.current;
     setConcernHeatmapOn((current) => {
       const next = !current;
+      concernOnRef.current = next;
       if (map) {
         if (next) {
           ensureConcernHeatmapLayer(map);
@@ -1636,7 +1664,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     reportsDataRef.current = geojson;
 
     const heatSource = map.getSource('reports-heat');
-    if (heatSource) heatSource.setData(geojson);
+    if (heatSource) heatSource.setData(withConcernScores(geojson, heatTuningRef.current));
 
     const source = map.getSource('reports');
     if (source) {
@@ -1678,6 +1706,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
 
 
     moveLayersToTop(map, REPORT_LAYER_IDS);
+    syncReportVisibility(map);
 
     map.on('mouseenter', 'reports-circle', () => { map.getCanvas().style.cursor = 'pointer'; });
     map.on('mouseleave', 'reports-circle', () => { map.getCanvas().style.cursor = ''; });
@@ -1837,8 +1866,11 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     const map = new mapboxgl.Map({
       container: containerRef.current,
       style: mapStyleRef.current || (satelliteRef.current ? 'mapbox://styles/mapbox/satellite-streets-v12' : BASEMAP_KART),
-      center: pointRef.current ? [pointRef.current.lng, pointRef.current.lat] : DEFAULT_CENTER,
-      zoom: selectable ? 13 : 11,
+      // Reports now come from the whole country: open on all of Norway
+      // unless a specific point is given (then start close to it).
+      ...(pointRef.current || selectable
+        ? { center: pointRef.current ? [pointRef.current.lng, pointRef.current.lat] : DEFAULT_CENTER, zoom: selectable ? 13 : 11 }
+        : { bounds: NORWAY_BOUNDS, fitBoundsOptions: { padding: 24 } }),
       attributionControl: false,
     });
 
@@ -1872,6 +1904,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
           const p = map.unproject([el.clientWidth / 2, el.clientHeight / 2]);
           return { lng: p.lng, lat: p.lat };
         },
+        getZoom: () => map.getZoom(),
         flyTo: ({ lng, lat }) => map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 16), duration: 700 }),
         refreshReports: () => loadReports().catch((error) => console.error(error)),
         findNearbyReports: (centerPoint, radiusMeters = NEARBY_RADIUS_M) => (
@@ -1953,6 +1986,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       // from what was last asked for (without re-zooming the map).
       if ((map.__compTripsWanted?.features || []).length) { map.__compTripsFit = false; applyCompetitionTrips(map); }
       if ((map.__scooterWanted || []).length) applyScooterPlaces(map);
+      if (concernOnRef.current) ensureConcernHeatmapLayer(map);
     });
 
     map.on('moveend', () => {
@@ -2071,7 +2105,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
             <span className="nvdb-toggle-card__title">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5z" /><path d="M3 13l9 5 9-5" opacity=".6" /></svg>
               Kartlag
-              {!layersOpen && (activeNvdbLayers.length > 0 || concernHeatmapOn || sporOn || scooterOn) && <span className="nvdb-toggle-card__count" aria-hidden="true" />}
+              {!layersOpen && (activeNvdbLayers.length > 0 || concernHeatmapOn || sporOn || scooterOn || reportsHidden) && <span className="nvdb-toggle-card__count" aria-hidden="true" />}
             </span>
             <svg className="nvdb-toggle-card__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={layersOpen ? 'M6 15l6-6 6 6' : 'M6 9l6 6 6-6'} /></svg>
           </button>
@@ -2097,6 +2131,16 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
                   {layer.label}
                 </button>
               ))}
+              {showReports && (
+                <button
+                  type="button"
+                  className={!reportsHidden ? 'nvdb-toggle nvdb-toggle--active' : 'nvdb-toggle'}
+                  onClick={toggleReportsHidden}
+                  aria-pressed={!reportsHidden}
+                >
+                  Saker
+                </button>
+              )}
               {showReports && (
                 <button
                   type="button"

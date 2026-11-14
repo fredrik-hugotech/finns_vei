@@ -5317,7 +5317,9 @@ a:focus-visible, button:focus-visible, label:focus-within { outline: 2px solid v
   letter-spacing: -0.02em;
 }
 /* Touch screens pinch to zoom; the +/- buttons are desktop furniture. */
-@media (hover: none) and (pointer: coarse) {
+/* Only small touch screens (phones) drop them; tablets, touch laptops and
+   PCs keep + and − for zooming to a new place when filing a report. */
+@media (hover: none) and (pointer: coarse) and (max-width: 760px) {
   .mapboxgl-ctrl-group:has(.mapboxgl-ctrl-zoom-in) { display: none; }
 }
 /* Map style toggle matches the rest of the white map chrome. */
@@ -5512,3 +5514,7 @@ button.app-menu__item { width: 100%; }
 .cat-chips .info-chip { background: var(--color-primary-tint, #e8f1ee); color: var(--color-primary, #0b5d4d); font-size: 0.8rem; font-weight: 650; min-height: 26px; padding: 0 0.6rem; }
 .admin-list-item__cat { background: var(--color-primary-tint, #e8f1ee); border-radius: 999px; color: var(--color-primary, #0b5d4d); font-size: 0.72rem; font-weight: 650; padding: 0.1rem 0.5rem; white-space: nowrap; }
 .admin-list-item__foot { flex-wrap: wrap; row-gap: 0.3rem; }
+/* PC, staff: the Kartlag card sits bottom-right; keep the competition trophy clear of it. */
+@media (min-width: 641px) {
+  body:has(.layer-control) .fab-konk { right: calc(max(0.6rem, env(safe-area-inset-right)) + 200px); }
+}

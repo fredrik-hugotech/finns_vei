@@ -142,7 +142,13 @@ export default function Home() {
   // Wired to the map's single onPickCenterChange callback so the
   // nearby-duplicate notice and the accident hint refresh together whenever
   // the pick-mode crosshair settles on a new point.
+  // Picking a spot only makes sense close in; zoomed out over the country the
+  // crosshair could land anywhere.
+  const PICK_MIN_ZOOM = 13;
+  const [pickZoomOk, setPickZoomOk] = useState(true);
   const handlePickCenterChange = useCallback((center) => {
+    const zoom = mapApiRef.current?.getZoom?.();
+    setPickZoomOk(!Number.isFinite(zoom) || zoom >= PICK_MIN_ZOOM);
     updateNearbyNotice(center);
     updateAccidentHint(center);
   }, [updateNearbyNotice, updateAccidentHint]);
@@ -152,6 +158,9 @@ export default function Home() {
     setGeoStatus('');
     setMode('pick');
     handlePickCenterChange(mapApiRef.current?.getCenter());
+    // Opened over the whole country: jump to where the person is, if allowed.
+    const zoom = mapApiRef.current?.getZoom?.();
+    if (Number.isFinite(zoom) && zoom < 11) useMyPosition();
   };
 
   const confirmLocation = () => {
@@ -425,7 +434,7 @@ export default function Home() {
 
         {mode === 'pick' && (
           <>
-            <div className="pick-hint">Dra kartet til stedet det gjelder</div>
+            <div className="pick-hint">{pickZoomOk ? 'Dra kartet til stedet det gjelder' : 'Søk, eller zoom inn til stedet det gjelder'}</div>
             <div className="pick-bar">
               {nearbyNotice && (
                 <div className="pick-nearby-notice">
@@ -449,7 +458,7 @@ export default function Home() {
                   </p>
                 </div>
               )}
-              <button type="button" className="big-button big-button--primary pick-bar__confirm" onClick={confirmLocation}>Velg dette stedet</button>
+              <button type="button" className="big-button big-button--primary pick-bar__confirm" onClick={confirmLocation} disabled={!pickZoomOk}>{pickZoomOk ? 'Velg dette stedet' : 'Zoom inn for å velge sted'}</button>
               <div className="pick-bar__row">
                 <button type="button" className="big-button big-button--secondary" onClick={closeSheet}>Avbryt</button>
                 <button type="button" className="big-button big-button--secondary" onClick={useMyPosition}>Min posisjon</button>
