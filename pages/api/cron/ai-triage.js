@@ -1,6 +1,6 @@
 import { timingSafeEqualStrings } from '../../../lib/timingSafeEqualStrings';
 import { isAdminRequest } from '../../../lib/backofficeAuth';
-import { assessReport, triageConfigured, triageInputHash } from '../../../lib/aiTriage';
+import { assessReport, triageConfigured, triageInputHash, triageRow } from '../../../lib/aiTriage';
 import { hasSupabaseConfig, listReportsNeedingTriage, saveReportTriage } from '../../../lib/supabaseRest';
 
 // Every 10 minutes (vercel.json) Claude assesses reports that have no
@@ -38,14 +38,7 @@ export default async function handler(req, res) {
       const r = queue.shift();
       try {
         const a = await assessReport(r, { nearby: nearbyCount(reports, r) });
-        await saveReportTriage({
-          report_id: r.id,
-          input_hash: triageInputHash(r),
-          summary: a.summary, measure_type: a.measure_type, measure: a.measure, effort: a.effort,
-          responsible: a.responsible, urgency: a.urgency, quick_win: Boolean(a.quick_win),
-          needs_site_visit: Boolean(a.needs_site_visit), next_steps: a.next_steps || [],
-          rationale: a.rationale || '', model: a.model, created_at: new Date().toISOString(),
-        });
+        await saveReportTriage(triageRow(r, a));
         done += 1;
       } catch (error) {
         failed += 1;

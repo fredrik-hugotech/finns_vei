@@ -27,14 +27,15 @@ function RunAssessments({ pending, onDone }) {
   const run = async () => {
     setState({ running: true, msg: 'Starter …' });
     let total = 0;
-    for (let round = 0; round < 40; round += 1) {
+    for (let round = 0; round < 80; round += 1) {
       try {
         const r = await fetch('/api/cron/ai-triage', { method: 'POST' });
         const d = await r.json().catch(() => ({}));
         if (!r.ok || d.ok === false) { setState({ running: false, msg: d.reason || d.error || 'Stoppet.' }); onDone(); return; }
         total += d.assessed || 0;
         setState({ running: true, msg: `${total} vurdert, ${d.remaining} igjen …` });
-        if (!d.remaining || !d.assessed) break;
+        if (!d.remaining) break;
+        if (!d.assessed && round > 2) break;
       } catch (_e) { setState({ running: false, msg: 'Nettverksfeil. Prøv igjen.' }); onDone(); return; }
     }
     setState({ running: false, msg: `Ferdig: ${total} vurdert.` });

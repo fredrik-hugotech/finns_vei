@@ -1,6 +1,6 @@
 import { REPORT_CATEGORIES, REPORT_STATUS, REPORTER_TYPES } from '../../lib/config';
 import { runReportWorkflowBestEffort, siteBaseUrl } from '../../lib/reportWorkflow';
-import { createReport, findRecentDuplicateReport, hasSupabaseConfig, saveReportTriage, updateReportImages, uploadReportImage } from '../../lib/supabaseRest';
+import { createReport, findRecentDuplicateReport, hasSupabaseConfig, listReportsNeedingTriage, saveReportTriage, updateReportImages, uploadReportImage } from '../../lib/supabaseRest';
 import { distanceMeters, randomOffsetPoint, snapToGrid, CLIP_METERS } from '../../lib/geoPrivacy';
 import { buildNewReportEmail } from '../../lib/dailySummaryEmail';
 import { emailTransportConfigured, sendNotificationEmail } from '../../lib/emailTransport';
@@ -9,7 +9,7 @@ import { matchesFileSignature } from '../../lib/fileSignature';
 import { checkRequestRateLimit } from '../../lib/rateLimit';
 import { parseMultipartRequest } from '../../lib/multipart';
 import { waitUntil } from '@vercel/functions';
-import { assessReport, triageConfigured, triageInputHash } from '../../lib/aiTriage';
+import { assessReport, triageConfigured, triageRow } from '../../lib/aiTriage';
 
 export const config = {
   api: {
@@ -269,13 +269,14 @@ export default async function handler(req, res) {
       if (triageConfigured()) {
         try {
           const a = await assessReport(report);
-          await saveReportTriage({
-            report_id: report.id, input_hash: triageInputHash(report),
-            summary: a.summary, measure_type: a.measure_type, measure: a.measure, effort: a.effort,
-            responsible: a.responsible, urgency: a.urgency, quick_win: Boolean(a.quick_win),
-            needs_site_visit: Boolean(a.needs_site_visit), next_steps: a.next_steps || [],
-            rationale: a.rationale || '', model: a.model, created_at: new Date().toISOString(),
-          });
+          await saveReportTriage(triageRow(report, a));
+          // Drain the backlog a little with every new report (two older
+          // reports without an assessment), so it empties on its own.
+          const { reports: all, hashByReport } = await listReportsNeedingTriage();
+          const backlog = all.filter((r) => r.id !== report.id && !hashByReport.has(r.id)).slice(0, 2);
+          for (const old of backlog) {
+            try { await saveReportTriage(triageRow(old, await assessReport(old))); } catch (_e) { /* next time */ }
+          }
         } catch (error) {
           logApi('ai_triage_failed', { reportId: report.id, message: String(error?.message || '').slice(0, 240) });
         }
