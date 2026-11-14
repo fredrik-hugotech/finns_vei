@@ -13,7 +13,7 @@ export default async function handler(req, res) {
   }
   if (req.method !== 'POST') { res.setHeader('Allow', ['GET', 'POST']); return res.status(405).end(); }
   const password = String(req.body?.password || '');
-  if (password.length < 10) return res.status(400).json({ error: 'Passordet må ha minst 10 tegn.' });
+  if (password.length < 8) return res.status(400).json({ error: 'Passordet må ha minst 8 tegn.' });
   await setInsightSetting(INSIGHT_PASSWORD_KEY, hashPassword(password));
   await deleteAllInsightSessions().catch(() => {});
   return res.status(200).json({ ok: true });

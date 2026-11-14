@@ -5639,3 +5639,4 @@ button.app-menu__item { width: 100%; }
 .ins-manage__row { flex-wrap: wrap; }
 .ins-manage__row input { flex: 1 1 260px; font-size: 1rem; }
 .ins-manage__row .big-button { flex: 0 0 auto; min-height: 42px; padding: 0 1.4rem; width: auto; }
+.ins-manage__hint { color: #8a5a00; font-size: 0.85rem; margin: 0.4rem 0 0 !important; }

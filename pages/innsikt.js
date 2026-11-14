@@ -102,9 +102,10 @@ function ManageAccess() {
         <form onSubmit={save} className="ins-manage__form">
           <p>Lenke: <strong>{link}</strong>. {hasPassword ? 'Et passord er satt. Nytt passord logger ut alle som brukte det gamle.' : 'Ingen passord er satt ennå, så bare innlogget stab ser siden.'}</p>
           <div className="ins-manage__row">
-            <input type="text" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Nytt passord (minst 10 tegn)" aria-label="Nytt passord" autoComplete="new-password" />
-            <button type="submit" className="big-button big-button--secondary" disabled={password.length < 10}>Lagre</button>
+            <input type="text" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Nytt passord (minst 8 tegn)" aria-label="Nytt passord" autoComplete="new-password" />
+            <button type="submit" className="big-button big-button--secondary" disabled={password.length < 8}>Lagre</button>
           </div>
+          {password.length > 0 && password.length < 8 && <p className="ins-manage__hint">Passordet må ha minst 8 tegn ({password.length} nå).</p>}
           {msg && <p className="ins-manage__msg">{msg}</p>}
         </form>
       )}
