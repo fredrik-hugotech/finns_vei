@@ -1637,10 +1637,30 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     const map = mapRef.current;
     if (!map || !feature?.geometry?.coordinates) return;
     const center = feature.geometry.coordinates;
-    map.easeTo({ center, zoom: Math.max(map.getZoom(), 16), duration: 500, padding: { top: 0, right: 0, left: 0, bottom: 300 } });
+    // Keep the point in the part of the map the case panel doesn't cover:
+    // left of the side panel on PC, above the bottom sheet on phones.
+    const wide = typeof window !== 'undefined' && window.innerWidth >= 768;
+    const padding = wide
+      ? { top: 0, bottom: 0, left: 0, right: Math.min(440, window.innerWidth * 0.42) + 80 }
+      : { top: 0, left: 0, right: 0, bottom: Math.round((typeof window !== 'undefined' ? window.innerHeight : 800) * 0.55) };
+    map.easeTo({ center, zoom: Math.max(map.getZoom(), 16), duration: 500, padding });
     const nearbyCount = countNearbyReports(reportsDataRef.current, center, NEARBY_RADIUS_M);
     setCaseData({ feature, center, nearbyCount });
   }, []);
+
+  // When the case closes, drop the camera padding again without moving what
+  // the person sees, so later "centre of the map" logic (picking a place)
+  // works on the real middle of the screen.
+  useEffect(() => {
+    if (caseData) return;
+    const map = mapRef.current;
+    if (!map || !map.getPadding) return;
+    const pad = map.getPadding();
+    if (!pad || (!pad.top && !pad.bottom && !pad.left && !pad.right)) return;
+    const el = map.getContainer();
+    const visual = map.unproject([el.clientWidth / 2, el.clientHeight / 2]);
+    map.jumpTo({ center: visual, padding: { top: 0, bottom: 0, left: 0, right: 0 } });
+  }, [caseData]);
 
   // Locate a report by id in the loaded GeoJSON and open its case sheet.
   const openCaseById = useCallback((id) => {
