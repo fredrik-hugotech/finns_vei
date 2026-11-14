@@ -1,6 +1,6 @@
 import { REPORT_CATEGORIES, REPORT_STATUS, REPORTER_TYPES } from '../../lib/config';
 import { runReportWorkflowBestEffort, siteBaseUrl } from '../../lib/reportWorkflow';
-import { createReport, findRecentDuplicateReport, hasSupabaseConfig, updateReportImages, uploadReportImage } from '../../lib/supabaseRest';
+import { createReport, findRecentDuplicateReport, hasSupabaseConfig, saveReportTriage, updateReportImages, uploadReportImage } from '../../lib/supabaseRest';
 import { distanceMeters, randomOffsetPoint, snapToGrid, CLIP_METERS } from '../../lib/geoPrivacy';
 import { buildNewReportEmail } from '../../lib/dailySummaryEmail';
 import { emailTransportConfigured, sendNotificationEmail } from '../../lib/emailTransport';
@@ -9,6 +9,7 @@ import { matchesFileSignature } from '../../lib/fileSignature';
 import { checkRequestRateLimit } from '../../lib/rateLimit';
 import { parseMultipartRequest } from '../../lib/multipart';
 import { waitUntil } from '@vercel/functions';
+import { assessReport, triageConfigured, triageInputHash } from '../../lib/aiTriage';
 
 export const config = {
   api: {
@@ -261,6 +262,22 @@ export default async function handler(req, res) {
           logApi('new_report_email_sent', { reportId: report.id });
         } catch (error) {
           logApi('new_report_email_failed', { reportId: report.id, message: String(error?.message || '').slice(0, 240) });
+        }
+      }
+      // AI assessment for the backoffice (best effort; the daily run and the
+      // backoffice button pick up anything that fails here).
+      if (triageConfigured()) {
+        try {
+          const a = await assessReport(report);
+          await saveReportTriage({
+            report_id: report.id, input_hash: triageInputHash(report),
+            summary: a.summary, measure_type: a.measure_type, measure: a.measure, effort: a.effort,
+            responsible: a.responsible, urgency: a.urgency, quick_win: Boolean(a.quick_win),
+            needs_site_visit: Boolean(a.needs_site_visit), next_steps: a.next_steps || [],
+            rationale: a.rationale || '', model: a.model, created_at: new Date().toISOString(),
+          });
+        } catch (error) {
+          logApi('ai_triage_failed', { reportId: report.id, message: String(error?.message || '').slice(0, 240) });
         }
       }
     })().catch((error) => {

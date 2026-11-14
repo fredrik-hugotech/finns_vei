@@ -7,6 +7,7 @@ import Logo from './Logo';
 const NAV = [
   { href: '/backoffice', label: 'Oversikt' },
   { href: '/backoffice/liste', label: 'Saker', match: ['/backoffice/liste', '/backoffice/sak', '/backoffice/hotteste', '/backoffice/gjentakende-steder'] },
+  { href: '/backoffice/prioritering', label: 'Prioritering' },
   { href: '/', label: 'Kart' },
   { href: '/backoffice/statistikk', label: 'Statistikk' },
   { href: '/backoffice/sparkesykler', label: 'Sparkesykler' },

@@ -11,6 +11,7 @@ import {
   getCaseSupport,
   setPublicStatusFromTrelloComment,
   hasSupabaseConfig,
+  getReportTriage,
 } from '../../../lib/supabaseRest';
 import { addTrelloCardComment, getTrelloBoardId, hasTrelloConfig } from '../../../lib/trello';
 import { checkRequestRateLimit } from '../../../lib/rateLimit';
@@ -55,10 +56,11 @@ export default async function handler(req, res) {
         if (!report) return res.status(404).json({ error: 'Fant ikke saken' });
         // These three lookups don't depend on each other's results, so run
         // them concurrently instead of sequentially.
-        const [timeline, attachments, support] = await Promise.all([
+        const [timeline, attachments, support, triage] = await Promise.all([
           report.trello_card_id ? getCaseTimeline(report.trello_card_id) : Promise.resolve([]),
           listCaseAttachments(report.id),
           getCaseSupport(report.id),
+          getReportTriage(report.id).catch(() => null),
         ]);
         const images = Array.isArray(report.image_urls)
           ? report.image_urls
@@ -70,6 +72,7 @@ export default async function handler(req, res) {
           hasCard: Boolean(report.trello_card_id),
           timeline,
           attachments,
+          triage,
           support: {
             count: Number(report.support_count || 0),
             voices: support.voices,

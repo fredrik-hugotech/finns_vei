@@ -28,7 +28,10 @@ export default function Backoffice() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  // First-time setup (create the first superuser) is only needed once and the
+  // accounts exist; it opens only via /backoffice?oppsett=1.
   const [setupOpen, setSetupOpen] = useState(false);
+  useEffect(() => { try { if (new URLSearchParams(window.location.search).get('oppsett') === '1') setSetupOpen(true); } catch (_e) { /* ignore */ } }, []);
 
   const loadSession = useCallback(async () => {
     try {
@@ -81,7 +84,6 @@ export default function Backoffice() {
               <input type="password" className="admin-login__input" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Passord" autoComplete="current-password" />
               {error && <p className="admin-login__error">{error}</p>}
               <button type="submit" className="big-button big-button--primary admin-login__btn" disabled={busy || !email || !password}>{busy ? 'Logger inn …' : 'Logg inn'}</button>
-              <button type="button" className="admin-login__logout" onClick={() => setSetupOpen((v) => !v)}>Første gangs oppsett</button>
             </form>
             {setupOpen && <FirstSetup onDone={loadSession} />}
           </>
@@ -266,6 +268,7 @@ function Dashboard({ me }) {
           <div className="dash2__grid">
             <Link className="dash2-link" href="/">Kart</Link>
             <Link className="dash2-link" href="/backoffice/liste">Alle saker</Link>
+            <Link className="dash2-link" href="/backoffice/prioritering">Prioritering (AI)</Link>
             <Link className="dash2-link" href="/backoffice/hotteste">Hotteste saker</Link>
             <Link className="dash2-link" href="/backoffice/gjentakende-steder">Gjentakende steder</Link>
             <Link className="dash2-link" href="/backoffice/tetthet">Sykkelspor</Link>

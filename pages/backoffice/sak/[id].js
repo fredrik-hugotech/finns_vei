@@ -645,6 +645,24 @@ export default function SakDetalj() {
 
             </div>
             <div className="sak-col sak-col--side">
+            {data?.triage && (
+              <section className="admin-section sak-ai">
+                <h2>AI-vurdering</h2>
+                <div className="sak-ai__top">
+                  <span className="sak-ai__measure">{data.triage.measure}</span>
+                  <span className={`pri-effort pri-effort--${data.triage.effort}`}>{{ enkel: 'Enkel', middels: 'Middels', stor: 'Stor' }[data.triage.effort] || data.triage.effort}</span>
+                  <span className="pri-urg" title={`Hast ${data.triage.urgency} av 5`}>{[1, 2, 3, 4, 5].map((i) => <i key={i} className={i <= data.triage.urgency ? 'on' : ''} />)}</span>
+                </div>
+                <p className="sak-kv"><span>Veieier</span><b>{data.triage.responsible}</b></p>
+                <p className="sak-kv"><span>Type tiltak</span><b>{data.triage.measure_type}</b></p>
+                {data.triage.rationale && <p>{data.triage.rationale}</p>}
+                {Array.isArray(data.triage.next_steps) && data.triage.next_steps.length > 0 && (
+                  <ol>{data.triage.next_steps.map((step) => <li key={step}>{step}</li>)}</ol>
+                )}
+                {data.triage.needs_site_visit && <p className="notice notice--warning">Bør ses på stedet før vurdering.</p>}
+                <p className="sak-ai__note">Forslag fra Claude. Stab bestemmer.</p>
+              </section>
+            )}
             <section className="admin-section tkt-detail">
               <h2>Detaljer</h2>
               <div className="tkt-props">
