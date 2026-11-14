@@ -2116,6 +2116,14 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
     });
 
     map.on('moveend', () => {
+      // Remember where the person is looking, so "Tegn en rute" opens there.
+      try {
+        if (!mapStyleRef.current && map.getZoom() >= 10) {
+          const el = map.getContainer();
+          const c = map.unproject([el.clientWidth / 2, el.clientHeight / 2]);
+          window.localStorage.setItem('ff-last-view', JSON.stringify({ lng: c.lng, lat: c.lat, zoom: map.getZoom() }));
+        }
+      } catch (_e) { /* ignore */ }
       refreshNvdbLayers().catch((error) => {
         console.error(error);
         setMessage('Lag kunne ikke hentes.');

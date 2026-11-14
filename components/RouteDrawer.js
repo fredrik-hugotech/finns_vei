@@ -129,17 +129,27 @@ export default function RouteDrawer({ mode = 'sykkel', onModeChange, routeType =
   // Map setup.
   useEffect(() => {
     if (!containerRef.current || !mapboxgl.accessToken) return undefined;
+    // Start where the person was last looking on the front page map (saved
+    // there), else at their position (asked below), else the default.
+    let startView = null;
+    try {
+      const v = JSON.parse(window.localStorage.getItem('ff-last-view') || 'null');
+      if (v && Number.isFinite(v.lng) && Number.isFinite(v.lat) && v.zoom >= 10) startView = v;
+    } catch (_e) { /* ignore */ }
     const map = new mapboxgl.Map({
       container: containerRef.current,
       style: 'mapbox://styles/mapbox/streets-v12',
-      center: DEFAULT_CENTER,
-      zoom: 13,
+      center: startView ? [startView.lng, startView.lat] : DEFAULT_CENTER,
+      zoom: startView ? Math.max(14, startView.zoom) : 13,
       attributionControl: false,
     });
     mapRef.current = map;
     const detachFallback = attachMapFallback(map, { initialOnly: true });
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
-    map.addControl(new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: false }), 'top-right');
+    const geolocate = new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: false, fitBoundsOptions: { maxZoom: 15 } });
+    map.addControl(geolocate, 'top-right');
+    // No saved view: go to where the person is (the browser asks once).
+    if (!startView) map.once('load', () => { try { geolocate.trigger(); } catch (_e) { /* ignore */ } });
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right');
     map.doubleClickZoom.disable();
     map.on('load', () => {
@@ -184,8 +194,9 @@ export default function RouteDrawer({ mode = 'sykkel', onModeChange, routeType =
     markersRef.current = waypoints.map((wp, index) => {
       const el = document.createElement('div');
       const last = index === waypoints.length - 1 && index > 0;
-      el.className = index === 0 ? 'rd-pin rd-pin--start' : (last ? 'rd-pin rd-pin--end' : 'rd-pin');
+      el.className = index === 0 ? 'rd-pin rd-pin--start' : (last ? 'rd-pin rd-pin--start rd-pin--goal' : 'rd-pin');
       if (index === 0) el.textContent = 'Start';
+      if (last) el.textContent = 'Mål';
       return new mapboxgl.Marker({ element: el, anchor: 'center' }).setLngLat([wp.lng, wp.lat]).addTo(map);
     });
     return undefined;
@@ -203,9 +214,11 @@ export default function RouteDrawer({ mode = 'sykkel', onModeChange, routeType =
   const minutes = Math.max(1, Math.round((distanceM / 1000 / SPEED_KMH[mode === 'gange' ? 'gange' : 'sykkel']) * 60));
   const canSave = !pending && !saving && distanceM >= MIN_ROUTE_M;
 
+  // One clear instruction per step; the map is tapped, nothing is dragged.
   let hint = '';
-  if (waypoints.length === 0) hint = 'Trykk der veien starter';
-  else if (waypoints.length === 1) hint = 'Trykk videre fram til målet';
+  if (waypoints.length === 0) hint = '1. Trykk på kartet der turen starter';
+  else if (waypoints.length === 1) hint = '2. Trykk der turen ender, for eksempel ved banen eller skolen';
+  const extraHint = waypoints.length >= 2 ? 'Trykk igjen for å forlenge turen. Feil vei? Trykk Angre.' : '';
 
   // Leaving with a half-drawn route asks first.
   const cancel = () => {
@@ -244,6 +257,7 @@ export default function RouteDrawer({ mode = 'sykkel', onModeChange, routeType =
             <span>ca. {minutes} min</span>
           </div>
         )}
+        {extraHint && <p className="rd__subhint">{extraHint}</p>}
         {notice && <p className="rd__notice">{notice}</p>}
         <div className="rd__row">
           <button type="button" className="rd__tool" onClick={undo} disabled={!waypoints.length || saving}><Icon name="undo" size={18} />Angre</button>
