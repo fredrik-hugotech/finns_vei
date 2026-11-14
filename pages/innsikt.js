@@ -115,6 +115,77 @@ function ManageAccess() {
 
 const fmt = (n) => Number(n || 0).toLocaleString('nb-NO');
 
+// Every municipality with reports: searchable, sortable, downloadable as CSV
+// (semicolon-separated with BOM so Excel opens it with æøå intact).
+const KOMMUNE_COLS = [
+  { key: 'kommune', label: 'Kommune' },
+  { key: 'fylke', label: 'Fylke' },
+  { key: 'reports', label: 'Meldinger', num: true },
+  { key: 'last24', label: 'Siste døgn', num: true },
+  { key: 'support', label: 'Støtter', num: true },
+  { key: 'barn', label: 'Fra barn', num: true },
+];
+function KommuneTable({ rows }) {
+  const [q, setQ] = useState('');
+  const [sort, setSort] = useState({ key: 'reports', dir: -1 });
+  const [all, setAll] = useState(false);
+  const needle = q.trim().toLowerCase();
+  const filtered = rows
+    .filter((r) => !needle || r.kommune.toLowerCase().includes(needle) || r.fylke.toLowerCase().includes(needle))
+    .sort((a, b) => {
+      const col = KOMMUNE_COLS.find((c) => c.key === sort.key);
+      const d = col?.num ? (a[sort.key] - b[sort.key]) : String(a[sort.key]).localeCompare(String(b[sort.key]), 'nb');
+      return d * sort.dir || b.reports - a.reports;
+    });
+  const shown = all || needle ? filtered : filtered.slice(0, 25);
+  const download = () => {
+    const esc = (v) => { const t = String(v ?? ''); return /[;"\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
+    const lines = [['Kommunenummer', ...KOMMUNE_COLS.map((c) => c.label)].join(';'),
+      ...filtered.map((r) => [r.nr, ...KOMMUNE_COLS.map((c) => r[c.key])].map(esc).join(';'))];
+    const blob = new Blob([`\ufeff${lines.join('\r\n')}`], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url; link.download = `finnsvei-meldinger-per-kommune-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  const th = (c) => (
+    <th key={c.key} className={c.num ? 'num' : ''}>
+      <button type="button" onClick={() => setSort((s) => ({ key: c.key, dir: s.key === c.key ? -s.dir : (c.num ? -1 : 1) }))}>
+        {c.label}{sort.key === c.key ? (sort.dir < 0 ? ' ↓' : ' ↑') : ''}
+      </button>
+    </th>
+  );
+  return (
+    <>
+      <div className="ins-ktools">
+        <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Søk etter kommune eller fylke" aria-label="Søk etter kommune eller fylke" />
+        <button type="button" className="big-button big-button--secondary" onClick={download}>Last ned (Excel/CSV)</button>
+      </div>
+      <div className="ins-ktable-wrap">
+        <table className="ins-ktable">
+          <thead><tr>{KOMMUNE_COLS.map(th)}</tr></thead>
+          <tbody>
+            {shown.map((r) => (
+              <tr key={r.nr}>
+                <td><strong>{r.kommune}</strong></td>
+                <td>{r.fylke}</td>
+                <td className="num">{fmt(r.reports)}</td>
+                <td className="num">{r.last24 ? `+${fmt(r.last24)}` : '–'}</td>
+                <td className="num">{fmt(r.support)}</td>
+                <td className="num">{fmt(r.barn)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {!needle && filtered.length > 25 && (
+        <button type="button" className="ins-kmore" onClick={() => setAll((v) => !v)}>{all ? 'Vis færre' : `Vis alle ${filtered.length} kommuner`}</button>
+      )}
+    </>
+  );
+}
+
 export default function Innsikt() {
   const [state, setState] = useState({ status: 'loading', data: null });
   const load = useCallback(async () => {
@@ -207,6 +278,14 @@ export default function Innsikt() {
               { name: 'Barn', count: d.totals.barn, color: INSIGHT_COLORS.ORANGE },
             ]} />
           </section>
+
+          {Array.isArray(d.allKommuner) && d.allKommuner.length > 0 && (
+            <section className="ins-card ins-span2">
+              <h2>Alle kommuner</h2>
+              <p className="ins-sub">{d.allKommuner.length} kommuner har fått meldinger. Kommunen er satt ut fra nærmeste skole eller idrettsanlegg.</p>
+              <KommuneTable rows={d.allKommuner} />
+            </section>
+          )}
 
           <section className="ins-card">
             <h2>Hovedkategori</h2>

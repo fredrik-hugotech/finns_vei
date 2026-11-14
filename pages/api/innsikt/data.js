@@ -28,6 +28,8 @@ function build(rows) {
   const last48 = new Map();
   const fylker = new Map();
   const kommuner = new Map();
+  // Full per-municipality table: reports, last 24 h, citizen support, children.
+  const kommuneRows = new Map();
   const concerns = new Map();
   const mainCategory = new Map();
   let barn = 0; let voksen = 0; let support = 0; let last24 = 0; let multi = 0;
@@ -48,6 +50,12 @@ function build(rows) {
     support += Number(r.support_count) || 0;
     if (r.kommune) {
       const fylke = FYLKER[String(r.kommune).slice(0, 2)] || 'Ukjent';
+      const kr = kommuneRows.get(r.kommune) || { nr: r.kommune, kommune: r.kommune_navn || r.kommune, fylke, reports: 0, last24: 0, support: 0, barn: 0 };
+      kr.reports += 1;
+      if (now - t <= 24 * 3600000) kr.last24 += 1;
+      kr.support += Number(r.support_count) || 0;
+      if (r.reporter_type === 'barn') kr.barn += 1;
+      kommuneRows.set(r.kommune, kr);
       fylker.set(fylke, (fylker.get(fylke) || 0) + 1);
       kommuner.set(r.kommune_navn || r.kommune, (kommuner.get(r.kommune_navn || r.kommune) || 0) + 1);
     }
@@ -98,6 +106,7 @@ function build(rows) {
     byHourOfDay,
     fylker: topN(fylker, 15),
     kommuner: topN(kommuner, 12),
+    allKommuner: Array.from(kommuneRows.values()).sort((a, b) => b.reports - a.reports || a.kommune.localeCompare(b.kommune, 'nb')),
     concerns: topN(concerns, 10),
     mainCategory: topN(mainCategory, 10),
     points,

@@ -5642,3 +5642,14 @@ button.app-menu__item { width: 100%; }
 .ins-manage__hint { color: #8a5a00; font-size: 0.85rem; margin: 0.4rem 0 0 !important; }
 .rd-pin--goal { background: #b4461d; }
 .rd__subhint { color: var(--color-muted); font-size: 0.82rem; margin: 0; text-align: center; }
+.ins-ktools { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 0.8rem; }
+.ins-ktools input { border: 1px solid #cfd8d4; border-radius: 12px; flex: 1 1 240px; font-size: 1rem; min-height: 44px; padding: 0 0.9rem; }
+.ins-ktools .big-button { flex: 0 0 auto; min-height: 44px; padding: 0 1.1rem; width: auto; }
+.ins-ktable-wrap { overflow-x: auto; }
+.ins-ktable { border-collapse: collapse; font-size: 0.92rem; min-width: 520px; width: 100%; }
+.ins-ktable th { border-bottom: 1px solid #e3e8e6; text-align: left; }
+.ins-ktable th button { background: none; border: 0; color: #5b6662; font-size: 0.8rem; font-weight: 700; padding: 0.5rem 0.4rem; text-align: inherit; width: 100%; }
+.ins-ktable td { border-bottom: 1px solid #eef2f0; padding: 0.5rem 0.4rem; }
+.ins-ktable .num { font-variant-numeric: tabular-nums; text-align: right; }
+.ins-ktable tbody tr:hover { background: #f7f9f8; }
+.ins-kmore { background: none; border: 0; color: #0b5d4d; font-weight: 700; margin-top: 0.6rem; padding: 0.3rem 0; }
