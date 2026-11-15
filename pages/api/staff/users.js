@@ -1,6 +1,6 @@
 import { isBackofficeAuthorized } from '../../../lib/backofficeAuth';
 import { getStaffFromRequest, hashPassword } from '../../../lib/staffAuth';
-import { listStaff, createStaff, setStaffActive, getStaffByEmail } from '../../../lib/supabaseRest';
+import { listStaff, createStaff, setStaffActive, getStaffByEmail, setStaffPassword, deleteAllStaffSessions } from '../../../lib/supabaseRest';
 import { checkRequestRateLimit } from '../../../lib/rateLimit';
 
 // Gated by the shared BACKOFFICE_SECRET as a bootstrap fallback (same as
@@ -41,8 +41,20 @@ export default async function handler(req, res) {
       return res.status(201).json({ user: { id: created?.id, email: created?.email, name: created?.name, role: created?.role, active: true } });
     }
     if (req.method === 'PATCH') {
-      const { id, active } = req.body || {};
+      const { id, active, newPassword } = req.body || {};
       if (!id) return res.status(400).json({ error: 'Mangler bruker-id' });
+
+      // Superuser sets a new password for someone who forgot theirs. Their
+      // existing sessions end, so the new password is the only way in.
+      if (newPassword !== undefined) {
+        if (String(newPassword).length < 8) return res.status(400).json({ error: 'Passordet må være minst 8 tegn.' });
+        const target = (await listStaff()).find((s) => s.id === id);
+        if (!target) return res.status(404).json({ error: 'Fant ikke brukeren.' });
+        await setStaffPassword(id, hashPassword(String(newPassword)));
+        if (!(admin.id && admin.id === id)) await deleteAllStaffSessions(id).catch((e) => console.error(e));
+        console.log(JSON.stringify({ scope: 'staff/users', event: 'password_set_by_admin', target: id, by: admin.id || 'bootstrap' }));
+        return res.status(200).json({ ok: true });
+      }
 
       if (active !== true) {
         // getStaffFromRequest() already rejects any session with

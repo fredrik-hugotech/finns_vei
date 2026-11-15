@@ -5888,3 +5888,9 @@ button.finn-tool:hover { border-color: var(--color-primary); }
 .finn-brief__head h2 { font-size: 1.15rem; }
 .finn-ask__title { font-size: 1rem; }
 .finn-tools { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.user-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.user-actions .big-button { width: auto; }
+.admin-list__item:has(.user-pw) { flex-wrap: wrap; }
+.user-pw { display: grid; flex-basis: 100%; gap: 0.4rem; margin-top: 0.6rem; max-width: 420px; }
+.user-pw input { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.user-pw__msg { user-select: all; }
