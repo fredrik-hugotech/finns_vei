@@ -93,7 +93,7 @@ export function FinnBrief({ compact = false }) {
   useEffect(() => {
     load().then((d) => {
       const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Oslo' }).format(new Date());
-      if (d && d.configured && d.brief?.scope !== today && !asked.current) { asked.current = true; write(); }
+      if (d && d.configured && (d.brief?.scope !== today || d.brief?.content?.v !== 2) && !asked.current) { asked.current = true; write(); }
     });
   }, [load, write]);
 
@@ -111,9 +111,9 @@ export function FinnBrief({ compact = false }) {
   return (
     <section className={compact ? 'finn-brief finn-brief--compact' : 'finn-brief'}>
       <div className="finn-brief__head">
-        <FinnAvatar size={compact ? 40 : 48} />
+        {compact && <FinnAvatar size={40} />}
         <div>
-          <span className="finn-kicker">Finn · din rådgiver for tryggere skoleveier</span>
+          <span className="finn-kicker">Finn · i dag</span>
           <h2>{b?.headline || (writing ? 'Finn leser gjennom sakene …' : data && !data.configured ? 'Finn er ikke koblet til ennå' : 'God morgen')}</h2>
         </div>
       </div>
@@ -154,10 +154,9 @@ export function FinnBrief({ compact = false }) {
 }
 
 const EXAMPLES = [
-  'Hvilke kommuner har flest hastesaker nå?',
-  'Hva går igjen i meldingene fra Bergen?',
-  'Hvor mange saker har kommet hver måned i år?',
-  'Hvilke raske gevinster ligger hos Statens vegvesen?',
+  ['Flest hastesaker per kommune', 'Hvilke kommuner har flest hastesaker nå?'],
+  ['Meldinger per måned', 'Hvor mange saker har kommet hver måned i år?'],
+  ['Raske gevinster hos Statens vegvesen', 'Hvilke raske gevinster ligger hos Statens vegvesen?'],
 ];
 
 export function FinnAsk({ initial = '', compact = false }) {
@@ -188,7 +187,7 @@ export function FinnAsk({ initial = '', compact = false }) {
 
   return (
     <section className={compact ? 'finn-ask finn-ask--compact' : 'finn-ask'}>
-      {!compact && <h2 className="finn-ask__title"><FinnAvatar size={28} /> Spør Finn</h2>}
+      {!compact && <h2 className="finn-ask__title">Spør Finn om tallene</h2>}
       {log.map((h, i) => (
         <div key={i} className="finn-turn">
           <p className="finn-turn__q">{h.q}</p>
@@ -197,12 +196,12 @@ export function FinnAsk({ initial = '', compact = false }) {
       ))}
       {error && <p className="finn-brief__err">{error}</p>}
       <form className="finn-ask__form" onSubmit={(e) => { e.preventDefault(); ask(q); }}>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={compact ? 'Spør Finn om sakene …' : 'Spør om sakene, f.eks. «Hvor er det flest meldinger om fart?»'} aria-label="Spørsmål til Finn" maxLength={1000} />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={compact ? 'Spør Finn om sakene …' : 'Spør om sakene …'} aria-label="Spørsmål til Finn" maxLength={1000} />
         <button type="submit" disabled={busy || q.trim().length < 3}>{busy ? 'Tenker …' : 'Spør'}</button>
       </form>
       {log.length === 0 && (
         <div className="finn-examples">
-          {EXAMPLES.map((ex) => <button key={ex} type="button" onClick={() => ask(ex)}>{ex}</button>)}
+          {EXAMPLES.map(([label, full]) => <button key={label} type="button" onClick={() => ask(full)}>{label}</button>)}
         </div>
       )}
     </section>
