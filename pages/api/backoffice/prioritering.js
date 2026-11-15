@@ -1,22 +1,13 @@
 import { isAdminRequest } from '../../../lib/backofficeAuth';
 import { getTriageOverviewRows, hasSupabaseConfig } from '../../../lib/supabaseRest';
 import { triageConfigured } from '../../../lib/aiTriage';
+import { priorityScore } from '../../../lib/aiStats';
 import { FYLKER } from '../../../lib/fylker';
 import { REPORT_STATUS } from '../../../lib/config';
 import { checkRequestRateLimit } from '../../../lib/rateLimit';
 
-// Priority list for staff. Score = AI urgency, raised by citizen support and
-// by other reports at the same spot, lowered when the work is large (so quick,
-// safe wins rise) — see priorityScore. Finished cases are left out.
-const EFFORT_FACTOR = { enkel: 1.25, middels: 1, stor: 0.85 };
-
-function priorityScore(r) {
-  const urgency = Number(r.urgency) || 2;
-  const support = Math.log2(1 + (Number(r.support_count) || 0));
-  const cluster = Math.log2(1 + (Number(r.nearby) || 0));
-  return Number(((urgency * 2 + support + cluster * 1.5) * (EFFORT_FACTOR[r.effort] || 1)).toFixed(2));
-}
-
+// Priority list for staff, sorted by priorityScore (lib/aiStats.js).
+// Finished cases are left out.
 export default async function handler(req, res) {
   if (req.method !== 'GET') { res.setHeader('Allow', ['GET']); return res.status(405).end(); }
   const rl = checkRequestRateLimit(req, 'backoffice-prioritering', 60, 10 * 60 * 1000);

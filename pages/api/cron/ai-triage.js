@@ -1,9 +1,10 @@
 import { timingSafeEqualStrings } from '../../../lib/timingSafeEqualStrings';
 import { isAdminRequest } from '../../../lib/backofficeAuth';
 import { assessReport, triageConfigured, triageInputHash, triageRow } from '../../../lib/aiTriage';
-import { hasSupabaseConfig, listReportsNeedingTriage, saveReportTriage } from '../../../lib/supabaseRest';
+import { hasSupabaseConfig, listReportsNeedingFlagScan, listReportsNeedingTriage, saveReportTriage } from '../../../lib/supabaseRest';
+import { generateBrief, latestBrief, scanReports } from '../../../lib/finnJobs';
 
-// Every 10 minutes (vercel.json) Claude assesses reports that have no
+// Nightly (vercel.json), and from the «Vurder ventende» button, Claude assesses reports that have no
 // assessment yet, or whose text changed. A batch per run keeps each function
 // call short; a backlog of a thousand reports is cleared in a few hours.
 export const config = { maxDuration: 300 };
@@ -29,6 +30,16 @@ export default async function handler(req, res) {
   if (!triageConfigured()) return res.status(200).json({ ok: false, reason: 'ANTHROPIC_API_KEY er ikke satt' });
 
   const started = Date.now();
+  // Nightly run: also write Finn's morning brief and check new texts for
+  // personal details, before the triage batch.
+  if (authorized(req)) {
+    await Promise.all([
+      latestBrief().then((b) => (b ? null : generateBrief({ period: 'dag', by: 'cron' }))).catch((e) => console.error(JSON.stringify({ scope: 'ai-triage', event: 'brief_failed', error: String(e?.message || e).slice(0, 200) }))),
+      listReportsNeedingFlagScan(100).then(async (todo) => {
+        for (let i = 0; i < todo.length; i += 20) await scanReports(todo.slice(i, i + 20));
+      }).catch((e) => console.error(JSON.stringify({ scope: 'ai-triage', event: 'flags_failed', error: String(e?.message || e).slice(0, 200) }))),
+    ]);
+  }
   const { reports, hashByReport } = await listReportsNeedingTriage();
   const todo = reports.filter((r) => hashByReport.get(r.id) !== triageInputHash(r)).slice(0, PER_RUN);
   let done = 0; let failed = 0;

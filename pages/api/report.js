@@ -10,6 +10,7 @@ import { checkRequestRateLimit } from '../../lib/rateLimit';
 import { parseMultipartRequest } from '../../lib/multipart';
 import { waitUntil } from '@vercel/functions';
 import { assessReport, triageConfigured, triageRow } from '../../lib/aiTriage';
+import { scanReports } from '../../lib/finnJobs';
 
 export const config = {
   api: {
@@ -279,6 +280,13 @@ export default async function handler(req, res) {
           }
         } catch (error) {
           logApi('ai_triage_failed', { reportId: report.id, message: String(error?.message || '').slice(0, 240) });
+        }
+      }
+      // Finn checks the text for personal details (children's names, licence
+      // plates …) so staff see it before it spreads. Flags only; staff decide.
+      if (triageConfigured() && report.description) {
+        try { await scanReports([report]); } catch (error) {
+          logApi('finn_check_failed', { reportId: report.id, message: String(error?.message || '').slice(0, 240) });
         }
       }
     })().catch((error) => {

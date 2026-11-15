@@ -9,6 +9,8 @@ import BackofficeHeader from '../../../components/BackofficeHeader';
 import { classifyRoadAuthority, buildReferralDraft } from '../../../lib/roadAuthorityReferral';
 import { describeFetchError } from '../../../lib/backofficeFormat';
 import { PUBLIC_UPDATE_TEMPLATES } from '../../../lib/caseUpdateTemplates';
+import StreetViewPanel from '../../../components/StreetViewPanel';
+import { EFFORT_TEXT, EffortChip, FinnAvatar, FinnProgress, UrgencyDots } from '../../../components/Finn';
 
 const STATUSES = [REPORT_STATUS.NEW, REPORT_STATUS.REGISTERED, REPORT_STATUS.STARTED, REPORT_STATUS.DONE];
 const ACT_LABEL = { created: 'Sak opprettet', voice: 'Innbyggerstemme', public: 'Offentlig oppdatering', internal: 'Internt notat' };
@@ -202,6 +204,24 @@ export default function SakDetalj() {
     } finally { if (activeIdRef.current === id) setSavingField(null); }
   };
 
+  const [replyBusy, setReplyBusy] = useState(false);
+  const [replyMsg, setReplyMsg] = useState('');
+  const suggestReply = async () => {
+    if (!data?.id) return;
+    if (note.trim() && !window.confirm('Erstatte teksten du har skrevet med Finns forslag?')) return;
+    setReplyBusy(true); setReplyMsg('');
+    try {
+      const r = await fetch(`/api/backoffice/finn/svar?id=${encodeURIComponent(data.id)}`, { method: 'POST' });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || d.ok === false) setReplyMsg(d.reason || d.error || 'Finn klarte ikke å skrive nå.');
+      else { setNote(d.reply); setReplyMsg('Les gjennom og rett før du publiserer.'); }
+    } catch (_e) { setReplyMsg('Nettverksfeil.'); } finally { setReplyBusy(false); }
+  };
+  const restoreOriginal = async () => {
+    if (!window.confirm('Sette tilbake innbyggerens opprinnelige tekst? Den blir da synlig offentlig igjen.')) return;
+    await fetch('/api/backoffice/finn/sjekk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'restore', reportId: data.id }) });
+    load();
+  };
   const c = data?.case;
   const support = data?.support || { count: 0, voices: [], facets: [] };
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -535,6 +555,13 @@ export default function SakDetalj() {
                   </div>
                 );
               })()}
+              {c.description_original != null && (
+                <div className="finn-redacted">
+                  <span>Personopplysninger er skjult i den offentlige teksten{c.description_redacted_at ? ` (${fmtDate(c.description_redacted_at)})` : ''}.</span>
+                  <details><summary>Vis originalen (kun ansatte)</summary><p>{c.description_original}</p></details>
+                  <button type="button" className="finn-link" onClick={restoreOriginal}>Sett tilbake originalen</button>
+                </div>
+              )}
               {c.images?.length > 0 && (
                 <div className="sak-images sak-hero__images">
                   {c.images.map((src, i) => <button type="button" key={i} onClick={() => setLightbox(src)}><img src={src} alt={`Bilde ${i + 1} av saken`} /></button>)}
@@ -624,6 +651,12 @@ export default function SakDetalj() {
                   <button type="button" aria-pressed={noteMode === 'internal'} className={noteMode === 'internal' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setNoteMode('internal')}>Internt notat</button>
                 </div>
                 {noteMode === 'public' && (
+                  <div className="finn-reply">
+                    <button type="button" className="finn-btn" onClick={suggestReply} disabled={replyBusy}>{replyBusy ? 'Finn skriver …' : '✦ Finn foreslår svar'}</button>
+                    {replyMsg && <span className="finn-msg">{replyMsg}</span>}
+                  </div>
+                )}
+                {noteMode === 'public' && (
                   <div className="suggestion-chips" role="group" aria-label="Hurtigsvar">
                     {PUBLIC_UPDATE_TEMPLATES.map((phrase) => (
                       <button key={phrase} type="button" className="suggestion-chip" onClick={() => applyTemplate(phrase)}>
@@ -645,22 +678,66 @@ export default function SakDetalj() {
 
             </div>
             <div className="sak-col sak-col--side">
-            {data?.triage && (
-              <section className="admin-section sak-ai">
-                <h2>AI-vurdering</h2>
-                <div className="sak-ai__top">
-                  <span className="sak-ai__measure">{data.triage.measure}</span>
-                  <span className={`pri-effort pri-effort--${data.triage.effort}`}>{{ enkel: 'Enkel', middels: 'Middels', stor: 'Stor' }[data.triage.effort] || data.triage.effort}</span>
-                  <span className="pri-urg" title={`Hast ${data.triage.urgency} av 5`}>{[1, 2, 3, 4, 5].map((i) => <i key={i} className={i <= data.triage.urgency ? 'on' : ''} />)}</span>
-                </div>
-                <p className="sak-kv"><span>Veieier</span><b>{data.triage.responsible}</b></p>
-                <p className="sak-kv"><span>Type tiltak</span><b>{data.triage.measure_type}</b></p>
-                {data.triage.rationale && <p>{data.triage.rationale}</p>}
-                {Array.isArray(data.triage.next_steps) && data.triage.next_steps.length > 0 && (
-                  <ol>{data.triage.next_steps.map((step) => <li key={step}>{step}</li>)}</ol>
+            {c && <StreetViewPanel lat={c.lat} lng={c.lng} className="sak-sv" />}
+            {(data?.parentId || (Array.isArray(data?.linked) && data.linked.length > 0)) && (
+              <section className="admin-section sak-linked">
+                {data.parentId ? (
+                  <>
+                    <h2>Koblet til en annen sak</h2>
+                    <p>Denne meldingen gjelder samme sted og problem som en annen sak, og teller med der. Ingenting er slettet.</p>
+                    <div className="sak-linked__row">
+                      <Link className="big-button big-button--secondary" href={`/backoffice/sak/${encodeURIComponent(data.parentId)}`}>Åpne hovedsaken</Link>
+                      <button type="button" className="big-button big-button--secondary" onClick={async () => { await fetch('/api/backoffice/sammenkobling', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'unlink', reportId: data.id }) }); load(); }}>Koble fra</button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <h2>{data.linked.length + 1} meldinger samlet i saken</h2>
+                    <p className="sak-ai__note">Flere har meldt om det samme stedet. Det teller som engasjement.</p>
+                    <ul className="sak-linked__list">
+                      {data.linked.map((l) => (
+                        <li key={l.id}>
+                          <span>
+                            <strong>{l.category}</strong> · {new Date(l.created_at).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })}{l.reporter_type === 'barn' ? ' · barn' : ''}
+                            <em>{String(l.description || '').replace(/^\s*Gjelder:[^\n]*\.\s*/i, '').slice(0, 160)}</em>
+                          </span>
+                          <span className="sak-linked__actions">
+                            <Link href={`/backoffice/sak/${encodeURIComponent(l.id)}`}>Åpne</Link>
+                            <button type="button" onClick={async () => { await fetch('/api/backoffice/sammenkobling', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'unlink', reportId: l.id }) }); load(); }}>Koble fra</button>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
                 )}
-                {data.triage.needs_site_visit && <p className="notice notice--warning">Bør ses på stedet før vurdering.</p>}
-                <p className="sak-ai__note">Forslag fra Claude. Stab bestemmer.</p>
+              </section>
+            )}
+            {c && (
+              <section className="admin-section sak-ai finn-case">
+                <div className="finn-case__head">
+                  <FinnAvatar size={34} />
+                  <div>
+                    <span className="finn-kicker">Finns vurdering</span>
+                    {data?.triage ? <h2>{data.triage.measure}</h2> : <h2>Ikke vurdert ennå</h2>}
+                  </div>
+                </div>
+                {data?.triage && (
+                  <>
+                    <div className="sak-ai__top">
+                      <EffortChip effort={data.triage.effort} />
+                      <UrgencyDots n={data.triage.urgency} />
+                    </div>
+                    <p className="sak-ai__note">{EFFORT_TEXT[data.triage.effort]}</p>
+                    <p className="sak-kv"><span>Veieier</span><b>{data.triage.responsible}</b></p>
+                    <p className="sak-kv"><span>Type tiltak</span><b>{data.triage.measure_type}</b></p>
+                    {data.triage.rationale && <p>{data.triage.rationale}</p>}
+                    {Array.isArray(data.triage.next_steps) && data.triage.next_steps.length > 0 && (
+                      <ol>{data.triage.next_steps.map((step) => <li key={step}>{step}</li>)}</ol>
+                    )}
+                    {data.triage.needs_site_visit && <p className="notice notice--warning">Bør ses på stedet før vurdering.</p>}
+                  </>
+                )}
+                <FinnProgress id={c.id} />
               </section>
             )}
             <section className="admin-section tkt-detail">
@@ -743,7 +820,6 @@ export default function SakDetalj() {
               )}
               <div className="sak-side__actions">
                 <Link className="big-button big-button--secondary" href={`/?sak=${encodeURIComponent(c.id)}`}>Vis på kart</Link>
-                {Number.isFinite(Number(c.lat)) && Number.isFinite(Number(c.lng)) && <a className="big-button big-button--secondary" href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${c.lat},${c.lng}`} target="_blank" rel="noopener noreferrer">Street View</a>}
                 <Link className="big-button big-button--secondary" href={`/backoffice/skilt/${encodeURIComponent(c.id)}`}>Skriv ut skilt</Link>
               </div>
             </section>

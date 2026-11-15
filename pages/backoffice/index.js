@@ -1,6 +1,7 @@
 import Head from 'next/head';
 import { splitReportText } from '../../lib/reportText';
 import Link from 'next/link';
+import { FinnAsk, FinnBrief } from '../../components/Finn';
 import BackofficeHeader from '../../components/BackofficeHeader';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Logo from '../../components/Logo';
@@ -151,9 +152,10 @@ function Dashboard({ me }) {
   const mine = useMemo(() => (cases || [])
     .filter((c) => String(c.assignee_email || '').toLowerCase() === myEmail && c.status !== REPORT_STATUS.DONE)
     .sort((a, b) => (a.due_date || '9999-12-31').localeCompare(b.due_date || '9999-12-31')), [cases, myEmail]);
+  // Engagement = citizen support + reports linked into the case.
   const mostSupported = useMemo(() => open
-    .filter((c) => Number(c.support_count || 0) > 0)
-    .sort((a, b) => Number(b.support_count || 0) - Number(a.support_count || 0))
+    .filter((c) => !c.parent_report_id && Number(c.engagement ?? c.support_count ?? 0) > 0)
+    .sort((a, b) => Number(b.engagement ?? b.support_count ?? 0) - Number(a.engagement ?? a.support_count ?? 0))
     .slice(0, 5), [open]);
 
   const pulse = [
@@ -179,6 +181,7 @@ function Dashboard({ me }) {
         <div className="admin-list-item__head">
           <span className={`status-pill status-pill--${meta.key}`} dangerouslySetInnerHTML={{ __html: `${meta.icon}<span>${meta.label}</span>` }} />
           <span className="admin-list-item__headright">
+            {Number(c.linked_count) > 0 && <span className="admin-list-item__linked" title="Meldinger samlet i saken">{Number(c.linked_count) + 1} meldinger</span>}
             {Number(c.support_count) > 0 && <span className="admin-list-item__support" title="Innbyggerstøtte">♥ {c.support_count}</span>}
             <span className="admin-list-item__time">{timeAgo(c.created_at)}</span>
           </span>
@@ -216,6 +219,9 @@ function Dashboard({ me }) {
         {!error && truncated && (
           <p className="admin-warning">Viser kun de {cases.length} nyeste sakene — tallene og listene under dekker ikke eldre saker (ofte de som har ventet lengst). Se <Link href="/backoffice/liste">alle saker</Link> for full liste.</p>
         )}
+
+        {!error && <FinnBrief compact />}
+        {!error && <FinnAsk compact />}
 
         <div className="dash2__pulse">
           {pulse.map((p) => (
@@ -268,7 +274,11 @@ function Dashboard({ me }) {
           <div className="dash2__grid">
             <Link className="dash2-link" href="/">Kart</Link>
             <Link className="dash2-link" href="/backoffice/liste">Alle saker</Link>
-            <Link className="dash2-link" href="/backoffice/prioritering">Prioritering (AI)</Link>
+            <Link className="dash2-link dash2-link--finn" href="/backoffice/finn">Finn (AI)</Link>
+            <Link className="dash2-link" href="/backoffice/prioritering">Prioritering</Link>
+            <Link className="dash2-link" href="/backoffice/sammenkobling">Like saker</Link>
+            <Link className="dash2-link" href="/backoffice/finn/kommune">Brev og rapport</Link>
+            <Link className="dash2-link" href="/backoffice/finn/personvern">Personvern og kvalitet</Link>
             <Link className="dash2-link" href="/backoffice/hotteste">Hotteste saker</Link>
             <Link className="dash2-link" href="/backoffice/gjentakende-steder">Gjentakende steder</Link>
             <Link className="dash2-link" href="/backoffice/tetthet">Sykkelspor</Link>

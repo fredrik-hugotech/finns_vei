@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import StreetViewPanel from './StreetViewPanel';
 import { splitReportText } from '../lib/reportText';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -319,10 +320,13 @@ function roadBadges(properties) {
 }
 
 function popupStatsHtml(properties, { nearbyCount, radiusM }) {
+  const linked = Number(properties.linked_count) || 0;
+  const parts = [];
+  if (linked > 0) parts.push(`<p class="popup-linked"><strong>${linked + 1} meldinger</strong> om dette stedet er samlet i saken</p>`);
   // nearbyCount includes the case itself; only mention the others.
   const others = Number(nearbyCount) - 1;
-  if (!(others > 0)) return '';
-  return `<p class="popup-nearby">${others} ${others === 1 ? 'annen sak' : 'andre saker'} innen ${radiusM} m</p>`;
+  if (others > 0) parts.push(`<p class="popup-nearby">${others} ${others === 1 ? 'annen sak' : 'andre saker'} innen ${radiusM} m</p>`);
+  return parts.join('');
 }
 
 // Compact, status-driven "slik jobber vi videre" progress for the case box —
@@ -2413,6 +2417,9 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
             <button type="button" className="case-sheet__close" aria-label="Lukk sak" onClick={() => setCaseData(null)}>
               <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" /></svg>
             </button>
+            {adminSecret && caseFeature?.geometry?.coordinates && (
+              <StreetViewPanel lat={caseFeature.geometry.coordinates[1]} lng={caseFeature.geometry.coordinates[0]} className="case-sheet__sv" />
+            )}
             <div className="sheet-scroll case-sheet__scroll" dangerouslySetInnerHTML={{ __html: caseBodyHtml }} />
             {adminSecret && caseFeature ? (
               <div className="sheet-footer case-sheet__footer">

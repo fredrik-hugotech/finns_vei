@@ -71,8 +71,9 @@ const nextConfig = {
       `connect-src 'self' https://api.mapbox.com https://events.mapbox.com https://cache.kartverket.no https://ws.geonorge.no${supabaseHost ? ` https://${supabaseHost}` : ''}`,
       "worker-src 'self' blob:",
       "child-src blob:",
-      // The /demo tour shows our own /backoffice in a frame.
-      "frame-src 'self'",
+      // The /demo tour shows our own /backoffice in a frame; staff see
+      // Google Street View built into case pages (components/StreetViewPanel.js).
+      "frame-src 'self' https://www.google.com",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",

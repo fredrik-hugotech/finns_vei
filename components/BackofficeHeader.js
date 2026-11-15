@@ -51,6 +51,14 @@ export default function BackofficeHeader({ title, back = '/backoffice', backLabe
           </Link>
         ))}
       </nav>
+      <Link
+        href="/backoffice/finn"
+        className={['/backoffice/finn', '/backoffice/sammenkobling'].some((m) => path === m || path.startsWith(`${m}/`)) ? 'bo-header__finn bo-header__finn--on' : 'bo-header__finn'}
+        aria-label="Finn – AI-rådgiveren"
+      >
+        <span className="bo-header__finnmark" aria-hidden="true">F<i>✦</i></span>
+        <span className="bo-header__finntext">Finn</span>
+      </Link>
       <button type="button" className="bo-header__logout" onClick={logout}>Logg ut</button>
     </header>
   );

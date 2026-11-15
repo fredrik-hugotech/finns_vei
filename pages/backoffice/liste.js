@@ -55,7 +55,7 @@ function isStaleCase(c, today) {
 
 const SORTS = [
   { key: 'new', label: 'Nyeste' },
-  { key: 'support', label: 'Mest støtte' },
+  { key: 'support', label: 'Mest engasjement' },
   { key: 'due', label: 'Frist' },
   { key: 'old', label: 'Eldste' },
 ];
@@ -146,7 +146,7 @@ export default function Liste() {
     const sorters = {
       new: byNew,
       old: (a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0),
-      support: (a, b) => (Number(b.support_count || 0) - Number(a.support_count || 0)) || byNew(a, b),
+      support: (a, b) => (Number(b.engagement ?? b.support_count ?? 0) - Number(a.engagement ?? a.support_count ?? 0)) || byNew(a, b),
       due: (a, b) => {
         if (!a.due_date && !b.due_date) return byNew(a, b);
         if (!a.due_date) return 1;
@@ -280,11 +280,12 @@ export default function Liste() {
                 <div className="admin-list-item__head">
                   <span className={`status-pill status-pill--${meta.key}`} dangerouslySetInnerHTML={{ __html: `${meta.icon}<span>${meta.label}</span>` }} />
                   <span className="admin-list-item__headright">
+                    {Number(c.linked_count) > 0 && <span className="admin-list-item__linked" title="Meldinger samlet i saken">{Number(c.linked_count) + 1} meldinger</span>}
                     {Number(c.support_count) > 0 && <span className="admin-list-item__support" title="Innbyggerstøtte">♥ {c.support_count}</span>}
                     <span className="admin-list-item__time">{timeAgo(c.created_at)}</span>
                   </span>
                 </div>
-                <strong className="admin-list-item__title">{c.category}</strong>
+                <strong className="admin-list-item__title">{c.category}{c.parent_report_id ? <span className="admin-list-item__child"> · koblet til en annen sak</span> : null}</strong>
                 {parts.text && <span className="admin-list-item__desc">{parts.text}</span>}
                 <span className="admin-list-item__foot">
                   {parts.categories.map((cat) => <span key={cat} className="admin-list-item__cat">{cat}</span>)}

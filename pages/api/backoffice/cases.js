@@ -12,6 +12,7 @@ import {
   setPublicStatusFromTrelloComment,
   hasSupabaseConfig,
   getReportTriage,
+  listLinkedReports,
 } from '../../../lib/supabaseRest';
 import { addTrelloCardComment, getTrelloBoardId, hasTrelloConfig } from '../../../lib/trello';
 import { checkRequestRateLimit } from '../../../lib/rateLimit';
@@ -51,16 +52,17 @@ export default async function handler(req, res) {
       // Single case (for the card-level admin panel): return its Trello link.
       if (typeof req.query.id === 'string' && req.query.id) {
         const report = await getReportById(req.query.id, {
-          select: 'id,status,trello_card_id,image_urls,support_count,category,description,created_at,due_date,assignee_email,lat,lng,reporter_type,bike_route_type,public_status_note,road_owner,road_authority,road_category,speed_limit,road_reference,contact_name,contact_email,contact_phone',
+          select: 'id,parent_report_id,status,trello_card_id,image_urls,support_count,category,description,created_at,due_date,assignee_email,lat,lng,reporter_type,bike_route_type,public_status_note,road_owner,road_authority,road_category,speed_limit,road_reference,contact_name,contact_email,contact_phone,description_original,description_redacted_at',
         });
         if (!report) return res.status(404).json({ error: 'Fant ikke saken' });
         // These three lookups don't depend on each other's results, so run
         // them concurrently instead of sequentially.
-        const [timeline, attachments, support, triage] = await Promise.all([
+        const [timeline, attachments, support, triage, linked] = await Promise.all([
           report.trello_card_id ? getCaseTimeline(report.trello_card_id) : Promise.resolve([]),
           listCaseAttachments(report.id),
           getCaseSupport(report.id),
           getReportTriage(report.id).catch(() => null),
+          listLinkedReports(report.id).catch(() => []),
         ]);
         const images = Array.isArray(report.image_urls)
           ? report.image_urls
@@ -73,6 +75,8 @@ export default async function handler(req, res) {
           timeline,
           attachments,
           triage,
+          linked,
+          parentId: report.parent_report_id || null,
           support: {
             count: Number(report.support_count || 0),
             voices: support.voices,
@@ -82,6 +86,8 @@ export default async function handler(req, res) {
             id: report.id,
             category: report.category || 'Melding',
             description: report.description || '',
+            description_original: report.description_original ?? null,
+            description_redacted_at: report.description_redacted_at || null,
             status: report.status || null,
             created_at: report.created_at || null,
             due_date: report.due_date || null,
@@ -110,11 +116,18 @@ export default async function handler(req, res) {
         const idRows = await listReportsForBackoffice({ limit: CASES_LIMIT, idsOnly: true });
         return res.status(200).json({ ids: idRows.map((r) => r.id), truncated: idRows.length >= CASES_LIMIT, limit: CASES_LIMIT });
       }
-      const cases = (await listReportsForBackoffice({ limit: CASES_LIMIT })).map((c) => (
-        c.description && c.description.length > LIST_DESCRIPTION_CHARS
-          ? { ...c, description: `${c.description.slice(0, LIST_DESCRIPTION_CHARS)}…` }
-          : c
-      ));
+      const raw = await listReportsForBackoffice({ limit: CASES_LIMIT });
+      // Linked reports count towards their main case's engagement.
+      const linkedByParent = new Map();
+      for (const c of raw) {
+        if (c.parent_report_id) linkedByParent.set(c.parent_report_id, (linkedByParent.get(c.parent_report_id) || 0) + 1);
+      }
+      const cases = raw.map((c) => {
+        const linked = linkedByParent.get(c.id) || 0;
+        const out = { ...c, linked_count: linked, engagement: Number(c.support_count || 0) + linked };
+        if (c.description && c.description.length > LIST_DESCRIPTION_CHARS) out.description = `${c.description.slice(0, LIST_DESCRIPTION_CHARS)}…`;
+        return out;
+      });
       return res.status(200).json({
         cases,
         truncated: cases.length >= CASES_LIMIT,

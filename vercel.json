@@ -9,6 +9,10 @@
     {
       "path": "/api/cron/ai-triage",
       "schedule": "17 4 * * *"
+    },
+    {
+      "path": "/api/cron/finn-ukesbrev",
+      "schedule": "41 5 * * 1"
     }
   ]
 }

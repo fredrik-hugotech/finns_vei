@@ -1,7 +1,9 @@
 import Head from 'next/head';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/router';
 import BackofficeHeader from '../../components/BackofficeHeader';
+import { EffortChip, UrgencyDots } from '../../components/Finn';
 
 // AI-assisted priority list: Claude has read every report and suggested a
 // measure, effort, road owner and urgency. Staff decide; this sorts the pile.
@@ -11,16 +13,7 @@ const VIEWS = [
   { key: 'store', label: 'Store saker med engasjement', hint: 'Krever plan og budsjett, men mange bryr seg' },
   { key: 'befaring', label: 'Trenger befaring', hint: 'For vage til å vurdere uten å se stedet' },
 ];
-const EFFORT_LABEL = { enkel: 'Enkel', middels: 'Middels', stor: 'Stor' };
 const PAGE = 50;
-
-function Urgency({ n }) {
-  return (
-    <span className="pri-urg" title={`Hast ${n} av 5`} aria-label={`Hast ${n} av 5`}>
-      {[1, 2, 3, 4, 5].map((i) => <i key={i} className={i <= n ? 'on' : ''} />)}
-    </span>
-  );
-}
 
 function RunAssessments({ pending, onDone }) {
   const [state, setState] = useState({ running: false, msg: '' });
@@ -54,7 +47,11 @@ function RunAssessments({ pending, onDone }) {
 export default function Prioritering() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
+  const router = useRouter();
   const [view, setView] = useState('viktigst');
+  useEffect(() => {
+    if (router.isReady && VIEWS.some((v) => v.key === router.query.vis)) setView(router.query.vis);
+  }, [router.isReady, router.query.vis]);
   const [filters, setFilters] = useState({ responsible: '', fylke: '', kommune: '', measure: '' });
   const [shown, setShown] = useState(PAGE);
 
@@ -91,7 +88,7 @@ export default function Prioritering() {
     if (view === 'raske') return filtered.filter((c) => c.quick_win || c.effort === 'enkel');
     if (view === 'store') {
       return filtered.filter((c) => c.effort === 'stor')
-        .sort((a, b) => (b.support_count + b.nearby * 2) - (a.support_count + a.nearby * 2) || b.score - a.score);
+        .sort((a, b) => (b.support_count + b.linked_count * 2 + b.nearby) - (a.support_count + a.linked_count * 2 + a.nearby) || b.score - a.score);
     }
     if (view === 'befaring') return filtered.filter((c) => c.needs_site_visit);
     return filtered;
@@ -119,7 +116,7 @@ export default function Prioritering() {
             <section className="pri-top">
               <div>
                 <h1>Hva bør vi ta først?</h1>
-                <p>Claude har lest {data.assessed} av {data.open} åpne saker og foreslått tiltak, innsats, veieier og hast. Forslagene er råd, ikke vedtak.</p>
+                <p>Finn har lest {data.assessed} av {data.open} åpne saker og foreslått tiltak, innsats, veieier og hast. Forslagene er råd, ikke vedtak.</p>
               </div>
               {data.configured
                 ? (data.pending > 0 && <RunAssessments pending={data.pending} onDone={load} />)
@@ -163,14 +160,15 @@ export default function Prioritering() {
                     <span className="pri-item__body">
                       <span className="pri-item__top">
                         <strong>{c.measure}</strong>
-                        <span className={`pri-effort pri-effort--${c.effort}`}>{EFFORT_LABEL[c.effort] || c.effort}</span>
-                        <Urgency n={c.urgency} />
+                        <EffortChip effort={c.effort} />
+                        <UrgencyDots n={c.urgency} />
                       </span>
                       <span className="pri-item__sum">{c.summary}</span>
                       <span className="pri-item__meta">
                         <span>{c.category}</span>
                         {c.kommune_navn && <span>{c.kommune_navn}</span>}
                         <span>{c.responsible}</span>
+                        {Number(c.linked_count) > 0 && <span className="pri-linked">{Number(c.linked_count) + 1} meldinger samlet</span>}
                         {Number(c.support_count) > 0 && <span>♥ {c.support_count}</span>}
                         {Number(c.nearby) > 0 && <span>{c.nearby} til på samme sted</span>}
                       </span>
