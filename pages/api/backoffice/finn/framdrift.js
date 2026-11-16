@@ -39,10 +39,11 @@ async function relatedCases(report, triage) {
   const details = await getReportsByIds(list.map((r) => r.id), 'id,trello_card_id');
   const cardById = new Map(details.map((d) => [d.id, d.trello_card_id]));
   const notes = await getStatusUpdatesForCards(details.map((d) => d.trello_card_id));
-  return list.map((r) => ({
+  const items = list.map((r) => ({
     id: r.id, distance_m: r.distance_m, kommune_navn: r.kommune_navn, category: r.category, status: r.status, summary: r.summary,
     notes: (notes.get(cardById.get(r.id)) || []).slice(-4),
   }));
+  return { items, contactCount: Number(self?.contact_count) || 0 };
 }
 
 export default async function handler(req, res) {
@@ -63,8 +64,9 @@ export default async function handler(req, res) {
       report.trello_card_id ? getCaseTimeline(report.trello_card_id) : [],
       listLinkedReports(id).catch(() => []),
     ]);
-    const related = await relatedCases(report, triage).catch(() => []);
-    const plan = await suggestProgress({ report, triage, timeline: timeline.slice(-12), linkedCount: linked.length, related });
+    const { items: related, contactCount } = await relatedCases(report, triage).catch(() => ({ items: [], contactCount: 0 }));
+    const plan = await suggestProgress({ report, triage, timeline: timeline.slice(-12), linkedCount: linked.length, related, contactCount });
+    if (!contactCount) plan.reporter_message = '';
     const doc = await saveAiDocument({ kind: 'progress', scope: id, content: { ...plan, related_count: related.length }, model: plan.model, createdBy: who.by });
     return res.status(200).json({ ok: true, plan: doc });
   } catch (error) {

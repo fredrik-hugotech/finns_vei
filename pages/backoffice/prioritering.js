@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import BackofficeHeader from '../../components/BackofficeHeader';
 import { EffortChip, UrgencyDots } from '../../components/Finn';
+import { StarButton, StatusPicker, setCaseStatus, useStars } from '../../components/CaseQuick';
 
 // AI-assisted priority list: Claude has read every report and suggested a
 // measure, effort, road owner and urgency. Staff decide; this sorts the pile.
@@ -52,7 +53,8 @@ export default function Prioritering() {
   useEffect(() => {
     if (router.isReady && VIEWS.some((v) => v.key === router.query.vis)) setView(router.query.vis);
   }, [router.isReady, router.query.vis]);
-  const [filters, setFilters] = useState({ responsible: '', fylke: '', kommune: '', measure: '' });
+  const [filters, setFilters] = useState({ responsible: '', fylke: '', kommune: '', measure: '', star: false, contact: false });
+  const { stars, toggle: toggleStar } = useStars();
   const [shown, setShown] = useState(PAGE);
 
   const load = useCallback(async () => {
@@ -82,7 +84,9 @@ export default function Prioritering() {
     && (!filters.fylke || c.fylke === filters.fylke)
     && (!filters.kommune || c.kommune_navn === filters.kommune)
     && (!filters.measure || c.measure_type === filters.measure)
-  )), [cases, filters]);
+    && (!filters.star || stars.has(c.id))
+    && (!filters.contact || Number(c.contact_count) > 0)
+  )), [cases, filters, stars]);
 
   const list = useMemo(() => {
     if (view === 'raske') return filtered.filter((c) => c.quick_win || c.effort === 'enkel');
@@ -149,6 +153,8 @@ export default function Prioritering() {
                 <option value="">Alle tiltak</option>
                 {options.measure.map((o) => <option key={o}>{o}</option>)}
               </select>
+              <button type="button" aria-pressed={filters.star} className={filters.star ? 'pri-toggle pri-toggle--on' : 'pri-toggle'} onClick={() => setFilter('star', !filters.star)}>★ Mine stjerner</button>
+              <button type="button" aria-pressed={filters.contact} className={filters.contact ? 'pri-toggle pri-toggle--on' : 'pri-toggle'} onClick={() => setFilter('contact', !filters.contact)}>Med kontaktperson</button>
             </div>
 
             {list.length === 0 && <p className="admin-list-empty">Ingen saker her.</p>}
@@ -171,12 +177,17 @@ export default function Prioritering() {
                         {Number(c.linked_count) > 0 && <span className="pri-linked">{Number(c.linked_count) + 1} meldinger samlet</span>}
                         {Number(c.support_count) > 0 && <span>♥ {c.support_count}</span>}
                         {Number(c.nearby) > 0 && <span>{c.nearby} til på samme sted</span>}
+                        {Number(c.contact_count) > 0 && <span className="pri-contact">Kontaktperson</span>}
                       </span>
                       {Array.isArray(c.next_steps) && c.next_steps.length > 0 && (
                         <span className="pri-item__next">Neste: {c.next_steps[0]}</span>
                       )}
                     </span>
                   </Link>
+                  <div className="cq-bar">
+                    <StatusPicker value={c.status} onChange={async (v) => { await setCaseStatus(c.id, v); setData((d) => ({ ...d, cases: d.cases.map((x) => (x.id === c.id ? { ...x, status: v } : x)) })); }} />
+                    <StarButton on={stars.has(c.id)} onToggle={() => toggleStar(c.id)} />
+                  </div>
                 </li>
               ))}
             </ol>

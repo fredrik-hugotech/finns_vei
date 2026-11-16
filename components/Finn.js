@@ -209,7 +209,7 @@ export function FinnAsk({ initial = '', compact = false }) {
 }
 
 // «Finn foreslår framdrift» on a case page.
-export function FinnProgress({ id }) {
+export function FinnProgress({ id, contactEmail = null }) {
   const [plan, setPlan] = useState(null);
   const [configured, setConfigured] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -253,6 +253,17 @@ export function FinnProgress({ id }) {
             </>
           )}
           {p.learned_from_history && <p className="finn-tip"><b>Fra tidligere saker{plan.content.related_count ? ` (${plan.content.related_count})` : ''}:</b> {p.learned_from_history}</p>}
+          {p.reporter_message && (
+            <div className="finn-reporter">
+              <strong>Følg opp med melderen</strong>
+              <p>{p.reporter_message}</p>
+              <div className="finn-row">
+                {contactEmail && <a className="finn-btn" href={`mailto:${encodeURIComponent(contactEmail)}?subject=${encodeURIComponent('Om meldingen din på Finnsvei')}&body=${encodeURIComponent(`${p.reporter_message}\n\nVennlig hilsen\nStiftelsen Finns.Fairway`)}`}>Skriv til melderen</a>}
+                <button type="button" className="finn-link" onClick={async () => { try { await navigator.clipboard.writeText(p.reporter_message); setMsg('Meldingen er kopiert.'); } catch (_e) { setMsg('Kunne ikke kopiere.'); } }}>Kopier</button>
+              </div>
+              {!contactEmail && <span className="sak-ai__note">Kontaktinfo står på koblede meldinger eller som telefon. Se Detaljer.</span>}
+            </div>
+          )}
           {p.message_draft && (
             <details className="finn-draft">
               <summary>Utkast til henvendelse</summary>

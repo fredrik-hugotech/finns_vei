@@ -10,6 +10,7 @@ import { classifyRoadAuthority, buildReferralDraft } from '../../../lib/roadAuth
 import { describeFetchError } from '../../../lib/backofficeFormat';
 import { PUBLIC_UPDATE_TEMPLATES } from '../../../lib/caseUpdateTemplates';
 import StreetViewPanel from '../../../components/StreetViewPanel';
+import { StarButton, useStars } from '../../../components/CaseQuick';
 import { EFFORT_TEXT, EffortChip, FinnAvatar, FinnProgress, UrgencyDots } from '../../../components/Finn';
 
 const STATUSES = [REPORT_STATUS.NEW, REPORT_STATUS.REGISTERED, REPORT_STATUS.STARTED, REPORT_STATUS.DONE];
@@ -204,6 +205,7 @@ export default function SakDetalj() {
     } finally { if (activeIdRef.current === id) setSavingField(null); }
   };
 
+  const { stars, toggle: toggleStar } = useStars();
   const [replyBusy, setReplyBusy] = useState(false);
   const [replyMsg, setReplyMsg] = useState('');
   const suggestReply = async () => {
@@ -520,6 +522,7 @@ export default function SakDetalj() {
               <div className="sak-hero__topline">
                 <span className={`status-pill status-pill--${meta.key}`} dangerouslySetInnerHTML={{ __html: `${meta.icon}<span>${meta.label}</span>` }} />
                 <span className="sak-hero__when">Meldt {fmtDate(c.created_at)}</span>
+                <StarButton on={stars.has(c.id)} onToggle={() => toggleStar(c.id)} />
                 <a className="sak-hero__open" href={`/sak/${encodeURIComponent(c.id)}`} target="_blank" rel="noopener noreferrer">
                   Åpne saken
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8" /></svg>
@@ -737,7 +740,7 @@ export default function SakDetalj() {
                     {data.triage.needs_site_visit && <p className="notice notice--warning">Bør ses på stedet før vurdering.</p>}
                   </>
                 )}
-                <FinnProgress id={c.id} />
+                <FinnProgress id={c.id} contactEmail={c.reporter_type === 'voksen' ? c.contact_email : null} />
               </section>
             )}
             <section className="admin-section tkt-detail">

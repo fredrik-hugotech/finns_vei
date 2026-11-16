@@ -8,6 +8,7 @@ import { REPORT_STATUS, REPORT_CATEGORIES, REPORTER_TYPES } from '../../lib/conf
 import { timeAgo, ownerShort, staffName, describeFetchError } from '../../lib/backofficeFormat';
 import { classifyRoadAuthority } from '../../lib/roadAuthorityReferral';
 import BackofficeHeader from '../../components/BackofficeHeader';
+import { StarButton, StatusPicker, setCaseStatus, useStars } from '../../components/CaseQuick';
 
 const STATUSES = [REPORT_STATUS.NEW, REPORT_STATUS.REGISTERED, REPORT_STATUS.STARTED, REPORT_STATUS.DONE];
 
@@ -86,6 +87,9 @@ export default function Liste() {
   const categoryFilter = REPORT_CATEGORIES.includes(categoryQuery) ? categoryQuery : '';
   const reporterQuery = typeof router.query.reporter === 'string' ? router.query.reporter : '';
   const reporterFilter = Object.values(REPORTER_TYPES).includes(reporterQuery) ? reporterQuery : '';
+  const starFilter = router.query.stjerne === '1';
+  const contactFilter = router.query.kontakt === '1';
+  const { stars, toggle: toggleStar } = useStars();
 
   // Builds a query object for a link/push that keeps whichever of
   // status/sort/aging aren't being changed by this particular control.
@@ -141,7 +145,9 @@ export default function Liste() {
       .filter((c) => !ownerFilter || ownerKind(c) === ownerFilter)
       .filter((c) => !speedFilter || speedBucket(c.speed_limit) === speedFilter)
       .filter((c) => !categoryFilter || c.category === categoryFilter)
-      .filter((c) => !reporterFilter || c.reporter_type === reporterFilter);
+      .filter((c) => !reporterFilter || c.reporter_type === reporterFilter)
+      .filter((c) => !starFilter || stars.has(c.id))
+      .filter((c) => !contactFilter || Number(c.contact_count) > 0);
     const byNew = (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0);
     const sorters = {
       new: byNew,
@@ -155,7 +161,7 @@ export default function Liste() {
       },
     };
     return list.sort(sorters[sort] || byNew);
-  }, [cases, active, q, sort, agingFilter, assigneeFilter, createdFilter, ownerFilter, speedFilter, categoryFilter, reporterFilter]);
+  }, [cases, active, q, sort, agingFilter, assigneeFilter, createdFilter, ownerFilter, speedFilter, categoryFilter, reporterFilter, starFilter, contactFilter, stars]);
   // Back to the first page whenever the filters or search change.
   useEffect(() => { setVisible(100); }, [shown]);
 
@@ -173,8 +179,10 @@ export default function Liste() {
       stale: list.filter((c) => isStaleCase(c, today)).length,
       unassigned: list.filter((c) => !c.assignee_email).length,
       today: list.filter((c) => String(c.created_at || '').slice(0, 10) === today).length,
+      starred: list.filter((c) => stars.has(c.id)).length,
+      contact: list.filter((c) => Number(c.contact_count) > 0).length,
     };
-  }, [cases]);
+  }, [cases, stars]);
 
   return (
     <>
@@ -258,6 +266,24 @@ export default function Liste() {
             >
               {aging.today} nye i dag
             </button>
+            <button
+              type="button"
+              disabled={aging.starred === 0 && !starFilter}
+              aria-pressed={starFilter}
+              className={starFilter ? 'liste-summary__chip liste-summary__chip--star liste-summary__chip--on' : 'liste-summary__chip liste-summary__chip--star'}
+              onClick={() => router.push({ pathname: '/backoffice/liste', query: buildQuery({ stjerne: starFilter ? undefined : '1' }) })}
+            >
+              ★ {aging.starred} mine stjerner
+            </button>
+            <button
+              type="button"
+              disabled={aging.contact === 0 && !contactFilter}
+              aria-pressed={contactFilter}
+              className={contactFilter ? 'liste-summary__chip liste-summary__chip--on' : 'liste-summary__chip'}
+              onClick={() => router.push({ pathname: '/backoffice/liste', query: buildQuery({ kontakt: contactFilter ? undefined : '1' }) })}
+            >
+              {aging.contact} med kontaktperson
+            </button>
           </div>
         )}
 
@@ -276,7 +302,8 @@ export default function Liste() {
             const loc = ownerShort(c.road_owner, c.speed_limit);
             const parts = splitReportText(c.description, { exclude: c.category });
             return (
-              <Link key={c.id} className="admin-list-item" href={`/backoffice/sak/${encodeURIComponent(c.id)}`}>
+              <div key={c.id} className="cq-row">
+              <Link className="admin-list-item" href={`/backoffice/sak/${encodeURIComponent(c.id)}`}>
                 <div className="admin-list-item__head">
                   <span className={`status-pill status-pill--${meta.key}`} dangerouslySetInnerHTML={{ __html: `${meta.icon}<span>${meta.label}</span>` }} />
                   <span className="admin-list-item__headright">
@@ -296,8 +323,14 @@ export default function Liste() {
                     return <span className={over ? 'sak-due sak-due--over' : 'sak-due'}>{over ? 'Forfalt' : 'Frist'} {new Date(c.due_date).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })}</span>;
                   })()}
                   {c.assignee_email && <span className="admin-list-item__assignee">{staffName(c.assignee_email)}</span>}
+                  {Number(c.contact_count) > 0 && <span className="admin-list-item__contact">Kontaktperson</span>}
                 </span>
               </Link>
+              <div className="cq-bar">
+                <StatusPicker value={c.status} onChange={async (v) => { await setCaseStatus(c.id, v); setCases((list) => list.map((x) => (x.id === c.id ? { ...x, status: v } : x))); }} />
+                <StarButton on={stars.has(c.id)} onToggle={() => toggleStar(c.id)} />
+              </div>
+              </div>
             );
           })}
         </div>

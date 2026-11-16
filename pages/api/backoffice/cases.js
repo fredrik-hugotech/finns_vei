@@ -122,9 +122,17 @@ export default async function handler(req, res) {
       for (const c of raw) {
         if (c.parent_report_id) linkedByParent.set(c.parent_report_id, (linkedByParent.get(c.parent_report_id) || 0) + 1);
       }
+      // Contact details never go to the list; only whether the case (or a
+      // report linked into it) has an adult who can be contacted.
+      const hasContact = (c) => c.reporter_type === 'voksen' && Boolean(String(c.contact_email || '').trim() || String(c.contact_phone || '').trim());
+      const contactByParent = new Map();
+      for (const c of raw) {
+        if (c.parent_report_id && hasContact(c)) contactByParent.set(c.parent_report_id, (contactByParent.get(c.parent_report_id) || 0) + 1);
+      }
       const cases = raw.map((c) => {
         const linked = linkedByParent.get(c.id) || 0;
-        const out = { ...c, linked_count: linked, engagement: Number(c.support_count || 0) + linked };
+        const { contact_email: _e, contact_phone: _p, ...rest } = c;
+        const out = { ...rest, linked_count: linked, engagement: Number(c.support_count || 0) + linked, contact_count: (hasContact(c) ? 1 : 0) + (contactByParent.get(c.id) || 0) };
         if (c.description && c.description.length > LIST_DESCRIPTION_CHARS) out.description = `${c.description.slice(0, LIST_DESCRIPTION_CHARS)}…`;
         return out;
       });
