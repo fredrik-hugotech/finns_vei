@@ -1,65 +1,95 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import { useEffect, useRef, useState } from 'react';
 import Logo from './Logo';
+import FinnPanel from './FinnPanel';
 
-// The most used staff pages. On larger screens they sit in the top bar; on
-// phones the bar shows back + title and the dashboard links to the rest.
-const NAV = [
-  { href: '/backoffice', label: 'Oversikt' },
-  { href: '/backoffice/liste', label: 'Saker', match: ['/backoffice/liste', '/backoffice/sak', '/backoffice/hotteste', '/backoffice/gjentakende-steder'] },
-  { href: '/backoffice/prioritering', label: 'Prioritering' },
-  { href: '/', label: 'Kart' },
+// Two menus only: Saker (where the work happens) and Innsikt (numbers and
+// the big picture). Finn opens as a side panel from anywhere; the rest sits
+// under «Mer».
+const SAKER = ['/backoffice/saker', '/backoffice/liste', '/backoffice/sak', '/backoffice/sammenkobling', '/backoffice/finn/personvern', '/backoffice/skilt'];
+export const INNSIKT_TABS = [
+  { href: '/backoffice/oversikt', label: 'Oversikt' },
+  { href: '/backoffice/finn/kommune', label: 'Kommuner' },
   { href: '/backoffice/statistikk', label: 'Statistikk' },
-  { href: '/backoffice/sparkesykler', label: 'Sparkesykler' },
+  { href: '/', label: 'Kart' },
   { href: '/backoffice/tetthet', label: 'Sykkelspor' },
+  { href: '/backoffice/sparkesykler', label: 'Sparkesykler' },
+  { href: '/backoffice/gjentakende-steder', label: 'Gjentakende steder' },
+  { href: '/backoffice/skolevei-avvik', label: 'Skolevei-avvik' },
   { href: '/backoffice/konkurranser', label: 'Konkurranser' },
+  { href: '/innsikt', label: 'Finnsvei i tall' },
 ];
+const INNSIKT = INNSIKT_TABS.map((t) => t.href).filter((h) => h !== '/' && h !== '/innsikt');
 
-function isActive(item, path) {
-  if (item.href === '/backoffice') return path === '/backoffice';
-  return (item.match || [item.href]).some((m) => path === m || path.startsWith(`${m}/`));
-}
+const under = (path, list) => list.some((m) => path === m || path.startsWith(`${m}/`));
 
-// Shared top bar for the backoffice: brand + navigation on larger screens,
-// back link + page title on phones, and logout.
-export default function BackofficeHeader({ title, back = '/backoffice', backLabel = 'Oversikt' }) {
-  const router = useRouter();
-  const path = router?.pathname?.replace('/[id]', '') || '';
+function MoreMenu() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return undefined;
+    const close = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('pointerdown', close);
+    return () => document.removeEventListener('pointerdown', close);
+  }, [open]);
   const logout = async () => {
     try { await fetch('/api/staff/logout', { method: 'POST' }); } catch (_e) { /* ignore */ }
     try { window.localStorage.removeItem('ff-admin-secret'); } catch (_e) { /* ignore */ }
     window.location.href = '/backoffice';
   };
-  const atHome = path === '/backoffice';
   return (
-    <header className="bo-header">
-      <Link className="bo-header__brand" href="/backoffice" aria-label="Finnsvei backoffice – oversikt">
-        <Logo size="sm" variant="symbol" />
-        <span className="bo-header__brandtext">Finnsvei</span>
-      </Link>
-      {!atHome && <Link className="bo-header__back" href={back}>‹ {backLabel}</Link>}
-      <span className="bo-header__title">{title}</span>
-      <nav className="bo-header__nav" aria-label="Backoffice">
-        {NAV.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={isActive(item, path) ? 'bo-header__link bo-header__link--on' : 'bo-header__link'}
-            aria-current={isActive(item, path) ? 'page' : undefined}
-          >
-            {item.label}
-          </Link>
-        ))}
-      </nav>
-      <Link
-        href="/backoffice/finn"
-        className={['/backoffice/finn', '/backoffice/sammenkobling'].some((m) => path === m || path.startsWith(`${m}/`)) ? 'bo-header__finn bo-header__finn--on' : 'bo-header__finn'}
-        aria-label="Finn – AI-rådgiveren"
-      >
-        <span className="bo-header__finnmark" aria-hidden="true">F<i>✦</i></span>
-        <span className="bo-header__finntext">Finn</span>
-      </Link>
-      <button type="button" className="bo-header__logout" onClick={logout}>Logg ut</button>
-    </header>
+    <div className="bo-more" ref={ref}>
+      <button type="button" className="bo-more__btn" aria-expanded={open} aria-haspopup="menu" onClick={() => setOpen((o) => !o)}>
+        Mer
+        <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+      </button>
+      {open && (
+        <div className="bo-more__menu" role="menu">
+          <Link role="menuitem" href="/backoffice/brukere" onClick={() => setOpen(false)}>Brukere</Link>
+          <Link role="menuitem" href="/backoffice/oversikt#bytt-passord" onClick={() => setOpen(false)}>Bytt passord</Link>
+          <button type="button" role="menuitem" onClick={logout}>Logg ut</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function BackofficeHeader() {
+  const router = useRouter();
+  const path = router?.pathname?.replace('/[id]', '') || '';
+  const [finnOpen, setFinnOpen] = useState(false);
+  const inInnsikt = under(path, INNSIKT);
+  const inSaker = !inInnsikt && (under(path, SAKER) || path === '/backoffice');
+  const finnQuery = router?.query?.finn;
+  useEffect(() => { if (finnQuery === '1') setFinnOpen(true); }, [finnQuery]);
+
+  return (
+    <>
+      <header className="bo-header">
+        <Link className="bo-header__brand" href="/backoffice/saker" aria-label="Finnsvei – saker">
+          <Logo size="sm" variant="symbol" />
+          <span className="bo-header__brandtext">Finnsvei</span>
+        </Link>
+        <nav className="bo-header__nav bo-header__nav--two" aria-label="Backoffice">
+          <Link href="/backoffice/saker" className={inSaker ? 'bo-header__link bo-header__link--on' : 'bo-header__link'} aria-current={inSaker ? 'page' : undefined}>Saker</Link>
+          <Link href="/backoffice/oversikt" className={inInnsikt ? 'bo-header__link bo-header__link--on' : 'bo-header__link'} aria-current={inInnsikt ? 'page' : undefined}>Innsikt</Link>
+        </nav>
+        <button type="button" className={finnOpen ? 'bo-header__finn bo-header__finn--on' : 'bo-header__finn'} onClick={() => setFinnOpen((o) => !o)} aria-expanded={finnOpen} aria-label="Spør Finn, AI-rådgiveren">
+          <span className="bo-header__finnmark" aria-hidden="true">F<i>✦</i></span>
+          <span className="bo-header__finntext">Finn</span>
+        </button>
+        <MoreMenu />
+      </header>
+      {inInnsikt && (
+        <nav className="bo-subnav" aria-label="Innsikt">
+          {INNSIKT_TABS.map((t) => {
+            const on = t.href !== '/' && (path === t.href || path.startsWith(`${t.href}/`));
+            return <Link key={t.href} href={t.href} className={on ? 'bo-subnav__tab bo-subnav__tab--on' : 'bo-subnav__tab'} aria-current={on ? 'page' : undefined}>{t.label}</Link>;
+          })}
+        </nav>
+      )}
+      <FinnPanel open={finnOpen} onClose={() => setFinnOpen(false)} initialQuestion={typeof router?.query?.spor === 'string' ? router.query.spor : ''} />
+    </>
   );
 }

@@ -189,6 +189,12 @@ export default function Liste() {
       <Head><title>Saker – Finnsvei</title><meta name="robots" content="noindex" /><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" /></Head>
       <BackofficeHeader title="Saker" />
       <main className="page admin-list-page">
+        <nav className="sk-queues" aria-label="Køer">
+          {[['idag', 'I dag'], ['mine', 'Mine'], ['viktigst', 'Viktigst nå'], ['raske', 'Raske gevinster'], ['nye', 'Nye'], ['kontakt', 'Kan følges opp']].map(([k, label]) => (
+            <Link key={k} href={k === 'idag' ? '/backoffice/saker' : `/backoffice/saker?ko=${k}`} className="sk-queue">{label}</Link>
+          ))}
+          <span className="sk-queue sk-queue--on" aria-current="page">Alle</span>
+        </nav>
         <input className="sak-search" value={q} onChange={handleQChange} placeholder="Søk i saker …" aria-label="Søk" />
 
         <div className="liste-filters">

@@ -12,6 +12,10 @@ const nextConfig = {
       { source: '/map', destination: '/', permanent: false },
       { source: '/meld', destination: '/', permanent: false },
       { source: '/meld/form', destination: '/', permanent: false },
+      // Backoffice has two menus now (Saker, Innsikt); older pages point there.
+      { source: '/backoffice/prioritering', destination: '/backoffice/saker?ko=viktigst', permanent: false },
+      { source: '/backoffice/hotteste', destination: '/backoffice/saker?ko=viktigst', permanent: false },
+      { source: '/backoffice/finn', destination: '/backoffice/saker?ko=idag&finn=1', permanent: false },
     ];
   },
   async headers() {

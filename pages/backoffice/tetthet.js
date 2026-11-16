@@ -105,7 +105,7 @@ export default function Sykkelspor() {
         <ReportMap className="map-canvas" showReports={false} onMapReady={setMapApi} />
 
         <div className="spor-panel">
-          <Link className="spor-panel__back" href="/backoffice">‹ Oversikt</Link>
+          <Link className="spor-panel__back" href="/backoffice/oversikt">‹ Innsikt</Link>
           {status === 'not-authed' ? (
             <p className="spor-panel__msg">Logg inn først. <Link href="/backoffice">Til innlogging</Link></p>
           ) : (

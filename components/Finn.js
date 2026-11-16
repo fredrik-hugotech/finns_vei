@@ -101,9 +101,9 @@ export function FinnBrief({ compact = false }) {
   const s = data?.stats;
   const c = data?.counts;
   const chips = s ? [
-    { n: s.nye_i_perioden, label: 'nye siste døgn', href: '/backoffice/liste' },
-    { n: s.hastesaker_apne, label: 'hastesaker', href: '/backoffice/prioritering', warn: s.hastesaker_apne > 0 },
-    { n: s.raske_gevinster_apne, label: 'raske gevinster', href: '/backoffice/prioritering?vis=raske' },
+    { n: s.nye_i_perioden, label: 'nye siste døgn', href: '/backoffice/saker?ko=nye' },
+    { n: s.hastesaker_apne, label: 'haster mest', href: '/backoffice/saker?ko=viktigst', warn: s.hastesaker_apne > 0 },
+    { n: s.raske_gevinster_apne, label: 'raske gevinster', href: '/backoffice/saker?ko=raske' },
     { n: c?.likeSaker ?? 0, label: 'forslag om like saker', href: '/backoffice/sammenkobling', warn: (c?.likeSaker || 0) > 0 },
     { n: c?.flagg ?? 0, label: 'personvernflagg', href: '/backoffice/finn/personvern', warn: (c?.flagg || 0) > 0 },
   ] : [];
@@ -147,7 +147,7 @@ export function FinnBrief({ compact = false }) {
       <div className="finn-brief__foot">
         {data?.brief && <span>Skrevet {fmtTime(data.brief.created_at)}{data.total ? ` · ${data.assessed} av ${data.total} saker vurdert` : ''}</span>}
         {data?.configured && <button type="button" className="finn-link" onClick={write} disabled={writing}>{writing ? 'Skriver …' : 'Skriv på nytt'}</button>}
-        {compact && <Link className="finn-link" href="/backoffice/finn">Alt Finn kan gjøre ›</Link>}
+        
       </div>
     </section>
   );
@@ -169,7 +169,7 @@ export function FinnAsk({ initial = '', compact = false }) {
   const ask = useCallback(async (question) => {
     const text = String(question || '').trim();
     if (text.length < 3 || busy) return;
-    if (compact) { window.location.href = `/backoffice/finn?spor=${encodeURIComponent(text)}`; return; }
+    if (compact) { window.location.href = `/backoffice/saker?finn=1&spor=${encodeURIComponent(text)}`; return; }
     setBusy(true); setError(''); setQ('');
     setLog((l) => [...l, { q: text, a: null }]);
     try {

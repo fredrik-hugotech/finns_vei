@@ -54,7 +54,7 @@ export default function GjentakendeSteder() {
       <main className="page admin-list-page">
         <p className="dash2__hint" style={{ margin: 0 }}>
           Steder det meldes om i flere ulike sesonger eller år, altså varige problemer og ikke en travel uke.
-          For det som engasjerer mest akkurat nå, se <Link href="/backoffice/hotteste">Hotteste saker</Link>.
+          For det som haster mest akkurat nå, se <Link href="/backoffice/saker?ko=viktigst">Viktigst nå</Link> under Saker.
         </p>
 
         {error === 'not-authed' && (

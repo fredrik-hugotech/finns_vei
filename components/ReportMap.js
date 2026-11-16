@@ -2219,7 +2219,7 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
       {showReports && adminSecret && adminChrome && (
         <div className="admin-mode-badge" aria-label="Admin">
           <span className="admin-mode-badge__dot" aria-hidden="true" />
-          <a className="admin-mode-badge__link" href="/backoffice">Oversikt</a>
+          <a className="admin-mode-badge__link" href="/backoffice/saker">Saker</a>
           <button type="button" className="admin-mode-badge__logout" onClick={logoutAdmin}>Logg ut</button>
         </div>
       )}
