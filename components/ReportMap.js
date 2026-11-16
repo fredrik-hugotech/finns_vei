@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import StreetViewPanel from './StreetViewPanel';
+import { ShareButton } from './CaseQuick';
 import { splitReportText } from '../lib/reportText';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -2423,7 +2424,10 @@ export default function ReportMap({ selectable = false, point, onPointChange, cl
             <div className="sheet-scroll case-sheet__scroll" dangerouslySetInnerHTML={{ __html: caseBodyHtml }} />
             {adminSecret && caseFeature ? (
               <div className="sheet-footer case-sheet__footer">
-                <a className="big-button big-button--primary" href={`/backoffice/sak/${encodeURIComponent(reportIdFromFeature(caseFeature))}`}>Åpne saksbehandling</a>
+                <div className="case-sheet__staffrow">
+                  <a className="big-button big-button--primary" href={`/backoffice/sak/${encodeURIComponent(reportIdFromFeature(caseFeature))}`}>Åpne saksbehandling</a>
+                  <ShareButton id={reportIdFromFeature(caseFeature)} title={`${caseFeature.properties?.category || 'Sak'} – Finnsvei`} label="Del" />
+                </div>
               </div>
             ) : (
               <div className="sheet-footer case-sheet__footer" dangerouslySetInnerHTML={{ __html: caseFooterHtml }} />

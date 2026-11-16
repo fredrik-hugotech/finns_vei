@@ -8,7 +8,7 @@ import { REPORT_STATUS, REPORT_CATEGORIES, REPORTER_TYPES } from '../../lib/conf
 import { timeAgo, ownerShort, staffName, describeFetchError } from '../../lib/backofficeFormat';
 import { classifyRoadAuthority } from '../../lib/roadAuthorityReferral';
 import BackofficeHeader from '../../components/BackofficeHeader';
-import { StarButton, StatusPicker, setCaseStatus, useStars } from '../../components/CaseQuick';
+import { ShareButton, StarButton, StatusPicker, setCaseStatus, useStars } from '../../components/CaseQuick';
 
 const STATUSES = [REPORT_STATUS.NEW, REPORT_STATUS.REGISTERED, REPORT_STATUS.STARTED, REPORT_STATUS.DONE];
 
@@ -334,6 +334,7 @@ export default function Liste() {
               </Link>
               <div className="cq-bar">
                 <StatusPicker value={c.status} onChange={async (v) => { await setCaseStatus(c.id, v); setCases((list) => list.map((x) => (x.id === c.id ? { ...x, status: v } : x))); }} />
+                <ShareButton id={c.id} title={`${c.category} – Finnsvei`} />
                 <StarButton on={stars.has(c.id)} onToggle={() => toggleStar(c.id)} />
               </div>
               </div>

@@ -10,7 +10,7 @@ import { classifyRoadAuthority, buildReferralDraft } from '../../../lib/roadAuth
 import { describeFetchError } from '../../../lib/backofficeFormat';
 import { PUBLIC_UPDATE_TEMPLATES } from '../../../lib/caseUpdateTemplates';
 import StreetViewPanel from '../../../components/StreetViewPanel';
-import { StarButton, useStars } from '../../../components/CaseQuick';
+import { ShareButton, StarButton, useStars } from '../../../components/CaseQuick';
 import { EFFORT_TEXT, EffortChip, FinnAvatar, FinnProgress, UrgencyDots } from '../../../components/Finn';
 
 const STATUSES = [REPORT_STATUS.NEW, REPORT_STATUS.REGISTERED, REPORT_STATUS.STARTED, REPORT_STATUS.DONE];
@@ -124,7 +124,8 @@ export default function SakDetalj() {
     try {
       const r = await fetch(`/api/backoffice/cases?id=${encodeURIComponent(id)}`);
       if (requestId !== requestIdRef.current) return;
-      if (r.status === 403) { setError('not-authed'); return; }
+      // A shared link opened by someone not logged in: log in, then come back.
+      if (r.status === 403) { setError('not-authed'); window.location.replace(`/backoffice?neste=${encodeURIComponent(`/backoffice/sak/${id}`)}`); return; }
       if (!r.ok) { setError(await describeFetchError(r, 'Kunne ikke hente saken.')); return; }
       const d = await r.json();
       if (requestId !== requestIdRef.current) return;
@@ -523,6 +524,7 @@ export default function SakDetalj() {
                 <span className={`status-pill status-pill--${meta.key}`} dangerouslySetInnerHTML={{ __html: `${meta.icon}<span>${meta.label}</span>` }} />
                 <span className="sak-hero__when">Meldt {fmtDate(c.created_at)}</span>
                 <StarButton on={stars.has(c.id)} onToggle={() => toggleStar(c.id)} />
+                <ShareButton id={c.id} title={`${c.category} – Finnsvei`} label="Del" />
                 <a className="sak-hero__open" href={`/sak/${encodeURIComponent(c.id)}`} target="_blank" rel="noopener noreferrer">
                   Åpne saken
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8" /></svg>

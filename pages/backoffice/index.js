@@ -49,7 +49,12 @@ export default function Backoffice() {
 
 
 
-  useEffect(() => { if (checked && me) router.replace('/backoffice/saker'); }, [checked, me, router]);
+  // After login, go back to where a shared link pointed (only within the backoffice).
+  useEffect(() => {
+    if (!checked || !me || !router.isReady) return;
+    const next = typeof router.query.neste === 'string' ? router.query.neste : '';
+    router.replace(/^\/backoffice\/[a-z0-9/_-]+$/i.test(next) ? next : '/backoffice/saker');
+  }, [checked, me, router]);
   if (checked && me) return <main className="admin-login"><div className="admin-login__card"><p className="admin-login__sub">Åpner saker …</p></div></main>;
 
   return (

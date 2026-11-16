@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import BackofficeHeader from '../../components/BackofficeHeader';
 import { EffortChip, FinnBrief, UrgencyDots } from '../../components/Finn';
-import { StarButton, StatusPicker, setCaseStatus, useStars } from '../../components/CaseQuick';
+import { ShareButton, StarButton, StatusPicker, setCaseStatus, useStars } from '../../components/CaseQuick';
 import { REPORT_STATUS } from '../../lib/config';
 import { reportStatusMeta } from '../../lib/reportStatusMeta';
 import { splitReportText } from '../../lib/reportText';
@@ -58,6 +58,7 @@ function CaseRow({ c, star, onStar, onStatus }) {
       </Link>
       <div className="cq-bar">
         <StatusPicker value={c.status} onChange={onStatus} />
+        <ShareButton id={c.id} title={`${c.t?.measure || c.category} – Finnsvei`} />
         <StarButton on={star} onToggle={onStar} />
       </div>
     </li>

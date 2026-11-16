@@ -48,3 +48,31 @@ export function StatusPicker({ value, onChange }) {
     </select>
   );
 }
+
+// Share a case: the phone's own share sheet where available, otherwise copy
+// the link. Default is the staff link (colleagues log in to see it).
+export async function shareCaseLink({ id, title = 'Sak i Finnsvei', publicLink = false }) {
+  const url = `${window.location.origin}${publicLink ? '/sak/' : '/backoffice/sak/'}${encodeURIComponent(id)}`;
+  if (navigator.share && window.matchMedia('(pointer: coarse)').matches) {
+    try { await navigator.share({ title, url }); return 'delt'; } catch (e) { if (e?.name === 'AbortError') return ''; }
+  }
+  try { await navigator.clipboard.writeText(url); return 'kopiert'; } catch (_e) {
+    window.prompt('Kopier lenken:', url);
+    return '';
+  }
+}
+
+export function ShareButton({ id, title, publicLink = false, label = '' }) {
+  const [done, setDone] = useState('');
+  const click = async (e) => {
+    e.preventDefault(); e.stopPropagation();
+    const r = await shareCaseLink({ id, title, publicLink });
+    if (r === 'kopiert') { setDone('Kopiert'); setTimeout(() => setDone(''), 1800); }
+  };
+  return (
+    <button type="button" className={label ? 'cq-share cq-share--label' : 'cq-share'} onClick={click} aria-label={publicLink ? 'Del offentlig lenke' : 'Del lenke til saken'} title={publicLink ? 'Del offentlig lenke' : 'Del lenke til saken med kollega'}>
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" /></svg>
+      {(label || done) && <span>{done || label}</span>}
+    </button>
+  );
+}
