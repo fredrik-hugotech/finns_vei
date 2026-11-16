@@ -1,3 +1,4 @@
+import { waitUntil } from '@vercel/functions';
 import { timingSafeEqualStrings } from '../../../lib/timingSafeEqualStrings';
 import { isAdminRequest } from '../../../lib/backofficeAuth';
 import { assessReport, triageConfigured, triageInputHash, triageRow } from '../../../lib/aiTriage';
@@ -9,7 +10,10 @@ import { generateBrief, latestBrief, scanReports } from '../../../lib/finnJobs';
 // call short; a backlog of a thousand reports is cleared in a few hours.
 export const config = { maxDuration: 300 };
 const PER_RUN = 60;
-const CONCURRENCY = 6;
+const CONCURRENCY = 8;
+// A run started with ?kjede=1 hands over to a fresh run when it finishes, so a
+// full re-assessment completes on the server without anyone keeping a tab open.
+const MAX_CHAIN = 60;
 
 function authorized(req) {
   const secret = process.env.CRON_SECRET;
@@ -32,7 +36,7 @@ export default async function handler(req, res) {
   const started = Date.now();
   // Nightly run: also write Finn's morning brief and check new texts for
   // personal details, before the triage batch.
-  if (authorized(req)) {
+  if (authorized(req) && req.query.kjede !== '1') {
     await Promise.all([
       latestBrief().then((b) => (b ? null : generateBrief({ period: 'dag', by: 'cron' }))).catch((e) => console.error(JSON.stringify({ scope: 'ai-triage', event: 'brief_failed', error: String(e?.message || e).slice(0, 200) }))),
       listReportsNeedingFlagScan(100).then(async (todo) => {
@@ -58,6 +62,18 @@ export default async function handler(req, res) {
     }
   };
   await Promise.all(Array.from({ length: CONCURRENCY }, worker));
-  const remaining = reports.filter((r) => hashByReport.get(r.id) !== triageInputHash(r)).length - done;
-  return res.status(200).json({ ok: true, assessed: done, failed, remaining: Math.max(0, remaining) });
+  const remaining = Math.max(0, reports.filter((r) => hashByReport.get(r.id) !== triageInputHash(r)).length - done);
+  const round = Number(req.query.runde) || 0;
+  const chained = req.query.kjede === '1' && remaining > 0 && done > 0 && round < MAX_CHAIN && process.env.CRON_SECRET;
+  if (chained) {
+    const next = `https://${req.headers.host}/api/cron/ai-triage?kjede=1&runde=${round + 1}`;
+    // Start the next run and let go after a few seconds; it keeps running on
+    // its own. Only server-to-server with CRON_SECRET.
+    waitUntil((async () => {
+      const ctl = new AbortController();
+      const t = setTimeout(() => ctl.abort(), 8000);
+      try { await fetch(next, { method: 'POST', headers: { Authorization: `Bearer ${process.env.CRON_SECRET}` }, signal: ctl.signal }); } catch (_e) { /* handed over */ } finally { clearTimeout(t); }
+    })());
+  }
+  return res.status(200).json({ ok: true, assessed: done, failed, remaining, chained: Boolean(chained) });
 }

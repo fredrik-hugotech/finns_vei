@@ -65,17 +65,23 @@ function CaseRow({ c, star, onStar, onStatus }) {
   );
 }
 
-function RunAssessments({ pending, onDone }) {
+function RunAssessments({ pending, reassess, onDone }) {
   const [state, setState] = useState({ running: false, msg: '' });
   const run = async () => {
     setState({ running: true, msg: 'Starter …' });
     let total = 0;
     for (let round = 0; round < 80; round += 1) {
       try {
-        const r = await fetch('/api/cron/ai-triage', { method: 'POST' });
+        const r = await fetch('/api/cron/ai-triage?kjede=1', { method: 'POST' });
         const d = await r.json().catch(() => ({}));
         if (!r.ok || d.ok === false) { setState({ running: false, msg: d.reason || d.error || 'Stoppet.' }); onDone(); return; }
         total += d.assessed || 0;
+        if (d.chained) {
+          // The server carries on by itself; this page only shows progress.
+          setState({ running: false, msg: `Finn jobber videre på serveren (${d.remaining} igjen). Du kan lukke siden.` });
+          onDone();
+          return;
+        }
         setState({ running: true, msg: `${total} vurdert, ${d.remaining} igjen …` });
         if (!d.remaining || (!d.assessed && round > 2)) break;
       } catch (_e) { setState({ running: false, msg: 'Nettverksfeil. Prøv igjen.' }); onDone(); return; }
@@ -85,9 +91,9 @@ function RunAssessments({ pending, onDone }) {
   };
   return (
     <div className="sk-task">
-      <strong>{pending} saker er ikke vurdert av Finn</strong>
-      <span>{state.msg || 'De kommer ikke med i køene før de er vurdert.'}</span>
-      <button type="button" className="finn-link" onClick={run} disabled={state.running}>{state.running ? 'Vurderer …' : 'Vurder nå'}</button>
+      <strong>{reassess > 0 ? `${pending} saker venter på ny vurdering fra Finn` : `${pending} saker er ikke vurdert av Finn`}</strong>
+      <span>{state.msg || (reassess > 0 ? 'Finn vurderer alt på nytt etter strengere regler for hast og befaring. Gamle vurderinger vises til de er erstattet.' : 'De kommer ikke med i køene før de er vurdert.')}</span>
+      <button type="button" className="finn-link" onClick={run} disabled={state.running}>{state.running ? 'Vurderer …' : 'Start nå'}</button>
     </div>
   );
 }
@@ -118,6 +124,13 @@ export default function Saker() {
     fetch('/api/backoffice/finn/brief').then((r) => (r.ok ? r.json() : null)).then((d) => d && setCounts(d.counts || {})).catch(() => {});
   }, [loadPri]);
   useEffect(() => { setShown(PAGE); }, [queueKey, q, kommune, owner]);
+  // While Finn works through a backlog, refresh the count every half minute.
+  const pendingNow = pri?.pending || 0;
+  useEffect(() => {
+    if (!pendingNow || queueKey !== 'idag') return undefined;
+    const t = setInterval(loadPri, 30000);
+    return () => clearInterval(t);
+  }, [pendingNow, queueKey, loadPri]);
 
   const rows = useMemo(() => {
     const tri = new Map((pri?.cases || []).map((t) => [t.id, t]));
@@ -200,7 +213,7 @@ export default function Saker() {
                   {tasks.map((x) => (
                     <Link key={x.href} href={x.href} className="sk-task"><strong>{x.title}</strong><span>{x.text}</span></Link>
                   ))}
-                  {pri && pri.configured && pri.pending > 0 && <RunAssessments pending={pri.pending} onDone={loadPri} />}
+                  {pri && pri.configured && pri.pending > 0 && <RunAssessments pending={pri.pending} reassess={pri.reassess || 0} onDone={loadPri} />}
                 </div>
               </section>
             )}
