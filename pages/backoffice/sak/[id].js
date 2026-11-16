@@ -78,8 +78,17 @@ export default function SakDetalj() {
   const [noteMode, setNoteMode] = useState('public');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
-  const [savingField, setSavingField] = useState(null);
+  // Which fields are being saved right now. Only that field is locked, so
+  // staff can set status, owner and due date one after the other.
+  const [saving, setSaving] = useState({});
+  const setSavingField = (field, on = true) => setSaving((x) => ({ ...x, [field]: on }));
   const [flash, setFlash] = useState('');
+  // Every confirmation or error toast fades on its own.
+  useEffect(() => {
+    if (!flash) return undefined;
+    const t = setTimeout(() => setFlash(''), /^Kunne ikke/.test(flash) ? 5000 : 1800);
+    return () => clearTimeout(t);
+  }, [flash]);
   const [uploadVis, setUploadVis] = useState('internal');
   const [uploading, setUploading] = useState(false);
   // doUpload is redefined every render, so a stale closure over `uploading`
@@ -164,7 +173,7 @@ export default function SakDetalj() {
     // an in-flight upload for the old case is still genuinely running, and
     // resetting the ref here would let a new upload start concurrently with
     // it and race on the shared flag.
-    setSavingField(null);
+    setSaving({});
     setBusy(false);
     setAttBusyId(null);
   }, [id]);
@@ -178,7 +187,7 @@ export default function SakDetalj() {
   }, []);
 
   const changeDue = async (v) => {
-    if (savingField) return;
+    if (saving.due) return;
     setDueDate(v);
     setSavingField('due');
     try {
@@ -189,10 +198,10 @@ export default function SakDetalj() {
       if (activeIdRef.current !== id) return; // navigated away; stale error, drop it
       setFlash('Kunne ikke lagre frist');
       load();
-    } finally { if (activeIdRef.current === id) setSavingField(null); }
+    } finally { if (activeIdRef.current === id) setSavingField('due', false); }
   };
   const changeAssignee = async (v) => {
-    if (savingField) return;
+    if (saving.assignee) return;
     setAssignee(v);
     setSavingField('assignee');
     try {
@@ -203,7 +212,7 @@ export default function SakDetalj() {
       if (activeIdRef.current !== id) return; // navigated away; stale error, drop it
       setFlash('Kunne ikke lagre tildeling');
       load();
-    } finally { if (activeIdRef.current === id) setSavingField(null); }
+    } finally { if (activeIdRef.current === id) setSavingField('assignee', false); }
   };
 
   const { stars, toggle: toggleStar } = useStars();
@@ -325,7 +334,7 @@ export default function SakDetalj() {
   }, [c?.lat, c?.lng, mapboxToken]);
 
   const changeStatus = async (next) => {
-    if (savingField) return;
+    if (saving.status) return;
     setStatus(next);
     setSavingField('status');
     try {
@@ -336,7 +345,7 @@ export default function SakDetalj() {
       if (activeIdRef.current !== id) return; // navigated away; stale error, drop it
       setFlash('Kunne ikke endre status');
       load();
-    } finally { if (activeIdRef.current === id) setSavingField(null); }
+    } finally { if (activeIdRef.current === id) setSavingField('status', false); }
   };
 
   const deleteCase = async () => {
@@ -504,7 +513,7 @@ export default function SakDetalj() {
       <Head><title>{c ? `${c.category} – sak` : 'Sak'}</title><meta name="robots" content="noindex" /><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" /></Head>
       <BackofficeHeader title={c ? c.category : 'Sak'} back="/backoffice/liste" backLabel="Saker" />
       <main className="page sak-page">
-        {flash && <div className="sak-flashbar">{flash}</div>}
+        {flash && <div className="sak-flashbar" role="status">{flash}</div>}
         {idx >= 0 && (
           <nav className="sak-nav">
             {prevId ? <Link className="sak-nav__link" href={`/backoffice/sak/${prevId}`}>‹ Forrige</Link> : <span />}
@@ -750,13 +759,13 @@ export default function SakDetalj() {
               <div className="tkt-props">
                 <label className="tkt-prop">
                   <span className="tkt-prop__k">Status</span>
-                  <select className="tkt-prop__ctrl" value={status} disabled={!!savingField} onChange={(e) => changeStatus(e.target.value)}>
+                  <select className="tkt-prop__ctrl" value={status} disabled={!!saving.status} onChange={(e) => changeStatus(e.target.value)}>
                     {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </label>
                 <label className="tkt-prop">
                   <span className="tkt-prop__k">Ansvarlig</span>
-                  <select className="tkt-prop__ctrl" value={assignee || ''} disabled={!!savingField} onChange={(e) => changeAssignee(e.target.value)}>
+                  <select className="tkt-prop__ctrl" value={assignee || ''} disabled={!!saving.assignee} onChange={(e) => changeAssignee(e.target.value)}>
                     <option value="">Ingen</option>
                     {/* If the case is assigned to someone no longer in the active staff
                         list (e.g. deactivated), keep them selectable so the dropdown
@@ -770,7 +779,7 @@ export default function SakDetalj() {
                 </label>
                 <label className="tkt-prop">
                   <span className="tkt-prop__k">Frist</span>
-                  <input type="date" className={dueDate && String(dueDate) < todayStr && status !== REPORT_STATUS.DONE ? 'tkt-prop__ctrl tkt-prop__ctrl--over' : 'tkt-prop__ctrl'} value={dueDate} disabled={!!savingField} onChange={(e) => changeDue(e.target.value)} />
+                  <input type="date" className={dueDate && String(dueDate) < todayStr && status !== REPORT_STATUS.DONE ? 'tkt-prop__ctrl tkt-prop__ctrl--over' : 'tkt-prop__ctrl'} value={dueDate} disabled={!!saving.due} onChange={(e) => changeDue(e.target.value)} />
                 </label>
                 <div className="tkt-prop">
                   <span className="tkt-prop__k">Støtte</span>

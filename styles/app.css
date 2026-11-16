@@ -5998,3 +5998,8 @@ a.sk-task:hover { border-color: #e0a100; }
 .case-sheet__staffrow { align-items: center; display: flex; gap: 0.5rem; }
 .case-sheet__staffrow .big-button { flex: 1; }
 .case-sheet__staffrow .cq-share--label { height: 48px; padding: 0 1rem; border-radius: 14px; }
+
+/* Save confirmations float instead of pushing the case page down. */
+.sak-flashbar, .sak-page .sak-flashbar { animation: sak-toast 0.18s ease-out; background: #14201c; border-radius: 999px !important; bottom: calc(1.2rem + env(safe-area-inset-bottom, 0px)); box-shadow: 0 8px 24px rgba(20, 32, 28, 0.25); color: #fff; font-size: 0.88rem; left: 50%; margin: 0 !important; padding: 0.55rem 1.1rem; pointer-events: none; position: fixed; transform: translateX(-50%); white-space: nowrap; z-index: 90; }
+@keyframes sak-toast { from { opacity: 0; transform: translate(-50%, 6px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@media (prefers-reduced-motion: reduce) { .sak-flashbar { animation: none; } }
