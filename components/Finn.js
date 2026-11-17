@@ -109,18 +109,18 @@ export function FinnBrief({ compact = false }) {
   ] : [];
 
   return (
-    <section className={compact ? 'finn-brief finn-brief--compact' : 'finn-brief'}>
+    <section className={`finn-brief${compact ? ' finn-brief--compact' : ''}${!data || (!b && writing) ? ' finn-brief--loading' : ''}`}>
       <div className="finn-brief__head">
         {compact && <FinnAvatar size={40} />}
         <div>
           <span className="finn-kicker">Finn · i dag</span>
-          <h2>{b?.headline || (writing ? 'Finn leser gjennom sakene …' : data && !data.configured ? 'Finn er ikke koblet til ennå' : 'God morgen')}</h2>
+          <h2>{b?.headline || (!data ? 'Henter dagens oppsummering …' : writing ? 'Finn leser gjennom sakene …' : !data.configured ? 'Finn er ikke koblet til ennå' : 'God morgen')}</h2>
         </div>
       </div>
       {error && <p className="finn-brief__err">{error}</p>}
       {data && !data.configured && <p className="finn-brief__sum">Legg inn <code>ANTHROPIC_API_KEY</code> i Vercel for å vekke Finn.</p>}
       {b?.summary && <p className="finn-brief__sum">{b.summary}</p>}
-      {writing && !b && <div className="finn-skeleton"><i /><i /><i /></div>}
+      {(!data || (writing && !b)) && <div className="finn-skeleton"><i /><i /><i /></div>}
       {chips.length > 0 && (
         <div className="finn-chips">
           {chips.map((x) => (

@@ -6020,3 +6020,24 @@ a.sk-task:hover { border-color: #e0a100; }
 .src-builder__row { display: grid; gap: 0.4rem; grid-template-columns: 150px 1fr; }
 .src-builder__out { align-items: center; background: #f6f8f7; border-radius: 10px; display: flex; gap: 0.5rem; padding: 0.45rem 0.5rem 0.45rem 0.7rem; }
 .src-builder__out code { flex: 1; font-size: 0.78rem; overflow-wrap: anywhere; }
+
+/* ===== One fixed top: menu + the area's tabs, always in the same place ===== */
+.bo-top { position: sticky; top: 0; z-index: 30; background: var(--color-surface); }
+.bo-top .bo-header { position: static; }
+.bo-top .bo-subnav { border-bottom: 1px solid var(--color-border); }
+.bo-subnav__tab { align-items: center; display: inline-flex; gap: 0.35rem; }
+.bo-subnav__tab b { background: var(--color-surface-muted, #eef2f0); border-radius: 999px; color: var(--color-muted); font-size: 0.72rem; min-width: 1.6rem; padding: 0.05rem 0.4rem; text-align: center; }
+.bo-subnav__tab--on b { background: rgba(255, 255, 255, 0.22); color: #fff; }
+@media (min-width: 900px) { .bo-subnav { justify-content: flex-start; padding-left: max(1.5rem, calc((100vw - 980px) / 2)); } }
+
+/* Case page on PC: the left column scrolls with the page; the right column
+   stays put under the menu with its own scroll, Street View on top. Nothing
+   slides over the details any more. */
+@media (min-width: 1100px) {
+  .sak-col--side { max-height: calc(100vh - 118px); overflow-y: auto; overscroll-behavior: contain; position: sticky; top: 110px; scrollbar-width: thin; padding-bottom: 0.5rem; }
+  .sak-sv { box-shadow: none; position: sticky; top: 0; z-index: 3; }
+  .sak-sv .sv-panel__frame { height: 240px; }
+}
+
+/* Finn's brief keeps its size while it loads, so the page doesn't jump. */
+.finn-brief--loading { min-height: 220px; }

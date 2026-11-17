@@ -184,24 +184,12 @@ export default function Saker() {
   return (
     <>
       <Head><title>Saker – Finnsvei</title><meta name="robots" content="noindex" /></Head>
-      <BackofficeHeader />
+      <BackofficeHeader counts={cases && pri ? Object.fromEntries(Object.entries(queues).map(([k, v]) => [k, v.length])) : null} />
       <main className="page admin-page sk">
-        <nav className="sk-queues" aria-label="Køer">
-          {QUEUES.map((x) => {
-            const n = x.href || x.key === 'idag' ? null : (queues[x.key] || []).length;
-            const on = x.key === queueKey;
-            const href = x.href || { pathname: '/backoffice/saker', query: x.key === 'idag' ? {} : { ko: x.key } };
-            return (
-              <Link key={x.key} href={href} shallow={!x.href} className={on ? 'sk-queue sk-queue--on' : 'sk-queue'} aria-current={on ? 'page' : undefined}>
-                {x.label}{cases && n !== null ? <b>{n}</b> : null}
-              </Link>
-            );
-          })}
-        </nav>
 
         {error === 'not-authed' && <p className="admin-list-empty">Logg inn først. <Link href="/backoffice">Til innlogging</Link></p>}
         {error && error !== 'not-authed' && <p className="admin-list-empty">{error}</p>}
-        {!error && !cases && <p className="admin-list-empty">Henter saker …</p>}
+        {!error && (!cases || (!pri && queueKey !== 'idag' && queueKey !== 'nye')) && <p className="admin-list-empty">Henter saker …</p>}
 
         {cases && queueKey === 'idag' && (
           <div className="sk-today">
@@ -227,7 +215,7 @@ export default function Saker() {
           </div>
         )}
 
-        {cases && queueKey !== 'idag' && (
+        {cases && queueKey !== 'idag' && (pri || queueKey === 'nye') && (
           <>
             <p className="sk-hint">{HINT[queueKey]}</p>
             <div className="sk-filters">

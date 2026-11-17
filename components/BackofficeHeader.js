@@ -21,6 +21,16 @@ export const INNSIKT_TABS = [
   { href: '/innsikt', label: 'Finnsvei i tall' },
 ];
 const INNSIKT = INNSIKT_TABS.map((t) => t.href).filter((h) => h !== '/' && h !== '/innsikt');
+// Saker's queues, shown in the same row and style as Innsikt's tabs.
+export const SAKER_QUEUES = [
+  { key: 'idag', label: 'I dag' },
+  { key: 'mine', label: 'Mine' },
+  { key: 'viktigst', label: 'Viktigst nå' },
+  { key: 'raske', label: 'Raske gevinster' },
+  { key: 'nye', label: 'Nye' },
+  { key: 'kontakt', label: 'Kan følges opp' },
+  { key: 'alle', label: 'Alle' },
+];
 
 const under = (path, list) => list.some((m) => path === m || path.startsWith(`${m}/`));
 
@@ -55,7 +65,7 @@ function MoreMenu() {
   );
 }
 
-export default function BackofficeHeader() {
+export default function BackofficeHeader({ counts = null }) {
   const router = useRouter();
   const path = router?.pathname?.replace('/[id]', '') || '';
   const [finnOpen, setFinnOpen] = useState(false);
@@ -64,8 +74,10 @@ export default function BackofficeHeader() {
   const finnQuery = router?.query?.finn;
   useEffect(() => { if (finnQuery === '1') setFinnOpen(true); }, [finnQuery]);
 
+  const queue = path === '/backoffice/liste' ? 'alle' : path === '/backoffice/saker' ? (SAKER_QUEUES.some((q) => q.key === router?.query?.ko) ? router.query.ko : 'idag') : '';
   return (
     <>
+      <div className="bo-top">
       <header className="bo-header">
         <Link className="bo-header__brand" href="/backoffice/saker" aria-label="Finnsvei – saker">
           <Logo size="sm" variant="symbol" />
@@ -81,6 +93,20 @@ export default function BackofficeHeader() {
         </button>
         <MoreMenu />
       </header>
+      {inSaker && (
+        <nav className="bo-subnav" aria-label="Køer">
+          {SAKER_QUEUES.map((q) => {
+            const on = q.key === queue;
+            const href = q.key === 'alle' ? '/backoffice/liste' : q.key === 'idag' ? '/backoffice/saker' : `/backoffice/saker?ko=${q.key}`;
+            const n = counts && q.key !== 'idag' && q.key !== 'alle' ? counts[q.key] : null;
+            return (
+              <Link key={q.key} href={href} shallow={path === '/backoffice/saker' && q.key !== 'alle'} className={on ? 'bo-subnav__tab bo-subnav__tab--on' : 'bo-subnav__tab'} aria-current={on ? 'page' : undefined}>
+                {q.label}{q.key !== 'idag' && q.key !== 'alle' && path === '/backoffice/saker' ? <b>{n === null || n === undefined ? '·' : n}</b> : null}
+              </Link>
+            );
+          })}
+        </nav>
+      )}
       {inInnsikt && (
         <nav className="bo-subnav" aria-label="Innsikt">
           {INNSIKT_TABS.map((t) => {
@@ -89,6 +115,7 @@ export default function BackofficeHeader() {
           })}
         </nav>
       )}
+      </div>
       <FinnPanel open={finnOpen} onClose={() => setFinnOpen(false)} initialQuestion={typeof router?.query?.spor === 'string' ? router.query.spor : ''} />
     </>
   );
