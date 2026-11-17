@@ -8,6 +8,7 @@ import { REPORT_IMAGE_MAX_BYTES, REPORT_IMAGE_MAX_COUNT } from '../lib/reportIma
 import { compressImageFile, isHeicFile } from '../lib/imageCompression';
 import { addMyReport } from '../lib/myReports';
 import { addPendingReport } from '../lib/offlineReportQueue';
+import { visitSourceFields } from '../lib/visitSource';
 
 // Coordinates → a human place ("Marviksveien · Lund") so the reporter can
 // confirm they picked the right spot before sending.
@@ -297,6 +298,7 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
     contact_email: isAdult ? form.contact_email : '',
     contact_phone: isAdult ? form.contact_phone : '',
     nettside: form.nettside,
+    ...visitSourceFields(),
   });
 
   // A genuine connectivity failure (fetch() itself threw, or we already know
@@ -358,6 +360,7 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
     body.set('contact_email', queuePayload.contact_email);
     body.set('contact_phone', queuePayload.contact_phone);
     body.set('nettside', queuePayload.nettside);
+    ['source_host', 'source_utm_source', 'source_utm_medium', 'source_utm_campaign'].forEach((k) => { if (queuePayload[k]) body.set(k, queuePayload[k]); });
     images.forEach((image) => body.append('images', image.file));
 
     // If the answer is slow (bad coverage, big image), say so instead of a

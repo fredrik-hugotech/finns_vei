@@ -6003,3 +6003,20 @@ a.sk-task:hover { border-color: #e0a100; }
 .sak-flashbar, .sak-page .sak-flashbar { animation: sak-toast 0.18s ease-out; background: #14201c; border-radius: 999px !important; bottom: calc(1.2rem + env(safe-area-inset-bottom, 0px)); box-shadow: 0 8px 24px rgba(20, 32, 28, 0.25); color: #fff; font-size: 0.88rem; left: 50%; margin: 0 !important; padding: 0.55rem 1.1rem; pointer-events: none; position: fixed; transform: translateX(-50%); white-space: nowrap; z-index: 90; }
 @keyframes sak-toast { from { opacity: 0; transform: translate(-50%, 6px); } to { opacity: 1; transform: translate(-50%, 0); } }
 @media (prefers-reduced-motion: reduce) { .sak-flashbar { animation: none; } }
+
+/* Innsikt: where reports come from */
+.src { margin: 0.4rem 0 1rem; }
+.src-range { display: inline-flex; gap: 0.25rem; }
+.src-range button { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 999px; cursor: pointer; font: inherit; font-size: 0.8rem; font-weight: 700; padding: 0.25rem 0.65rem; }
+.src-range button.on { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+.src-grid { display: grid; gap: 0.7rem; }
+@media (min-width: 900px) { .src-grid { grid-template-columns: 1.2fr 1fr; } }
+.src-card, .src-builder { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 14px; padding: 0.9rem 1rem; }
+.src-bars li { grid-template-columns: minmax(90px, 45%) 1fr auto; }
+.src-note { color: var(--color-muted); font-size: 0.8rem; margin: 0.6rem 0 0; }
+.src-h3 { font-size: 0.85rem; margin: 0.9rem 0 0.35rem; }
+.src-builder { display: grid; gap: 0.45rem; align-content: start; }
+.src-builder > span { color: var(--color-muted); font-size: 0.85rem; }
+.src-builder__row { display: grid; gap: 0.4rem; grid-template-columns: 150px 1fr; }
+.src-builder__out { align-items: center; background: #f6f8f7; border-radius: 10px; display: flex; gap: 0.5rem; padding: 0.45rem 0.5rem 0.45rem 0.7rem; }
+.src-builder__out code { flex: 1; font-size: 0.78rem; overflow-wrap: anywhere; }

@@ -27,8 +27,8 @@ const POINTS = [
     body: 'Ruten klippes og avrundes på telefonen før den sendes, og en gang til hos oss. Vi ser hvor mange som sykler og går, ikke hvem. Bare stiftelsen ser varmekartet, og enkeltruter vises aldri offentlig.',
   },
   {
-    title: 'Ingen sporing og ingen deling',
-    body: 'Vi bruker ikke annonsesporing, og vi selger eller deler ikke data. Lista over dine egne turer og meldinger ligger kun i din egen nettleser.',
+    title: 'Ingen annonsesporing og ingen deling',
+    body: 'Vi bruker ikke annonsesporing eller sporingskapsler, og vi selger eller deler ikke data. Vi teller sidevisninger anonymt, og når du sender en melding husker vi bare hvilket nettsted du kom fra (for eksempel Facebook), så vi ser hvor folk finner oss. Lista over dine egne turer og meldinger ligger kun i din egen nettleser.',
   },
 ];
 

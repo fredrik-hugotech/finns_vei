@@ -72,6 +72,11 @@ function parseOptionalCoordinate(value) {
   return Number.isFinite(number) ? number : null;
 }
 
+function sourceTag(value, max) {
+  const v = String(value || '').toLowerCase().replace(/[^a-z0-9._\-æøå ]/g, '').trim().slice(0, max);
+  return v || null;
+}
+
 function validatePayload(body = {}) {
   const reporterType = body.reporter_type === REPORTER_TYPES.ADULT ? REPORTER_TYPES.ADULT : REPORTER_TYPES.CHILD;
   let lat = parseCoordinate(body.lat, 'Posisjon');
@@ -122,6 +127,11 @@ function validatePayload(body = {}) {
     contact_name: reporterType === REPORTER_TYPES.ADULT ? cleanString(body.contact_name, 160) : null,
     contact_email: reporterType === REPORTER_TYPES.ADULT ? cleanString(body.contact_email, 220) : null,
     contact_phone: reporterType === REPORTER_TYPES.ADULT ? cleanString(body.contact_phone, 80) : null,
+    // Where the visit came from (website host and utm tags), see lib/visitSource.js.
+    source_host: sourceTag(body.source_host, 80),
+    source_utm_source: sourceTag(body.source_utm_source, 60),
+    source_utm_medium: sourceTag(body.source_utm_medium, 60),
+    source_utm_campaign: sourceTag(body.source_utm_campaign, 80),
   };
 }
 

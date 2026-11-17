@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useMemo, useState } from 'react';
 import BackofficeHeader from '../../components/BackofficeHeader';
+import SourcesCard from '../../components/SourcesCard';
 import { splitReportText } from '../../lib/reportText';
 import { reportStatusMeta } from '../../lib/reportStatusMeta';
 import { REPORT_STATUS } from '../../lib/config';
@@ -206,6 +207,8 @@ function Dashboard({ me }) {
           </section>
         )}
 
+
+        <SourcesCard />
 
         <div className="dash2__cols">
         {mine.length > 0 && (
