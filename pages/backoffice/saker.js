@@ -51,6 +51,8 @@ function CaseRow({ c, star, onStar, onStatus }) {
           {t?.urgency ? <UrgencyDots n={t.urgency} /> : null}
           {Number(c.linked_count) > 0 && <span className="admin-list-item__linked">{Number(c.linked_count) + 1} meldinger</span>}
           {Number(c.support_count) > 0 && <span className="sk-support">♥ {c.support_count}</span>}
+          {Number(t?.acc_10y) > 0 && <span className="sk-acc" title="Politiregistrerte personskadeulykker innen 100 m siste 10 år">{t.acc_10y} {Number(t.acc_10y) === 1 ? 'ulykke' : 'ulykker'}{Number(t.acc_vulnerable_10y) > 0 ? ` · ${t.acc_vulnerable_10y} fotgj./sykkel` : ''}</span>}
+          {Number(t?.aadt) >= 1000 && <span className="sk-aadt" title="Årsdøgntrafikk">ÅDT {Number(t.aadt).toLocaleString('nb-NO')}</span>}
           {Number(c.contact_count) > 0 && <span className="admin-list-item__contact">Kontaktperson</span>}
           {c.due_date && <span className={over ? 'sak-due sak-due--over' : 'sak-due'}>{over ? 'Forfalt' : 'Frist'} {new Date(c.due_date).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })}</span>}
           {c.assignee_email && <span className="admin-list-item__assignee">{staffName(c.assignee_email)}</span>}
@@ -94,6 +96,32 @@ function RunAssessments({ pending, reassess, onDone }) {
       <strong>{reassess > 0 ? `${pending} saker venter på ny vurdering fra Finn` : `${pending} saker er ikke vurdert av Finn`}</strong>
       <span>{state.msg || (reassess > 0 ? 'Finn vurderer alt på nytt etter strengere regler for hast og befaring. Gamle vurderinger vises til de er erstattet.' : 'De kommer ikke med i køene før de er vurdert.')}</span>
       <button type="button" className="finn-link" onClick={run} disabled={state.running}>{state.running ? 'Vurderer …' : 'Start nå'}</button>
+    </div>
+  );
+}
+
+function FillContext({ missing, onDone }) {
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    setBusy(true); setMsg('Henter ulykker og trafikk …');
+    for (let round = 0; round < 30; round += 1) {
+      try {
+        const r = await fetch('/api/cron/ulykker?kjede=1', { method: 'POST' });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) { setMsg('Stoppet. Prøv igjen.'); break; }
+        if (d.chained) { setMsg(`Hentes videre på serveren (${d.remaining} igjen). Du kan lukke siden.`); break; }
+        setMsg(`${d.remaining} igjen …`);
+        if (!d.remaining || !d.done) { setMsg('Ferdig.'); break; }
+      } catch (_e) { setMsg('Nettverksfeil. Prøv igjen.'); break; }
+    }
+    setBusy(false); onDone();
+  };
+  return (
+    <div className="sk-task">
+      <strong>{missing} saker mangler ulykker og trafikk</strong>
+      <span>{msg || 'Politiregistrerte ulykker, ÅDT og skoler i nærheten hentes for hver sak.'}</span>
+      <button type="button" className="finn-link" onClick={run} disabled={busy}>{busy ? 'Henter …' : 'Hent nå'}</button>
     </div>
   );
 }
@@ -194,13 +222,14 @@ export default function Saker() {
         {cases && queueKey === 'idag' && (
           <div className="sk-today">
             <FinnBrief compact />
-            {(tasks.length > 0 || (pri && pri.configured && pri.pending > 0)) && (
+            {(tasks.length > 0 || (pri && (pri.missingContext > 0 || (pri.configured && pri.pending > 0)))) && (
               <section>
                 <h2 className="sk-h2">Oppgaver</h2>
                 <div className="sk-tasks">
                   {tasks.map((x) => (
                     <Link key={x.href} href={x.href} className="sk-task"><strong>{x.title}</strong><span>{x.text}</span></Link>
                   ))}
+                  {pri && pri.missingContext > 0 && <FillContext missing={pri.missingContext} onDone={loadPri} />}
                   {pri && pri.configured && pri.pending > 0 && <RunAssessments pending={pri.pending} reassess={pri.reassess || 0} onDone={loadPri} />}
                 </div>
               </section>

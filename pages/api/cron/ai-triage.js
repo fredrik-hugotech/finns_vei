@@ -4,6 +4,8 @@ import { isAdminRequest } from '../../../lib/backofficeAuth';
 import { assessReport, triageConfigured, triageInputHash, triageRow } from '../../../lib/aiTriage';
 import { hasSupabaseConfig, listReportsNeedingFlagScan, listReportsNeedingTriage, saveReportTriage } from '../../../lib/supabaseRest';
 import { generateBrief, latestBrief, scanReports } from '../../../lib/finnJobs';
+import { buildReportContext, ensureReportContext } from '../../../lib/reportContext';
+import { listReportsMissingContext } from '../../../lib/supabaseRest';
 
 // Nightly (vercel.json), and from the «Vurder ventende» button, Claude assesses reports that have no
 // assessment yet, or whose text changed. A batch per run keeps each function
@@ -39,6 +41,9 @@ export default async function handler(req, res) {
   if (authorized(req) && req.query.kjede !== '1') {
     await Promise.all([
       latestBrief().then((b) => (b ? null : generateBrief({ period: 'dag', by: 'cron' }))).catch((e) => console.error(JSON.stringify({ scope: 'ai-triage', event: 'brief_failed', error: String(e?.message || e).slice(0, 200) }))),
+      listReportsMissingContext(150).then(async (todo) => {
+        for (const r of todo) { try { await buildReportContext(r); } catch (_e) { /* next night */ } }
+      }).catch(() => {}),
       listReportsNeedingFlagScan(100).then(async (todo) => {
         for (let i = 0; i < todo.length; i += 20) await scanReports(todo.slice(i, i + 20));
       }).catch((e) => console.error(JSON.stringify({ scope: 'ai-triage', event: 'flags_failed', error: String(e?.message || e).slice(0, 200) }))),
@@ -52,7 +57,8 @@ export default async function handler(req, res) {
     while (queue.length && Date.now() - started < 270000) {
       const r = queue.shift();
       try {
-        const a = await assessReport(r, { nearby: nearbyCount(reports, r) });
+        const ctx = await ensureReportContext(r).catch(() => null);
+        const a = await assessReport(r, { nearby: nearbyCount(reports, r), ctx });
         await saveReportTriage(triageRow(r, a));
         done += 1;
       } catch (error) {

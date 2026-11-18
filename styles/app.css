@@ -6041,3 +6041,23 @@ a.sk-task:hover { border-color: #e0a100; }
 
 /* Finn's brief keeps its size while it loads, so the page doesn't jump. */
 .finn-brief--loading { min-height: 220px; }
+
+/* Case: accidents and traffic */
+.site-facts { border-left: 3px solid #c0392b !important; }
+.site-facts__nums { display: grid; gap: 0.4rem; grid-template-columns: repeat(2, 1fr); margin: 0.2rem 0 0.5rem; }
+.site-facts__num { background: #f6f8f7; border-radius: 10px; display: grid; padding: 0.5rem 0.65rem; }
+.site-facts__num strong { font-size: 1.25rem; line-height: 1.1; }
+.site-facts__num span { color: var(--color-muted); font-size: 0.76rem; }
+.site-facts__num--warn { background: #fdeeea; }
+.site-facts__num--warn strong { color: #b23a16; }
+.site-facts__line { color: var(--color-muted); font-size: 0.84rem; margin: 0 0 0.4rem; }
+.site-facts__list summary { cursor: pointer; font-size: 0.88rem; font-weight: 700; }
+.site-facts__list ul { display: grid; gap: 0.45rem; list-style: none; margin: 0.5rem 0 0; padding: 0; }
+.site-facts__list li { display: grid; font-size: 0.86rem; gap: 0.5rem; grid-template-columns: 70px 1fr; line-height: 1.35; }
+.site-facts__list li em { color: var(--color-muted); display: block; font-size: 0.78rem; font-style: normal; }
+.site-facts__when { color: var(--color-muted); font-size: 0.78rem; font-variant-numeric: tabular-nums; }
+.site-facts__tag { background: #fdeeea; border-radius: 999px; color: #b23a16; font-size: 0.7rem; margin-left: 0.35rem; padding: 0.05rem 0.4rem; }
+.site-facts__none { color: var(--color-muted); font-size: 0.85rem; margin: 0.2rem 0; }
+.site-facts__src { color: var(--color-muted); font-size: 0.72rem; margin: 0.5rem 0 0; }
+.sk-acc { background: #fdeeea; border-radius: 999px; color: #b23a16; font-size: 0.74rem; font-weight: 700; padding: 0.1rem 0.5rem; }
+.sk-aadt { color: var(--color-muted); font-size: 0.76rem; }

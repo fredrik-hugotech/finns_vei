@@ -1,5 +1,6 @@
 import { aiConfigured, suggestProgress } from '../../../../lib/aiAssist';
 import { finnGuard, loadRows, notConfigured } from '../../../../lib/finnJobs';
+import { ensureReportContext } from '../../../../lib/reportContext';
 import { REPORT_STATUS } from '../../../../lib/config';
 import {
   getCaseTimeline, getLatestAiDocument, getReportById, getReportTriage, getReportsByIds,
@@ -57,7 +58,7 @@ export default async function handler(req, res) {
     }
     if (req.method !== 'POST') { res.setHeader('Allow', ['GET', 'POST']); return res.status(405).end(); }
     if (!aiConfigured()) return notConfigured(res);
-    const report = await getReportById(id, { select: 'id,status,category,description,created_at,reporter_type,support_count,lat,lng,road_owner,road_category,road_reference,speed_limit,trello_card_id' });
+    const report = await getReportById(id, { select: 'id,status,category,description,created_at,reporter_type,support_count,lat,lng,road_owner,road_category,road_reference,speed_limit,trello_card_id,aadt' });
     if (!report) return res.status(404).json({ error: 'Fant ikke saken' });
     const [triage, timeline, linked] = await Promise.all([
       getReportTriage(id).catch(() => null),
@@ -65,7 +66,8 @@ export default async function handler(req, res) {
       listLinkedReports(id).catch(() => []),
     ]);
     const { items: related, contactCount } = await relatedCases(report, triage).catch(() => ({ items: [], contactCount: 0 }));
-    const plan = await suggestProgress({ report, triage, timeline: timeline.slice(-12), linkedCount: linked.length, related, contactCount });
+    const ctx = await ensureReportContext(report).catch(() => null);
+    const plan = await suggestProgress({ report, triage, timeline: timeline.slice(-12), linkedCount: linked.length, related, contactCount, ctx });
     if (!contactCount) plan.reporter_message = '';
     const doc = await saveAiDocument({ kind: 'progress', scope: id, content: { ...plan, related_count: related.length }, model: plan.model, createdBy: who.by });
     return res.status(200).json({ ok: true, plan: doc });

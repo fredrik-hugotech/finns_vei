@@ -33,6 +33,7 @@ export default async function handler(req, res) {
       assessed: cases.length,
       pending: backlog ? waiting.length : open.length - cases.length,
       reassess,
+      missingContext: rows.filter((r) => r.acc_10y === null || r.acc_10y === undefined).length,
       cases,
     });
   } catch (error) {

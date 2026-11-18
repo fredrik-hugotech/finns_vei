@@ -12,9 +12,11 @@ import {
   setPublicStatusFromTrelloComment,
   hasSupabaseConfig,
   getReportTriage,
+  getReportContext,
   listLinkedReports,
 } from '../../../lib/supabaseRest';
 import { addTrelloCardComment, getTrelloBoardId, hasTrelloConfig } from '../../../lib/trello';
+import { buildReportContext } from '../../../lib/reportContext';
 import { checkRequestRateLimit } from '../../../lib/rateLimit';
 
 const STATUSES = Object.values(REPORT_STATUS);
@@ -52,7 +54,7 @@ export default async function handler(req, res) {
       // Single case (for the card-level admin panel): return its Trello link.
       if (typeof req.query.id === 'string' && req.query.id) {
         const report = await getReportById(req.query.id, {
-          select: 'id,parent_report_id,status,trello_card_id,image_urls,support_count,category,description,created_at,due_date,assignee_email,lat,lng,reporter_type,bike_route_type,public_status_note,road_owner,road_authority,road_category,speed_limit,road_reference,contact_name,contact_email,contact_phone,description_original,description_redacted_at',
+          select: 'id,parent_report_id,status,trello_card_id,image_urls,support_count,category,description,created_at,due_date,assignee_email,lat,lng,reporter_type,bike_route_type,public_status_note,road_owner,road_authority,road_category,speed_limit,road_reference,contact_name,contact_email,contact_phone,description_original,description_redacted_at,aadt',
         });
         if (!report) return res.status(404).json({ error: 'Fant ikke saken' });
         // These three lookups don't depend on each other's results, so run
@@ -64,6 +66,9 @@ export default async function handler(req, res) {
           getReportTriage(report.id).catch(() => null),
           listLinkedReports(report.id).catch(() => []),
         ]);
+        // Accidents and children nearby; worked out now if this case has none yet.
+        const context = await getReportContext(report.id).catch(() => null)
+          || await buildReportContext(report).catch(() => null);
         const images = Array.isArray(report.image_urls)
           ? report.image_urls
           : (typeof report.image_urls === 'string' ? (() => { try { return JSON.parse(report.image_urls); } catch (_e) { return []; } })() : []);
@@ -76,6 +81,7 @@ export default async function handler(req, res) {
           attachments,
           triage,
           linked,
+          context,
           parentId: report.parent_report_id || null,
           support: {
             count: Number(report.support_count || 0),
@@ -103,6 +109,7 @@ export default async function handler(req, res) {
             road_authority: report.road_authority || null,
             road_category: report.road_category || null,
             speed_limit: report.speed_limit ?? null,
+            aadt: report.aadt ?? null,
             road_reference: report.road_reference || null,
             contact_name: report.contact_name || null,
             contact_email: report.contact_email || null,

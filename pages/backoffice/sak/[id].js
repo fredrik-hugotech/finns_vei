@@ -10,6 +10,7 @@ import { classifyRoadAuthority, buildReferralDraft } from '../../../lib/roadAuth
 import { describeFetchError } from '../../../lib/backofficeFormat';
 import { PUBLIC_UPDATE_TEMPLATES } from '../../../lib/caseUpdateTemplates';
 import StreetViewPanel from '../../../components/StreetViewPanel';
+import SiteFacts from '../../../components/SiteFacts';
 import { ShareButton, StarButton, useStars } from '../../../components/CaseQuick';
 import { EFFORT_TEXT, EffortChip, FinnAvatar, FinnProgress, UrgencyDots } from '../../../components/Finn';
 
@@ -23,12 +24,6 @@ function fmtDate(value) {
 function ownerLabel(owner) {
   const map = { kommune: 'Kommunal vei', fylke: 'Fylkesvei', stat: 'Riksvei/Europavei', privat: 'Privat vei' };
   return map[String(owner || '').toLowerCase()] || owner || null;
-}
-function distMeters(lng1, lat1, lng2, lat2) {
-  const R = 6371000, tr = (d) => (d * Math.PI) / 180;
-  const dLa = tr(lat2 - lat1), dLo = tr(lng2 - lng1);
-  const h = Math.sin(dLa / 2) ** 2 + Math.cos(tr(lat1)) * Math.cos(tr(lat2)) * Math.sin(dLo / 2) ** 2;
-  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 // Turn coordinates into a human place ("Østerveien · Lund") so the case says
 // where it was reported, not just its category.
@@ -51,20 +46,6 @@ async function reverseGeocode(lat, lng, token) {
   } catch (_e) { return null; }
 }
 
-async function fetchAccidents(lat, lng, radiusM = 50) {
-  const dLat = (radiusM * 3) / 111320;
-  const dLng = (radiusM * 3) / (111320 * Math.cos((lat * Math.PI) / 180));
-  const bbox = [lng - dLng, lat - dLat, lng + dLng, lat + dLat].map((v) => v.toFixed(6)).join(',');
-  const r = await fetch(`/api/nvdb/layer?type=accidents&bbox=${encodeURIComponent(bbox)}&zoom=17`);
-  if (!r.ok) throw new Error('feil');
-  const g = await r.json();
-  if (g?.meta?.degraded) throw new Error('degraded');
-  return (g.features || [])
-    .filter((f) => f.geometry?.type === 'Point' && Array.isArray(f.geometry.coordinates))
-    .map((f) => ({ dist: distMeters(lng, lat, f.geometry.coordinates[0], f.geometry.coordinates[1]), year: f.properties?.year || (f.properties?.date ? String(f.properties.date).slice(0, 4) : ''), type: f.properties?.accident_type || '', severity: f.properties?.severity || '' }))
-    .filter((a) => a.dist <= radiusM)
-    .sort((a, b) => (Number(b.year) || 0) - (Number(a.year) || 0));
-}
 
 export default function SakDetalj() {
   const router = useRouter();
@@ -98,8 +79,6 @@ export default function SakDetalj() {
   // captured.
   const uploadingRef = useRef(false);
   const [attBusyId, setAttBusyId] = useState(null);
-  const [accidents, setAccidents] = useState(null);
-  const [showAcc, setShowAcc] = useState(false);
   const [lightbox, setLightbox] = useState(null);
   const [dragOver, setDragOver] = useState(false);
   const [siblings, setSiblings] = useState(null);
@@ -160,7 +139,6 @@ export default function SakDetalj() {
     setNote('');
     setNoteMode('public');
     setDescOpen(false);
-    setShowAcc(false);
     setLightbox(null);
     // A flash banner or "Kopiert!" label from the case navigated away from
     // has no bearing on this case and would otherwise read as feedback for
@@ -262,12 +240,12 @@ export default function SakDetalj() {
         status: c.status,
         speedLimit: c.speed_limit,
         supportCount: support.count,
-        accidentCount: Array.isArray(accidents) ? accidents.length : null,
+        accidentCount: data?.context ? data.context.count_10y : null,
         senderName: me?.name || null,
       },
       roadAuthority,
     );
-  }, [c, roadAuthority, place, support.count, accidents, me]);
+  }, [c, roadAuthority, place, support.count, data?.context, me]);
 
   const copyReferral = async () => {
     if (!referralDraft) return;
@@ -308,19 +286,6 @@ export default function SakDetalj() {
     return () => window.removeEventListener('keydown', onKey);
   }, [prevId, nextId, router, lightbox]);
 
-  useEffect(() => {
-    if (!c || !Number.isFinite(Number(c.lat)) || !Number.isFinite(Number(c.lng))) return undefined;
-    let cancelled = false;
-    setAccidents(null);
-    fetchAccidents(Number(c.lat), Number(c.lng), 50)
-      .then((a) => { if (!cancelled) setAccidents(a); })
-      .catch(() => { if (!cancelled) setAccidents('error'); });
-    return () => { cancelled = true; };
-    // Only re-fetch when the case's own location changes (e.g. navigating to
-    // a different case) — not on every setData() from an unrelated note/
-    // attachment/status update, which would otherwise re-fire this on every
-    // case-workspace interaction.
-  }, [c?.lat, c?.lng]);
 
   useEffect(() => {
     if (!c || !mapboxToken || !Number.isFinite(Number(c.lat)) || !Number.isFinite(Number(c.lng))) return undefined;
@@ -693,6 +658,7 @@ export default function SakDetalj() {
             </div>
             <div className="sak-col sak-col--side">
             {c && <StreetViewPanel lat={c.lat} lng={c.lng} className="sak-sv" />}
+            {c && <SiteFacts context={data?.context} aadt={c.aadt} speedLimit={c.speed_limit} />}
             {(data?.parentId || (Array.isArray(data?.linked) && data.linked.length > 0)) && (
               <section className="admin-section sak-linked">
                 {data.parentId ? (
@@ -806,32 +772,6 @@ export default function SakDetalj() {
 
             <section className="admin-section">
               <h2>Sted</h2>
-              {Array.isArray(accidents) && (
-                <div className="case-admin__accidents">
-                  <button type="button" className="case-admin__accidents-toggle" onClick={() => setShowAcc((v) => !v)} disabled={accidents.length === 0}>
-                    <span>Ulykker innen 50 m</span>
-                    <span className="case-admin__accidents-count">{accidents.length}{accidents.length > 0 ? (showAcc ? ' · skjul' : ' · vis') : ''}</span>
-                  </button>
-                  {showAcc && accidents.length > 0 && (
-                    <ul className="case-admin__accidents-list">
-                      {accidents.slice(0, 12).map((a, i) => <li key={i}>{[a.year, a.type || 'Ulykke', a.severity].filter(Boolean).join(' · ')}</li>)}
-                    </ul>
-                  )}
-                </div>
-              )}
-              {/* accidents === 'error' means the NVDB fetch itself failed (see
-                  fetchAccidents()'s .catch above) — distinct from a genuine
-                  zero-accidents result (Array.isArray(accidents) with length
-                  0, which the toggle button above already shows as "0").
-                  Without this, a failed fetch silently rendered nothing at
-                  all, which read exactly like "ingen ulykker" to staff even
-                  though the data was never actually retrieved. Reuses
-                  .case-admin__accidents-err, an existing style already
-                  defined in app.css for this exact case but never wired up
-                  in this file. */}
-              {accidents === 'error' && (
-                <p className="case-admin__accidents-err">Kunne ikke hente ulykkesdata for dette stedet.</p>
-              )}
               <div className="sak-side__actions">
                 <Link className="big-button big-button--secondary" href={`/?sak=${encodeURIComponent(c.id)}`}>Vis på kart</Link>
                 <Link className="big-button big-button--secondary" href={`/backoffice/skilt/${encodeURIComponent(c.id)}`}>Skriv ut skilt</Link>

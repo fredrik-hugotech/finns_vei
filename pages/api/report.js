@@ -11,6 +11,7 @@ import { parseMultipartRequest } from '../../lib/multipart';
 import { waitUntil } from '@vercel/functions';
 import { assessReport, triageConfigured, triageRow } from '../../lib/aiTriage';
 import { scanReports } from '../../lib/finnJobs';
+import { ensureReportContext } from '../../lib/reportContext';
 
 export const config = {
   api: {
@@ -279,7 +280,8 @@ export default async function handler(req, res) {
       // backoffice button pick up anything that fails here).
       if (triageConfigured()) {
         try {
-          const a = await assessReport(report);
+          const ctx = await ensureReportContext(report).catch(() => null);
+          const a = await assessReport(report, { ctx });
           await saveReportTriage(triageRow(report, a));
           // Drain the backlog a little with every new report (two older
           // reports without an assessment), so it empties on its own.
