@@ -60,6 +60,32 @@ export default function SiteFacts({ context: ctx, aadt, speedLimit }) {
                 {rows.map(([k, v, warn]) => <p key={k} className="sak-kv"><span>{k}</span><b className={warn ? 'site-facts__bad' : ''}>{v}</b></p>)}
               </div>
             )}
+            {ctx?.site?.crossings && !ctx.site.crossings.error && ctx.site.crossings.road_ref !== undefined && (() => {
+              const cx = ctx.site.crossings;
+              return (
+                <div className="site-facts__cross">
+                  <h3>Kryssing{cx.road_ref ? ` · ${cx.road_ref}` : ''}</h3>
+                  <p className="sak-kv"><span>Gangfelt på vegen innen 500 m</span><b className={!cx.crossings_on_road ? 'site-facts__bad' : ''}>{cx.crossings_on_road || 'Ingen'}</b></p>
+                  {cx.crossings_on_road > 0 && <p className="sak-kv"><span>Nærmeste gangfelt</span><b>{[cx.crossing_behind_m != null ? `${cx.crossing_behind_m} m` : 'ingen', cx.crossing_ahead_m != null ? `${cx.crossing_ahead_m} m` : 'ingen'].join(' / ')}</b></p>}
+                  {cx.crossing_gap_m != null && <p className="sak-kv"><span>Mellom gangfeltene</span><b className={cx.crossing_gap_m > 300 ? 'site-facts__bad' : ''}>{cx.crossing_gap_m} m</b></p>}
+                  {cx.destinations?.length > 0 && (
+                    <ul className="site-facts__dest">
+                      {cx.destinations.slice(0, 8).map((d) => {
+                        const far = d.road_m <= 60 && (d.crossing_m === null || d.crossing_m > 150);
+                        return (
+                          <li key={`${d.type}${d.navn}`} className={far ? 'is-far' : ''}>
+                            <span>{d.type}</span>
+                            <strong>{d.navn}</strong>
+                            <em>{d.m} m unna · {d.crossing_m === null ? 'ingen gangfelt på vegen' : `${d.crossing_m} m til gangfelt`}</em>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                  {cx.flags?.length > 0 && <p className="site-facts__flag">{cx.flags.join(' ')}</p>}
+                </div>
+              );
+            })()}
             {(near.skoler?.length > 0 || near.barnehager?.length > 0 || near.anlegg?.length > 0) && (
               <details className="site-facts__list">
                 <summary>Skoler, barnehager og idrett i nærheten</summary>

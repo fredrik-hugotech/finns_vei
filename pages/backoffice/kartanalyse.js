@@ -12,6 +12,9 @@ const FACTS = [
   ['andel_fart_50_pluss', 'på veg med 50 km/t eller mer'],
   ['andel_uten_fortau_eller_gs', 'uten fortau eller gang- og sykkelveg'],
   ['andel_uten_gangfelt_100m', 'uten registrert gangfelt innen 100 m'],
+  ['andel_gangfeltgap_over_300m', 'over 300 m mellom gangfeltene (eller ingen)'],
+  ['andel_med_bussholdeplass_300m', 'har bussholdeplass innen 300 m'],
+  ['andel_maalpunkt_langt_fra_gangfelt', 'har buss, skole, barnehage eller idrett over 150 m fra gangfelt'],
   ['andel_med_ulykker_10ar', 'med personskadeulykke innen 100 m (10 år)'],
   ['andel_med_fotgjenger_sykkel_ulykke', 'med ulykke med fotgjenger eller syklist'],
 ];
@@ -64,6 +67,7 @@ export default function Kartanalyse() {
               <div><strong>{a.median_barn_6_15_1km != null ? `ca. ${a.median_barn_6_15_1km}` : '–'}</strong><span>barn 6–15 år innen 1 km (median)</span></div>
               <div><strong>{a.median_adt != null ? Number(a.median_adt).toLocaleString('nb-NO') : '–'}</strong><span>ÅDT (median)</span></div>
               <div><strong>{a.ulykker_10ar_totalt}</strong><span>personskadeulykker ved sakene (10 år)</span></div>
+              <div><strong>{a.median_gangfeltgap != null ? `${a.median_gangfeltgap} m` : '–'}</strong><span>mellom gangfeltene (median)</span></div>
               <div className="ka-tile--warn"><strong>{a.risikosteder}</strong><span>risikosteder: mange barn, mye trafikk og mangler</span></div>
             </div>
             <h2 className="dash2__h2">Andel av sakene som …</h2>
@@ -75,7 +79,7 @@ export default function Kartanalyse() {
             {d.risk.length > 0 && (
               <>
                 <h2 className="dash2__h2">Risikosteder {kommune ? `i ${d.scope}` : ''}</h2>
-                <p className="ka-note">Åpne saker med minst 300 barn innen 1 km, mye trafikk eller 50 km/t, og som mangler fortau eller gangfelt eller har hatt ulykke med fotgjenger eller syklist.</p>
+                <p className="ka-note">Åpne saker med minst 300 barn innen 1 km, mye trafikk eller 50 km/t, og som mangler fortau, har langt mellom gangfeltene, har bussholdeplass, skole, barnehage eller idrettsanlegg langt fra gangfelt, eller har hatt ulykke med fotgjenger eller syklist.</p>
                 <ul className="ka-risk">
                   {d.risk.slice(0, shownRisk).map((r) => (
                     <li key={r.id}>
@@ -88,6 +92,8 @@ export default function Kartanalyse() {
                           {r.speed_limit ? `${r.speed_limit} km/t · ` : ''}
                           {r.has_sidewalk === false ? 'uten fortau · ' : ''}
                           {r.crossings_100m === 0 ? 'ingen gangfelt registrert · ' : ''}
+                          {Number(r.crossing_gap_m) > 300 ? `${r.crossing_gap_m} m mellom gangfelt · ` : ''}
+                          {Number(r.destinations_far_from_crossing) > 0 ? 'målpunkt langt fra gangfelt · ' : ''}
                           {Number(r.acc_vulnerable_10y) > 0 ? `${r.acc_vulnerable_10y} ulykker med fotgjenger/syklist` : `${r.acc_10y || 0} ulykker`}
                         </em>
                       </Link>
