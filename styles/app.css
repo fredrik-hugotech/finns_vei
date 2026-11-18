@@ -6100,3 +6100,13 @@ a.sk-task:hover { border-color: #e0a100; }
 .site-facts__dest li.is-far { background: #fdeeea; }
 .site-facts__dest li.is-far em { color: #b23a16; font-weight: 700; }
 .site-facts__flag { background: #fff4e0; border-radius: 8px; color: #7a4b00; font-size: 0.84rem; margin: 0.5rem 0 0; padding: 0.45rem 0.6rem; }
+
+/* Fixed receipt to the person who reported */
+.receipt { background: var(--color-primary-tint, #e8f1ee); border-radius: 14px; display: grid; gap: 0.55rem; margin: 0.2rem 0 0.8rem; padding: 0.9rem 1rem; text-align: left; }
+.receipt p { font-size: 0.94rem; line-height: 1.5; margin: 0; }
+.receipt .receipt__lead { font-weight: 700; }
+.sak-hero__orig { color: var(--color-muted); font-size: 0.84rem; margin: -0.2rem 0 0.3rem; }
+.sak-receipt summary { cursor: pointer; font-size: 0.9rem; font-weight: 650; line-height: 1.45; }
+.sak-receipt p { font-size: 0.88rem; line-height: 1.5; margin: 0.4rem 0 0; }
+.share-card__receipt p { margin: 0.35rem 0 0; }
+.sk-cat { background: #eef2f6; border-radius: 999px; color: #2f3e4e; font-size: 0.74rem; font-weight: 700; padding: 0.1rem 0.55rem; }

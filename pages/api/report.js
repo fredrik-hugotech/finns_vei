@@ -11,6 +11,8 @@ import { parseMultipartRequest } from '../../lib/multipart';
 import { waitUntil } from '@vercel/functions';
 import { assessReport, triageConfigured, triageRow } from '../../lib/aiTriage';
 import { scanReports } from '../../lib/finnJobs';
+import { categorizeReports } from '../../lib/categorize';
+import { makeReceipt } from '../../lib/receiptJob';
 import { ensureReportContext } from '../../lib/reportContext';
 
 export const config = {
@@ -264,6 +266,17 @@ export default async function handler(req, res) {
     // after the response; waitUntil keeps the Vercel function alive until
     // they finish (bounded by maxDuration above).
     const followUp = (async () => {
+      // Finn picks the main category (fixed list); then the fixed receipt is
+      // made and shown to the person who reported (app and case page).
+      let mainCategory = null;
+      if (triageConfigured()) {
+        try { mainCategory = (await categorizeReports([insertedReport], { returnMap: true })).get(insertedReport.id) || null; } catch (error) {
+          logApi('finn_category_failed', { reportId: insertedReport.id, message: String(error?.message || '').slice(0, 240) });
+        }
+      }
+      try { await makeReceipt(insertedReport, mainCategory); } catch (error) {
+        logApi('receipt_failed', { reportId: insertedReport.id, message: String(error?.message || '').slice(0, 240) });
+      }
       const workflow = await runReportWorkflowBestEffort(reportWithImages);
       const report = workflow.report || reportWithImages;
       if (workflow.trelloWarning) logApi('trello_warning', { reportId: report.id, warning: String(workflow.trelloWarning).slice(0, 240) });

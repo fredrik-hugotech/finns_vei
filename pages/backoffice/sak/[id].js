@@ -12,6 +12,7 @@ import { PUBLIC_UPDATE_TEMPLATES } from '../../../lib/caseUpdateTemplates';
 import StreetViewPanel from '../../../components/StreetViewPanel';
 import SiteFacts from '../../../components/SiteFacts';
 import { ShareButton, StarButton, useStars } from '../../../components/CaseQuick';
+import { caseCategory } from '../../../lib/mainCategories';
 import { EFFORT_TEXT, EffortChip, FinnAvatar, FinnProgress, UrgencyDots } from '../../../components/Finn';
 
 const STATUSES = [REPORT_STATUS.NEW, REPORT_STATUS.REGISTERED, REPORT_STATUS.STARTED, REPORT_STATUS.DONE];
@@ -46,6 +47,27 @@ async function reverseGeocode(lat, lng, token) {
   } catch (_e) { return null; }
 }
 
+
+function ReceiptBox({ c, onMade }) {
+  const [busy, setBusy] = useState(false);
+  const make = async () => {
+    if (!c.receipt_text && !window.confirm('Lage kvittering for denne saken? Den vises på den offentlige saksiden.')) return;
+    setBusy(true);
+    try { await fetch(`/api/backoffice/kvittering?id=${encodeURIComponent(c.id)}`, { method: 'POST' }); onMade(); } finally { setBusy(false); }
+  };
+  return (
+    <section className="admin-section sak-receipt">
+      <h2>Kvittering til innbygger</h2>
+      {c.receipt_text ? (
+        <details>
+          <summary>{c.receipt_text.split('\n\n')[0]}</summary>
+          {c.receipt_text.split('\n\n').slice(1).map((p, i) => <p key={i}>{p}</p>)}
+        </details>
+      ) : <p className="sak-ai__note">Ikke laget ennå. Nye saker får kvittering automatisk.</p>}
+      <button type="button" className="finn-link" onClick={make} disabled={busy}>{busy ? 'Lager …' : c.receipt_text ? 'Lag på nytt' : 'Lag kvittering'}</button>
+    </section>
+  );
+}
 
 export default function SakDetalj() {
   const router = useRouter();
@@ -475,7 +497,7 @@ export default function SakDetalj() {
 
   return (
     <>
-      <Head><title>{c ? `${c.category} – sak` : 'Sak'}</title><meta name="robots" content="noindex" /><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" /></Head>
+      <Head><title>{c ? `${caseCategory(c)} – sak` : 'Sak'}</title><meta name="robots" content="noindex" /><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" /></Head>
       <BackofficeHeader title={c ? c.category : 'Sak'} back="/backoffice/liste" backLabel="Saker" />
       <main className="page sak-page">
         {flash && <div className="sak-flashbar" role="status">{flash}</div>}
@@ -498,13 +520,14 @@ export default function SakDetalj() {
                 <span className={`status-pill status-pill--${meta.key}`} dangerouslySetInnerHTML={{ __html: `${meta.icon}<span>${meta.label}</span>` }} />
                 <span className="sak-hero__when">Meldt {fmtDate(c.created_at)}</span>
                 <StarButton on={stars.has(c.id)} onToggle={() => toggleStar(c.id)} />
-                <ShareButton id={c.id} title={`${c.category} – Finnsvei`} label="Del" />
+                <ShareButton id={c.id} title={`${caseCategory(c)} – Finnsvei`} label="Del" />
                 <a className="sak-hero__open" href={`/sak/${encodeURIComponent(c.id)}`} target="_blank" rel="noopener noreferrer">
                   Åpne saken
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8" /></svg>
                 </a>
               </div>
-              <h1>{c.category}</h1>
+              <h1>{caseCategory(c)}</h1>
+              {c.main_category && c.category && c.main_category !== c.category && <p className="sak-hero__orig">Innbygger valgte: {c.category}</p>}
               <p className="sak-hero__place">
                 <svg className="sak-hero__pin" width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
@@ -659,6 +682,7 @@ export default function SakDetalj() {
             <div className="sak-col sak-col--side">
             {c && <StreetViewPanel lat={c.lat} lng={c.lng} className="sak-sv" />}
             {c && <SiteFacts context={data?.context} aadt={c.aadt} speedLimit={c.speed_limit} />}
+            {c && <ReceiptBox c={c} onMade={load} />}
             {(data?.parentId || (Array.isArray(data?.linked) && data.linked.length > 0)) && (
               <section className="admin-section sak-linked">
                 {data.parentId ? (

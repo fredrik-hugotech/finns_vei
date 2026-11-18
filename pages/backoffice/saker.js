@@ -9,6 +9,7 @@ import { REPORT_STATUS } from '../../lib/config';
 import { reportStatusMeta } from '../../lib/reportStatusMeta';
 import { splitReportText } from '../../lib/reportText';
 import { staffName, timeAgo } from '../../lib/backofficeFormat';
+import { MAIN_CATEGORY_LABELS, caseCategory } from '../../lib/mainCategories';
 
 // Saker: the one place for day-to-day case work. Fixed queues instead of
 // separate pages; Finn's assessment, stars and status on every row.
@@ -42,6 +43,7 @@ function CaseRow({ c, star, onStar, onStatus }) {
       <Link className="sk-item" href={`/backoffice/sak/${encodeURIComponent(c.id)}`}>
         <span className="sk-item__top">
           <span className={`status-pill status-pill--${meta.key}`} dangerouslySetInnerHTML={{ __html: `${meta.icon}<span>${meta.label}</span>` }} />
+          <span className="sk-cat">{caseCategory(c)}</span>
           <span className="sk-item__where">{[t?.kommune_navn, timeAgo(c.created_at)].filter(Boolean).join(' · ')}</span>
         </span>
         <strong className="sk-item__title">{t?.measure || c.category}</strong>
@@ -101,6 +103,32 @@ function RunAssessments({ pending, reassess, onDone }) {
   );
 }
 
+function FillCategories({ missing, onDone }) {
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    setBusy(true); setMsg('Finn leser sakene …');
+    for (let round = 0; round < 20; round += 1) {
+      try {
+        const r = await fetch('/api/cron/kategorier?kjede=1', { method: 'POST' });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok || d.ok === false) { setMsg(d.reason || 'Stoppet. Prøv igjen.'); break; }
+        if (d.chained) { setMsg(`Finn fortsetter på serveren (${d.remaining} igjen). Du kan lukke siden.`); break; }
+        setMsg(`${d.remaining} igjen …`);
+        if (!d.remaining || !d.done) { setMsg('Ferdig.'); break; }
+      } catch (_e) { setMsg('Nettverksfeil. Prøv igjen.'); break; }
+    }
+    setBusy(false); onDone();
+  };
+  return (
+    <div className="sk-task">
+      <strong>{missing} saker mangler hovedkategori</strong>
+      <span>{msg || 'Finn leser hver sak og setter én av de åtte hovedkategoriene.'}</span>
+      <button type="button" className="finn-link" onClick={run} disabled={busy}>{busy ? 'Setter …' : 'Sett nå'}</button>
+    </div>
+  );
+}
+
 function FillContext({ missing, onDone }) {
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
@@ -138,6 +166,7 @@ export default function Saker() {
   const [q, setQ] = useState('');
   const [kommune, setKommune] = useState('');
   const [owner, setOwner] = useState('');
+  const [cat, setCat] = useState('');
   const [shown, setShown] = useState(PAGE);
   const { stars, toggle } = useStars();
 
@@ -152,7 +181,7 @@ export default function Saker() {
     fetch('/api/staff/me').then((r) => (r.ok ? r.json() : null)).then(setMe).catch(() => {});
     fetch('/api/backoffice/finn/brief').then((r) => (r.ok ? r.json() : null)).then((d) => d && setCounts(d.counts || {})).catch(() => {});
   }, [loadPri]);
-  useEffect(() => { setShown(PAGE); }, [queueKey, q, kommune, owner]);
+  useEffect(() => { setShown(PAGE); }, [queueKey, q, kommune, owner, cat]);
   // While Finn works through a backlog, refresh the count every half minute.
   const pendingNow = pri?.pending || 0;
   useEffect(() => {
@@ -192,9 +221,10 @@ export default function Saker() {
     return (queues[queueKey] || []).filter((c) => (
       (!kommune || c.t?.kommune_navn === kommune)
       && (!owner || c.t?.responsible === owner)
+      && (!cat || caseCategory(c) === cat)
       && (!query || `${c.category} ${c.description || ''} ${c.t?.summary || ''} ${c.t?.measure || ''} ${c.t?.kommune_navn || ''}`.toLowerCase().includes(query))
     ));
-  }, [queues, queueKey, q, kommune, owner]);
+  }, [queues, queueKey, q, kommune, owner, cat]);
 
   const setStatus = (id) => async (v) => {
     await setCaseStatus(id, v);
@@ -223,13 +253,14 @@ export default function Saker() {
         {cases && queueKey === 'idag' && (
           <div className="sk-today">
             <FinnBrief compact />
-            {(tasks.length > 0 || (pri && (pri.missingContext > 0 || (pri.configured && pri.pending > 0)))) && (
+            {(tasks.length > 0 || (pri && (pri.missingContext > 0 || (pri.configured && (pri.pending > 0 || pri.missingCategory > 0))))) && (
               <section>
                 <h2 className="sk-h2">Oppgaver</h2>
                 <div className="sk-tasks">
                   {tasks.map((x) => (
                     <Link key={x.href} href={x.href} className="sk-task"><strong>{x.title}</strong><span>{x.text}</span></Link>
                   ))}
+                  {pri && pri.configured && pri.missingCategory > 0 && <FillCategories missing={pri.missingCategory} onDone={loadPri} />}
                   {pri && pri.missingContext > 0 && <FillContext missing={pri.missingContext} onDone={loadPri} />}
                   {pri && pri.configured && pri.pending > 0 && <RunAssessments pending={pri.pending} reassess={pri.reassess || 0} onDone={loadPri} />}
                 </div>
@@ -253,6 +284,10 @@ export default function Saker() {
               <select className="comp-select" value={kommune} onChange={(e) => setKommune(e.target.value)} aria-label="Kommune">
                 <option value="">Alle kommuner</option>
                 {options.kommune.map((o) => <option key={o}>{o}</option>)}
+              </select>
+              <select className="comp-select" value={cat} onChange={(e) => setCat(e.target.value)} aria-label="Kategori">
+                <option value="">Alle kategorier</option>
+                {MAIN_CATEGORY_LABELS.map((o) => <option key={o}>{o}</option>)}
               </select>
               <select className="comp-select" value={owner} onChange={(e) => setOwner(e.target.value)} aria-label="Veieier">
                 <option value="">Alle veieiere</option>

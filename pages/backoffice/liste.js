@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { reportStatusMeta } from '../../lib/reportStatusMeta';
-import { REPORT_STATUS, REPORT_CATEGORIES, REPORTER_TYPES } from '../../lib/config';
+import { REPORT_STATUS, REPORTER_TYPES } from '../../lib/config';
+import { MAIN_CATEGORY_LABELS, caseCategory } from '../../lib/mainCategories';
 import { timeAgo, ownerShort, staffName, describeFetchError } from '../../lib/backofficeFormat';
 import { classifyRoadAuthority } from '../../lib/roadAuthorityReferral';
 import BackofficeHeader from '../../components/BackofficeHeader';
@@ -84,7 +85,7 @@ export default function Liste() {
   const speedQuery = typeof router.query.speed === 'string' ? router.query.speed : '';
   const speedFilter = SPEED_FILTERS.some((s) => s.key === speedQuery) ? speedQuery : '';
   const categoryQuery = typeof router.query.category === 'string' ? router.query.category : '';
-  const categoryFilter = REPORT_CATEGORIES.includes(categoryQuery) ? categoryQuery : '';
+  const categoryFilter = MAIN_CATEGORY_LABELS.includes(categoryQuery) ? categoryQuery : '';
   const reporterQuery = typeof router.query.reporter === 'string' ? router.query.reporter : '';
   const reporterFilter = Object.values(REPORTER_TYPES).includes(reporterQuery) ? reporterQuery : '';
   const starFilter = router.query.stjerne === '1';
@@ -144,7 +145,7 @@ export default function Liste() {
       .filter((c) => !createdFilter || String(c.created_at || '').slice(0, 10) === today)
       .filter((c) => !ownerFilter || ownerKind(c) === ownerFilter)
       .filter((c) => !speedFilter || speedBucket(c.speed_limit) === speedFilter)
-      .filter((c) => !categoryFilter || c.category === categoryFilter)
+      .filter((c) => !categoryFilter || caseCategory(c) === categoryFilter)
       .filter((c) => !reporterFilter || c.reporter_type === reporterFilter)
       .filter((c) => !starFilter || stars.has(c.id))
       .filter((c) => !contactFilter || Number(c.contact_count) > 0);
@@ -219,7 +220,7 @@ export default function Liste() {
           </select>
           <select className="liste-more-filters__ctrl" aria-label="Filtrer på type sak" value={categoryFilter} onChange={(e) => router.push({ pathname: '/backoffice/liste', query: buildQuery({ category: e.target.value || undefined }) })}>
             <option value="">Alle typer</option>
-            {REPORT_CATEGORIES.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
+            {MAIN_CATEGORY_LABELS.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
           </select>
           <select className="liste-more-filters__ctrl" aria-label="Filtrer på hvem som meldte" value={reporterFilter} onChange={(e) => router.push({ pathname: '/backoffice/liste', query: buildQuery({ reporter: e.target.value || undefined }) })}>
             <option value="">Barn og voksen</option>
@@ -300,7 +301,7 @@ export default function Liste() {
           {shown.slice(0, visible).map((c) => {
             const meta = reportStatusMeta(c.status);
             const loc = ownerShort(c.road_owner, c.speed_limit);
-            const parts = splitReportText(c.description, { exclude: c.category });
+            const parts = splitReportText(c.description, { exclude: caseCategory(c) });
             return (
               <div key={c.id} className="cq-row">
               <Link className="admin-list-item" href={`/backoffice/sak/${encodeURIComponent(c.id)}`}>
@@ -312,7 +313,7 @@ export default function Liste() {
                     <span className="admin-list-item__time">{timeAgo(c.created_at)}</span>
                   </span>
                 </div>
-                <strong className="admin-list-item__title">{c.category}{c.parent_report_id ? <span className="admin-list-item__child"> · koblet til en annen sak</span> : null}</strong>
+                <strong className="admin-list-item__title">{caseCategory(c)}{c.parent_report_id ? <span className="admin-list-item__child"> · koblet til en annen sak</span> : null}</strong>
                 {parts.text && <span className="admin-list-item__desc">{parts.text}</span>}
                 <span className="admin-list-item__foot">
                   {parts.categories.map((cat) => <span key={cat} className="admin-list-item__cat">{cat}</span>)}

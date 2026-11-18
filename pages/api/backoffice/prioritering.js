@@ -33,6 +33,7 @@ export default async function handler(req, res) {
       assessed: cases.length,
       pending: backlog ? waiting.length : open.length - cases.length,
       reassess,
+      missingCategory: rows.filter((r) => !r.main_category).length,
       missingContext: rows.filter((r) => r.barn_6_15_1km === null || r.barn_6_15_1km === undefined).length,
       cases,
     });

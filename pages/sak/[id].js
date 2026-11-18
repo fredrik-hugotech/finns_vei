@@ -130,6 +130,12 @@ export default function SakPage({ report, shareUrl, ogImageUrl, photos }) {
               </>
             );
           })()}
+          {report.receipt_text && (
+            <div className="share-card__update share-card__receipt">
+              <strong>Kvittering fra Finns.Fairway</strong>
+              {report.receipt_text.split('\n\n').map((para, i) => <p key={i}>{para}</p>)}
+            </div>
+          )}
           {report.public_status_note && (
             <div className="share-card__update">
               <strong>Oppdatering fra Finns.Fairway</strong>
@@ -211,6 +217,7 @@ export async function getServerSideProps({ params, req, res }) {
     status: report.status || 'Ny',
     image_url: firstImage ? firstImage.url : null,
     public_status_note: report.public_status_note || null,
+    receipt_text: report.receipt_text || null,
     created_at: report.created_at || null,
     support_count: Number(report.support_count || 0),
   };

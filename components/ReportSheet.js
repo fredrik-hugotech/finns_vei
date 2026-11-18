@@ -78,6 +78,25 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(() => demo && demoView === 'success');
   const [submittedId, setSubmittedId] = useState(() => (demo && demoView === 'success' ? 'demo' : null));
+  // The fixed receipt is made on the server a few seconds after sending.
+  const [receipt, setReceipt] = useState(null);
+  useEffect(() => {
+    setReceipt(null);
+    if (!submittedId || submittedId === 'demo') return undefined;
+    let stop = false; let tries = 0;
+    const poll = async () => {
+      if (stop || tries > 12) return;
+      tries += 1;
+      try {
+        const r = await fetch(`/api/report-receipt?id=${encodeURIComponent(submittedId)}`);
+        const d = await r.json().catch(() => ({}));
+        if (!stop && d.receipt) { setReceipt(d.receipt); return; }
+      } catch (_e) { /* try again */ }
+      if (!stop) setTimeout(poll, 2500);
+    };
+    setTimeout(poll, 2500);
+    return () => { stop = true; };
+  }, [submittedId]);
   const [place, setPlace] = useState(null);
   const [shareFlash, setShareFlash] = useState('');
 
@@ -473,6 +492,12 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
               <p>Ingen dekning akkurat nå. Meldingen sendes av seg selv når telefonen får dekning igjen.</p>
             ) : (
               <>
+                {receipt ? (
+                  <div className="receipt" role="status">
+                    {receipt.split('\n\n').map((para, i) => <p key={i} className={i === 0 ? 'receipt__lead' : ''}>{para}</p>)}
+                  </div>
+                ) : (
+                <>
                 <p>Slik jobber vi videre med meldingen:</p>
 
                 <ol className="process-steps">
@@ -485,6 +510,8 @@ export default function ReportSheet({ point, onClose, onSubmitted, onChangeLocat
                     </li>
                   ))}
                 </ol>
+                </>
+                )}
 
                 {submittedId && (
                   <div className="share-block">
