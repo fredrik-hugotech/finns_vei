@@ -90,6 +90,7 @@ function Letter({ data, kode, onSaved }) {
                   <EffortChip effort={c.effort} />
                   {c.urgency ? <UrgencyDots n={c.urgency} /> : null}
                   {Number(c.linked_count) > 0 && <span>{Number(c.linked_count) + 1} meldinger</span>}
+                  {Number(c.acc_10y) > 0 && <span className="sk-acc">{c.acc_10y} {Number(c.acc_10y) === 1 ? 'ulykke' : 'ulykker'}</span>}
                   <span>{c.responsible || 'Veieier ukjent'}</span>
                   <Link href={`/backoffice/sak/${c.id}`} target="_blank">Åpne ↗</Link>
                 </span>
@@ -139,6 +140,9 @@ function Report({ data, kode, onSaved }) {
         <div><strong>{s.siste_30_dager}</strong><span>siste 30 dager</span></div>
         <div><strong>{s.hastesaker}</strong><span>hastesaker</span></div>
         <div><strong>{s.stotte_fra_innbyggere}</strong><span>støtter fra innbyggere</span></div>
+        {s.meldinger_per_1000_barn != null && <div><strong>{String(s.meldinger_per_1000_barn).replace('.', ',')}</strong><span>meldinger per 1000 barn 6–15 år</span></div>}
+        <div><strong>{s.saker_med_ulykker_10ar ?? 0}</strong><span>saker med ulykker siste 10 år</span></div>
+        <div><strong>{s.ulykker_fotgjenger_sykkel_10ar ?? 0}</strong><span>ulykker med fotgjenger/syklist ved sakene</span></div>
       </div>
       <div className="finn-report__charts">
         <div><h3>Siste 12 måneder</h3><Bars rows={s.per_maned} labelKey="maned" fmt={(m) => `${MONTHS[Number(m.slice(5, 7)) - 1]} ${m.slice(2, 4)}`} /></div>
@@ -209,7 +213,7 @@ export default function FinnKommune() {
           <FinnAvatar size={44} />
           <div>
             <h1>Brev og kommunerapport</h1>
-            <p>Velg en kommune. Finn skriver brev til riktig veieier om sakene du velger, eller en rapport kommunen og lokalavisa kan bruke.</p>
+            <p>Velg en kommune. Finn skriver brev til riktig veieier om sakene du velger, eller en rapport kommunen og lokalavisa kan bruke. Tallet etter antallet er meldinger per 1000 barn 6–15 år.</p>
           </div>
         </header>
         <div className="finn-kpick">
@@ -218,7 +222,7 @@ export default function FinnKommune() {
             {kommuner === null && <span>Henter …</span>}
             {matches.map((k) => (
               <button key={k.kode} type="button" className={k.kode === kode ? 'finn-kbtn finn-kbtn--on' : 'finn-kbtn'} onClick={() => { setKode(k.kode); router.replace({ query: { ...router.query, kommune: k.kode } }, undefined, { shallow: true }); }}>
-                {k.navn}<small>{k.antall}</small>
+                {k.navn}<small>{k.antall}{k.per1000 != null ? ` · ${String(k.per1000).replace('.', ',')}‰` : ''}</small>
               </button>
             ))}
           </div>

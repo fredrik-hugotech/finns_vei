@@ -1,6 +1,7 @@
 import { waitUntil } from '@vercel/functions';
 import { isAdminRequest } from '../../../lib/backofficeAuth';
 import { buildReportContext } from '../../../lib/reportContext';
+import { ensureGrunnkretsChildren } from '../../../lib/ssbChildren';
 import { hasSupabaseConfig, listReportsMissingContext } from '../../../lib/supabaseRest';
 import { timingSafeEqualStrings } from '../../../lib/timingSafeEqualStrings';
 
@@ -16,6 +17,8 @@ export default async function handler(req, res) {
   if (!cronOk && !(await isAdminRequest(req))) return res.status(403).json({ error: 'Ingen tilgang' });
   if (!hasSupabaseConfig()) return res.status(503).json({ error: 'Supabase mangler' });
   const started = Date.now();
+  // Children per grunnkrets must be loaded before local numbers can be worked out.
+  try { await ensureGrunnkretsChildren(); } catch (e) { return res.status(200).json({ ok: false, reason: `Kunne ikke hente barnetall fra SSB: ${String(e?.message || e).slice(0, 120)}` }); }
   const todo = await listReportsMissingContext(PER_RUN);
   const total = Number(todo[0]?.remaining || 0);
   let done = 0; let failed = 0;

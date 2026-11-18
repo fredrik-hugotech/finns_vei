@@ -1,5 +1,5 @@
 import { insightAccess } from '../../../lib/insightAuth';
-import { getInsightReportRows, hasSupabaseConfig } from '../../../lib/supabaseRest';
+import { getInsightReportRows, getKommuneBarn, hasSupabaseConfig } from '../../../lib/supabaseRest';
 import { splitReportText } from '../../../lib/reportText';
 import { FYLKER } from '../../../lib/fylker';
 import { checkRequestRateLimit } from '../../../lib/rateLimit';
@@ -123,8 +123,14 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'private, no-store');
   try {
     if (!cache.data || Date.now() - cache.at > TTL_MS) {
-      const rows = await getInsightReportRows();
-      cache = { at: Date.now(), data: build(Array.isArray(rows) ? rows : []) };
+      const [rows, barn] = await Promise.all([getInsightReportRows(), getKommuneBarn().catch(() => new Map())]);
+      const data = build(Array.isArray(rows) ? rows : []);
+      // Reports per 1000 children (6–15 år, SSB) makes municipalities comparable.
+      data.allKommuner = data.allKommuner.map((k) => {
+        const b = barn.get(k.nr)?.barn_6_15;
+        return { ...k, barn615: b || null, per1000: b ? Number(((k.reports / b) * 1000).toFixed(1)) : null };
+      });
+      cache = { at: Date.now(), data };
     }
     return res.status(200).json({ ...cache.data, canManage: access.staff?.role === 'superuser' });
   } catch (error) {

@@ -16,7 +16,7 @@ import {
   listLinkedReports,
 } from '../../../lib/supabaseRest';
 import { addTrelloCardComment, getTrelloBoardId, hasTrelloConfig } from '../../../lib/trello';
-import { buildReportContext } from '../../../lib/reportContext';
+import { ensureReportContext } from '../../../lib/reportContext';
 import { checkRequestRateLimit } from '../../../lib/rateLimit';
 
 const STATUSES = Object.values(REPORT_STATUS);
@@ -67,8 +67,8 @@ export default async function handler(req, res) {
           listLinkedReports(report.id).catch(() => []),
         ]);
         // Accidents and children nearby; worked out now if this case has none yet.
-        const context = await getReportContext(report.id).catch(() => null)
-          || await buildReportContext(report).catch(() => null);
+        const context = await ensureReportContext(report).catch(() => null)
+          || await getReportContext(report.id).catch(() => null);
         const images = Array.isArray(report.image_urls)
           ? report.image_urls
           : (typeof report.image_urls === 'string' ? (() => { try { return JSON.parse(report.image_urls); } catch (_e) { return []; } })() : []);

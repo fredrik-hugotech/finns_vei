@@ -124,6 +124,7 @@ const KOMMUNE_COLS = [
   { key: 'last24', label: 'Siste døgn', num: true },
   { key: 'support', label: 'Støtter', num: true },
   { key: 'barn', label: 'Fra barn', num: true },
+  { key: 'per1000', label: 'Per 1000 barn', num: true, title: 'Meldinger per 1000 barn 6–15 år i kommunen (SSB)' },
 ];
 function KommuneTable({ rows }) {
   const [q, setQ] = useState('');
@@ -134,7 +135,7 @@ function KommuneTable({ rows }) {
     .filter((r) => !needle || r.kommune.toLowerCase().includes(needle) || r.fylke.toLowerCase().includes(needle))
     .sort((a, b) => {
       const col = KOMMUNE_COLS.find((c) => c.key === sort.key);
-      const d = col?.num ? (a[sort.key] - b[sort.key]) : String(a[sort.key]).localeCompare(String(b[sort.key]), 'nb');
+      const d = col?.num ? ((a[sort.key] ?? -1) - (b[sort.key] ?? -1)) : String(a[sort.key]).localeCompare(String(b[sort.key]), 'nb');
       return d * sort.dir || b.reports - a.reports;
     });
   const shown = all || needle ? filtered : filtered.slice(0, 25);
@@ -174,6 +175,7 @@ function KommuneTable({ rows }) {
                 <td className="num">{r.last24 ? `+${fmt(r.last24)}` : '–'}</td>
                 <td className="num">{fmt(r.support)}</td>
                 <td className="num">{fmt(r.barn)}</td>
+                <td className="num">{r.per1000 != null ? String(r.per1000).replace('.', ',') : '–'}</td>
               </tr>
             ))}
           </tbody>

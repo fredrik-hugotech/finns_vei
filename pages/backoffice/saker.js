@@ -53,6 +53,7 @@ function CaseRow({ c, star, onStar, onStatus }) {
           {Number(c.support_count) > 0 && <span className="sk-support">♥ {c.support_count}</span>}
           {Number(t?.acc_10y) > 0 && <span className="sk-acc" title="Politiregistrerte personskadeulykker innen 100 m siste 10 år">{t.acc_10y} {Number(t.acc_10y) === 1 ? 'ulykke' : 'ulykker'}{Number(t.acc_vulnerable_10y) > 0 ? ` · ${t.acc_vulnerable_10y} fotgj./sykkel` : ''}</span>}
           {Number(t?.aadt) >= 1000 && <span className="sk-aadt" title="Årsdøgntrafikk">ÅDT {Number(t.aadt).toLocaleString('nb-NO')}</span>}
+          {Number(t?.barn_6_15_1km) >= 100 && <span className="sk-aadt" title="Barn 6–15 år som bor innen 1 km (SSB)">ca. {Number(t.barn_6_15_1km).toLocaleString('nb-NO')} barn</span>}
           {Number(c.contact_count) > 0 && <span className="admin-list-item__contact">Kontaktperson</span>}
           {c.due_date && <span className={over ? 'sak-due sak-due--over' : 'sak-due'}>{over ? 'Forfalt' : 'Frist'} {new Date(c.due_date).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })}</span>}
           {c.assignee_email && <span className="admin-list-item__assignee">{staffName(c.assignee_email)}</span>}
@@ -119,8 +120,8 @@ function FillContext({ missing, onDone }) {
   };
   return (
     <div className="sk-task">
-      <strong>{missing} saker mangler ulykker og trafikk</strong>
-      <span>{msg || 'Politiregistrerte ulykker, ÅDT og skoler i nærheten hentes for hver sak.'}</span>
+      <strong>{missing} saker mangler ulykker, trafikk og barnetall</strong>
+      <span>{msg || 'Politiregistrerte ulykker, ÅDT og barn som bor i nærheten hentes for hver sak.'}</span>
       <button type="button" className="finn-link" onClick={run} disabled={busy}>{busy ? 'Henter …' : 'Hent nå'}</button>
     </div>
   );

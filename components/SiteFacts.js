@@ -32,13 +32,15 @@ export default function SiteFacts({ context: ctx, aadt, speedLimit }) {
           <span>ÅDT{aadt ? ` · ${trafficLabel(aadt)}` : ''}</span>
         </div>
         <div className="site-facts__num">
-          <strong>{ctx?.students_1km != null ? Number(ctx.students_1km).toLocaleString('nb-NO') : '–'}</strong>
-          <span>elever innen 1 km</span>
+          <strong>{ctx?.barn_6_15_1km != null ? `ca. ${Number(ctx.barn_6_15_1km).toLocaleString('nb-NO')}` : '–'}</strong>
+          <span>barn 6–15 år bor innen 1 km</span>
         </div>
       </div>
       <p className="site-facts__line">
         {speedLimit ? `${speedLimit} km/t` : 'Fartsgrense ukjent'}
         {ctx?.nearest_school ? ` · nærmeste skole ${ctx.nearest_school} (${ctx.nearest_school_m} m)` : ''}
+        {ctx?.students_1km ? ` · ${Number(ctx.students_1km).toLocaleString('nb-NO')} elever ved skoler innen 1 km` : ''}
+        {ctx?.grunnkrets_navn ? ` · grunnkrets ${ctx.grunnkrets_navn} (${ctx.barn_6_15_grunnkrets} barn 6–15)` : ''}
         {ctx?.venues_500m ? ` · ${ctx.venues_500m} idrettsanlegg innen 500 m` : ''}
       </p>
       {items.length > 0 ? (
@@ -62,7 +64,7 @@ export default function SiteFacts({ context: ctx, aadt, speedLimit }) {
       ) : (
         <p className="site-facts__none">Henter ulykkesdata …</p>
       )}
-      <p className="site-facts__src">Kilde: Statens vegvesen (NVDB). Elevtall fra skoleregisteret.</p>
+      <p className="site-facts__src">Kilder: Statens vegvesen (NVDB), SSB (barn per grunnkrets, anslag innen 1 km) og skoleregisteret.</p>
     </section>
   );
 }
