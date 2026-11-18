@@ -1,5 +1,5 @@
 import { aiConfigured, draftLetter, writeMunicipalityReport } from '../../../../lib/aiAssist';
-import { engagementTop, kommuneList, kommuneStats } from '../../../../lib/aiStats';
+import { engagementTop, gisAnalysis, kommuneList, kommuneStats } from '../../../../lib/aiStats';
 import { finnGuard, loadRows, notConfigured } from '../../../../lib/finnJobs';
 import { REPORT_STATUS } from '../../../../lib/config';
 import { getKommuneBarn, getLatestAiDocument, getReportsByIds, saveAiDocument } from '../../../../lib/supabaseRest';
@@ -38,7 +38,7 @@ export default async function handler(req, res) {
       return res.status(200).json({
         configured: aiConfigured(),
         navn: mine[0].kommune_navn,
-        stats: kommuneStats(mine, barn.get(kode) || null),
+        stats: { ...kommuneStats(mine, barn.get(kode) || null), kartanalyse: gisAnalysis(mine) },
         cases: mine.filter((r) => r.status !== REPORT_STATUS.DONE).sort((a, b) => b.score - a.score).map(slim),
         report,
         letters: letters.filter(Boolean),
@@ -51,7 +51,7 @@ export default async function handler(req, res) {
     const navn = mine[0].kommune_navn;
 
     if (req.body?.type === 'rapport') {
-      const stats = kommuneStats(mine, barn.get(kode) || null);
+      const stats = { ...kommuneStats(mine, barn.get(kode) || null), kartanalyse: gisAnalysis(mine) };
       const out = await writeMunicipalityReport({ kommune: navn, stats, cases: engagementTop(mine, 12) });
       const doc = await saveAiDocument({ kind: 'kommunerapport', scope: kode, content: { ...out, stats, kommune: navn }, model: out.model, createdBy: who.by });
       return res.status(200).json({ ok: true, report: doc });

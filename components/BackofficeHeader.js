@@ -11,6 +11,7 @@ const SAKER = ['/backoffice/saker', '/backoffice/liste', '/backoffice/sak', '/ba
 export const INNSIKT_TABS = [
   { href: '/backoffice/oversikt', label: 'Oversikt' },
   { href: '/backoffice/finn/kommune', label: 'Kommuner' },
+  { href: '/backoffice/kartanalyse', label: 'Kartanalyse' },
   { href: '/backoffice/statistikk', label: 'Statistikk' },
   { href: '/', label: 'Kart' },
   { href: '/backoffice/tetthet', label: 'Sykkelspor' },

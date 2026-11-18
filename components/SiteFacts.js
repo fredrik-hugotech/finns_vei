@@ -43,6 +43,34 @@ export default function SiteFacts({ context: ctx, aadt, speedLimit }) {
         {ctx?.grunnkrets_navn ? ` · grunnkrets ${ctx.grunnkrets_navn} (${ctx.barn_6_15_grunnkrets} barn 6–15)` : ''}
         {ctx?.venues_500m ? ` · ${ctx.venues_500m} idrettsanlegg innen 500 m` : ''}
       </p>
+      {(() => {
+        const road = ctx?.site?.road || {};
+        const near = ctx?.site?.near || {};
+        const rows = [
+          road.has_sidewalk != null && ['Fortau', road.has_sidewalk ? 'Ja, innen 30 m' : (road.has_cycleway ? 'Nei, men gang- og sykkelveg' : 'Nei'), road.has_sidewalk === false && road.has_cycleway !== true],
+          road.crossings_100m != null && ['Gangfelt innen 100 m', road.crossings_100m ? `${road.crossings_100m} (nærmeste ${road.nearest_crossing_m} m)` : (road.crossing_in_network_30m ? 'I vegnettet like ved' : 'Ingen registrert'), road.crossings_100m === 0 && !road.crossing_in_network_30m],
+          road.heavy_share != null && ['Tunge kjøretøy', `${road.heavy_share} % av trafikken`, Number(road.heavy_share) >= 10],
+          road.speed_bumps_150m != null && ['Fartsdempere innen 150 m', String(road.speed_bumps_150m)],
+          road.lights_50m != null && ['Lyspunkter innen 50 m', road.lights_50m ? String(road.lights_50m) : 'Ingen registrert'],
+        ].filter(Boolean);
+        return (
+          <>
+            {rows.length > 0 && (
+              <div className="site-facts__road">
+                {rows.map(([k, v, warn]) => <p key={k} className="sak-kv"><span>{k}</span><b className={warn ? 'site-facts__bad' : ''}>{v}</b></p>)}
+              </div>
+            )}
+            {(near.skoler?.length > 0 || near.barnehager?.length > 0 || near.anlegg?.length > 0) && (
+              <details className="site-facts__list">
+                <summary>Skoler, barnehager og idrett i nærheten</summary>
+                {near.skoler?.length > 0 && <><h4>Skoler innen 1 km</h4><ul>{near.skoler.map((x) => <li key={x.navn}><span className="site-facts__when">{x.m} m</span><span>{x.navn}<em>{x.elever != null ? `${x.elever} elever` : ''}</em></span></li>)}</ul></>}
+                {near.barnehager?.length > 0 && <><h4>Barnehager innen 500 m ({near.barnehagebarn} barn)</h4><ul>{near.barnehager.map((x) => <li key={x.navn}><span className="site-facts__when">{x.m} m</span><span>{x.navn}<em>{x.barn != null ? `${x.barn} barn` : ''}</em></span></li>)}</ul></>}
+                {near.anlegg?.length > 0 && <><h4>Idrettsanlegg innen 500 m</h4><ul>{near.anlegg.map((x) => <li key={`${x.navn}${x.m}`}><span className="site-facts__when">{x.m} m</span><span>{x.navn}<em>{x.type || ''}</em></span></li>)}</ul></>}
+              </details>
+            )}
+          </>
+        );
+      })()}
       {items.length > 0 ? (
         <details className="site-facts__list" open={items.length <= 3}>
           <summary>{ctx.count_total} politiregistrerte personskadeulykker innen {ctx.radius_m} m</summary>
@@ -64,7 +92,7 @@ export default function SiteFacts({ context: ctx, aadt, speedLimit }) {
       ) : (
         <p className="site-facts__none">Henter ulykkesdata …</p>
       )}
-      <p className="site-facts__src">Kilder: Statens vegvesen (NVDB), SSB (barn per grunnkrets, anslag innen 1 km) og skoleregisteret.</p>
+      <p className="site-facts__src">Kilder: Statens vegvesen (NVDB), SSB (barn per grunnkrets, anslag innen 1 km), skoleregisteret og Barnehagefakta. Gangfelt og lys på kommunale veger er ofte ikke registrert i NVDB.</p>
     </section>
   );
 }

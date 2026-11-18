@@ -2,6 +2,7 @@ import { waitUntil } from '@vercel/functions';
 import { isAdminRequest } from '../../../lib/backofficeAuth';
 import { buildReportContext } from '../../../lib/reportContext';
 import { ensureGrunnkretsChildren } from '../../../lib/ssbChildren';
+import { ensureBarnehager } from '../../../lib/barnehager';
 import { hasSupabaseConfig, listReportsMissingContext } from '../../../lib/supabaseRest';
 import { timingSafeEqualStrings } from '../../../lib/timingSafeEqualStrings';
 
@@ -18,7 +19,7 @@ export default async function handler(req, res) {
   if (!hasSupabaseConfig()) return res.status(503).json({ error: 'Supabase mangler' });
   const started = Date.now();
   // Children per grunnkrets must be loaded before local numbers can be worked out.
-  try { await ensureGrunnkretsChildren(); } catch (e) { return res.status(200).json({ ok: false, reason: `Kunne ikke hente barnetall fra SSB: ${String(e?.message || e).slice(0, 120)}` }); }
+  try { await ensureGrunnkretsChildren(); await ensureBarnehager(); } catch (e) { return res.status(200).json({ ok: false, reason: `Kunne ikke hente barnetall (SSB/barnehager): ${String(e?.message || e).slice(0, 120)}` }); }
   const todo = await listReportsMissingContext(PER_RUN);
   const total = Number(todo[0]?.remaining || 0);
   let done = 0; let failed = 0;
