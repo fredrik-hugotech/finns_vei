@@ -29,7 +29,6 @@ export default function Kartanalyse() {
   const [err, setErr] = useState('');
   const [kommune, setKommune] = useState('');
   const [sort, setSort] = useState({ key: 'saker', dir: -1 });
-  const [shownRisk, setShownRisk] = useState(12);
   useEffect(() => {
     setD(null);
     fetch(`/api/backoffice/kartanalyse${kommune ? `?kommune=${encodeURIComponent(kommune)}` : ''}`).then(async (r) => {
@@ -68,41 +67,16 @@ export default function Kartanalyse() {
               <div><strong>{a.median_adt != null ? Number(a.median_adt).toLocaleString('nb-NO') : '–'}</strong><span>ÅDT (median)</span></div>
               <div><strong>{a.ulykker_10ar_totalt}</strong><span>personskadeulykker ved sakene (10 år)</span></div>
               <div><strong>{a.median_gangfeltgap != null ? `${a.median_gangfeltgap} m` : '–'}</strong><span>mellom gangfeltene (median)</span></div>
-              <div className="ka-tile--warn"><strong>{a.risikosteder}</strong><span>risikosteder: mange barn, mye trafikk og mangler</span></div>
+              <Link className="ka-tile--warn ka-tile--link" href={`/backoffice/saker?ko=viktigst&risiko=1${kommune ? `&kommune=${encodeURIComponent(d.scope)}` : ''}`}>
+                <strong>{a.risikosteder}</strong>
+                <span>risikosteder: mange barn, mye trafikk og mangler. Se dem i Saker ›</span>
+              </Link>
             </div>
             <h2 className="dash2__h2">Andel av sakene som …</h2>
             <ul className="finn-bars ka-bars">
               {FACTS.map(([k, label]) => <li key={k}><span>{label}</span><i style={{ width: `${a[k] || 0}%` }} /><b>{pct(a[k])}</b></li>)}
             </ul>
             <p className="ka-note">Dekning: ulykker for {a.dekning.ulykker}, ÅDT for {a.dekning.adt}, fortau for {a.dekning.fortau} og barnetall for {a.dekning.barn} av {a.saker} saker. Gangfelt og lys på kommunale veger er ofte ikke registrert i NVDB.</p>
-
-            {d.risk.length > 0 && (
-              <>
-                <h2 className="dash2__h2">Risikosteder {kommune ? `i ${d.scope}` : ''}</h2>
-                <p className="ka-note">Åpne saker med minst 300 barn innen 1 km, mye trafikk eller 50 km/t, og som mangler fortau, har langt mellom gangfeltene, har bussholdeplass, skole, barnehage eller idrettsanlegg langt fra gangfelt, eller har hatt ulykke med fotgjenger eller syklist.</p>
-                <ul className="ka-risk">
-                  {d.risk.slice(0, shownRisk).map((r) => (
-                    <li key={r.id}>
-                      <Link href={`/backoffice/sak/${r.id}`}>
-                        <strong>{r.measure || r.category}</strong>
-                        <span>{[r.kommune_navn, r.summary].filter(Boolean).join(' · ')}</span>
-                        <em>
-                          {`ca. ${r.barn_6_15_1km} barn · `}
-                          {r.aadt ? `ÅDT ${Number(r.aadt).toLocaleString('nb-NO')} · ` : ''}
-                          {r.speed_limit ? `${r.speed_limit} km/t · ` : ''}
-                          {r.has_sidewalk === false ? 'uten fortau · ' : ''}
-                          {r.crossings_100m === 0 ? 'ingen gangfelt registrert · ' : ''}
-                          {Number(r.crossing_gap_m) > 300 ? `${r.crossing_gap_m} m mellom gangfelt · ` : ''}
-                          {Number(r.destinations_far_from_crossing) > 0 ? 'målpunkt langt fra gangfelt · ' : ''}
-                          {Number(r.acc_vulnerable_10y) > 0 ? `${r.acc_vulnerable_10y} ulykker med fotgjenger/syklist` : `${r.acc_10y || 0} ulykker`}
-                        </em>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-                {d.risk.length > shownRisk && <button type="button" className="big-button big-button--secondary list-more" onClick={() => setShownRisk((n) => n + 12)}>Vis flere ({d.risk.length - shownRisk} til)</button>}
-              </>
-            )}
 
             {!kommune && (
               <>

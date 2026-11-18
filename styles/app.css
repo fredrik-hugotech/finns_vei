@@ -6110,3 +6110,46 @@ a.sk-task:hover { border-color: #e0a100; }
 .sak-receipt p { font-size: 0.88rem; line-height: 1.5; margin: 0.4rem 0 0; }
 .share-card__receipt p { margin: 0.35rem 0 0; }
 .sk-cat { background: #eef2f6; border-radius: 999px; color: #2f3e4e; font-size: 0.74rem; font-weight: 700; padding: 0.1rem 0.55rem; }
+
+/* Case: one assessment with verdict, facts, findings and next steps */
+.ca { border-left: 3px solid #0d6b52 !important; display: grid; gap: 0.75rem; }
+.sak-col--main > .ca { order: 2; }
+.ca-head { align-items: center; display: flex; gap: 0.6rem; }
+.ca-head h2 { color: var(--color-text) !important; font-size: 1.15rem !important; letter-spacing: -0.01em !important; line-height: 1.3; margin: 0.1rem 0 0 !important; text-transform: none !important; }
+.ca-verdicts { display: grid; gap: 0.45rem; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+.ca-verdict { border-radius: 12px; display: grid; gap: 0.1rem; padding: 0.55rem 0.75rem; }
+.ca-verdict strong { font-size: 1rem; }
+.ca-verdict span { font-size: 0.82rem; line-height: 1.35; opacity: 0.85; }
+.ca-verdict--haster { background: #fdeeea; color: #8f2a0d; }
+.ca-verdict--lett { background: #e1f0ec; color: #1f5f50; }
+.ca-verdict--krevende { background: #eef0fb; color: #33407a; }
+.ca-verdict--middels { background: #eef2f6; color: #3b4a5c; }
+.ca-verdict--befaring { background: #fff4e0; color: #7a4b00; }
+.ca-finn__chips { align-items: center; display: flex; flex-wrap: wrap; gap: 0.35rem 0.5rem; }
+.ca-chip { background: #f1f4f2; border-radius: 999px; color: var(--color-muted); font-size: 0.74rem; font-weight: 700; padding: 0.12rem 0.55rem; }
+.ca-finn__summary { font-weight: 650; line-height: 1.45; margin: 0.45rem 0 0; }
+.ca-finn__why { color: var(--color-muted); font-size: 0.92rem; line-height: 1.5; margin: 0.25rem 0 0; }
+.ca-facts { display: grid; gap: 0.45rem; grid-template-columns: repeat(2, 1fr); }
+@media (min-width: 640px) { .ca-facts { grid-template-columns: repeat(3, 1fr); } }
+.ca-fact { background: #f6f8f7; border-radius: 10px; display: grid; padding: 0.5rem 0.65rem; }
+.ca-fact strong { font-size: 1.2rem; line-height: 1.15; }
+.ca-fact span { color: var(--color-muted); font-size: 0.76rem; }
+.ca-fact--warn { background: #fdeeea; }
+.ca-fact--warn strong { color: #b23a16; }
+.ca-findings h3, .ca-next h3 { color: var(--color-muted); font-size: 0.78rem; letter-spacing: 0.05em; margin: 0 0 0.3rem; text-transform: uppercase; }
+.ca-findings ul { display: grid; gap: 0.25rem; margin: 0; padding-left: 1.1rem; }
+.ca-findings li { font-size: 0.92rem; line-height: 1.45; }
+.ca-next ol { margin: 0; padding-left: 1.2rem; }
+.ca-next li { font-size: 0.92rem; line-height: 1.45; }
+.ca-details { background: #f6f8f7; border-radius: 12px; padding: 0.55rem 0.8rem; }
+.ca-details > summary { cursor: pointer; font-size: 0.9rem; font-weight: 700; }
+.site-facts--embedded { margin-top: 0.5rem; }
+.ca .finn-progress { margin-top: 0; }
+.ka-tile--link { color: inherit; text-decoration: none; }
+.ka-tile--link:hover { border-color: #b23a16 !important; }
+.sk-filterchip { align-items: center; background: #fdeeea; border-radius: 10px; color: #8f2a0d; display: flex; flex-wrap: wrap; font-size: 0.86rem; gap: 0.5rem; justify-content: space-between; margin: 0 0 0.6rem; padding: 0.45rem 0.75rem; }
+.sk-filterchip a { color: inherit; font-weight: 700; }
+.sk-item__work { align-items: center; display: flex; flex-wrap: wrap; font-size: 0.8rem; gap: 0.3rem 0.7rem; }
+.sk-starred { color: #a87600; font-weight: 700; }
+.sk-updated { color: var(--color-muted); }
+.sk-updated--none { color: #b23a16; font-weight: 650; }

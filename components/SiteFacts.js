@@ -11,14 +11,14 @@ function trafficLabel(aadt) {
   return 'lite trafikk';
 }
 
-export default function SiteFacts({ context: ctx, aadt, speedLimit }) {
+export default function SiteFacts({ context: ctx, aadt, speedLimit, embedded = false }) {
   if (!ctx && !aadt && !speedLimit) return null;
   const items = ctx?.items || [];
   const vulnerable = (ctx?.pedestrian_10y || 0) + (ctx?.cyclist_10y || 0);
   return (
-    <section className="admin-section site-facts">
-      <h2>Ulykker og trafikk</h2>
-      <div className="site-facts__nums">
+    <section className={embedded ? 'site-facts site-facts--embedded' : 'admin-section site-facts'}>
+      {!embedded && <h2>Ulykker og trafikk</h2>}
+      {!embedded && <div className="site-facts__nums">
         <div className={ctx?.count_10y ? 'site-facts__num site-facts__num--warn' : 'site-facts__num'}>
           <strong>{ctx ? ctx.count_10y : '–'}</strong>
           <span>ulykker siste 10 år</span>
@@ -35,7 +35,7 @@ export default function SiteFacts({ context: ctx, aadt, speedLimit }) {
           <strong>{ctx?.barn_6_15_1km != null ? `ca. ${Number(ctx.barn_6_15_1km).toLocaleString('nb-NO')}` : '–'}</strong>
           <span>barn 6–15 år bor innen 1 km</span>
         </div>
-      </div>
+      </div>}
       <p className="site-facts__line">
         {speedLimit ? `${speedLimit} km/t` : 'Fartsgrense ukjent'}
         {ctx?.nearest_school ? ` · nærmeste skole ${ctx.nearest_school} (${ctx.nearest_school_m} m)` : ''}

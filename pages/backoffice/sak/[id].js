@@ -10,10 +10,9 @@ import { classifyRoadAuthority, buildReferralDraft } from '../../../lib/roadAuth
 import { describeFetchError } from '../../../lib/backofficeFormat';
 import { PUBLIC_UPDATE_TEMPLATES } from '../../../lib/caseUpdateTemplates';
 import StreetViewPanel from '../../../components/StreetViewPanel';
-import SiteFacts from '../../../components/SiteFacts';
-import { ShareButton, StarButton, useStars } from '../../../components/CaseQuick';
+import CaseAssessment from '../../../components/CaseAssessment';
+import { ShareButton, StarButton, rememberedQueue, useStars } from '../../../components/CaseQuick';
 import { caseCategory } from '../../../lib/mainCategories';
-import { EFFORT_TEXT, EffortChip, FinnAvatar, FinnProgress, UrgencyDots } from '../../../components/Finn';
 
 const STATUSES = [REPORT_STATUS.NEW, REPORT_STATUS.REGISTERED, REPORT_STATUS.STARTED, REPORT_STATUS.DONE];
 const ACT_LABEL = { created: 'Sak opprettet', voice: 'Innbyggerstemme', public: 'Offentlig oppdatering', internal: 'Internt notat' };
@@ -86,6 +85,7 @@ export default function SakDetalj() {
   const [saving, setSaving] = useState({});
   const setSavingField = (field, on = true) => setSaving((x) => ({ ...x, [field]: on }));
   const [flash, setFlash] = useState('');
+  const [queueLabel, setQueueLabel] = useState('');
   // Every confirmation or error toast fades on its own.
   useEffect(() => {
     if (!flash) return undefined;
@@ -179,12 +179,15 @@ export default function SakDetalj() {
   }, [id]);
 
   useEffect(() => {
-    fetch('/api/backoffice/cases?ids=1').then((r) => (r.ok ? r.json() : null)).then((d) => { if (d) setSiblings((d.ids || []).map(String)); }).catch(() => {});
+    // Walk through the queue the case was opened from (Saker), else all cases.
+    const q = rememberedQueue();
+    if (q && Array.isArray(q.ids) && q.ids.map(String).includes(String(id))) { setSiblings(q.ids.map(String)); setQueueLabel(q.label || ''); }
+    else fetch('/api/backoffice/cases?ids=1').then((r) => (r.ok ? r.json() : null)).then((d) => { if (d) { setSiblings((d.ids || []).map(String)); setQueueLabel(''); } }).catch(() => {});
     fetch('/api/staff/list').then((r) => (r.ok ? r.json() : null)).then((d) => { if (d) setStaffList(d.staff || []); }).catch(() => {});
     // Best-effort: only named staff accounts (not the legacy shared-secret
     // login) get a name back here, used to sign the referral draft below.
     fetch('/api/staff/me').then((r) => (r.ok ? r.json() : null)).then((d) => { if (d) setMe(d); }).catch(() => {});
-  }, []);
+  }, [id]);
 
   const changeDue = async (v) => {
     if (saving.due) return;
@@ -504,7 +507,7 @@ export default function SakDetalj() {
         {idx >= 0 && (
           <nav className="sak-nav">
             {prevId ? <Link className="sak-nav__link" href={`/backoffice/sak/${prevId}`}>‹ Forrige</Link> : <span />}
-            <span className="sak-nav__pos">{idx + 1} / {siblings.length}</span>
+            <span className="sak-nav__pos">{idx + 1} / {siblings.length}{queueLabel ? ` i ${queueLabel}` : ''}</span>
             {nextId ? <Link className="sak-nav__link" href={`/backoffice/sak/${nextId}`}>Neste ›</Link> : <span />}
           </nav>
         )}
@@ -570,6 +573,7 @@ export default function SakDetalj() {
                 </div>
               )}
             </header>
+            <CaseAssessment c={c} triage={data?.triage} context={data?.context} contactEmail={c.reporter_type === 'voksen' ? c.contact_email : null} />
 
             {roadAuthority.showReferral && (
               <section className="admin-section sak-referral">
@@ -681,7 +685,6 @@ export default function SakDetalj() {
             </div>
             <div className="sak-col sak-col--side">
             {c && <StreetViewPanel lat={c.lat} lng={c.lng} className="sak-sv" />}
-            {c && <SiteFacts context={data?.context} aadt={c.aadt} speedLimit={c.speed_limit} />}
             {c && <ReceiptBox c={c} onMade={load} />}
             {(data?.parentId || (Array.isArray(data?.linked) && data.linked.length > 0)) && (
               <section className="admin-section sak-linked">
@@ -714,34 +717,6 @@ export default function SakDetalj() {
                     </ul>
                   </>
                 )}
-              </section>
-            )}
-            {c && (
-              <section className="admin-section sak-ai finn-case">
-                <div className="finn-case__head">
-                  <FinnAvatar size={34} />
-                  <div>
-                    <span className="finn-kicker">Finns vurdering</span>
-                    {data?.triage ? <h2>{data.triage.measure}</h2> : <h2>Ikke vurdert ennå</h2>}
-                  </div>
-                </div>
-                {data?.triage && (
-                  <>
-                    <div className="sak-ai__top">
-                      <EffortChip effort={data.triage.effort} />
-                      <UrgencyDots n={data.triage.urgency} />
-                    </div>
-                    <p className="sak-ai__note">{EFFORT_TEXT[data.triage.effort]}</p>
-                    <p className="sak-kv"><span>Veieier</span><b>{data.triage.responsible}</b></p>
-                    <p className="sak-kv"><span>Type tiltak</span><b>{data.triage.measure_type}</b></p>
-                    {data.triage.rationale && <p>{data.triage.rationale}</p>}
-                    {Array.isArray(data.triage.next_steps) && data.triage.next_steps.length > 0 && (
-                      <ol>{data.triage.next_steps.map((step) => <li key={step}>{step}</li>)}</ol>
-                    )}
-                    {data.triage.needs_site_visit && <p className="notice notice--warning">Bør ses på stedet før vurdering.</p>}
-                  </>
-                )}
-                <FinnProgress id={c.id} contactEmail={c.reporter_type === 'voksen' ? c.contact_email : null} />
               </section>
             )}
             <section className="admin-section tkt-detail">

@@ -9,7 +9,7 @@ import { MAIN_CATEGORY_LABELS, caseCategory } from '../../lib/mainCategories';
 import { timeAgo, ownerShort, staffName, describeFetchError } from '../../lib/backofficeFormat';
 import { classifyRoadAuthority } from '../../lib/roadAuthorityReferral';
 import BackofficeHeader from '../../components/BackofficeHeader';
-import { ShareButton, StarButton, StatusPicker, setCaseStatus, useStars } from '../../components/CaseQuick';
+import { ShareButton, StarButton, StatusPicker, rememberQueue, setCaseStatus, useStars } from '../../components/CaseQuick';
 
 const STATUSES = [REPORT_STATUS.NEW, REPORT_STATUS.REGISTERED, REPORT_STATUS.STARTED, REPORT_STATUS.DONE];
 
@@ -163,6 +163,8 @@ export default function Liste() {
     };
     return list.sort(sorters[sort] || byNew);
   }, [cases, active, q, sort, agingFilter, assigneeFilter, createdFilter, ownerFilter, speedFilter, categoryFilter, reporterFilter, starFilter, contactFilter, stars]);
+  // «Forrige/Neste» on a case walks through this list as filtered here.
+  useEffect(() => { if (cases) rememberQueue('Alle saker', shown.map((c) => c.id)); }, [cases, shown]);
   // Back to the first page whenever the filters or search change.
   useEffect(() => { setVisible(100); }, [shown]);
 

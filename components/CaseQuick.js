@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { REPORT_STATUS } from '../lib/config';
 
 // Quick work tools on case rows: a personal star and a status picker, so staff
@@ -7,21 +7,54 @@ const STATUSES = Object.values(REPORT_STATUS);
 
 export function useStars() {
   const [stars, setStars] = useState(() => new Set());
+  // The team's shared work list: id -> [{ by, at }]
+  const [team, setTeam] = useState(() => new Map());
+  const [me, setMe] = useState('');
   const [ready, setReady] = useState(false);
+  // The current stars, read synchronously when toggling (a state updater may
+  // run later, which made quick clicks send «remove» instead of «add»).
+  const starsRef = useRef(new Set());
+  useEffect(() => { starsRef.current = stars; }, [stars]);
   useEffect(() => {
-    fetch('/api/backoffice/stjerner').then((r) => (r.ok ? r.json() : { ids: [] })).then((d) => { setStars(new Set(d.ids || [])); setReady(true); }).catch(() => setReady(true));
+    fetch('/api/backoffice/stjerner').then((r) => (r.ok ? r.json() : { ids: [] })).then((d) => {
+      setStars(new Set(d.ids || []));
+      const m = new Map();
+      for (const t of d.team || []) { if (!m.has(t.id)) m.set(t.id, []); m.get(t.id).push({ by: t.by, at: t.at }); }
+      setTeam(m); setMe(d.me || ''); setReady(true);
+    }).catch(() => setReady(true));
   }, []);
   const toggle = useCallback(async (id) => {
-    let on = false;
-    setStars((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else { n.add(id); on = true; } return n; });
+    const on = !starsRef.current.has(id);
+    const next = new Set(starsRef.current);
+    if (on) next.add(id); else next.delete(id);
+    starsRef.current = next;
+    setStars(next);
+    setTeam((t) => {
+      const n = new Map(t); const list = (n.get(id) || []).filter((x) => x.by !== me);
+      if (on) list.unshift({ by: me, at: new Date().toISOString() });
+      if (list.length) n.set(id, list); else n.delete(id);
+      return n;
+    });
     try {
       const r = await fetch('/api/backoffice/stjerner', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, on }) });
       if (!r.ok) throw new Error('fail');
     } catch (_e) {
-      setStars((s) => { const n = new Set(s); if (on) n.delete(id); else n.add(id); return n; });
+      const undo = new Set(starsRef.current);
+      if (on) undo.delete(id); else undo.add(id);
+      starsRef.current = undo;
+      setStars(undo);
     }
-  }, []);
-  return { stars, toggle, ready };
+  }, [me]);
+  return { stars, team, toggle, ready };
+}
+
+// The queue a case was opened from, so «Forrige/Neste» on the case walks
+// through that queue (kept for this browser tab only).
+export function rememberQueue(label, ids) {
+  try { window.sessionStorage.setItem('ff-queue', JSON.stringify({ label, ids: ids.slice(0, 3000) })); } catch (_e) { /* ignore */ }
+}
+export function rememberedQueue() {
+  try { return JSON.parse(window.sessionStorage.getItem('ff-queue') || 'null'); } catch (_e) { return null; }
 }
 
 export async function setCaseStatus(id, status) {

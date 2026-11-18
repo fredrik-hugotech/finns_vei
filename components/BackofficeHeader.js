@@ -25,11 +25,12 @@ const INNSIKT = INNSIKT_TABS.map((t) => t.href).filter((h) => h !== '/' && h !==
 // Saker's queues, shown in the same row and style as Innsikt's tabs.
 export const SAKER_QUEUES = [
   { key: 'idag', label: 'I dag' },
-  { key: 'mine', label: 'Mine' },
+  { key: 'stjerne', label: '★ Stjernemerket' },
   { key: 'viktigst', label: 'Viktigst nå' },
   { key: 'raske', label: 'Raske gevinster' },
   { key: 'nye', label: 'Nye' },
   { key: 'kontakt', label: 'Kan følges opp' },
+  { key: 'mine', label: 'Tildelt meg' },
   { key: 'alle', label: 'Alle' },
 ];
 

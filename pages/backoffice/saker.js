@@ -4,26 +4,29 @@ import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import BackofficeHeader from '../../components/BackofficeHeader';
 import { EffortChip, FinnBrief, UrgencyDots } from '../../components/Finn';
-import { ShareButton, StarButton, StatusPicker, setCaseStatus, useStars } from '../../components/CaseQuick';
+import { ShareButton, StarButton, StatusPicker, rememberQueue, setCaseStatus, useStars } from '../../components/CaseQuick';
 import { REPORT_STATUS } from '../../lib/config';
 import { reportStatusMeta } from '../../lib/reportStatusMeta';
 import { splitReportText } from '../../lib/reportText';
 import { staffName, timeAgo } from '../../lib/backofficeFormat';
 import { MAIN_CATEGORY_LABELS, caseCategory } from '../../lib/mainCategories';
+import { isRiskSite } from '../../lib/aiStats';
 
 // Saker: the one place for day-to-day case work. Fixed queues instead of
 // separate pages; Finn's assessment, stars and status on every row.
 const QUEUES = [
   { key: 'idag', label: 'I dag' },
-  { key: 'mine', label: 'Mine' },
+  { key: 'stjerne', label: 'Stjernemerket' },
   { key: 'viktigst', label: 'Viktigst nå' },
   { key: 'raske', label: 'Raske gevinster' },
   { key: 'nye', label: 'Nye' },
   { key: 'kontakt', label: 'Kan følges opp' },
+  { key: 'mine', label: 'Tildelt meg' },
   { key: 'alle', label: 'Alle', href: '/backoffice/liste' },
 ];
 const HINT = {
-  mine: 'Saker du har stjernemerket eller er ansvarlig for.',
+  stjerne: 'Arbeidslista: sakene teamet jobber med nå. Den som har ventet lengst på en oppdatering står øverst. Sett status og gi innbyggeren en oppdatering når noe skjer.',
+  mine: 'Saker du er ansvarlig for.',
   viktigst: 'Finns rekkefølge: hast, engasjement og flere meldinger på samme sted. Ta ovenfra.',
   raske: 'Enkle tiltak som trolig løses med én henvendelse.',
   nye: 'Ikke behandlet ennå, nyeste først.',
@@ -32,7 +35,7 @@ const HINT = {
 const PAGE = 20;
 const DONE = REPORT_STATUS.DONE;
 
-function CaseRow({ c, star, onStar, onStatus }) {
+function CaseRow({ c, star, onStar, onStatus, starredBy, showUpdate }) {
   const meta = reportStatusMeta(c.status);
   const t = c.t;
   const text = t?.summary || splitReportText(c.description, { exclude: c.category }).text;
@@ -48,6 +51,12 @@ function CaseRow({ c, star, onStar, onStatus }) {
         </span>
         <strong className="sk-item__title">{t?.measure || c.category}</strong>
         {text && <span className="sk-item__text">{text}</span>}
+        {(starredBy?.length > 0 || showUpdate) && (
+          <span className="sk-item__work">
+            {starredBy?.length > 0 && <span className="sk-starred">★ {starredBy.map((x) => x.by).join(', ')}</span>}
+            {showUpdate && <span className={c.public_status_updated_at ? 'sk-updated' : 'sk-updated sk-updated--none'}>{c.public_status_updated_at ? `Sist oppdatert ${timeAgo(c.public_status_updated_at)}` : 'Ingen oppdatering til innbygger ennå'}</span>}
+          </span>
+        )}
         <span className="sk-item__meta">
           {t && <EffortChip effort={t.effort} />}
           {t?.urgency ? <UrgencyDots n={t.urgency} /> : null}
@@ -167,8 +176,10 @@ export default function Saker() {
   const [kommune, setKommune] = useState('');
   const [owner, setOwner] = useState('');
   const [cat, setCat] = useState('');
+  const riskOnly = router.query.risiko === '1';
+  useEffect(() => { if (router.isReady && typeof router.query.kommune === 'string') setKommune(router.query.kommune); }, [router.isReady, router.query.kommune]);
   const [shown, setShown] = useState(PAGE);
-  const { stars, toggle } = useStars();
+  const { stars, team, toggle } = useStars();
 
   const loadPri = useCallback(() => fetch('/api/backoffice/prioritering').then((r) => (r.ok ? r.json() : null)).then((d) => d && setPri(d)).catch(() => {}), []);
   useEffect(() => {
@@ -202,14 +213,16 @@ export default function Saker() {
   const queues = useMemo(() => {
     const byScore = (a, b) => score(b) - score(a) || String(b.created_at).localeCompare(String(a.created_at));
     return {
-      mine: open.filter((c) => stars.has(c.id) || (myEmail && String(c.assignee_email || '').toLowerCase() === myEmail))
-        .sort((a, b) => (a.due_date || '9999').localeCompare(b.due_date || '9999') || byScore(a, b)),
+      // The team's work list; the one that has waited longest for an update first.
+      stjerne: rows.filter((c) => team.has(c.id))
+        .sort((a, b) => String(a.public_status_updated_at || a.created_at).localeCompare(String(b.public_status_updated_at || b.created_at))),
+      mine: open.filter((c) => myEmail && String(c.assignee_email || '').toLowerCase() === myEmail).sort(byScore),
       viktigst: open.filter((c) => c.t).sort(byScore),
       raske: open.filter((c) => c.t && (c.t.quick_win || c.t.effort === 'enkel')).sort(byScore),
       nye: rows.filter((c) => c.status === REPORT_STATUS.NEW).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))),
       kontakt: open.filter((c) => Number(c.contact_count) > 0).sort(byScore),
     };
-  }, [open, rows, stars, myEmail]);
+  }, [open, rows, team, myEmail]);
 
   const options = useMemo(() => {
     const uniq = (f) => Array.from(new Set(open.map(f).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'nb'));
@@ -222,18 +235,26 @@ export default function Saker() {
       (!kommune || c.t?.kommune_navn === kommune)
       && (!owner || c.t?.responsible === owner)
       && (!cat || caseCategory(c) === cat)
+      && (!riskOnly || (c.t && isRiskSite({ ...c.t, status: c.status })))
       && (!query || `${c.category} ${c.description || ''} ${c.t?.summary || ''} ${c.t?.measure || ''} ${c.t?.kommune_navn || ''}`.toLowerCase().includes(query))
     ));
-  }, [queues, queueKey, q, kommune, owner, cat]);
+  }, [queues, queueKey, q, kommune, owner, cat, riskOnly]);
 
   const setStatus = (id) => async (v) => {
     await setCaseStatus(id, v);
     setCases((cs) => cs.map((x) => (x.id === id ? { ...x, status: v } : x)));
   };
-  const row = (c) => <CaseRow key={c.id} c={c} star={stars.has(c.id)} onStar={() => toggle(c.id)} onStatus={setStatus(c.id)} />;
+  const row = (c) => <CaseRow key={c.id} c={c} star={stars.has(c.id)} starredBy={team.get(c.id)} showUpdate={queueKey === 'stjerne'} onStar={() => toggle(c.id)} onStatus={setStatus(c.id)} />;
 
   const overdue = open.filter((c) => c.due_date && String(c.due_date).slice(0, 10) < today).length;
   const newDay = rows.filter((c) => Date.now() - new Date(c.created_at).getTime() < 864e5).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+  const starredList = queues.stjerne || [];
+  const label = QUEUES.find((x) => x.key === queueKey)?.label || 'Saker';
+  useEffect(() => {
+    if (!cases) return;
+    if (queueKey === 'idag') rememberQueue('Stjernemerket', starredList.map((c) => c.id));
+    else rememberQueue(label, list.map((c) => c.id));
+  }, [cases, queueKey, list, starredList, label]);
   const tasks = [
     counts.likeSaker > 0 && { href: '/backoffice/sammenkobling', title: `${counts.likeSaker} forslag om like saker`, text: 'Koble meldinger om samme sted. Ingenting slettes.' },
     counts.flagg > 0 && { href: '/backoffice/finn/personvern', title: `${counts.flagg} personvernflagg`, text: 'Navn, bilnummer eller testmeldinger å se på.' },
@@ -268,6 +289,15 @@ export default function Saker() {
             )}
             <section>
               <div className="sk-h2row">
+                <h2 className="sk-h2">Arbeidslista (stjernemerket)</h2>
+                <Link href="/backoffice/saker?ko=stjerne" className="finn-link">{starredList.length ? `Alle ${starredList.length} ›` : 'Åpne ›'}</Link>
+              </div>
+              {starredList.length === 0
+                ? <p className="admin-list-empty">Ingen saker i arbeidslista. Trykk ☆ på en sak for å legge den til.</p>
+                : <ul className="sk-list">{starredList.slice(0, 5).map((c) => <CaseRow key={c.id} c={c} star={stars.has(c.id)} starredBy={team.get(c.id)} showUpdate onStar={() => toggle(c.id)} onStatus={setStatus(c.id)} />)}</ul>}
+            </section>
+            <section>
+              <div className="sk-h2row">
                 <h2 className="sk-h2">Nye siste døgn</h2>
                 {newDay.length > 5 && <Link href="/backoffice/saker?ko=nye" className="finn-link">Alle nye ›</Link>}
               </div>
@@ -279,6 +309,12 @@ export default function Saker() {
         {cases && queueKey !== 'idag' && (pri || queueKey === 'nye') && (
           <>
             <p className="sk-hint">{HINT[queueKey]}</p>
+            {riskOnly && (
+              <p className="sk-filterchip">
+                Viser bare risikosteder: mange barn, mye trafikk og mangler eller ulykker.
+                <Link href={{ pathname: '/backoffice/saker', query: { ko: queueKey } }}>Vis alle ×</Link>
+              </p>
+            )}
             <div className="sk-filters">
               <input className="sak-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Søk i køen …" aria-label="Søk" />
               <select className="comp-select" value={kommune} onChange={(e) => setKommune(e.target.value)} aria-label="Kommune">
@@ -295,7 +331,7 @@ export default function Saker() {
               </select>
             </div>
             {list.length === 0 ? (
-              <p className="admin-list-empty">{queueKey === 'mine' ? 'Ingen saker her ennå. Trykk ☆ på en sak for å legge den i «Mine».' : 'Ingen saker her.'}</p>
+              <p className="admin-list-empty">{queueKey === 'stjerne' ? 'Arbeidslista er tom. Trykk ☆ på en sak for å legge den til.' : 'Ingen saker her.'}</p>
             ) : (
               <>
                 <p className="sak-count">{list.length} saker{list.length > shown ? ` · viser ${shown}` : ''}</p>
