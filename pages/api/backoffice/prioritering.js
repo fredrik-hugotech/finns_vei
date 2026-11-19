@@ -1,5 +1,6 @@
 import { isAdminRequest } from '../../../lib/backofficeAuth';
-import { getTriageOverviewRows, hasSupabaseConfig, listReportsNeedingTriage } from '../../../lib/supabaseRest';
+import { countReportsWithOldSite, getTriageOverviewRows, hasSupabaseConfig, listReportsNeedingTriage } from '../../../lib/supabaseRest';
+import { SITE_VERSION } from '../../../lib/nvdbSite';
 import { triageConfigured, triageInputHash } from '../../../lib/aiTriage';
 import { priorityScore } from '../../../lib/aiStats';
 import { FYLKER } from '../../../lib/fylker';
@@ -15,7 +16,7 @@ export default async function handler(req, res) {
   if (!(await isAdminRequest(req))) return res.status(403).json({ error: 'Ingen tilgang', code: 'forbidden' });
   if (!hasSupabaseConfig()) return res.status(503).json({ error: 'Supabase mangler' });
   try {
-    const [rows0, backlog] = await Promise.all([getTriageOverviewRows(), listReportsNeedingTriage().catch(() => null)]);
+    const [rows0, backlog, oldSite] = await Promise.all([getTriageOverviewRows(), listReportsNeedingTriage().catch(() => null), countReportsWithOldSite(SITE_VERSION).catch(() => 0)]);
     const rows = rows0 || [];
     // Reports Finn hasn't assessed, or assessed under older rules.
     const waiting = backlog ? backlog.reports.filter((r) => backlog.hashByReport.get(r.id) !== triageInputHash(r)) : [];
@@ -35,6 +36,7 @@ export default async function handler(req, res) {
       reassess,
       missingCategory: rows.filter((r) => !r.main_category).length,
       missingContext: rows.filter((r) => r.barn_6_15_1km === null || r.barn_6_15_1km === undefined).length,
+      oldSite: Number(oldSite) || 0,
       cases,
     });
   } catch (error) {

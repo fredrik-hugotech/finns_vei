@@ -32,7 +32,7 @@ export default function FactDraft({ caseId, onPublished }) {
         <FinnAvatar size={28} />
         <div>
           <strong>Faktamelding fra Finn</strong>
-          <span>Utkast, ikke publisert. Bare fakta om stedet, uten tiltak og lovnader. Les gjennom og rett før du publiserer.</span>
+          <span>{msg.batch ? 'Forslag, ikke publisert.' : 'Utkast, ikke publisert.'} Bare fakta om stedet, uten tiltak og lovnader. Les gjennom og rett før du publiserer.</span>
         </div>
       </div>
       <textarea className="sak-note" rows={9} value={text} onChange={(e) => setText(e.target.value)} aria-label="Faktamelding" />

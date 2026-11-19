@@ -124,7 +124,7 @@ function FillCategories({ missing, onDone }) {
         if (!r.ok || d.ok === false) { setMsg(d.reason || 'Stoppet. Prøv igjen.'); break; }
         if (d.chained) { setMsg(`Finn fortsetter på serveren (${d.remaining} igjen). Du kan lukke siden.`); break; }
         setMsg(`${d.remaining} igjen …`);
-        if (!d.remaining || !d.done) { setMsg('Ferdig.'); break; }
+        if (!d.remaining || !(d.done || d.refreshed)) { setMsg('Ferdig.'); break; }
       } catch (_e) { setMsg('Nettverksfeil. Prøv igjen.'); break; }
     }
     setBusy(false); onDone();
@@ -138,7 +138,45 @@ function FillCategories({ missing, onDone }) {
   );
 }
 
-function FillContext({ missing, onDone }) {
+// Finn's fact proposals for all existing cases. Nothing runs until someone
+// confirms the estimated cost here.
+const USD_NOK = 11;
+function FactProposals({ st, load }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  if (!st || !st.configured || !st.remaining) return null;
+  let run = null;
+  try { run = st.confirmed ? JSON.parse(st.confirmed) : null; } catch (_e) { run = null; }
+  const running = run?.batch && !run.finished_at;
+  const kr = `ca. ${Math.round((st.cost_usd.low * USD_NOK) / 10) * 10}–${Math.round((st.cost_usd.high * USD_NOK) / 10) * 10} kr`;
+  const start = async () => {
+    if (!window.confirm(`Finn lager forslag til faktamelding for ${st.remaining} saker.\n\nAnslått kostnad: ${kr} (${st.cost_usd.low}–${st.cost_usd.high} USD).\n\nForslagene lagres på hver sak. Ingenting publiseres. Bekrefte kostnaden og starte?`)) return;
+    setBusy(true); setErr('');
+    try {
+      const r = await fetch('/api/backoffice/finn/faktaforslag', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'start', confirm: true }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || d.ok === false) setErr(d.error || d.reason || 'Kunne ikke starte.');
+      load();
+    } finally { setBusy(false); }
+  };
+  const stop = async () => {
+    setBusy(true);
+    try { await fetch('/api/backoffice/finn/faktaforslag', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'stop' }) }); load(); } finally { setBusy(false); }
+  };
+  return (
+    <div className="sk-task">
+      <strong>{running ? `Finn lager faktaforslag (${st.remaining} igjen)` : `Faktaforslag for ${st.remaining} saker`}</strong>
+      <span>{err || (running
+        ? 'Forslagene lagres på hver sak etter hvert. Ingenting publiseres. Oppdater siden for å se framdriften.'
+        : `Finn skriver et forslag til faktamelding på hver sak, bare med fakta om stedet. Ingenting publiseres. Anslått kostnad ${kr}.`)}</span>
+      {running
+        ? <button type="button" className="finn-link" onClick={stop} disabled={busy}>Stopp</button>
+        : <button type="button" className="finn-link" onClick={start} disabled={busy}>{busy ? 'Starter …' : 'Bekreft kostnad og start'}</button>}
+    </div>
+  );
+}
+
+function FillContext({ missing, oldSite = 0, onDone }) {
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
   const run = async () => {
@@ -150,15 +188,15 @@ function FillContext({ missing, onDone }) {
         if (!r.ok) { setMsg('Stoppet. Prøv igjen.'); break; }
         if (d.chained) { setMsg(`Hentes videre på serveren (${d.remaining} igjen). Du kan lukke siden.`); break; }
         setMsg(`${d.remaining} igjen …`);
-        if (!d.remaining || !d.done) { setMsg('Ferdig.'); break; }
+        if (!d.remaining || !(d.done || d.refreshed)) { setMsg('Ferdig.'); break; }
       } catch (_e) { setMsg('Nettverksfeil. Prøv igjen.'); break; }
     }
     setBusy(false); onDone();
   };
   return (
     <div className="sk-task">
-      <strong>{missing} saker mangler ulykker, trafikk og barnetall</strong>
-      <span>{msg || 'Politiregistrerte ulykker, ÅDT og barn som bor i nærheten hentes for hver sak.'}</span>
+      <strong>{missing > 0 ? `${missing} saker mangler ulykker, trafikk og barnetall` : `${oldSite} saker får oppdaterte vegdata`}</strong>
+      <span>{msg || (missing > 0 ? 'Politiregistrerte ulykker, ÅDT og barn som bor i nærheten hentes for hver sak.' : 'Fortau hentes nå også fra Statens vegvesens fortau-register, og trafikktall knyttes til vegen saken ligger på. Gratis, tar noen minutter.')}</span>
       <button type="button" className="finn-link" onClick={run} disabled={busy}>{busy ? 'Henter …' : 'Hent nå'}</button>
     </div>
   );
@@ -172,6 +210,10 @@ export default function Saker() {
   const [me, setMe] = useState(null);
   const [counts, setCounts] = useState({});
   const [factDrafts, setFactDrafts] = useState([]);
+  const [proposals, setProposals] = useState(null);
+  const loadProposals = useCallback(() => {
+    fetch('/api/backoffice/finn/faktaforslag').then((r) => (r.ok ? r.json() : null)).then((d) => d && setProposals(d)).catch(() => {});
+  }, []);
   const [error, setError] = useState('');
   const [q, setQ] = useState('');
   const [kommune, setKommune] = useState('');
@@ -191,9 +233,10 @@ export default function Saker() {
     }).then((d) => setCases(d.cases || [])).catch((e) => setError(e.message));
     loadPri();
     fetch('/api/staff/me').then((r) => (r.ok ? r.json() : null)).then(setMe).catch(() => {});
+    loadProposals();
     fetch('/api/backoffice/finn/faktamelding').then((r) => (r.ok ? r.json() : null)).then((d) => d && setFactDrafts(d.drafts || [])).catch(() => {});
     fetch('/api/backoffice/finn/brief').then((r) => (r.ok ? r.json() : null)).then((d) => d && setCounts(d.counts || {})).catch(() => {});
-  }, [loadPri]);
+  }, [loadPri, loadProposals]);
   useEffect(() => { setShown(PAGE); }, [queueKey, q, kommune, owner, cat]);
   // While Finn works through a backlog, refresh the count every half minute.
   const pendingNow = pri?.pending || 0;
@@ -276,7 +319,7 @@ export default function Saker() {
         {cases && queueKey === 'idag' && (
           <div className="sk-today">
             <FinnBrief compact />
-            {(tasks.length > 0 || (pri && (pri.missingContext > 0 || (pri.configured && (pri.pending > 0 || pri.missingCategory > 0))))) && (
+            {(tasks.length > 0 || (proposals?.configured && proposals.remaining > 0) || (pri && (pri.missingContext > 0 || pri.oldSite > 0 || (pri.configured && (pri.pending > 0 || pri.missingCategory > 0))))) && (
               <section>
                 <h2 className="sk-h2">Oppgaver</h2>
                 <div className="sk-tasks">
@@ -284,7 +327,8 @@ export default function Saker() {
                     <Link key={x.href} href={x.href} className="sk-task"><strong>{x.title}</strong><span>{x.text}</span></Link>
                   ))}
                   {pri && pri.configured && pri.missingCategory > 0 && <FillCategories missing={pri.missingCategory} onDone={loadPri} />}
-                  {pri && pri.missingContext > 0 && <FillContext missing={pri.missingContext} onDone={loadPri} />}
+                  <FactProposals st={proposals} load={loadProposals} />
+                  {pri && (pri.missingContext > 0 || pri.oldSite > 0) && <FillContext missing={pri.missingContext} oldSite={pri.oldSite || 0} onDone={loadPri} />}
                   {pri && pri.configured && pri.pending > 0 && <RunAssessments pending={pri.pending} reassess={pri.reassess || 0} onDone={loadPri} />}
                 </div>
               </section>
