@@ -11,6 +11,7 @@ import { describeFetchError } from '../../../lib/backofficeFormat';
 import { PUBLIC_UPDATE_TEMPLATES } from '../../../lib/caseUpdateTemplates';
 import StreetViewPanel from '../../../components/StreetViewPanel';
 import CaseAssessment from '../../../components/CaseAssessment';
+import FactDraft from '../../../components/FactDraft';
 import { ShareButton, StarButton, rememberedQueue, useStars } from '../../../components/CaseQuick';
 import { caseCategory } from '../../../lib/mainCategories';
 
@@ -651,6 +652,7 @@ export default function SakDetalj() {
                 ))}
               </ul>
 
+              {c && <FactDraft caseId={c.id} onPublished={load} />}
               <div className="tkt-composer">
                 <div className="case-admin__notetabs">
                   <button type="button" aria-pressed={noteMode === 'public'} className={noteMode === 'public' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setNoteMode('public')}>Svar til innbygger</button>

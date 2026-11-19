@@ -6153,3 +6153,15 @@ a.sk-task:hover { border-color: #e0a100; }
 .sk-starred { color: #a87600; font-weight: 700; }
 .sk-updated { color: var(--color-muted); }
 .sk-updated--none { color: #b23a16; font-weight: 650; }
+
+/* Finn's fact message (draft) */
+.fact-draft { background: #f3f8f6; border: 1px solid #cfe4dc; border-radius: 14px; display: grid; gap: 0.55rem; margin: 0.8rem 0; padding: 0.8rem 0.9rem; }
+.fact-draft__head { align-items: flex-start; display: flex; gap: 0.55rem; }
+.fact-draft__head div { display: grid; }
+.fact-draft__head span { color: var(--color-muted); font-size: 0.82rem; }
+.fact-draft__actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.fact-draft__actions .big-button { width: auto; }
+.sk-facts { display: grid; gap: 0.4rem; list-style: none; margin: 0 0 0.6rem; padding: 0; }
+.sk-facts a { background: #f3f8f6; border: 1px solid #cfe4dc; border-radius: 12px; color: var(--color-text); display: grid; gap: 0.15rem; padding: 0.6rem 0.8rem; text-decoration: none; }
+.sk-facts a:hover { border-color: var(--color-primary); }
+.sk-facts span { color: var(--color-muted); font-size: 0.86rem; }

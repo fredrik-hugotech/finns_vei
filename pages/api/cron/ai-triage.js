@@ -9,6 +9,7 @@ import { ensureGrunnkretsChildren } from '../../../lib/ssbChildren';
 import { ensureBarnehager } from '../../../lib/barnehager';
 import { listReportsMissingContext, listReportsMissingMainCategory } from '../../../lib/supabaseRest';
 import { categorizeReports } from '../../../lib/categorize';
+import { draftDueFactMessages } from '../../../lib/factJob';
 
 // Nightly (vercel.json), and from the «Vurder ventende» button, Claude assesses reports that have no
 // assessment yet, or whose text changed. A batch per run keeps each function
@@ -48,6 +49,7 @@ export default async function handler(req, res) {
         for (const r of todo) { try { await buildReportContext(r); } catch (_e) { /* next night */ } }
       }).catch(() => {}),
       listReportsMissingMainCategory(200).then((todo) => categorizeReports(todo)).catch(() => {}),
+      draftDueFactMessages(40).catch(() => {}),
       listReportsNeedingFlagScan(100).then(async (todo) => {
         for (let i = 0; i < todo.length; i += 20) await scanReports(todo.slice(i, i + 20));
       }).catch((e) => console.error(JSON.stringify({ scope: 'ai-triage', event: 'flags_failed', error: String(e?.message || e).slice(0, 200) }))),

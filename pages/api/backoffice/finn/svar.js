@@ -1,9 +1,11 @@
-import { aiConfigured, draftCitizenReply } from '../../../../lib/aiAssist';
+import { aiConfigured } from '../../../../lib/aiAssist';
+import { composeFactMessage } from '../../../../lib/factJob';
 import { finnGuard, notConfigured } from '../../../../lib/finnJobs';
-import { getCaseTimeline, getReportById, getReportTriage, listLinkedReports } from '../../../../lib/supabaseRest';
+import { getReportById } from '../../../../lib/supabaseRest';
 
-// Finn drafts a public status update for the citizen. It only fills the text
-// field on the case page — staff read, edit and publish it themselves.
+// «Finn foreslår svar»: Finn's fact-based message (lib/factMessage.js) — facts
+// about the place, no measures, no promises. It only fills the text field on
+// the case page; staff read, edit and publish it themselves.
 export const config = { maxDuration: 60 };
 
 export default async function handler(req, res) {
@@ -13,18 +15,12 @@ export default async function handler(req, res) {
   if (!aiConfigured()) return notConfigured(res);
   const id = typeof req.query.id === 'string' ? req.query.id : '';
   try {
-    const report = await getReportById(id, { select: 'id,status,category,description,reporter_type,support_count,trello_card_id' });
+    const report = await getReportById(id, { select: 'id' });
     if (!report) return res.status(404).json({ error: 'Fant ikke saken' });
-    const [triage, timeline, linked] = await Promise.all([
-      getReportTriage(id).catch(() => null),
-      report.trello_card_id ? getCaseTimeline(report.trello_card_id) : [],
-      listLinkedReports(id).catch(() => []),
-    ]);
-    const history = timeline.filter((t) => t.source !== 'internal').slice(-4).map((t) => t.note);
-    const out = await draftCitizenReply({ report, triage, linkedCount: linked.length, history });
-    return res.status(200).json({ ok: true, reply: out.reply });
+    const draft = await composeFactMessage(id);
+    return res.status(200).json({ ok: true, reply: draft.message });
   } catch (error) {
     console.error(JSON.stringify({ scope: 'finn/svar', id, message: String(error?.message || error).slice(0, 300) }));
-    return res.status(500).json({ error: 'Finn klarte ikke å lage et svar nå.' });
+    return res.status(500).json({ error: String(error?.message || '').includes('fakta') || String(error?.message || '').includes('lovnader') ? error.message : 'Finn klarte ikke å lage et svar nå.' });
   }
 }

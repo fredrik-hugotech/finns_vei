@@ -171,6 +171,7 @@ export default function Saker() {
   const [pri, setPri] = useState(null);
   const [me, setMe] = useState(null);
   const [counts, setCounts] = useState({});
+  const [factDrafts, setFactDrafts] = useState([]);
   const [error, setError] = useState('');
   const [q, setQ] = useState('');
   const [kommune, setKommune] = useState('');
@@ -190,6 +191,7 @@ export default function Saker() {
     }).then((d) => setCases(d.cases || [])).catch((e) => setError(e.message));
     loadPri();
     fetch('/api/staff/me').then((r) => (r.ok ? r.json() : null)).then(setMe).catch(() => {});
+    fetch('/api/backoffice/finn/faktamelding').then((r) => (r.ok ? r.json() : null)).then((d) => d && setFactDrafts(d.drafts || [])).catch(() => {});
     fetch('/api/backoffice/finn/brief').then((r) => (r.ok ? r.json() : null)).then((d) => d && setCounts(d.counts || {})).catch(() => {});
   }, [loadPri]);
   useEffect(() => { setShown(PAGE); }, [queueKey, q, kommune, owner, cat]);
@@ -285,6 +287,26 @@ export default function Saker() {
                   {pri && pri.missingContext > 0 && <FillContext missing={pri.missingContext} onDone={loadPri} />}
                   {pri && pri.configured && pri.pending > 0 && <RunAssessments pending={pri.pending} reassess={pri.reassess || 0} onDone={loadPri} />}
                 </div>
+              </section>
+            )}
+            {factDrafts.length > 0 && (
+              <section>
+                <div className="sk-h2row">
+                  <h2 className="sk-h2">Faktameldinger til godkjenning ({factDrafts.length})</h2>
+                </div>
+                <ul className="sk-facts">
+                  {factDrafts.slice(0, 8).map((f) => {
+                    const c = rows.find((x) => x.id === f.report_id);
+                    return (
+                      <li key={f.report_id}>
+                        <Link href={`/backoffice/sak/${f.report_id}`} onClick={() => rememberQueue('Faktameldinger', factDrafts.map((x) => x.report_id))}>
+                          <strong>{c ? caseCategory(c) : 'Sak'}{c?.t?.kommune_navn ? ` · ${c.t.kommune_navn}` : ''}</strong>
+                          <span>{String(f.message).split('\n')[0].slice(0, 180)}</span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
               </section>
             )}
             <section>
