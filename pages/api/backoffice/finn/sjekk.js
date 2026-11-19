@@ -1,9 +1,18 @@
 import { aiConfigured } from '../../../../lib/aiAssist';
 import { finnGuard, md5, notConfigured, scanReports } from '../../../../lib/finnJobs';
+import { triageInputHash } from '../../../../lib/aiTriage';
 import {
-  getReportFlag, getReportsByIds, listOpenReportFlags, listReportsNeedingFlagScan, redactReportText,
-  restoreReportText, setReportFlagStatus,
+  getReportById, getReportFlag, getReportsByIds, listOpenReportFlags, listReportsNeedingFlagScan, redactReportText,
+  restoreReportText, setReportFlagStatus, setReportTriageInputHash,
 } from '../../../../lib/supabaseRest';
+
+// Hiding or restoring personal details doesn't change what the case is about,
+// so Finn's assessment stays: its fingerprint is moved to the new text instead
+// of sending the case back for a new assessment.
+async function keepAssessment(reportId) {
+  const r = await getReportById(reportId, { select: 'id,category,description,speed_limit,road_owner,road_category,reporter_type' });
+  if (r) await setReportTriageInputHash(reportId, triageInputHash(r));
+}
 
 // Privacy and quality check. Finn reads report texts and flags personal
 // details (children's names, licence plates, phone numbers …) and test/junk
@@ -51,10 +60,12 @@ export default async function handler(req, res) {
       if (clean.length < 2) return res.status(400).json({ error: 'Teksten er tom' });
       await redactReportText(reportId, clean);
       await setReportFlagStatus(reportId, 'handled', who.by, { input_hash: md5(clean) });
+      await keepAssessment(reportId).catch(() => {});
       return res.status(200).json({ ok: true });
     }
     if (action === 'restore') {
       const ok = await restoreReportText(reportId);
+      if (ok) await keepAssessment(reportId).catch(() => {});
       const flag = await getReportFlag(reportId);
       if (flag) await setReportFlagStatus(reportId, 'open', who.by);
       return res.status(200).json({ ok });

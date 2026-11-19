@@ -106,7 +106,7 @@ function RunAssessments({ pending, reassess, onDone }) {
   return (
     <div className="sk-task">
       <strong>{reassess > 0 ? `${pending} saker venter på ny vurdering fra Finn` : `${pending} saker er ikke vurdert av Finn`}</strong>
-      <span>{state.msg || (reassess > 0 ? 'Finn vurderer alt på nytt etter strengere regler for hast og befaring. Gamle vurderinger vises til de er erstattet.' : 'De kommer ikke med i køene før de er vurdert.')}</span>
+      <span>{state.msg || (reassess > 0 ? 'Saken er endret siden Finn vurderte den (ny tekst, kategori eller veidata). Gamle vurderinger vises til de er erstattet.' : 'De kommer ikke med i køene før de er vurdert.')}</span>
       <button type="button" className="finn-link" onClick={run} disabled={state.running}>{state.running ? 'Vurderer …' : 'Start nå'}</button>
     </div>
   );
