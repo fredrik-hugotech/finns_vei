@@ -46,9 +46,12 @@ export default function SiteFacts({ context: ctx, aadt, speedLimit, embedded = f
       {(() => {
         const road = ctx?.site?.road || {};
         const near = ctx?.site?.near || {};
+        const reg = ctx?.registration || null;
+        const weakGangfelt = reg?.gangfelt === 'svak';
+        const weakFortau = reg?.fortau === 'svak';
         const rows = [
-          road.has_sidewalk != null && ['Fortau', road.has_sidewalk ? 'Ja, innen 30 m' : (road.has_cycleway ? 'Nei, men gang- og sykkelveg' : 'Nei'), road.has_sidewalk === false && road.has_cycleway !== true],
-          road.crossings_100m != null && ['Gangfelt innen 100 m', road.crossings_100m ? `${road.crossings_100m} (nærmeste ${road.nearest_crossing_m} m)` : (road.crossing_in_network_30m ? 'I vegnettet like ved' : 'Ingen registrert'), road.crossings_100m === 0 && !road.crossing_in_network_30m],
+          road.has_sidewalk != null && ['Fortau', road.has_sidewalk ? 'Ja, innen 30 m' : (road.has_cycleway ? 'Ikke registrert, men gang- og sykkelveg' : (weakFortau ? 'Ikke registrert (usikkert)' : 'Ikke registrert')), road.has_sidewalk === false && road.has_cycleway !== true && !weakFortau],
+          road.crossings_100m != null && ['Gangfelt innen 100 m', road.crossings_100m ? `${road.crossings_100m} (nærmeste ${road.nearest_crossing_m} m)` : (road.crossing_in_network_30m ? 'I vegnettet like ved' : (weakGangfelt ? 'Ingen registrert (usikkert)' : 'Ingen registrert')), road.crossings_100m === 0 && !road.crossing_in_network_30m && !weakGangfelt],
           road.heavy_share != null && ['Tunge kjøretøy', `${road.heavy_share} % av trafikken`, Number(road.heavy_share) >= 10],
           road.speed_bumps_150m != null && ['Fartsdempere innen 150 m', String(road.speed_bumps_150m)],
           road.lights_50m != null && ['Lyspunkter innen 50 m', road.lights_50m ? String(road.lights_50m) : 'Ingen registrert'],
@@ -60,12 +63,18 @@ export default function SiteFacts({ context: ctx, aadt, speedLimit, embedded = f
                 {rows.map(([k, v, warn]) => <p key={k} className="sak-kv"><span>{k}</span><b className={warn ? 'site-facts__bad' : ''}>{v}</b></p>)}
               </div>
             )}
+            {(weakGangfelt || weakFortau) && (
+              <p className="site-facts__note">
+                Kommunen har registrert få {[weakGangfelt && 'gangfelt', weakFortau && 'fortau'].filter(Boolean).join(' og ')} på sine veger i Statens vegvesens vegdatabase
+                {weakGangfelt && reg.kv_gangfelt != null ? ` (${reg.kv_gangfelt} gangfelt)` : ''}. At noe ikke er registrert her, betyr ikke at det mangler. Sjekk i Street View.
+              </p>
+            )}
             {ctx?.site?.crossings && !ctx.site.crossings.error && ctx.site.crossings.road_ref !== undefined && (() => {
               const cx = ctx.site.crossings;
               return (
                 <div className="site-facts__cross">
                   <h3>Kryssing{cx.road_ref ? ` · ${cx.road_ref}` : ''}</h3>
-                  <p className="sak-kv"><span>Gangfelt på vegen innen 500 m</span><b className={!cx.crossings_on_road ? 'site-facts__bad' : ''}>{cx.crossings_on_road || 'Ingen'}</b></p>
+                  <p className="sak-kv"><span>Gangfelt på vegen innen 500 m</span><b className={!cx.crossings_on_road && !weakGangfelt ? 'site-facts__bad' : ''}>{cx.crossings_on_road || (weakGangfelt ? 'Ingen registrert (usikkert)' : 'Ingen registrert')}</b></p>
                   {cx.crossings_on_road > 0 && <p className="sak-kv"><span>Nærmeste gangfelt</span><b>{[cx.crossing_behind_m != null ? `${cx.crossing_behind_m} m` : 'ingen', cx.crossing_ahead_m != null ? `${cx.crossing_ahead_m} m` : 'ingen'].join(' / ')}</b></p>}
                   {cx.crossing_gap_m != null && <p className="sak-kv"><span>Mellom gangfeltene</span><b className={cx.crossing_gap_m > 300 ? 'site-facts__bad' : ''}>{cx.crossing_gap_m} m</b></p>}
                   {cx.destinations?.length > 0 && (

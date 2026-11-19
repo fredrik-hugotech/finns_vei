@@ -7,7 +7,8 @@ import { generateBrief, latestBrief, scanReports } from '../../../lib/finnJobs';
 import { buildReportContext, ensureReportContext } from '../../../lib/reportContext';
 import { ensureGrunnkretsChildren } from '../../../lib/ssbChildren';
 import { ensureBarnehager } from '../../../lib/barnehager';
-import { listReportsMissingContext, listReportsMissingMainCategory } from '../../../lib/supabaseRest';
+import { getKommuneBarn, listReportsMissingContext, listReportsMissingMainCategory, oldestKommuneRegistrering, saveKommuneRegistrering } from '../../../lib/supabaseRest';
+import { ensureCoverage } from '../../../lib/nvdbCoverage';
 import { categorizeReports } from '../../../lib/categorize';
 import { draftDueFactMessages } from '../../../lib/factJob';
 
@@ -50,6 +51,7 @@ export default async function handler(req, res) {
       }).catch(() => {}),
       listReportsMissingMainCategory(200).then((todo) => categorizeReports(todo)).catch(() => {}),
       draftDueFactMessages(40).catch(() => {}),
+      ensureCoverage({ oldest: await oldestKommuneRegistrering().catch(() => null), kommuneBarn: await getKommuneBarn().catch(() => new Map()), save: saveKommuneRegistrering }).catch(() => {}),
       listReportsNeedingFlagScan(100).then(async (todo) => {
         for (let i = 0; i < todo.length; i += 20) await scanReports(todo.slice(i, i + 20));
       }).catch((e) => console.error(JSON.stringify({ scope: 'ai-triage', event: 'flags_failed', error: String(e?.message || e).slice(0, 200) }))),

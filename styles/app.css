@@ -6051,6 +6051,7 @@ a.sk-task:hover { border-color: #e0a100; }
 .site-facts__num--warn { background: #fdeeea; }
 .site-facts__num--warn strong { color: #b23a16; }
 .site-facts__line { color: var(--color-muted); font-size: 0.84rem; margin: 0 0 0.4rem; }
+.site-facts__note { background: #fbf6ea; border-left: 3px solid #d9a441; border-radius: 6px; color: var(--color-text, inherit); font-size: 0.82rem; line-height: 1.4; margin: 0.4rem 0 0.6rem; padding: 0.45rem 0.6rem; }
 .site-facts__list summary { cursor: pointer; font-size: 0.88rem; font-weight: 700; }
 .site-facts__list ul { display: grid; gap: 0.45rem; list-style: none; margin: 0.5rem 0 0; padding: 0; }
 .site-facts__list li { display: grid; font-size: 0.86rem; gap: 0.5rem; grid-template-columns: 70px 1fr; line-height: 1.35; }

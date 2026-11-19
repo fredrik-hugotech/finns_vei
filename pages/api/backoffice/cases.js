@@ -14,7 +14,9 @@ import {
   getReportTriage,
   getReportContext,
   listLinkedReports,
+  getKommuneRegistrering,
 } from '../../../lib/supabaseRest';
+import { coverageFor, isMunicipalRoad } from '../../../lib/nvdbCoverage';
 import { addTrelloCardComment, getTrelloBoardId, hasTrelloConfig } from '../../../lib/trello';
 import { ensureReportContext } from '../../../lib/reportContext';
 import { checkRequestRateLimit } from '../../../lib/rateLimit';
@@ -69,6 +71,12 @@ export default async function handler(req, res) {
         // Accidents and children nearby; worked out now if this case has none yet.
         const context = await ensureReportContext(report).catch(() => null)
           || await getReportContext(report.id).catch(() => null);
+        // How well this municipality registers crossings and sidewalks on its
+        // roads; tells staff whether «none registered» means anything.
+        if (context && isMunicipalRoad(report.road_category) && context.grunnkrets_kode) {
+          const reg = await getKommuneRegistrering(String(context.grunnkrets_kode).slice(0, 4)).catch(() => null);
+          context.registration = coverageFor(reg);
+        }
         const images = Array.isArray(report.image_urls)
           ? report.image_urls
           : (typeof report.image_urls === 'string' ? (() => { try { return JSON.parse(report.image_urls); } catch (_e) { return []; } })() : []);
