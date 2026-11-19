@@ -684,10 +684,89 @@ export default function SakDetalj() {
               </div>
             </section>
 
+            <div className="sak-tail">
+            {c && <ReceiptBox c={c} onMade={load} />}
+            <section className="admin-section">
+              <h2>Sted</h2>
+              <div className="sak-side__actions">
+                <Link className="big-button big-button--secondary" href={`/?sak=${encodeURIComponent(c.id)}`}>Vis på kart</Link>
+                <Link className="big-button big-button--secondary" href={`/backoffice/skilt/${encodeURIComponent(c.id)}`}>Skriv ut skilt</Link>
+              </div>
+            </section>
+
+            <section className="admin-section">
+              <div className="sak-att__head">
+                <h2>Vedlegg</h2>
+                <div className="case-admin__notetabs sak-att__vis">
+                  <button type="button" aria-pressed={uploadVis === 'internal'} className={uploadVis === 'internal' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setUploadVis('internal')}>Internt</button>
+                  <button type="button" aria-pressed={uploadVis === 'public'} className={uploadVis === 'public' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setUploadVis('public')}>Offentlig</button>
+                </div>
+              </div>
+              <label
+                className={dragOver ? 'sak-upload sak-upload--drag' : 'sak-upload'}
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={(e) => { e.preventDefault(); setDragOver(false); doUpload(e.dataTransfer.files); }}
+              >
+                <input type="file" accept="image/*,application/pdf" multiple onChange={(e) => { doUpload(e.target.files); e.target.value = ''; }} disabled={uploading} hidden />
+                <strong>{uploading ? 'Laster opp …' : `+ Legg til ${uploadVis === 'public' ? 'offentlig' : 'internt'} vedlegg`}</strong>
+                <span className="sak-upload__hint">Dra hit, eller lim inn bilde (Ctrl/Cmd + V)</span>
+              </label>
+              {(data.attachments || []).length > 0 && (
+                <div className="sak-att__grid">
+                  {data.attachments.map((a) => (
+                    <div key={a.id} className={a.visibility === 'public' ? 'sak-att sak-att--public' : 'sak-att'}>
+                      {isImage(a)
+                        ? <button type="button" className="sak-att__thumb" onClick={() => setLightbox(a.url)}><img src={a.url} alt={a.filename || 'Vedleggsbilde'} /></button>
+                        : <a href={a.url} target="_blank" rel="noopener noreferrer" className="sak-att__thumb"><span className="sak-att__file">PDF</span></a>}
+                      <div className="sak-att__meta">
+                        <span className={a.visibility === 'public' ? 'sak-att__badge sak-att__badge--public' : 'sak-att__badge'}>{a.visibility === 'public' ? 'Offentlig' : 'Internt'}</span>
+                        <div className="sak-att__row">
+                          <button type="button" onClick={() => toggleAtt(a)} disabled={attBusyId === a.id}>{a.visibility === 'public' ? 'Gjør intern' : 'Gjør offentlig'}</button>
+                          <button type="button" onClick={() => deleteAtt(a)} disabled={attBusyId === a.id}>Slett</button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {data.trelloCardUrl && (
+              <footer className="sak-footer">
+                <a href={data.trelloCardUrl} target="_blank" rel="noopener noreferrer">Åpne kortet i Trello ↗</a>
+              </footer>
+            )}
+
+            <section className="admin-section sak-danger">
+              <h2>Faresone</h2>
+              {!deleteArmed ? (
+                <button type="button" className="sak-danger__arm" onClick={() => setDeleteArmed(true)}>Slett denne saken …</button>
+              ) : (
+                <div className="sak-danger__box">
+                  <p>Dette sletter saken <b>permanent</b> og kan ikke angres. Skriv <b>SLETT</b> for å bekrefte.</p>
+                  <input
+                    className="sak-danger__input"
+                    value={deleteConfirm}
+                    onChange={(e) => setDeleteConfirm(e.target.value)}
+                    placeholder="SLETT"
+                    autoComplete="off"
+                    autoCapitalize="characters"
+                    spellCheck={false}
+                  />
+                  <div className="sak-danger__actions">
+                    <button type="button" className="sak-danger__cancel" onClick={() => { setDeleteArmed(false); setDeleteConfirm(''); }} disabled={deleting}>Avbryt</button>
+                    <button type="button" className="sak-danger__go" onClick={deleteCase} disabled={deleting || deleteConfirm.trim().toUpperCase() !== 'SLETT'}>
+                      {deleting ? 'Sletter …' : 'Slett saken permanent'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </section>
+            </div>
             </div>
             <div className="sak-col sak-col--side">
             {c && <StreetViewPanel lat={c.lat} lng={c.lng} className="sak-sv" />}
-            {c && <ReceiptBox c={c} onMade={load} />}
             {(data?.parentId || (Array.isArray(data?.linked) && data.linked.length > 0)) && (
               <section className="admin-section sak-linked">
                 {data.parentId ? (
@@ -771,52 +850,6 @@ export default function SakDetalj() {
               </div>
             </section>
 
-            <section className="admin-section">
-              <h2>Sted</h2>
-              <div className="sak-side__actions">
-                <Link className="big-button big-button--secondary" href={`/?sak=${encodeURIComponent(c.id)}`}>Vis på kart</Link>
-                <Link className="big-button big-button--secondary" href={`/backoffice/skilt/${encodeURIComponent(c.id)}`}>Skriv ut skilt</Link>
-              </div>
-            </section>
-
-            <section className="admin-section">
-              <div className="sak-att__head">
-                <h2>Vedlegg</h2>
-                <div className="case-admin__notetabs sak-att__vis">
-                  <button type="button" aria-pressed={uploadVis === 'internal'} className={uploadVis === 'internal' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setUploadVis('internal')}>Internt</button>
-                  <button type="button" aria-pressed={uploadVis === 'public'} className={uploadVis === 'public' ? 'case-admin__tab case-admin__tab--on' : 'case-admin__tab'} onClick={() => setUploadVis('public')}>Offentlig</button>
-                </div>
-              </div>
-              <label
-                className={dragOver ? 'sak-upload sak-upload--drag' : 'sak-upload'}
-                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={(e) => { e.preventDefault(); setDragOver(false); doUpload(e.dataTransfer.files); }}
-              >
-                <input type="file" accept="image/*,application/pdf" multiple onChange={(e) => { doUpload(e.target.files); e.target.value = ''; }} disabled={uploading} hidden />
-                <strong>{uploading ? 'Laster opp …' : `+ Legg til ${uploadVis === 'public' ? 'offentlig' : 'internt'} vedlegg`}</strong>
-                <span className="sak-upload__hint">Dra hit, eller lim inn bilde (Ctrl/Cmd + V)</span>
-              </label>
-              {(data.attachments || []).length > 0 && (
-                <div className="sak-att__grid">
-                  {data.attachments.map((a) => (
-                    <div key={a.id} className={a.visibility === 'public' ? 'sak-att sak-att--public' : 'sak-att'}>
-                      {isImage(a)
-                        ? <button type="button" className="sak-att__thumb" onClick={() => setLightbox(a.url)}><img src={a.url} alt={a.filename || 'Vedleggsbilde'} /></button>
-                        : <a href={a.url} target="_blank" rel="noopener noreferrer" className="sak-att__thumb"><span className="sak-att__file">PDF</span></a>}
-                      <div className="sak-att__meta">
-                        <span className={a.visibility === 'public' ? 'sak-att__badge sak-att__badge--public' : 'sak-att__badge'}>{a.visibility === 'public' ? 'Offentlig' : 'Internt'}</span>
-                        <div className="sak-att__row">
-                          <button type="button" onClick={() => toggleAtt(a)} disabled={attBusyId === a.id}>{a.visibility === 'public' ? 'Gjør intern' : 'Gjør offentlig'}</button>
-                          <button type="button" onClick={() => deleteAtt(a)} disabled={attBusyId === a.id}>Slett</button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-
             {(c.contact_name || c.contact_email || c.contact_phone) && (
               <section className="admin-section">
                 <h2>Kontakt</h2>
@@ -826,37 +859,6 @@ export default function SakDetalj() {
               </section>
             )}
 
-            {data.trelloCardUrl && (
-              <footer className="sak-footer">
-                <a href={data.trelloCardUrl} target="_blank" rel="noopener noreferrer">Åpne kortet i Trello ↗</a>
-              </footer>
-            )}
-
-            <section className="admin-section sak-danger">
-              <h2>Faresone</h2>
-              {!deleteArmed ? (
-                <button type="button" className="sak-danger__arm" onClick={() => setDeleteArmed(true)}>Slett denne saken …</button>
-              ) : (
-                <div className="sak-danger__box">
-                  <p>Dette sletter saken <b>permanent</b> og kan ikke angres. Skriv <b>SLETT</b> for å bekrefte.</p>
-                  <input
-                    className="sak-danger__input"
-                    value={deleteConfirm}
-                    onChange={(e) => setDeleteConfirm(e.target.value)}
-                    placeholder="SLETT"
-                    autoComplete="off"
-                    autoCapitalize="characters"
-                    spellCheck={false}
-                  />
-                  <div className="sak-danger__actions">
-                    <button type="button" className="sak-danger__cancel" onClick={() => { setDeleteArmed(false); setDeleteConfirm(''); }} disabled={deleting}>Avbryt</button>
-                    <button type="button" className="sak-danger__go" onClick={deleteCase} disabled={deleting || deleteConfirm.trim().toUpperCase() !== 'SLETT'}>
-                      {deleting ? 'Sletter …' : 'Slett saken permanent'}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </section>
             </div>
           </>
         )}

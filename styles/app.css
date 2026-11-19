@@ -6165,3 +6165,14 @@ a.sk-task:hover { border-color: #e0a100; }
 .sk-facts a { background: #f3f8f6; border: 1px solid #cfe4dc; border-radius: 12px; color: var(--color-text); display: grid; gap: 0.15rem; padding: 0.6rem 0.8rem; text-decoration: none; }
 .sk-facts a:hover { border-color: var(--color-primary); }
 .sk-facts span { color: var(--color-muted); font-size: 0.86rem; }
+
+/* Case page: the right column is short (Street View, details, contact) and
+   stays in view without its own scroll; the rest lives under the activity. */
+.sak-tail { display: grid; gap: 0.85rem; order: 6; }
+@media (min-width: 1100px) {
+  .sak-col--side { max-height: none; overflow: visible; position: static; padding-bottom: 0; }
+  .sak-sv { position: static; }
+}
+@media (min-width: 1100px) and (min-height: 760px) {
+  .sak-col--side { position: sticky; top: 110px; }
+}
