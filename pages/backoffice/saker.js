@@ -211,6 +211,7 @@ export default function Saker() {
   const [counts, setCounts] = useState({});
   const [factDrafts, setFactDrafts] = useState([]);
   const [proposals, setProposals] = useState(null);
+  const [incidents, setIncidents] = useState(null);
   const loadProposals = useCallback(() => {
     fetch('/api/backoffice/finn/faktaforslag').then((r) => (r.ok ? r.json() : null)).then((d) => d && setProposals(d)).catch(() => {});
   }, []);
@@ -234,6 +235,8 @@ export default function Saker() {
     loadPri();
     fetch('/api/staff/me').then((r) => (r.ok ? r.json() : null)).then(setMe).catch(() => {});
     loadProposals();
+    // Also keeps the incident log fresh: the API fetches new ones when it's stale.
+    fetch('/api/backoffice/trafikkhendelser?dager=7').then((r) => (r.ok ? r.json() : null)).then((d) => d && setIncidents(d)).catch(() => {});
     fetch('/api/backoffice/finn/faktamelding').then((r) => (r.ok ? r.json() : null)).then((d) => d && setFactDrafts(d.drafts || [])).catch(() => {});
     fetch('/api/backoffice/finn/brief').then((r) => (r.ok ? r.json() : null)).then((d) => d && setCounts(d.counts || {})).catch(() => {});
   }, [loadPri, loadProposals]);
@@ -305,6 +308,7 @@ export default function Saker() {
     counts.likeSaker > 0 && { href: '/backoffice/sammenkobling', title: `${counts.likeSaker} forslag om like saker`, text: 'Koble meldinger om samme sted. Ingenting slettes.' },
     counts.flagg > 0 && { href: '/backoffice/finn/personvern', title: `${counts.flagg} personvernflagg`, text: 'Navn, bilnummer eller testmeldinger å se på.' },
     overdue > 0 && { href: '/backoffice/liste?aging=over', title: `${overdue} saker over fristen`, text: 'Følg opp eller sett ny frist.' },
+    incidents?.near_cases_7d > 0 && { href: '/backoffice/oversikt#trafikkulykker', title: `${incidents.near_cases_7d} ${incidents.near_cases_7d === 1 ? 'trafikkulykke' : 'trafikkulykker'} nær meldte steder`, text: 'Siste 7 dager, fra politiloggen og Statens vegvesen. Bare internt.' },
   ].filter(Boolean);
 
   return (

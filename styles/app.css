@@ -6177,3 +6177,18 @@ a.sk-task:hover { border-color: #e0a100; }
 @media (min-width: 1100px) and (min-height: 760px) {
   .sak-col--side { position: sticky; top: 110px; }
 }
+
+/* Traffic incidents (backoffice only) */
+.ti { margin-top: 1rem; }
+.ti-sum { font-size: 0.9rem; margin: 0 0 0.6rem; }
+.ti-list { display: grid; gap: 0.5rem; list-style: none; margin: 0; padding: 0; }
+.ti-row { border: 1px solid var(--color-border); border-radius: 10px; padding: 0.55rem 0.7rem; }
+.ti-row--near { border-color: #e0a3a3; background: #fdf3f2; }
+.ti-row__head { display: grid; gap: 0.1rem; }
+.ti-row__head strong { font-size: 0.92rem; }
+.ti-row__head span { color: var(--color-muted); font-size: 0.78rem; }
+.ti-row__text { font-size: 0.85rem; line-height: 1.4; margin: 0.35rem 0 0; white-space: pre-line; }
+.ti-cases { display: grid; gap: 0.15rem; list-style: none; margin: 0.4rem 0 0; padding: 0; font-size: 0.85rem; }
+.ti-cases em { color: var(--color-muted); font-style: normal; }
+.ti-note { color: var(--color-muted); font-size: 0.78rem; margin: 0.6rem 0 0; }
+.ti-alert { background: #fdf3f2; border-left: 3px solid #c0392b; border-radius: 6px; font-size: 0.88rem; font-weight: 700; margin: 0 0 0.5rem; padding: 0.4rem 0.6rem; }

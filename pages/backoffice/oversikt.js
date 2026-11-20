@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import { useEffect, useMemo, useState } from 'react';
 import BackofficeHeader from '../../components/BackofficeHeader';
 import SourcesCard from '../../components/SourcesCard';
+import TrafficIncidentsCard from '../../components/TrafficIncidents';
 import { splitReportText } from '../../lib/reportText';
 import { reportStatusMeta } from '../../lib/reportStatusMeta';
 import { REPORT_STATUS } from '../../lib/config';
@@ -207,6 +208,8 @@ function Dashboard({ me }) {
           </section>
         )}
 
+
+        <TrafficIncidentsCard />
 
         <SourcesCard />
 

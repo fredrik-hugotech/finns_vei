@@ -9,6 +9,7 @@ import BackofficeHeader from '../../../components/BackofficeHeader';
 import { classifyRoadAuthority, buildReferralDraft } from '../../../lib/roadAuthorityReferral';
 import { describeFetchError } from '../../../lib/backofficeFormat';
 import { PUBLIC_UPDATE_TEMPLATES } from '../../../lib/caseUpdateTemplates';
+import { CaseIncidents } from '../../../components/TrafficIncidents';
 import StreetViewPanel from '../../../components/StreetViewPanel';
 import CaseAssessment from '../../../components/CaseAssessment';
 import FactDraft from '../../../components/FactDraft';
@@ -685,6 +686,7 @@ export default function SakDetalj() {
             </section>
 
             <div className="sak-tail">
+            {c && <CaseIncidents caseId={c.id} />}
             {c && <ReceiptBox c={c} onMade={load} />}
             <section className="admin-section">
               <h2>Sted</h2>
