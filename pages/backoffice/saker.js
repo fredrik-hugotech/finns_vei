@@ -264,7 +264,8 @@ export default function Saker() {
       mine: open.filter((c) => myEmail && String(c.assignee_email || '').toLowerCase() === myEmail).sort(byScore),
       viktigst: open.filter((c) => c.t).sort(byScore),
       raske: open.filter((c) => c.t && (c.t.quick_win || c.t.effort === 'enkel')).sort(byScore),
-      nye: rows.filter((c) => c.status === REPORT_STATUS.NEW).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))),
+      // New cases get «Registrert» at once, so «new» means the last 7 days.
+      nye: rows.filter((c) => c.status === REPORT_STATUS.NEW || Date.now() - new Date(c.created_at).getTime() < 7 * 864e5).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))),
       kontakt: open.filter((c) => Number(c.contact_count) > 0).sort(byScore),
     };
   }, [open, rows, team, myEmail]);

@@ -87,7 +87,7 @@ function Dashboard({ me }) {
   const totalSupport = useMemo(() => (cases || []).reduce((n, c) => n + Number(c.support_count || 0), 0), [cases]);
 
   const minDag = useMemo(() => (cases || [])
-    .filter((c) => c.status === REPORT_STATUS.NEW)
+    .filter((c) => c.status === REPORT_STATUS.NEW || (c.status === REPORT_STATUS.REGISTERED && Date.now() - new Date(c.created_at).getTime() < 7 * 864e5))
     .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
     .slice(0, 6), [cases]);
   const mine = useMemo(() => (cases || [])

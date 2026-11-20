@@ -1,6 +1,6 @@
 import { REPORT_CATEGORIES, REPORT_STATUS, REPORTER_TYPES } from '../../lib/config';
 import { runReportWorkflowBestEffort, siteBaseUrl } from '../../lib/reportWorkflow';
-import { createReport, findRecentDuplicateReport, hasSupabaseConfig, listReportsNeedingTriage, saveReportTriage, updateReportImages, uploadReportImage } from '../../lib/supabaseRest';
+import { createReport, findRecentDuplicateReport, getInsightSetting, hasSupabaseConfig, listReportsNeedingTriage, saveReportTriage, updateReportImages, uploadReportImage } from '../../lib/supabaseRest';
 import { distanceMeters, randomOffsetPoint, snapToGrid, CLIP_METERS } from '../../lib/geoPrivacy';
 import { buildNewReportEmail } from '../../lib/dailySummaryEmail';
 import { emailTransportConfigured, sendNotificationEmail } from '../../lib/emailTransport';
@@ -119,7 +119,7 @@ function validatePayload(body = {}) {
   const bikeRouteType = body.bike_route_type === 'skole' ? 'skole' : (body.bike_route_type === 'fritid' ? 'fritid' : null);
 
   return {
-    status: REPORT_STATUS.NEW,
+    status: REPORT_STATUS.REGISTERED,
     nvdb_status: 'pending',
     reporter_type: reporterType,
     category,
@@ -224,10 +224,14 @@ export default async function handler(req, res) {
       const existing = await findRecentDuplicateReport(reportInput).catch(() => null);
       if (existing?.id) {
         logApi('duplicate_ignored', { reportId: existing.id, category: reportInput.category });
-        return res.status(200).json({ id: existing.id, status: existing.status || REPORT_STATUS.NEW, nvdb_status: 'pending', warning: null, image_count: 0, duplicate: true });
+        return res.status(200).json({ id: existing.id, status: existing.status || REPORT_STATUS.REGISTERED, nvdb_status: 'pending', warning: null, image_count: 0, duplicate: true });
       }
     }
 
+    // Every new case gets the team's standard case handler (setting
+    // «standard_saksbehandler»), so nobody has to pick them up by hand.
+    const defaultAssignee = String(await getInsightSetting('standard_saksbehandler').catch(() => '') || '').trim().toLowerCase();
+    if (defaultAssignee.includes('@')) reportInput.assignee_email = defaultAssignee;
     const insertedReport = await createReport(reportInput);
 
     if (!insertedReport?.id) {
@@ -321,7 +325,7 @@ export default async function handler(req, res) {
 
     return res.status(201).json({
       id: insertedReport.id,
-      status: insertedReport.status || REPORT_STATUS.NEW,
+      status: insertedReport.status || REPORT_STATUS.REGISTERED,
       nvdb_status: 'pending',
       warning: imageWarning,
       image_count: uploadedImages.length,
